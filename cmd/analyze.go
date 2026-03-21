@@ -30,13 +30,28 @@ var (
 	outputFile    string
 	conceptModel  string
 	conceptCache  string
+	configFile    string
 )
 
 var analyzeCmd = &cobra.Command{
 	Use:   "analyze <path>",
 	Short: "Analyze a codebase for semantically similar functions",
 	Args:  cobra.ExactArgs(1),
-	RunE:  runAnalyze,
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		path := configFile
+		if path == "" {
+			path = ".doppel.json"
+		}
+		cfg, err := loadConfig(path)
+		if err != nil {
+			return err
+		}
+		if cfg != nil {
+			applyConfig(cmd, cfg)
+		}
+		return nil
+	},
+	RunE: runAnalyze,
 }
 
 func init() {
@@ -51,6 +66,7 @@ func init() {
 	analyzeCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write report as markdown to this file (e.g. report.md). Stdout text report is still printed.")
 	analyzeCmd.Flags().StringVar(&conceptModel, "concept-model", "", "Ollama chat model for concept doc generation (e.g. llama3.2). Empty = static analysis only.")
 	analyzeCmd.Flags().StringVar(&conceptCache, "concept-cache", ".concepts.json", "Concept doc cache file path (empty to disable).")
+	analyzeCmd.Flags().StringVar(&configFile, "config", "", "Path to JSON config file (default: .doppel.json if present)")
 	rootCmd.AddCommand(analyzeCmd)
 }
 
