@@ -72,10 +72,22 @@ func buildPrompt(pair analyzer.SimilarPair) string {
 		"You are a code reviewer. Two functions have been identified as semantically similar (similarity score: %.4f).\n\n",
 		pair.Score,
 	))
+	sb.WriteString(fmt.Sprintf("Function A: %s\n", pair.A.Name))
 	sb.WriteString(unitBlock("A", pair.A))
-	sb.WriteString("\n")
+	sb.WriteString("\n-----\n")
+	sb.WriteString(fmt.Sprintf("Function B: %s\n", pair.B.Name))
 	sb.WriteString(unitBlock("B", pair.B))
-	sb.WriteString("\nIn 2-3 sentences: explain what shared logic could be extracted and how these functions could be merged or refactored. Be specific and actionable.")
+	sb.WriteString("\n-----\n")
+	sb.WriteString(`
+Please answer the following questions about these functions:
+
+- Are these functions likely to change together?
+- Do they encode the same business rule?
+- Would a shared abstraction be simpler than two copies?
+- Would merging reduce bugs without increasing coordination cost?
+- Can we share a lower-level primitive instead of merging the whole function?
+`)
+
 	return sb.String()
 }
 
