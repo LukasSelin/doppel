@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/lukse/doppel/internal/analyzer"
+	"github.com/lukse/doppel/internal/concepter"
 	"github.com/lukse/doppel/internal/embedder"
 	"github.com/lukse/doppel/internal/parser"
 	"github.com/lukse/doppel/internal/reflector"
@@ -27,6 +28,8 @@ var (
 	ollamaNumCtx  int
 	reflectModel  string
 	outputFile    string
+	conceptModel  string
+	conceptCache  string
 )
 
 var analyzeCmd = &cobra.Command{
@@ -46,6 +49,8 @@ func init() {
 	analyzeCmd.Flags().IntVar(&ollamaNumCtx, "ollama-num-ctx", 0, "Ollama options.num_ctx (tokens); 0 = server default. Use 32768 for Qwen3-Embedding-8B long context (see HF model card)")
 	analyzeCmd.Flags().StringVar(&reflectModel, "reflect-model", "", "Ollama chat model for merge explanations (e.g. llama3.2, qwen2.5). Empty = disabled.")
 	analyzeCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write report as markdown to this file (e.g. report.md). Stdout text report is still printed.")
+	analyzeCmd.Flags().StringVar(&conceptModel, "concept-model", "", "Ollama chat model for concept doc generation (e.g. llama3.2). Empty = static analysis only.")
+	analyzeCmd.Flags().StringVar(&conceptCache, "concept-cache", ".concepts.json", "Concept doc cache file path (empty to disable).")
 	rootCmd.AddCommand(analyzeCmd)
 }
 
@@ -85,6 +90,30 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		units[i].Patterns = tagger.Tag(units[i].Body)
 	}
 
+	// Build call graph and generate concept documents for every unit.
+	cg := concepter.BuildCallGraph(units)
+
+	fmt.Fprintf(os.Stderr, "Generating concept documents...\n")
+	cc, _ := concepter.NewConceptCache(conceptCache, conceptModel)
+	cptr := concepter.New(ollamaURL, conceptModel, cc)
+	conceptTexts := make([]string, len(units))
+	for i, u := range units {
+		doc, err := cptr.Generate(u, cg[u.Name])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "\n  warn: concept %s:%s: %v\n", u.File, u.Name, err)
+			conceptTexts[i] = buildEmbeddingText(u) // fallback to tagged body
+			continue
+		}
+		conceptTexts[i] = doc.Format()
+		if (i+1)%10 == 0 || i+1 == len(units) {
+			fmt.Fprintf(os.Stderr, "  concepts %d/%d\r", i+1, len(units))
+		}
+	}
+	fmt.Fprintln(os.Stderr)
+	if err := cc.Save(); err != nil {
+		fmt.Fprintf(os.Stderr, "  warn: could not save concept cache: %v\n", err)
+	}
+
 	fmt.Fprintf(os.Stderr, "Found %d functions. Generating embeddings...\n", len(units))
 
 	emb, err := embedder.New(ollamaURL, model, cacheFile, ollamaNumCtx)
@@ -94,7 +123,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 
 	embeddings := make([][]float64, len(units))
 	for i, u := range units {
-		vec, err := embedWithBackoff(emb, buildEmbeddingText(u), maxInputBytes)
+		vec, err := embedWithBackoff(emb, conceptTexts[i], maxInputBytes)
 		if err != nil {
 			return fmt.Errorf("embed %s:%s: %w", u.File, u.Name, err)
 		}
