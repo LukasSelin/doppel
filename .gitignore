@@ -1,0 +1,25 @@
+# Binaries
+doppel
+doppel.exe
+*.exe
+*.test
+
+# Generated output
+report.md
+.embeddings.json
+*.embeddings.json
+
+# Go test/coverage artifacts
+coverage.out
+coverage.html
+*.coverprofile
+
+# Vendor directory (if used)
+vendor/
+
+# IDE
+.vscode/
+.idea/
+
+# Claude Code local settings
+.claude/settings.local.json
