@@ -63,6 +63,37 @@ doppel analyze . --concept-model llama3.2 --reflect-model llama3.2 --output repo
 doppel analyze . --model qwen3-embedding-8b --ollama-num-ctx 32768
 ```
 
+## Iterative Refactoring Loop
+
+A single `doppel` run gives you a snapshot. Running it repeatedly after each refactoring session creates a compounding effect: merging two functions often unmasks a third pair that was previously hidden behind the noise. Over successive passes you can progressively tighten the threshold and reach a leaner, more consistent codebase.
+
+**The reduction cycle:**
+
+1. Run `doppel analyze` with a conservative threshold (e.g. `--threshold 0.90`) and save the report
+2. Work through the top pairs — extract shared logic or consolidate the duplicates
+3. Re-run; the embedding and concept-doc caches mean only changed files are re-processed, so each pass is fast
+4. Lower the threshold slightly once the high-confidence pairs are gone (`0.90 → 0.85 → 0.80`) to surface the next layer
+5. Repeat until the report comes back empty at your chosen floor
+
+**Scheduling it:**
+
+The loop works best when it runs automatically. Commit a `.doppel.json` to the repo with a standing configuration — threshold, output file, optional reflect model — so every run uses consistent settings:
+
+```json
+{
+  "threshold": 0.85,
+  "top": 10,
+  "reflect-model": "llama3.2",
+  "output": "doppel-report.md"
+}
+```
+
+Then set up a recurring task (daily, post-merge, or pre-PR) that runs `doppel analyze .` and writes a fresh `doppel-report.md`. Each session you open the report, work through what's there, and commit the reduction. Because the cache persists between runs, revisited functions are instant — only new or changed code gets re-embedded, so the tool never slows you down as the codebase shrinks.
+
+With Claude Code's scheduled-task support you can wire this directly into your workflow: a scheduled run generates the report, and your next coding session opens with a ready-made list of merge candidates to check off.
+
+The goal is a threshold floor where new pairs no longer appear — at that point the codebase has reached its semantic minimum for the chosen embedding model.
+
 ### Flags
 
 | Flag | Default | Description |
