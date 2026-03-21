@@ -13,6 +13,7 @@ import (
 	"github.com/lukse/doppel/internal/parser"
 	"github.com/lukse/doppel/internal/reflector"
 	"github.com/lukse/doppel/internal/reporter"
+	"github.com/lukse/doppel/internal/tagger"
 	"github.com/spf13/cobra"
 )
 
@@ -79,6 +80,11 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		fmt.Println("No functions found.")
 		return nil
 	}
+
+	for i := range units {
+		units[i].Patterns = tagger.Tag(units[i].Body)
+	}
+
 	fmt.Fprintf(os.Stderr, "Found %d functions. Generating embeddings...\n", len(units))
 
 	emb, err := embedder.New(ollamaURL, model, cacheFile, ollamaNumCtx)
@@ -88,7 +94,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 
 	embeddings := make([][]float64, len(units))
 	for i, u := range units {
-		vec, err := embedWithBackoff(emb, u.Body, maxInputBytes)
+		vec, err := embedWithBackoff(emb, buildEmbeddingText(u), maxInputBytes)
 		if err != nil {
 			return fmt.Errorf("embed %s:%s: %w", u.File, u.Name, err)
 		}
@@ -134,6 +140,15 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+// buildEmbeddingText prepends detected pattern tags to the function body so the
+// embedding model receives intent signals alongside the source text.
+func buildEmbeddingText(u parser.CodeUnit) string {
+	if len(u.Patterns) == 0 {
+		return u.Body
+	}
+	return "// patterns: " + strings.Join(u.Patterns, ", ") + "\n" + u.Body
 }
 
 const minEmbedBytes = 256

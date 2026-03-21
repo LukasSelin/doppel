@@ -12,8 +12,9 @@ type CodeUnit struct {
 	StartLine int
 	Body      string
 	Language  string
-	Signature string // parameter + return types, e.g. "(ctx context.Context) (User, error)"; empty for non-Go
-	Package   string // Go package name; empty for non-Go
+	Signature string   // parameter + return types, e.g. "(ctx context.Context) (User, error)"; empty for non-Go
+	Package   string   // Go package name; empty for non-Go
+	Patterns  []string // detected intent tags, e.g. ["retry", "http_call"]
 }
 
 // Parse extracts all CodeUnits from the file at the given path.

@@ -47,8 +47,8 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, threshold float64,
 		fmt.Fprintf(w, "## Match #%d — Score: `%.4f`\n\n", i+1, p.Score)
 
 		// Table header
-		fmt.Fprintf(w, "| | Location | Function | Signature |\n")
-		fmt.Fprintf(w, "|---|---|---|---|\n")
+		fmt.Fprintf(w, "| | Location | Function | Signature | Patterns |\n")
+		fmt.Fprintf(w, "|---|---|---|---|---|\n")
 		mdTableRow(w, "A", p.A)
 		mdTableRow(w, "B", p.B)
 		fmt.Fprintln(w)
@@ -75,7 +75,11 @@ func mdTableRow(w io.Writer, label string, u parser.CodeUnit) {
 	if sig == "" {
 		sig = "—"
 	}
-	fmt.Fprintf(w, "| **%s** | %s | `%s` | `%s` |\n", label, loc, mdEscape(name), mdEscape(sig))
+	patterns := "—"
+	if len(u.Patterns) > 0 {
+		patterns = strings.Join(u.Patterns, ", ")
+	}
+	fmt.Fprintf(w, "| **%s** | %s | `%s` | `%s` | %s |\n", label, loc, mdEscape(name), mdEscape(sig), patterns)
 }
 
 // mdEscape escapes pipe characters that would break markdown tables.
@@ -92,5 +96,8 @@ func printUnit(w io.Writer, prefix string, u parser.CodeUnit) {
 	fmt.Fprintf(w, "%s  %-60s  %s\n", prefix, loc, name)
 	if u.Signature != "" {
 		fmt.Fprintf(w, "       sig: %s\n", u.Signature)
+	}
+	if len(u.Patterns) > 0 {
+		fmt.Fprintf(w, "      tags: %s\n", strings.Join(u.Patterns, ", "))
 	}
 }
