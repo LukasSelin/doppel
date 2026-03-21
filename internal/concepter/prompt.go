@@ -1,6 +1,7 @@
 package concepter
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"go/ast"
@@ -11,13 +12,83 @@ import (
 	gparser "github.com/lukse/doppel/internal/parser"
 )
 
+// flexStringSlice unmarshals a JSON value into []string, tolerating the
+// common LLM mistake of returning a single string, an array of objects, or
+// a plain object in place of a string array.
+type flexStringSlice []string
+
+func (f *flexStringSlice) UnmarshalJSON(data []byte) error {
+	data = bytes.TrimSpace(data)
+	if len(data) == 0 || string(data) == "null" {
+		*f = nil
+		return nil
+	}
+	switch data[0] {
+	case '"':
+		// LLM returned a bare string; wrap it.
+		var s string
+		if err := json.Unmarshal(data, &s); err != nil {
+			return err
+		}
+		if s != "" {
+			*f = []string{s}
+		}
+		return nil
+	case '[':
+		// Happy path: array of strings.
+		var ss []string
+		if err := json.Unmarshal(data, &ss); err == nil {
+			*f = ss
+			return nil
+		}
+		// Fallback: array of objects – extract string values from common keys.
+		var raw []json.RawMessage
+		if err := json.Unmarshal(data, &raw); err != nil {
+			*f = nil
+			return nil // best-effort; don't propagate
+		}
+		var result []string
+		for _, item := range raw {
+			item = bytes.TrimSpace(item)
+			if len(item) == 0 {
+				continue
+			}
+			if item[0] == '"' {
+				var s string
+				if json.Unmarshal(item, &s) == nil {
+					result = append(result, s)
+				}
+			} else if item[0] == '{' {
+				var obj map[string]json.RawMessage
+				if json.Unmarshal(item, &obj) == nil {
+					for _, key := range []string{"type", "name", "value"} {
+						if v, ok := obj[key]; ok {
+							var s string
+							if json.Unmarshal(v, &s) == nil {
+								result = append(result, s)
+								break
+							}
+						}
+					}
+				}
+			}
+		}
+		*f = result
+		return nil
+	default:
+		// Object or unknown shape: silently return empty.
+		*f = nil
+		return nil
+	}
+}
+
 // llmConceptResponse is the JSON structure the LLM is asked to return.
 type llmConceptResponse struct {
-	Summary      string   `json:"summary"`
-	Inputs       []string `json:"inputs"`
-	Outputs      []string `json:"outputs"`
-	Dependencies []string `json:"dependencies"`
-	Patterns     []string `json:"patterns"`
+	Summary      string          `json:"summary"`
+	Inputs       flexStringSlice `json:"inputs"`
+	Outputs      flexStringSlice `json:"outputs"`
+	Dependencies flexStringSlice `json:"dependencies"`
+	Patterns     flexStringSlice `json:"patterns"`
 }
 
 // buildConceptPrompt constructs the prompt sent to Ollama /api/generate.
@@ -46,10 +117,10 @@ func buildConceptPrompt(unit gparser.CodeUnit) string {
 JSON schema:
 {
   "summary": "one sentence describing what this function does",
-  "inputs":       ["one type per item, no parameter names"],
-  "outputs":      ["one type per item"],
-  "dependencies": ["external packages, services, or subsystems used"],
-  "patterns":     ["design patterns or idioms, e.g. retry loop, error wrapping, db_access"]
+  "inputs":       ["context.Context", "string"],
+  "outputs":      ["User", "error"],
+  "dependencies": ["net/http", "database/sql"],
+  "patterns":     ["db_access", "error wrapping"]
 }
 
 JSON:`)

@@ -72,6 +72,7 @@ type generateRequest struct {
 	Model  string `json:"model"`
 	Prompt string `json:"prompt"`
 	Stream bool   `json:"stream"`
+	Format string `json:"format,omitempty"`
 }
 
 type generateResponse struct {
@@ -135,6 +136,7 @@ func (c *Concepter) callLLM(unit parser.CodeUnit) (llmConceptResponse, error) {
 		Model:  c.model,
 		Prompt: prompt,
 		Stream: false,
+		Format: "json",
 	})
 	if err != nil {
 		return llmConceptResponse{}, err
