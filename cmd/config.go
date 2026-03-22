@@ -22,8 +22,10 @@ type AnalysisConfig struct {
 	OllamaNumCtx *int     `json:"ollama-num-ctx,omitempty"`
 	ReflectModel *string  `json:"reflect-model,omitempty"`
 	OutputFile   *string  `json:"output,omitempty"`
-	ConceptModel *string  `json:"concept-model,omitempty"`
-	ConceptCache *string  `json:"concept-cache,omitempty"`
+	ConceptModel      *string `json:"concept-model,omitempty"`
+	ConceptCache      *string `json:"concept-cache,omitempty"`
+	ConceptPromptFile *string `json:"concept-prompt-file,omitempty"`
+	ReflectPromptFile *string `json:"reflect-prompt-file,omitempty"`
 }
 
 // loadConfig reads a JSON config file. Returns nil (no error) if the file does not exist.
@@ -81,5 +83,11 @@ func applyConfig(cmd *cobra.Command, cfg *AnalysisConfig) {
 	}
 	if cfg.ConceptCache != nil {
 		set("concept-cache", *cfg.ConceptCache)
+	}
+	if cfg.ConceptPromptFile != nil {
+		set("concept-prompt-file", *cfg.ConceptPromptFile)
+	}
+	if cfg.ReflectPromptFile != nil {
+		set("reflect-prompt-file", *cfg.ReflectPromptFile)
 	}
 }

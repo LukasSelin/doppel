@@ -8,6 +8,7 @@ import (
 	"go/parser"
 	"go/token"
 	"strings"
+	"text/template"
 
 	gparser "github.com/lukse/doppel/internal/parser"
 )
@@ -91,15 +92,46 @@ type llmConceptResponse struct {
 	Patterns     flexStringSlice `json:"patterns"`
 }
 
-// buildConceptPrompt constructs the prompt sent to Ollama /api/generate.
-func buildConceptPrompt(unit gparser.CodeUnit) string {
-	var sb strings.Builder
+// conceptPromptData is the template data available when using a custom concept prompt template.
+type conceptPromptData struct {
+	Name      string
+	Package   string
+	Signature string
+	Language  string
+	Patterns  string // comma-joined detected patterns, or "none"
+	Body      string
+}
 
+// buildConceptPrompt constructs the prompt sent to Ollama /api/generate.
+// If tmpl is non-empty it is parsed as a Go text/template and executed with
+// conceptPromptData; otherwise the built-in prompt is returned.
+func buildConceptPrompt(unit gparser.CodeUnit, tmpl string) (string, error) {
 	detectedPatterns := "none"
 	if len(unit.Patterns) > 0 {
 		detectedPatterns = strings.Join(unit.Patterns, ", ")
 	}
 
+	if tmpl != "" {
+		t, err := template.New("concept").Parse(tmpl)
+		if err != nil {
+			return "", fmt.Errorf("parse concept prompt template: %w", err)
+		}
+		data := conceptPromptData{
+			Name:      unit.Name,
+			Package:   unit.Package,
+			Signature: unit.Signature,
+			Language:  unit.Language,
+			Patterns:  detectedPatterns,
+			Body:      unit.Body,
+		}
+		var buf strings.Builder
+		if err := t.Execute(&buf, data); err != nil {
+			return "", fmt.Errorf("execute concept prompt template: %w", err)
+		}
+		return buf.String(), nil
+	}
+
+	var sb strings.Builder
 	sb.WriteString("Analyze this function. Reply with ONLY a JSON object, no explanation.\n\n")
 	sb.WriteString(fmt.Sprintf("Name: %s\n", unit.Name))
 	if unit.Package != "" {
@@ -124,7 +156,7 @@ JSON schema:
 }
 
 JSON:`)
-	return sb.String()
+	return sb.String(), nil
 }
 
 // parseConceptResponse extracts a JSON object from the LLM response string.

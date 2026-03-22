@@ -19,18 +19,20 @@ import (
 )
 
 var (
-	threshold     float64
-	topN          int
-	model         string
-	ollamaURL     string
-	cacheFile     string
-	maxInputBytes int
-	ollamaNumCtx  int
-	reflectModel  string
-	outputFile    string
-	conceptModel  string
-	conceptCache  string
-	configFile    string
+	threshold         float64
+	topN              int
+	model             string
+	ollamaURL         string
+	cacheFile         string
+	maxInputBytes     int
+	ollamaNumCtx      int
+	reflectModel      string
+	outputFile        string
+	conceptModel      string
+	conceptCache      string
+	configFile        string
+	conceptPromptFile string
+	reflectPromptFile string
 )
 
 var analyzeCmd = &cobra.Command{
@@ -67,6 +69,8 @@ func init() {
 	analyzeCmd.Flags().StringVar(&conceptModel, "concept-model", "", "Ollama chat model for concept doc generation (e.g. llama3.2). Empty = static analysis only.")
 	analyzeCmd.Flags().StringVar(&conceptCache, "concept-cache", ".concepts.json", "Concept doc cache file path (empty to disable).")
 	analyzeCmd.Flags().StringVar(&configFile, "config", "", "Path to JSON config file (default: .doppel.json if present)")
+	analyzeCmd.Flags().StringVar(&conceptPromptFile, "concept-prompt-file", "", "Path to a text/template file for the concept prompt. Variables: {{.Name}}, {{.Package}}, {{.Signature}}, {{.Language}}, {{.Patterns}}, {{.Body}}")
+	analyzeCmd.Flags().StringVar(&reflectPromptFile, "reflect-prompt-file", "", "Path to a text/template file for the reflect prompt. Variables: {{.Score}}, {{.A.Name}}, {{.A.Body}}, {{.B.Name}}, {{.B.Body}}, etc.")
 	rootCmd.AddCommand(analyzeCmd)
 }
 
@@ -109,9 +113,18 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	// Build call graph and generate concept documents for every unit.
 	cg := concepter.BuildCallGraph(units)
 
+	conceptPrompt, err := readPromptFile(conceptPromptFile)
+	if err != nil {
+		return err
+	}
+	reflectPrompt, err := readPromptFile(reflectPromptFile)
+	if err != nil {
+		return err
+	}
+
 	fmt.Fprintf(os.Stderr, "Generating concept documents...\n")
 	cc, _ := concepter.NewConceptCache(conceptCache, conceptModel)
-	cptr := concepter.New(ollamaURL, conceptModel, cc)
+	cptr := concepter.New(ollamaURL, conceptModel, conceptPrompt, cc)
 	conceptTexts := make([]string, len(units))
 	for i, u := range units {
 		doc, err := cptr.Generate(u, cg[u.Name])
@@ -159,7 +172,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 
 	if reflectModel != "" && len(pairs) > 0 {
 		fmt.Fprintf(os.Stderr, "Reflecting on %d pairs with model %q...\n", len(pairs), reflectModel)
-		ref := reflector.New(ollamaURL, reflectModel)
+		ref := reflector.New(ollamaURL, reflectModel, reflectPrompt)
 		for i := range pairs {
 			fmt.Fprintf(os.Stderr, "  reflecting %d/%d\r", i+1, len(pairs))
 			explanation, err := ref.Explain(pairs[i])
@@ -242,6 +255,19 @@ func truncateUTF8(s string, maxBytes int) string {
 		s = s[:len(s)-1]
 	}
 	return s
+}
+
+// readPromptFile reads a prompt template file and returns its contents.
+// Returns "" without error if path is empty.
+func readPromptFile(path string) (string, error) {
+	if path == "" {
+		return "", nil
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("read prompt file %s: %w", path, err)
+	}
+	return string(b), nil
 }
 
 func shouldSkipDir(name string) bool {

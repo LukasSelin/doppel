@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+	"text/template"
 
 	"github.com/lukse/doppel/internal/analyzer"
 	"github.com/lukse/doppel/internal/parser"
@@ -15,13 +16,17 @@ import (
 
 // Reflector calls an Ollama chat/generate model to explain why a similar pair should be merged.
 type Reflector struct {
-	baseURL string
-	model   string
+	baseURL        string
+	model          string
+	promptTemplate string // empty = use built-in prompt
 }
 
 // New creates a Reflector.
-func New(baseURL, model string) *Reflector {
-	return &Reflector{baseURL: baseURL, model: model}
+// promptTemplate may be empty to use the built-in prompt; otherwise it is a
+// Go text/template string with variables {{.Score}}, {{.A.Name}}, {{.A.Package}},
+// {{.A.Signature}}, {{.A.Body}}, {{.A.Location}}, and the same for {{.B}}.
+func New(baseURL, model, promptTemplate string) *Reflector {
+	return &Reflector{baseURL: baseURL, model: model, promptTemplate: promptTemplate}
 }
 
 type generateRequest struct {
@@ -36,7 +41,10 @@ type generateResponse struct {
 
 // Explain sends both function bodies to the LLM and returns a merge rationale.
 func (r *Reflector) Explain(pair analyzer.SimilarPair) (string, error) {
-	prompt := buildPrompt(pair)
+	prompt, err := buildPrompt(pair, r.promptTemplate)
+	if err != nil {
+		return "", fmt.Errorf("build prompt: %w", err)
+	}
 
 	payload, err := json.Marshal(generateRequest{
 		Model:  r.model,
@@ -66,7 +74,53 @@ func (r *Reflector) Explain(pair analyzer.SimilarPair) (string, error) {
 	return strings.TrimSpace(result.Response), nil
 }
 
-func buildPrompt(pair analyzer.SimilarPair) string {
+// reflectUnit holds template-accessible fields for one function in a similar pair.
+type reflectUnit struct {
+	Name      string
+	Package   string
+	Signature string
+	Body      string
+	Location  string // "file:line"
+}
+
+// reflectPromptData is the template data available when using a custom reflect prompt template.
+type reflectPromptData struct {
+	Score float64
+	A     reflectUnit
+	B     reflectUnit
+}
+
+func buildPrompt(pair analyzer.SimilarPair, tmpl string) (string, error) {
+	if tmpl != "" {
+		t, err := template.New("reflect").Parse(tmpl)
+		if err != nil {
+			return "", fmt.Errorf("parse reflect prompt template: %w", err)
+		}
+		toUnit := func(u parser.CodeUnit) reflectUnit {
+			name := u.Name
+			if u.Package != "" {
+				name = u.Package + "." + name
+			}
+			return reflectUnit{
+				Name:      name,
+				Package:   u.Package,
+				Signature: u.Signature,
+				Body:      u.Body,
+				Location:  fmt.Sprintf("%s:%d", filepath.ToSlash(u.File), u.StartLine),
+			}
+		}
+		data := reflectPromptData{
+			Score: pair.Score,
+			A:     toUnit(pair.A),
+			B:     toUnit(pair.B),
+		}
+		var buf strings.Builder
+		if err := t.Execute(&buf, data); err != nil {
+			return "", fmt.Errorf("execute reflect prompt template: %w", err)
+		}
+		return buf.String(), nil
+	}
+
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf(
 		"You are a code reviewer. Two functions have been identified as semantically similar (similarity score: %.4f).\n\n",

@@ -58,14 +58,18 @@ func writeList(sb *strings.Builder, header string, items []string) {
 // Concepter generates ConceptDocs for CodeUnits using static analysis and
 // optionally an Ollama chat model.
 type Concepter struct {
-	baseURL string
-	model   string // empty = static-only mode
-	cache   *ConceptCache
+	baseURL        string
+	model          string // empty = static-only mode
+	promptTemplate string // empty = use built-in prompt
+	cache          *ConceptCache
 }
 
 // New creates a Concepter. model may be empty for static-only mode.
-func New(baseURL, model string, cache *ConceptCache) *Concepter {
-	return &Concepter{baseURL: baseURL, model: model, cache: cache}
+// promptTemplate may be empty to use the built-in prompt; otherwise it is a
+// Go text/template string with variables {{.Name}}, {{.Package}}, {{.Signature}},
+// {{.Language}}, {{.Patterns}}, and {{.Body}}.
+func New(baseURL, model, promptTemplate string, cache *ConceptCache) *Concepter {
+	return &Concepter{baseURL: baseURL, model: model, promptTemplate: promptTemplate, cache: cache}
 }
 
 type generateRequest struct {
@@ -130,7 +134,10 @@ func (c *Concepter) Generate(unit parser.CodeUnit, callers []string) (ConceptDoc
 
 // callLLM sends the unit to Ollama and returns the parsed concept response.
 func (c *Concepter) callLLM(unit parser.CodeUnit) (llmConceptResponse, error) {
-	prompt := buildConceptPrompt(unit)
+	prompt, err := buildConceptPrompt(unit, c.promptTemplate)
+	if err != nil {
+		return llmConceptResponse{}, fmt.Errorf("build prompt: %w", err)
+	}
 
 	payload, err := json.Marshal(generateRequest{
 		Model:  c.model,
