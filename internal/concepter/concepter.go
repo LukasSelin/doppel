@@ -1,11 +1,6 @@
 package concepter
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
 	"strings"
 
 	"github.com/lukse/doppel/internal/parser"
@@ -16,12 +11,11 @@ import (
 type ConceptDoc struct {
 	Name         string
 	Package      string
-	Summary      string   // LLM-generated; empty in static-only mode
-	Inputs       []string // parameter types; from Go signature or LLM
-	Outputs      []string // return types; from Go signature or LLM
-	Dependencies []string // external packages/services; LLM-generated
-	Callers      []string // functions that call this one; from call graph (never cached)
-	Patterns     []string // tagger tags + optional LLM expansion
+	Inputs       []string // parameter types; from Go signature
+	Outputs      []string // return types; from Go signature
+	Dependencies []string // external packages/services
+	Callers      []string // functions that call this one; from call graph
+	Patterns     []string // tagger tags
 }
 
 // Format renders the ConceptDoc into a flat text block used as the embedding input.
@@ -32,9 +26,6 @@ func (d ConceptDoc) Format() string {
 	sb.WriteString("Name: " + d.Name + "\n")
 	if d.Package != "" {
 		sb.WriteString("Package: " + d.Package + "\n")
-	}
-	if d.Summary != "" {
-		sb.WriteString("Summary: " + d.Summary + "\n")
 	}
 	writeList(&sb, "Inputs", d.Inputs)
 	writeList(&sb, "Outputs", d.Outputs)
@@ -55,132 +46,18 @@ func writeList(sb *strings.Builder, header string, items []string) {
 	}
 }
 
-// Concepter generates ConceptDocs for CodeUnits using static analysis and
-// optionally an Ollama chat model.
-type Concepter struct {
-	baseURL        string
-	model          string // empty = static-only mode
-	promptTemplate string // empty = use built-in prompt
-	cache          *ConceptCache
-}
+// Concepter generates ConceptDocs for CodeUnits using static analysis.
+type Concepter struct{}
 
-// New creates a Concepter. model may be empty for static-only mode.
-// promptTemplate may be empty to use the built-in prompt; otherwise it is a
-// Go text/template string with variables {{.Name}}, {{.Package}}, {{.Signature}},
-// {{.Language}}, {{.Patterns}}, and {{.Body}}.
-func New(baseURL, model, promptTemplate string, cache *ConceptCache) *Concepter {
-	return &Concepter{baseURL: baseURL, model: model, promptTemplate: promptTemplate, cache: cache}
-}
+// New creates a Concepter.
+func New() *Concepter { return &Concepter{} }
 
-type generateRequest struct {
-	Model  string `json:"model"`
-	Prompt string `json:"prompt"`
-	Stream bool   `json:"stream"`
-	Format string `json:"format,omitempty"`
-}
-
-type generateResponse struct {
-	Response string `json:"response"`
-}
-
-// Generate produces a ConceptDoc for the given unit.
-// callers is the pre-built list of functions that reference this unit's Name.
-// If the Concepter has no model, only statically-derivable fields are populated.
-func (c *Concepter) Generate(unit parser.CodeUnit, callers []string) (ConceptDoc, error) {
-	// Check cache first.
-	if cached, ok := c.cache.Get(unit.Body); ok {
-		cached.Callers = callers
-		return cached, nil
-	}
-
-	// Always compute static fields.
-	doc := ConceptDoc{
+// Generate produces a static ConceptDoc for the given unit.
+// Callers are not set here; use the mapper to enrich with call graph data.
+func (c *Concepter) Generate(unit parser.CodeUnit) ConceptDoc {
+	return ConceptDoc{
 		Name:     unit.Name,
 		Package:  unit.Package,
-		Patterns: append([]string(nil), unit.Patterns...), // copy tagger output
+		Patterns: append([]string(nil), unit.Patterns...),
 	}
-	if unit.Signature != "" {
-		doc.Inputs, doc.Outputs = parseGoSignature(unit.Signature)
-	}
-
-	// Augment with LLM if a model is configured.
-	if c.model != "" {
-		llmDoc, err := c.callLLM(unit)
-		if err != nil {
-			// Non-fatal: log at call site, return static doc.
-			doc.Callers = callers
-			return doc, fmt.Errorf("llm: %w", err)
-		}
-		if llmDoc.Summary != "" {
-			doc.Summary = llmDoc.Summary
-		}
-		// Use LLM inputs/outputs if static extraction produced nothing.
-		if len(doc.Inputs) == 0 {
-			doc.Inputs = llmDoc.Inputs
-		}
-		if len(doc.Outputs) == 0 {
-			doc.Outputs = llmDoc.Outputs
-		}
-		doc.Dependencies = llmDoc.Dependencies
-		doc.Patterns = mergeUnique(doc.Patterns, llmDoc.Patterns)
-	}
-
-	// Cache the doc without Callers (callers are always re-injected from the live graph).
-	c.cache.Set(unit.Body, doc)
-
-	doc.Callers = callers
-	return doc, nil
-}
-
-// callLLM sends the unit to Ollama and returns the parsed concept response.
-func (c *Concepter) callLLM(unit parser.CodeUnit) (llmConceptResponse, error) {
-	prompt, err := buildConceptPrompt(unit, c.promptTemplate)
-	if err != nil {
-		return llmConceptResponse{}, fmt.Errorf("build prompt: %w", err)
-	}
-
-	payload, err := json.Marshal(generateRequest{
-		Model:  c.model,
-		Prompt: prompt,
-		Stream: false,
-		Format: "json",
-	})
-	if err != nil {
-		return llmConceptResponse{}, err
-	}
-
-	resp, err := http.Post(c.baseURL+"/api/generate", "application/json", bytes.NewReader(payload))
-	if err != nil {
-		return llmConceptResponse{}, fmt.Errorf("ollama generate: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		b, _ := io.ReadAll(resp.Body)
-		return llmConceptResponse{}, fmt.Errorf("ollama generate returned %d: %s", resp.StatusCode, string(b))
-	}
-
-	var result generateResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return llmConceptResponse{}, fmt.Errorf("decode generate response: %w", err)
-	}
-
-	return parseConceptResponse(result.Response)
-}
-
-// mergeUnique returns a slice containing all items from base followed by any
-// items from extra that are not already present (case-sensitive).
-func mergeUnique(base, extra []string) []string {
-	seen := make(map[string]bool, len(base))
-	for _, v := range base {
-		seen[v] = true
-	}
-	result := append([]string(nil), base...)
-	for _, v := range extra {
-		if !seen[v] {
-			seen[v] = true
-			result = append(result, v)
-		}
-	}
-	return result
 }

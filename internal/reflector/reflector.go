@@ -142,7 +142,7 @@ Please answer the following questions about these functions:
 - Can we share a lower-level primitive instead of merging the whole function?
 `)
 
-	return sb.String()
+	return sb.String(), nil
 }
 
 func unitBlock(label string, u parser.CodeUnit) string {

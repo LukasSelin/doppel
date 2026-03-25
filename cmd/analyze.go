@@ -11,6 +11,7 @@ import (
 	"github.com/lukse/doppel/internal/analyzer"
 	"github.com/lukse/doppel/internal/concepter"
 	"github.com/lukse/doppel/internal/embedder"
+	"github.com/lukse/doppel/internal/mapper"
 	"github.com/lukse/doppel/internal/parser"
 	"github.com/lukse/doppel/internal/reflector"
 	"github.com/lukse/doppel/internal/reporter"
@@ -29,7 +30,6 @@ var (
 	reflectModel      string
 	outputFile        string
 	conceptModel      string
-	conceptCache      string
 	configFile        string
 	conceptPromptFile string
 	reflectPromptFile string
@@ -67,7 +67,6 @@ func init() {
 	analyzeCmd.Flags().StringVar(&reflectModel, "reflect-model", "", "Ollama chat model for merge explanations (e.g. llama3.2, qwen2.5). Empty = disabled.")
 	analyzeCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write report as markdown to this file (e.g. report.md). Stdout text report is still printed.")
 	analyzeCmd.Flags().StringVar(&conceptModel, "concept-model", "", "Ollama chat model for concept doc generation (e.g. llama3.2). Empty = static analysis only.")
-	analyzeCmd.Flags().StringVar(&conceptCache, "concept-cache", ".concepts.json", "Concept doc cache file path (empty to disable).")
 	analyzeCmd.Flags().StringVar(&configFile, "config", "", "Path to JSON config file (default: .doppel.json if present)")
 	analyzeCmd.Flags().StringVar(&conceptPromptFile, "concept-prompt-file", "", "Path to a text/template file for the concept prompt. Variables: {{.Name}}, {{.Package}}, {{.Signature}}, {{.Language}}, {{.Patterns}}, {{.Body}}")
 	analyzeCmd.Flags().StringVar(&reflectPromptFile, "reflect-prompt-file", "", "Path to a text/template file for the reflect prompt. Variables: {{.Score}}, {{.A.Name}}, {{.A.Body}}, {{.B.Name}}, {{.B.Body}}, etc.")
@@ -113,34 +112,17 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	// Build call graph and generate concept documents for every unit.
 	cg := concepter.BuildCallGraph(units)
 
-	conceptPrompt, err := readPromptFile(conceptPromptFile)
-	if err != nil {
-		return err
-	}
 	reflectPrompt, err := readPromptFile(reflectPromptFile)
 	if err != nil {
 		return err
 	}
 
 	fmt.Fprintf(os.Stderr, "Generating concept documents...\n")
-	cc, _ := concepter.NewConceptCache(conceptCache, conceptModel)
-	cptr := concepter.New(ollamaURL, conceptModel, conceptPrompt, cc)
-	conceptTexts := make([]string, len(units))
-	for i, u := range units {
-		doc, err := cptr.Generate(u, cg[u.Name])
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "\n  warn: concept %s:%s: %v\n", u.File, u.Name, err)
-			conceptTexts[i] = buildEmbeddingText(u) // fallback to tagged body
-			continue
-		}
+	cptr := concepter.New()
+	docs := mapper.Map(units, cg, cptr)
+	conceptTexts := make([]string, len(docs))
+	for i, doc := range docs {
 		conceptTexts[i] = doc.Format()
-		if (i+1)%10 == 0 || i+1 == len(units) {
-			fmt.Fprintf(os.Stderr, "  concepts %d/%d\r", i+1, len(units))
-		}
-	}
-	fmt.Fprintln(os.Stderr)
-	if err := cc.Save(); err != nil {
-		fmt.Fprintf(os.Stderr, "  warn: could not save concept cache: %v\n", err)
 	}
 
 	fmt.Fprintf(os.Stderr, "Found %d functions. Generating embeddings...\n", len(units))
@@ -200,14 +182,6 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// buildEmbeddingText prepends detected pattern tags to the function body so the
-// embedding model receives intent signals alongside the source text.
-func buildEmbeddingText(u parser.CodeUnit) string {
-	if len(u.Patterns) == 0 {
-		return u.Body
-	}
-	return "// patterns: " + strings.Join(u.Patterns, ", ") + "\n" + u.Body
-}
 
 const minEmbedBytes = 256
 
