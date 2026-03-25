@@ -68,7 +68,7 @@ func init() {
 	analyzeCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write report as markdown to this file (e.g. report.md). Stdout text report is still printed.")
 	analyzeCmd.Flags().StringVar(&conceptModel, "concept-model", "", "Ollama chat model for concept doc generation (e.g. llama3.2). Empty = static analysis only.")
 	analyzeCmd.Flags().StringVar(&configFile, "config", "", "Path to JSON config file (default: .doppel.json if present)")
-	analyzeCmd.Flags().StringVar(&conceptPromptFile, "concept-prompt-file", "", "Path to a text/template file for the concept prompt. Variables: {{.Name}}, {{.Package}}, {{.Signature}}, {{.Language}}, {{.Patterns}}, {{.Body}}")
+	analyzeCmd.Flags().StringVar(&conceptPromptFile, "concept-prompt-file", "", "Path to a text/template file for the concept prompt. Variables: {{.Name}}, {{.Package}}, {{.Signature}}, {{.Patterns}}, {{.Body}}")
 	analyzeCmd.Flags().StringVar(&reflectPromptFile, "reflect-prompt-file", "", "Path to a text/template file for the reflect prompt. Variables: {{.Score}}, {{.A.Name}}, {{.A.Body}}, {{.B.Name}}, {{.B.Body}}, etc.")
 	rootCmd.AddCommand(analyzeCmd)
 }
@@ -246,8 +246,8 @@ func readPromptFile(path string) (string, error) {
 
 func shouldSkipDir(name string) bool {
 	skip := map[string]bool{
-		".git": true, ".claude": true, "node_modules": true, "vendor": true,
-		".venv": true, "__pycache__": true, "dist": true, "build": true,
+		".git": true, ".claude": true, "vendor": true,
+		"testdata": true, "build": true,
 		".idea": true, ".vscode": true,
 	}
 	return skip[name]

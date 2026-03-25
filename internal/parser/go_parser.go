@@ -40,7 +40,6 @@ func parseGo(path string) ([]CodeUnit, error) {
 			File:      path,
 			StartLine: startLine,
 			Body:      body,
-			Language:  "go",
 			Signature: sig,
 			Package:   pkg,
 		})
