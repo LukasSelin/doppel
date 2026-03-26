@@ -1,9 +1,6 @@
 package parser
 
-import (
-	"path/filepath"
-	"strings"
-)
+import "path/filepath"
 
 // CodeUnit represents a single extracted function or method.
 type CodeUnit struct {
@@ -11,37 +8,16 @@ type CodeUnit struct {
 	File      string
 	StartLine int
 	Body      string
-	Language  string
-	Signature string   // parameter + return types, e.g. "(ctx context.Context) (User, error)"; empty for non-Go
-	Package   string   // Go package name; empty for non-Go
+	Signature string   // parameter + return types, e.g. "(ctx context.Context) (User, error)"
+	Package   string   // Go package name
 	Patterns  []string // detected intent tags, e.g. ["retry", "http_call"]
 }
 
-// Parse extracts all CodeUnits from the file at the given path.
+// Parse extracts all CodeUnits from the Go file at the given path.
+// Non-.go files return nil, nil.
 func Parse(path string) ([]CodeUnit, error) {
-	ext := strings.ToLower(filepath.Ext(path))
-	switch ext {
-	case ".go":
-		return parseGo(path)
-	case ".py":
-		return parseGeneric(path, "python")
-	case ".js", ".mjs", ".cjs":
-		return parseGeneric(path, "javascript")
-	case ".ts", ".tsx":
-		return parseGeneric(path, "typescript")
-	case ".java":
-		return parseGeneric(path, "java")
-	case ".rs":
-		return parseGeneric(path, "rust")
-	case ".cs":
-		return parseGeneric(path, "csharp")
-	case ".cpp", ".cc", ".cxx":
-		return parseGeneric(path, "cpp")
-	case ".c":
-		return parseGeneric(path, "c")
-	case ".rb":
-		return parseGeneric(path, "ruby")
-	default:
+	if filepath.Ext(path) != ".go" {
 		return nil, nil
 	}
+	return parseGo(path)
 }

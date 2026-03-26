@@ -1,10 +1,10 @@
 # doppel
 
-A CLI tool that detects semantically similar functions across a codebase using local AI embeddings. It helps identify duplicate logic and refactoring opportunities by comparing function bodies with vector similarity rather than text matching.
+A CLI tool that detects semantically similar functions across a Go codebase using local AI embeddings. It helps identify duplicate logic and refactoring opportunities by comparing function bodies with vector similarity rather than text matching.
 
 ## How it works
 
-1. **Parse** — walks the target directory and extracts all function/method bodies, names, signatures, and line numbers
+1. **Parse** — walks the target directory and extracts all Go function/method bodies, names, signatures, and line numbers using the `go/ast` package; non-`.go` files are skipped
 2. **Tag** — scans each function body for intent patterns (`retry`, `http_call`, `db_access`, `validation`, `mapping`, `transaction`, `caching`, `concurrency`, `error_wrapping`) using keyword matching
 3. **Build call graph** — maps which functions call which, used to enrich concept docs with caller context
 4. **Generate concept docs** — creates a structured semantic summary per function (name, package, I/O types, external dependencies, callers, patterns); if `--concept-model` is provided the summary is written by an LLM, otherwise static analysis is used; cached in `.concepts.json`
@@ -110,23 +110,6 @@ The goal is a threshold floor where new pairs no longer appear — at that point
 | `--reflect-model` | *(disabled)* | Ollama chat model for merge explanations (e.g. `llama3.2`) |
 | `-o`, `--output` | *(disabled)* | Write report as Markdown to this file |
 
-## Supported Languages
-
-| Language | Extension(s) |
-|---|---|
-| Go | `.go` |
-| Python | `.py` |
-| JavaScript | `.js`, `.mjs`, `.cjs` |
-| TypeScript | `.ts`, `.tsx` |
-| Java | `.java` |
-| Rust | `.rs` |
-| C# | `.cs` |
-| C++ | `.cpp`, `.cc`, `.cxx` |
-| C | `.c` |
-| Ruby | `.rb` |
-
-Go files are parsed using the official `go/ast` package for accurate function extraction. All other languages use indentation- or brace-based heuristics.
-
 ## Embedding Cache
 
 Embeddings are cached to `.embeddings.json` by default. The cache is keyed by a SHA-256 hash of the model name, `num_ctx`, and concept doc text. Re-runs on an unchanged codebase complete instantly without hitting Ollama. Pass `--cache ""` to disable caching.
@@ -138,4 +121,4 @@ Concept docs are cached to `.concepts.json` by default. The cache is keyed by a 
 ## Skipped Directories
 
 The following directories are automatically skipped:
-`.git`, `.claude`, `node_modules`, `vendor`, `.venv`, `__pycache__`, `dist`, `build`, `.idea`, `.vscode`
+`.git`, `.claude`, `vendor`, `testdata`, `build`, `.idea`, `.vscode`
