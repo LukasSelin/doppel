@@ -1,0 +1,35 @@
+# Default: normalize all text files to LF in the repo, check out as native
+* text=auto
+
+# Go source: always LF
+*.go text eol=lf
+go.mod text eol=lf
+go.sum text eol=lf
+
+# Shell scripts: always LF (critical for Git Bash on Windows)
+*.sh text eol=lf
+
+# Markdown and config: LF
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.toml text eol=lf
+
+# Gitconfig files
+.gitignore text eol=lf
+.gitattributes text eol=lf
+
+# Binaries
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.zip binary
+*.tar.gz binary
+*.pdf binary

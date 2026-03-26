@@ -21,5 +21,6 @@ vendor/
 .vscode/
 .idea/
 
-# Claude Code local settings
+# Claude Code
 .claude/settings.local.json
+.claude/worktrees/
