@@ -153,7 +153,10 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Fprintf(os.Stderr, "Computing similarity...\n")
-	pairs := analyzer.FindSimilar(units, embeddings, threshold, topN)
+	pairs := analyzer.FindSimilar(units, embeddings, threshold, topN, func(done, total int) {
+		fmt.Fprintf(os.Stderr, "  compared %d/%d pairs\r", done, total)
+	})
+	fmt.Fprintln(os.Stderr)
 
 	// Build doc index for structural comparison.
 	docIndex := make(map[string]concepter.ConceptDoc, len(docs))

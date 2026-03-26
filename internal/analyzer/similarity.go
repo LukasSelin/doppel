@@ -16,11 +16,17 @@ type SimilarPair struct {
 	Evidence    *comparator.StructuralEvidence // populated by structural comparison pass; nil until then
 }
 
+// ProgressFunc is called periodically to report progress.
+type ProgressFunc func(done, total int)
+
 // FindSimilar computes pairwise cosine similarity and returns pairs above threshold,
 // sorted by score descending, limited to topN results.
-func FindSimilar(units []parser.CodeUnit, embeddings [][]float64, threshold float64, topN int) []SimilarPair {
+// If progress is non-nil it is called periodically with the number of comparisons completed.
+func FindSimilar(units []parser.CodeUnit, embeddings [][]float64, threshold float64, topN int, progress ProgressFunc) []SimilarPair {
 	var pairs []SimilarPair
 	n := len(units)
+	total := n * (n - 1) / 2
+	done := 0
 
 	for i := 0; i < n; i++ {
 		for j := i + 1; j < n; j++ {
@@ -31,6 +37,10 @@ func FindSimilar(units []parser.CodeUnit, embeddings [][]float64, threshold floa
 					B:     units[j],
 					Score: score,
 				})
+			}
+			done++
+			if progress != nil && (done%1000 == 0 || done == total) {
+				progress(done, total)
 			}
 		}
 	}
