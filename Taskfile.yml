@@ -1,0 +1,28 @@
+version: '3'
+
+tasks:
+  setup:
+    desc: Activate committed git hooks
+    cmds:
+      - git config core.hooksPath .githooks
+    silent: true
+
+  build:
+    desc: Build the doppel binary
+    cmds:
+      - go build -o doppel .
+
+  test:
+    desc: Run all tests
+    cmds:
+      - go test ./...
+
+  vet:
+    desc: Run go vet
+    cmds:
+      - go vet ./...
+
+  fmt:
+    desc: Format all Go files
+    cmds:
+      - gofmt -w .
