@@ -4,6 +4,7 @@ import (
 	"math"
 	"sort"
 
+	"github.com/lukse/doppel/internal/comparator"
 	"github.com/lukse/doppel/internal/parser"
 )
 
@@ -11,7 +12,8 @@ import (
 type SimilarPair struct {
 	A, B        parser.CodeUnit
 	Score       float64
-	Explanation string // populated by reflector when --reflect-model is set; empty otherwise
+	Explanation string                       // populated by reflector when --reflect-model is set; empty otherwise
+	Evidence    *comparator.StructuralEvidence // populated by structural comparison pass; nil until then
 }
 
 // FindSimilar computes pairwise cosine similarity and returns pairs above threshold,
