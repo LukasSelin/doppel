@@ -5,7 +5,9 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 	"unicode/utf8"
 
 	"github.com/lukse/doppel/internal/analyzer"
@@ -167,16 +169,55 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	// Run structural comparison on each embedding-found pair.
 	if len(pairs) > 0 {
 		fmt.Fprintf(os.Stderr, "Running structural comparison on %d pairs...\n", len(pairs))
+
+		numWorkers := runtime.NumCPU()
+		if numWorkers > len(pairs) {
+			numWorkers = len(pairs)
+		}
+
+		jobs := make(chan int, len(pairs))
+		progress := make(chan int, numWorkers)
+
+		var wg sync.WaitGroup
+		for w := 0; w < numWorkers; w++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for i := range jobs {
+					keyA := pairs[i].A.Package + "." + pairs[i].A.Name
+					keyB := pairs[i].B.Package + "." + pairs[i].B.Name
+					if docA, okA := docIndex[keyA]; okA {
+						if docB, okB := docIndex[keyB]; okB {
+							ev := comparator.Compare(docA, docB)
+							pairs[i].Evidence = &ev
+						}
+					}
+					progress <- 1
+				}
+			}()
+		}
+
 		for i := range pairs {
-			keyA := pairs[i].A.Package + "." + pairs[i].A.Name
-			keyB := pairs[i].B.Package + "." + pairs[i].B.Name
-			if docA, okA := docIndex[keyA]; okA {
-				if docB, okB := docIndex[keyB]; okB {
-					ev := comparator.Compare(docA, docB)
-					pairs[i].Evidence = &ev
+			jobs <- i
+		}
+		close(jobs)
+
+		done := make(chan struct{})
+		go func() {
+			completed := 0
+			for range progress {
+				completed++
+				if completed%10 == 0 || completed == len(pairs) {
+					fmt.Fprintf(os.Stderr, "  compared %d/%d\r", completed, len(pairs))
 				}
 			}
-		}
+			fmt.Fprintln(os.Stderr)
+			close(done)
+		}()
+
+		wg.Wait()
+		close(progress)
+		<-done
 
 		// Filter by structural overlap threshold if set.
 		if structMin > 0 {
