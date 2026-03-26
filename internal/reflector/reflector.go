@@ -137,8 +137,10 @@ func buildPrompt(pair analyzer.SimilarPair, tmpl string) (string, error) {
 	sb.WriteString("\n-----\n")
 	if pair.Evidence != nil {
 		sb.WriteString("\nStructural Context:\n")
-		for _, reason := range pair.Evidence.Reasons {
-			sb.WriteString("- " + reason + "\n")
+		for _, dim := range pair.Evidence.Dimensions {
+			if dim.Evidence != "" {
+				sb.WriteString("- " + dim.Evidence + "\n")
+			}
 		}
 		sb.WriteString(fmt.Sprintf("- Structural overlap score: %.2f\n", pair.Evidence.OverlapScore))
 		if pair.Evidence.MergeWorthy {

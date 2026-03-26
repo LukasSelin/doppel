@@ -49,13 +49,14 @@ doppel analyze <path> [flags]
 doppel analyze .
 
 # Lower the threshold to catch more subtle similarities
-doppel analyze ./src --threshold 0.80
+doppel analyze . --threshold 0.80
 
 # Full run with LLM explanations and structural filtering
 doppel analyze . --reflect-model llama3.2 --struct-min 0.4 --output report.md
 ```
 
 ### Flags
+
 
 | Flag                | Default                  | Description                                                                         |
 | ------------------- | ------------------------ | ----------------------------------------------------------------------------------- |
@@ -69,3 +70,5 @@ doppel analyze . --reflect-model llama3.2 --struct-min 0.4 --output report.md
 | `--struct-min`      | `0.0`                    | Minimum structural overlap score (0.0–1.0) to keep a pair after embedding selection |
 | `--reflect-model`   | *(disabled)*             | Ollama chat model for merge explanations (e.g. `llama3.2`)                          |
 | `-o`, `--output`    | *(disabled)*             | Write report as Markdown to this file                                               |
+
+

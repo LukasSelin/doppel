@@ -15,16 +15,17 @@ type unitInfo struct {
 // Map converts CodeUnits into ConceptDocs, enriching each with caller
 // information, structural role, and architectural context from the call graph.
 func Map(units []parser.CodeUnit, cg concepter.CallGraph, c *concepter.Concepter) []concepter.ConceptDoc {
-	// Build lookup: name → patterns + package.
+	// Build lookup: qualified name → patterns + package.
 	index := make(map[string]unitInfo, len(units))
 	for _, u := range units {
-		index[u.Name] = unitInfo{patterns: u.Patterns, pkg: u.Package}
+		qn := concepter.QualifiedName(u)
+		index[qn] = unitInfo{patterns: u.Patterns, pkg: u.Package}
 	}
 
 	docs := make([]concepter.ConceptDoc, len(units))
 	for i, u := range units {
 		doc := c.Generate(u)
-		doc.Callers = cg[u.Name]
+		doc.Callers = cg[concepter.QualifiedName(u)]
 
 		doc.Role = concepter.ClassifyRole(len(doc.Callers), len(doc.Callees))
 		doc.CallerPatterns = collectPatterns(doc.Callers, index)

@@ -31,8 +31,11 @@ func Print(w io.Writer, pairs []analyzer.SimilarPair, threshold float64, totalFu
 				fmt.Fprintf(w, " (merge-worthy)")
 			}
 			fmt.Fprintln(w)
-			for _, reason := range p.Evidence.Reasons {
-				fmt.Fprintf(w, "    • %s\n", reason)
+			for _, dim := range p.Evidence.Dimensions {
+				if dim.Evidence == "" {
+					continue
+				}
+				fmt.Fprintf(w, "    • [sim=%.2f contra=%.2f] %s\n", dim.Similarity, dim.Contradiction, dim.Evidence)
 			}
 		}
 		if p.Explanation != "" {
@@ -69,12 +72,15 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, threshold float64,
 				label = "merge-worthy"
 			}
 			fmt.Fprintf(w, "**Structural overlap:** `%.2f` (%s)\n\n", p.Evidence.OverlapScore, label)
-			if len(p.Evidence.Reasons) > 0 {
-				for _, reason := range p.Evidence.Reasons {
-					fmt.Fprintf(w, "- %s\n", reason)
+			fmt.Fprintf(w, "| Dimension | Sim | Contra | Evidence |\n")
+			fmt.Fprintf(w, "|---|---|---|---|\n")
+			for _, dim := range p.Evidence.Dimensions {
+				if dim.Evidence == "" {
+					continue
 				}
-				fmt.Fprintln(w)
+				fmt.Fprintf(w, "| %s | %.2f | %.2f | %s |\n", dim.Name, dim.Similarity, dim.Contradiction, mdEscape(dim.Evidence))
 			}
+			fmt.Fprintln(w)
 		}
 
 		if p.Explanation != "" {
