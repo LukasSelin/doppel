@@ -11,6 +11,7 @@ import (
 	"text/template"
 
 	"github.com/lukse/doppel/internal/analyzer"
+	"github.com/lukse/doppel/internal/comparator"
 	"github.com/lukse/doppel/internal/parser"
 )
 
@@ -85,9 +86,10 @@ type reflectUnit struct {
 
 // reflectPromptData is the template data available when using a custom reflect prompt template.
 type reflectPromptData struct {
-	Score float64
-	A     reflectUnit
-	B     reflectUnit
+	Score    float64
+	A        reflectUnit
+	B        reflectUnit
+	Evidence *comparator.StructuralEvidence
 }
 
 func buildPrompt(pair analyzer.SimilarPair, tmpl string) (string, error) {
@@ -110,9 +112,10 @@ func buildPrompt(pair analyzer.SimilarPair, tmpl string) (string, error) {
 			}
 		}
 		data := reflectPromptData{
-			Score: pair.Score,
-			A:     toUnit(pair.A),
-			B:     toUnit(pair.B),
+			Score:    pair.Score,
+			A:        toUnit(pair.A),
+			B:        toUnit(pair.B),
+			Evidence: pair.Evidence,
 		}
 		var buf strings.Builder
 		if err := t.Execute(&buf, data); err != nil {
@@ -132,14 +135,28 @@ func buildPrompt(pair analyzer.SimilarPair, tmpl string) (string, error) {
 	sb.WriteString(fmt.Sprintf("Function B: %s\n", pair.B.Name))
 	sb.WriteString(unitBlock("B", pair.B))
 	sb.WriteString("\n-----\n")
-	sb.WriteString(`
-Please answer the following questions about these functions:
+	if pair.Evidence != nil {
+		sb.WriteString("\nStructural Context:\n")
+		for _, reason := range pair.Evidence.Reasons {
+			sb.WriteString("- " + reason + "\n")
+		}
+		sb.WriteString(fmt.Sprintf("- Structural overlap score: %.2f\n", pair.Evidence.OverlapScore))
+		if pair.Evidence.MergeWorthy {
+			sb.WriteString("- Heuristic: merge-worthy\n")
+		} else {
+			sb.WriteString("- Heuristic: not merge-worthy\n")
+		}
+		sb.WriteString("\n")
+	}
+
+	sb.WriteString(`Based on the code and structural context above, please answer:
 
 - Are these functions likely to change together?
 - Do they encode the same business rule?
 - Would a shared abstraction be simpler than two copies?
 - Would merging reduce bugs without increasing coordination cost?
 - Can we share a lower-level primitive instead of merging the whole function?
+- Given the structural evidence, should these functions be merged? Why or why not?
 `)
 
 	return sb.String(), nil

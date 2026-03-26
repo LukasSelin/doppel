@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/lukse/doppel/internal/analyzer"
+	"github.com/lukse/doppel/internal/comparator"
 	"github.com/lukse/doppel/internal/concepter"
 	"github.com/lukse/doppel/internal/embedder"
 	"github.com/lukse/doppel/internal/mapper"
@@ -33,6 +34,7 @@ var (
 	configFile        string
 	conceptPromptFile string
 	reflectPromptFile string
+	structMin         float64
 )
 
 var analyzeCmd = &cobra.Command{
@@ -70,6 +72,7 @@ func init() {
 	analyzeCmd.Flags().StringVar(&configFile, "config", "", "Path to JSON config file (default: .doppel.json if present)")
 	analyzeCmd.Flags().StringVar(&conceptPromptFile, "concept-prompt-file", "", "Path to a text/template file for the concept prompt. Variables: {{.Name}}, {{.Package}}, {{.Signature}}, {{.Patterns}}, {{.Body}}")
 	analyzeCmd.Flags().StringVar(&reflectPromptFile, "reflect-prompt-file", "", "Path to a text/template file for the reflect prompt. Variables: {{.Score}}, {{.A.Name}}, {{.A.Body}}, {{.B.Name}}, {{.B.Body}}, etc.")
+	analyzeCmd.Flags().Float64Var(&structMin, "struct-min", 0.0, "Minimum structural overlap score (0.0–1.0) to keep a pair after embedding selection")
 	rootCmd.AddCommand(analyzeCmd)
 }
 
@@ -151,6 +154,39 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 
 	fmt.Fprintf(os.Stderr, "Computing similarity...\n")
 	pairs := analyzer.FindSimilar(units, embeddings, threshold, topN)
+
+	// Build doc index for structural comparison.
+	docIndex := make(map[string]concepter.ConceptDoc, len(docs))
+	for _, doc := range docs {
+		docIndex[doc.Package+"."+doc.Name] = doc
+	}
+
+	// Run structural comparison on each embedding-found pair.
+	if len(pairs) > 0 {
+		fmt.Fprintf(os.Stderr, "Running structural comparison on %d pairs...\n", len(pairs))
+		for i := range pairs {
+			keyA := pairs[i].A.Package + "." + pairs[i].A.Name
+			keyB := pairs[i].B.Package + "." + pairs[i].B.Name
+			if docA, okA := docIndex[keyA]; okA {
+				if docB, okB := docIndex[keyB]; okB {
+					ev := comparator.Compare(docA, docB)
+					pairs[i].Evidence = &ev
+				}
+			}
+		}
+
+		// Filter by structural overlap threshold if set.
+		if structMin > 0 {
+			filtered := pairs[:0]
+			for _, p := range pairs {
+				if p.Evidence != nil && p.Evidence.OverlapScore >= structMin {
+					filtered = append(filtered, p)
+				}
+			}
+			pairs = filtered
+			fmt.Fprintf(os.Stderr, "  %d pairs remain after struct-min=%.2f filter\n", len(pairs), structMin)
+		}
+	}
 
 	if reflectModel != "" && len(pairs) > 0 {
 		fmt.Fprintf(os.Stderr, "Reflecting on %d pairs with model %q...\n", len(pairs), reflectModel)

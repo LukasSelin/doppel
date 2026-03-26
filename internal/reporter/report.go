@@ -25,6 +25,16 @@ func Print(w io.Writer, pairs []analyzer.SimilarPair, threshold float64, totalFu
 		fmt.Fprintf(w, "#%-3d  score: %.4f\n", i+1, p.Score)
 		printUnit(w, "  A", p.A)
 		printUnit(w, "  B", p.B)
+		if p.Evidence != nil {
+			fmt.Fprintf(w, "  structural overlap: %.2f", p.Evidence.OverlapScore)
+			if p.Evidence.MergeWorthy {
+				fmt.Fprintf(w, " (merge-worthy)")
+			}
+			fmt.Fprintln(w)
+			for _, reason := range p.Evidence.Reasons {
+				fmt.Fprintf(w, "    • %s\n", reason)
+			}
+		}
 		if p.Explanation != "" {
 			fmt.Fprintf(w, "  → %s\n", p.Explanation)
 		}
@@ -52,6 +62,20 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, threshold float64,
 		mdTableRow(w, "A", p.A)
 		mdTableRow(w, "B", p.B)
 		fmt.Fprintln(w)
+
+		if p.Evidence != nil {
+			label := "not merge-worthy"
+			if p.Evidence.MergeWorthy {
+				label = "merge-worthy"
+			}
+			fmt.Fprintf(w, "**Structural overlap:** `%.2f` (%s)\n\n", p.Evidence.OverlapScore, label)
+			if len(p.Evidence.Reasons) > 0 {
+				for _, reason := range p.Evidence.Reasons {
+					fmt.Fprintf(w, "- %s\n", reason)
+				}
+				fmt.Fprintln(w)
+			}
+		}
 
 		if p.Explanation != "" {
 			// Wrap explanation in a blockquote; handle multi-line responses
