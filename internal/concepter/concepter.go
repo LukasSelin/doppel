@@ -11,10 +11,14 @@ import (
 type ConceptDoc struct {
 	Name         string
 	Package      string
+	DocComment   string   // godoc for the function
+	Exported     bool     // whether it is an exported symbol
+	ReceiverType string   // receiver type for methods
 	Inputs       []string // parameter types; from Go signature
 	Outputs      []string // return types; from Go signature
 	Dependencies []string // external packages/services
 	Callers      []string // functions that call this one; from call graph
+	Callees      []string // AST-derived outgoing call edges
 	Patterns     []string // tagger tags
 }
 
@@ -24,13 +28,23 @@ func (d ConceptDoc) Format() string {
 	var sb strings.Builder
 
 	sb.WriteString("Name: " + d.Name + "\n")
+	if d.DocComment != "" {
+		sb.WriteString("Doc: " + d.DocComment + "\n")
+	}
 	if d.Package != "" {
 		sb.WriteString("Package: " + d.Package + "\n")
+	}
+	if d.Exported {
+		sb.WriteString("Exported: true\n")
+	}
+	if d.ReceiverType != "" {
+		sb.WriteString("Receiver: " + d.ReceiverType + "\n")
 	}
 	writeList(&sb, "Inputs", d.Inputs)
 	writeList(&sb, "Outputs", d.Outputs)
 	writeList(&sb, "Dependencies", d.Dependencies)
 	writeList(&sb, "Callers", d.Callers)
+	writeList(&sb, "Callees", d.Callees)
 	writeList(&sb, "Patterns", d.Patterns)
 
 	return sb.String()
@@ -56,8 +70,12 @@ func New() *Concepter { return &Concepter{} }
 // Callers are not set here; use the mapper to enrich with call graph data.
 func (c *Concepter) Generate(unit parser.CodeUnit) ConceptDoc {
 	return ConceptDoc{
-		Name:     unit.Name,
-		Package:  unit.Package,
-		Patterns: append([]string(nil), unit.Patterns...),
+		Name:         unit.Name,
+		Package:      unit.Package,
+		DocComment:   unit.DocComment,
+		Exported:     unit.Exported,
+		ReceiverType: unit.ReceiverType,
+		Callees:      append([]string(nil), unit.Callees...),
+		Patterns:     append([]string(nil), unit.Patterns...),
 	}
 }

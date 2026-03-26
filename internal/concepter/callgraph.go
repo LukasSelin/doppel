@@ -28,15 +28,25 @@ func BuildCallGraph(units []parser.CodeUnit) CallGraph {
 	}
 
 	for _, caller := range units {
-		for _, callee := range units {
-			if caller.Name == callee.Name {
-				continue
+		if len(caller.Callees) > 0 {
+			// Use AST-derived callees (Go units): precise, no false positives.
+			for _, calleeName := range caller.Callees {
+				if _, ok := graph[calleeName]; ok {
+					graph[calleeName] = appendUnique(graph[calleeName], caller.Name)
+				}
 			}
-			if len(callee.Name) < minCallerNameLen {
-				continue
-			}
-			if strings.Contains(caller.Body, callee.Name) {
-				graph[callee.Name] = appendUnique(graph[callee.Name], caller.Name)
+		} else {
+			// Fallback: O(n) text scan for non-Go units.
+			for _, callee := range units {
+				if caller.Name == callee.Name {
+					continue
+				}
+				if len(callee.Name) < minCallerNameLen {
+					continue
+				}
+				if strings.Contains(caller.Body, callee.Name) {
+					graph[callee.Name] = appendUnique(graph[callee.Name], caller.Name)
+				}
 			}
 		}
 	}
