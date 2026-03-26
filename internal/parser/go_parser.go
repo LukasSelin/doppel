@@ -7,6 +7,8 @@ import (
 	"go/printer"
 	"go/token"
 	"os"
+	"sort"
+	"strings"
 )
 
 func parseGo(path string) ([]CodeUnit, error) {
@@ -30,32 +32,49 @@ func parseGo(path string) ([]CodeUnit, error) {
 			continue
 		}
 
-		name := funcName(fd)
+		recvType := extractReceiverType(fd)
+		name := funcName(fd, recvType)
 		startLine := fset.Position(fd.Pos()).Line
 		body := extractSource(fset, fd, src)
 		sig := extractSignature(fset, fd)
 
+		var docComment string
+		if fd.Doc != nil {
+			docComment = strings.TrimRight(fd.Doc.Text(), "\n")
+		}
+
 		units = append(units, CodeUnit{
-			Name:      name,
-			File:      path,
-			StartLine: startLine,
-			Body:      body,
-			Signature: sig,
-			Package:   pkg,
+			Name:         name,
+			File:         path,
+			StartLine:    startLine,
+			Body:         body,
+			Signature:    sig,
+			Package:      pkg,
+			DocComment:   docComment,
+			Exported:     fd.Name.IsExported(),
+			ReceiverType: recvType,
+			Callees:      extractCallees(fd),
 		})
 	}
 	return units, nil
 }
 
 // funcName returns "ReceiverType.MethodName" for methods, "FuncName" for functions.
-func funcName(fd *ast.FuncDecl) string {
-	if fd.Recv == nil || len(fd.Recv.List) == 0 {
+func funcName(fd *ast.FuncDecl, recvType string) string {
+	if recvType == "" {
 		return fd.Name.Name
 	}
-	recv := fd.Recv.List[0].Type
+	return recvType + "." + fd.Name.Name
+}
+
+// extractReceiverType returns the printed receiver type (e.g. "*Server") or "" for functions.
+func extractReceiverType(fd *ast.FuncDecl) string {
+	if fd.Recv == nil || len(fd.Recv.List) == 0 {
+		return ""
+	}
 	var buf bytes.Buffer
-	printer.Fprint(&buf, token.NewFileSet(), recv)
-	return buf.String() + "." + fd.Name.Name
+	printer.Fprint(&buf, token.NewFileSet(), fd.Recv.List[0].Type)
+	return buf.String()
 }
 
 // extractSignature returns "(params) (results)" for a function declaration.
@@ -77,4 +96,39 @@ func extractSource(fset *token.FileSet, node ast.Node, src []byte) string {
 		end = len(src)
 	}
 	return string(src[start:end])
+}
+
+// extractCallees walks the function body and returns a sorted, deduplicated list
+// of function/method names found in call expressions.
+func extractCallees(fd *ast.FuncDecl) []string {
+	if fd.Body == nil {
+		return nil
+	}
+	seen := make(map[string]struct{})
+	ast.Inspect(fd.Body, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		switch fn := call.Fun.(type) {
+		case *ast.Ident:
+			seen[fn.Name] = struct{}{}
+		case *ast.SelectorExpr:
+			if x, ok := fn.X.(*ast.Ident); ok {
+				seen[x.Name+"."+fn.Sel.Name] = struct{}{}
+			} else {
+				seen[fn.Sel.Name] = struct{}{}
+			}
+		}
+		return true
+	})
+	if len(seen) == 0 {
+		return nil
+	}
+	callees := make([]string, 0, len(seen))
+	for name := range seen {
+		callees = append(callees, name)
+	}
+	sort.Strings(callees)
+	return callees
 }
