@@ -31,9 +31,10 @@ type Options struct {
 	ChannelK     int     // per-function, per-channel top-K
 	Threshold    float64 // structural-channel floor on the exact fingerprint score
 	MinNodes     int     // structural-channel eligibility gate on Fingerprint.Nodes
-	MaxShingleDF int     // shingles present in more units than this carry no evidence
+	MaxPatternDF int     // structural patterns present in more units than this carry no evidence
 	MaxCallDF    int     // call tokens present in more units than this carry no evidence
 	MaxConceptDF int     // concept postings larger than this are skipped for enumeration
+	ChainTopN    int     // shared-structure explanations kept per pair
 }
 
 // DefaultOptions returns the production defaults. ChannelK mirrors the
@@ -45,9 +46,10 @@ func DefaultOptions() Options {
 		ChannelK:     5,
 		Threshold:    0.60,
 		MinNodes:     12,
-		MaxShingleDF: 50,
+		MaxPatternDF: 50,
 		MaxCallDF:    50,
 		MaxConceptDF: 250,
+		ChainTopN:    3,
 	}
 }
 
@@ -60,23 +62,26 @@ func DefaultOptions() Options {
 type Candidate struct {
 	AIdx, BIdx int
 	Breakdown  fingerprint.Breakdown // exact fingerprint similarity, always computed
-	Shape      float64               // shared rare-shingle IDF mass
+	Shape      float64               // shared structural energy, Σ IC·min(count) over shared patterns
 	Concept    float64               // shared tag information, Σ IC(LCS) over the best matching
 	Call       float64               // shared rare-call IDF mass
 	Total      float64               // Shape + Concept + Call, summed in that order
+	TrophicSim float64               // 2·SharedEnergy/(E_A+E_B): weighted Dice over pattern energy
 	Channels   []string              // admission provenance, subset of {shape, concept, call}
+	Chains     []SharedPattern       // highest-energy shared structures, the explanation
 }
 
 // Stats describes one retrieval run, for the stderr summary and evaluation.
 type Stats struct {
-	ShapePairs   int // distinct pairs admitted by the structural channel
-	ConceptPairs int // distinct pairs admitted by the concept channel
-	CallPairs    int // distinct pairs admitted by the call channel
-	Union        int // unique pairs across all channels
-	OnlyConcept  int // pairs only the concept channel admitted
-	OnlyCall     int // pairs only the call channel admitted
-	Suppressed   int // shape-eligible units whose every shingle was df-capped out
-	LargeBuckets int // exact-fingerprint identity buckets with > largeBucketSize members
+	ShapePairs        int // distinct pairs admitted by the structural channel
+	ConceptPairs      int // distinct pairs admitted by the concept channel
+	CallPairs         int // distinct pairs admitted by the call channel
+	Union             int // unique pairs across all channels
+	OnlyConcept       int // pairs only the concept channel admitted
+	OnlyCall          int // pairs only the call channel admitted
+	Suppressed        int // shape-eligible units whose every pattern was df-capped out
+	LargeBuckets      int // exact pattern-multiset identity buckets with > largeBucketSize members
+	SurvivingPatterns int // distinct structural patterns carrying evidence
 }
 
 // pairKey orders a pair as (min, max) so both admission directions collide.
@@ -139,6 +144,7 @@ func Retrieve(units []parser.CodeUnit, g *concepter.Graph,
 	stats.Union = len(admitted)
 	stats.Suppressed = shapes.suppressed
 	stats.LargeBuckets = shapes.largeBuckets
+	stats.SurvivingPatterns = len(shapes.idf)
 
 	keys := make([]pairKey, 0, len(admitted))
 	for k := range admitted {
@@ -154,13 +160,16 @@ func Retrieve(units []parser.CodeUnit, g *concepter.Graph,
 	cands := make([]Candidate, 0, len(keys))
 	for _, k := range keys {
 		a := admitted[k]
+		shapeMass, trophic, chains := shapes.pairEvidence(k[0], k[1], opt.ChainTopN)
 		c := Candidate{
-			AIdx:      k[0],
-			BIdx:      k[1],
-			Breakdown: sim.get(k[0], k[1]),
-			Shape:     shapes.sharedMass(k[0], k[1]),
-			Concept:   concepts.sharedMass(k[0], k[1]),
-			Call:      calls.sharedMass(k[0], k[1]),
+			AIdx:       k[0],
+			BIdx:       k[1],
+			Breakdown:  sim.get(k[0], k[1]),
+			Shape:      shapeMass,
+			Concept:    concepts.sharedMass(k[0], k[1]),
+			Call:       calls.sharedMass(k[0], k[1]),
+			TrophicSim: trophic,
+			Chains:     chains,
 		}
 		c.Total = c.Shape + c.Concept + c.Call
 		if a.shape {

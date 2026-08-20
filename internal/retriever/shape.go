@@ -4,37 +4,67 @@ import (
 	"encoding/binary"
 	"hash/fnv"
 	"math"
+	"sort"
 
+	"github.com/lukse/doppel/internal/fingerprint"
 	"github.com/lukse/doppel/internal/parser"
 )
 
 // largeBucketSize is the diagnostic threshold for "common structural idiom":
-// an exact-fingerprint identity bucket with more members than this is counted
-// in Stats.LargeBuckets. It does not gate anything — suppression is the df
-// cap's job — it exists so the stderr summary can show how much idiom mass
-// the corpus carries.
+// an exact pattern-multiset identity bucket with more members than this is
+// counted in Stats.LargeBuckets. It does not gate anything — suppression is
+// the df cap's job — it exists so the stderr summary can show how much idiom
+// mass the corpus carries.
 const largeBucketSize = 20
 
-// shapeIndex is the structural channel: an inverted index over shingle hashes
-// with per-shingle IDF. A shingle present in more than MaxShingleDF eligible
-// units (or in only one) is dropped entirely, so corpus-wide idioms — the 130
-// identical Error() bodies — contribute no postings and no evidence. What
-// survives is exactly the rare shared structure, and Σ idf over it is the
-// channel's evidence mass: tiny bodies have few shingles and common shapes
-// have low-IDF ones, so mass encodes rarity and non-triviality at once.
+// shapeIndex is the structural channel: an inverted index over the
+// multi-level trophic pattern multiset (fingerprint.Pattern — tokens,
+// expressions, actions, motif chains) with per-pattern IDF from presence df.
+// A pattern present in more than MaxPatternDF eligible units (or in only
+// one) carries no evidence, so corpus-wide idioms drop out entirely. Shared
+// evidence between two functions is Σ idf·min(count) over the shared
+// multiset — the shared structural energy: a match has weight because of
+// what it shares, not the fraction that matches.
 type shapeIndex struct {
-	surviving    [][]uint64         // per unit: shingles that survived the df cap, ascending
-	idf          map[uint64]float64 // ln(nEligible / df) for surviving shingles
-	postings     map[uint64][]int   // surviving shingle → unit indices, ascending
+	surviving    [][]survPattern    // per unit: patterns that survived the df cap, ascending hash
+	idf          map[uint64]float64 // ln(nEligible / presence-df) for surviving patterns
+	postings     map[uint64][]posting
+	energy       []float64            // per unit: Σ idf·count over surviving patterns
+	meta         map[uint64]chainMeta // level>=2 surviving patterns: render for explanations
 	suppressed   int
 	largeBuckets int
 }
 
+type survPattern struct {
+	hash  uint64
+	count uint16
+}
+
+type posting struct {
+	idx   int
+	count uint16
+}
+
+type chainMeta struct {
+	level  uint8
+	render string
+}
+
+// SharedPattern is one shared high-level structure between two functions —
+// the explanation of where their shared energy comes from.
+type SharedPattern struct {
+	Level  int
+	Energy float64 // idf · min(count)
+	Render string
+}
+
 func buildShapeIndex(units []parser.CodeUnit, opt Options) *shapeIndex {
 	x := &shapeIndex{
-		surviving: make([][]uint64, len(units)),
+		surviving: make([][]survPattern, len(units)),
 		idf:       make(map[uint64]float64),
-		postings:  make(map[uint64][]int),
+		postings:  make(map[uint64][]posting),
+		energy:    make([]float64, len(units)),
+		meta:      make(map[uint64]chainMeta),
 	}
 
 	eligible := make([]bool, len(units))
@@ -53,10 +83,10 @@ func buildShapeIndex(units []parser.CodeUnit, opt Options) *shapeIndex {
 		if !eligible[i] {
 			continue
 		}
-		for _, s := range units[i].Fingerprint.Shingles {
-			df[s]++
+		for _, p := range units[i].Fingerprint.Patterns {
+			df[p.Hash]++ // presence df: Patterns is deduped per unit
 		}
-		buckets[fingerprintBucket(units[i].Fingerprint.Shingles)]++
+		buckets[patternBucket(units[i].Fingerprint.Patterns)]++
 	}
 	for _, members := range buckets {
 		if members > largeBucketSize {
@@ -68,42 +98,65 @@ func buildShapeIndex(units []parser.CodeUnit, opt Options) *shapeIndex {
 		if !eligible[i] {
 			continue
 		}
-		shingles := units[i].Fingerprint.Shingles
-		var surv []uint64
-		for _, s := range shingles {
-			if n := df[s]; n >= 2 && n <= opt.MaxShingleDF {
-				surv = append(surv, s)
-				x.postings[s] = append(x.postings[s], i)
+		patterns := units[i].Fingerprint.Patterns
+		var surv []survPattern
+		for _, p := range patterns {
+			if n := df[p.Hash]; n >= 2 && n <= opt.MaxPatternDF {
+				surv = append(surv, survPattern{hash: p.Hash, count: p.Count})
+				x.postings[p.Hash] = append(x.postings[p.Hash], posting{idx: i, count: p.Count})
+				if p.Level >= fingerprint.LevelAction && p.Render != "" {
+					if _, ok := x.meta[p.Hash]; !ok {
+						x.meta[p.Hash] = chainMeta{level: p.Level, render: p.Render}
+					}
+				}
 			}
 		}
 		x.surviving[i] = surv
-		if len(surv) == 0 && len(shingles) > 0 {
+		if len(surv) == 0 && len(patterns) > 0 {
 			x.suppressed++
 		}
 	}
-	for s, n := range df {
-		if n >= 2 && n <= opt.MaxShingleDF {
-			x.idf[s] = math.Log(float64(nEligible) / float64(n))
+	for h, n := range df {
+		if n >= 2 && n <= opt.MaxPatternDF {
+			x.idf[h] = math.Log(float64(nEligible) / float64(n))
 		}
+	}
+	// A unit's total energy covers ALL its patterns — unique structure (df 1)
+	// at maximal idf and corpus idioms (df > cap) at their small true idf —
+	// while shared mass only ever counts cap-surviving patterns. That
+	// asymmetry is what makes trophic similarity honest: an idiom bucket's
+	// members have real structure in the denominator but their shared idiom
+	// earns no credit in the numerator, so trivia pairs score ~0 instead of
+	// a degenerate 1.0.
+	for i := range units {
+		if !eligible[i] {
+			continue
+		}
+		var e float64
+		for _, p := range units[i].Fingerprint.Patterns { // ascending hash: fixed float order
+			e += math.Log(float64(nEligible)/float64(df[p.Hash])) * float64(p.Count)
+		}
+		x.energy[i] = e
 	}
 	return x
 }
 
-// fingerprintBucket hashes the full shingle multiset identity, for the
-// large-bucket diagnostic. Shingles are already sorted and deduped, so the
-// hash is canonical.
-func fingerprintBucket(shingles []uint64) uint64 {
+// patternBucket hashes the full pattern-multiset identity (ordered
+// hash+count pairs — Patterns is already canonically sorted), for the
+// large-bucket diagnostic.
+func patternBucket(patterns []fingerprint.Pattern) uint64 {
 	h := fnv.New64a()
-	var buf [8]byte
-	for _, s := range shingles {
-		binary.LittleEndian.PutUint64(buf[:], s)
-		h.Write(buf[:])
+	var buf [10]byte
+	for _, p := range patterns {
+		binary.LittleEndian.PutUint64(buf[:8], p.Hash)
+		binary.LittleEndian.PutUint16(buf[8:], p.Count)
+		_, _ = h.Write(buf[:])
 	}
 	return h.Sum64()
 }
 
-// admitPairs runs per-function retrieval: accumulate shared-IDF mass against
-// every unit sharing a surviving shingle, then probe neighbors in
+// admitPairs runs per-function retrieval: accumulate shared energy against
+// every unit sharing a surviving pattern, then probe neighbors in
 // (mass desc, idx asc) order with the exact fingerprint score, admitting up
 // to ChannelK pairs at or above Threshold. Probing stops after
 // 4*ChannelK scored neighbors either way — inside a dense sub-threshold
@@ -117,17 +170,17 @@ func (x *shapeIndex) admitPairs(sim *simCache, opt Options) []pairKey {
 			continue
 		}
 		acc := make(map[int]float64)
-		for _, s := range x.surviving[a] {
-			w := x.idf[s]
-			for _, b := range x.postings[s] {
-				if b != a {
-					acc[b] += w
+		for _, sp := range x.surviving[a] {
+			w := x.idf[sp.hash]
+			for _, po := range x.postings[sp.hash] {
+				if po.idx != a {
+					acc[po.idx] += w * float64(minCount(sp.count, po.count))
 				}
 			}
 		}
 		neighbors := make([]neighborMass, 0, len(acc))
 		for b, mass := range acc {
-			// A shingle in every eligible unit has idf 0; zero shared mass is
+			// A pattern in every eligible unit has idf 0; zero shared mass is
 			// zero evidence, not a candidate.
 			if mass > 0 {
 				neighbors = append(neighbors, neighborMass{idx: b, mass: mass})
@@ -150,24 +203,54 @@ func (x *shapeIndex) admitPairs(sim *simCache, opt Options) []pairKey {
 	return pairs
 }
 
-// sharedMass is the definitive structural evidence for a pair: Σ idf over the
-// intersection of the two surviving shingle sets, summed in ascending shingle
-// order. Zero for ineligible or fully-suppressed units.
-func (x *shapeIndex) sharedMass(a, b int) float64 {
+func minCount(a, b uint16) uint16 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// pairEvidence computes the definitive structural view of one pair in a
+// single sorted-intersection pass: shared energy (Σ idf·min(count)), trophic
+// similarity (weighted Dice, 2·shared/(E_A+E_B)), and the highest-energy
+// shared high-level chains as the explanation. Chains sort by (energy desc,
+// level desc, render asc) — byte-stable ties — and truncate to chainTopN.
+func (x *shapeIndex) pairEvidence(a, b, chainTopN int) (float64, float64, []SharedPattern) {
 	sa, sb := x.surviving[a], x.surviving[b]
 	var mass float64
+	var chains []SharedPattern
 	i, j := 0, 0
 	for i < len(sa) && j < len(sb) {
 		switch {
-		case sa[i] < sb[j]:
+		case sa[i].hash < sb[j].hash:
 			i++
-		case sa[i] > sb[j]:
+		case sa[i].hash > sb[j].hash:
 			j++
 		default:
-			mass += x.idf[sa[i]]
+			e := x.idf[sa[i].hash] * float64(minCount(sa[i].count, sb[j].count))
+			mass += e
+			if m, ok := x.meta[sa[i].hash]; ok && e > 0 {
+				chains = append(chains, SharedPattern{Level: int(m.level), Energy: e, Render: m.render})
+			}
 			i++
 			j++
 		}
 	}
-	return mass
+	var trophic float64
+	if denom := x.energy[a] + x.energy[b]; denom > 0 {
+		trophic = 2 * mass / denom
+	}
+	sort.SliceStable(chains, func(p, q int) bool {
+		if chains[p].Energy != chains[q].Energy {
+			return chains[p].Energy > chains[q].Energy
+		}
+		if chains[p].Level != chains[q].Level {
+			return chains[p].Level > chains[q].Level
+		}
+		return chains[p].Render < chains[q].Render
+	})
+	if chainTopN > 0 && len(chains) > chainTopN {
+		chains = chains[:chainTopN]
+	}
+	return mass, trophic, chains
 }

@@ -79,7 +79,7 @@ func TestShapeChannelSuppressesTrivialCloneBuckets(t *testing.T) {
 	units := parseUnits(t, "fix.go", trivialCloneSource())
 	opt := DefaultOptions()
 	opt.MinNodes = 8
-	opt.MaxShingleDF = 8
+	opt.MaxPatternDF = 8
 	// The clones also share fmt.Sprintf (df=12 in this 16-unit fixture); cap
 	// it out so this test isolates the structural channel.
 	opt.MaxCallDF = 3
@@ -164,7 +164,7 @@ func Common%d(xs []int) int {
 	units := parseUnits(t, "fix.go", b.String())
 	opt := DefaultOptions()
 	opt.MinNodes = 8
-	opt.MaxShingleDF = 20
+	opt.MaxPatternDF = 20
 
 	cands, _ := retrieveAll(t, units, opt)
 
