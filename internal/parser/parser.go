@@ -3,7 +3,7 @@ package parser
 import (
 	"path/filepath"
 
-	"github.com/lukse/doppel/internal/fingerprint"
+	"github.com/LukasSelin/doppel/internal/fingerprint"
 )
 
 // CodeUnit represents a single extracted function or method.

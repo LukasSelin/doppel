@@ -1,8 +1,8 @@
 package tagger
 
 import (
-	"github.com/lukse/doppel/internal/ontology"
-	"github.com/lukse/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/ontology"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 // patternRule maps a concept to the AST-level evidence that asserts it.

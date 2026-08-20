@@ -3,8 +3,8 @@ package tagger
 import (
 	"testing"
 
-	"github.com/lukse/doppel/internal/ontology"
-	"github.com/lukse/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/ontology"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 // Axiom 8, the tagger half of the vocabulary's integrity check: the rule table
