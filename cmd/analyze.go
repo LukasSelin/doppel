@@ -94,7 +94,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	// carry says little about any pair sharing it; a rare one says a lot.
 	tagCounts := make(map[ontology.TermID]int)
 	for i := range units {
-		units[i].Patterns = tagger.Tag(units[i].Body)
+		units[i].Patterns = tagger.Tag(units[i])
 		for _, tag := range units[i].Patterns {
 			tagCounts[ontology.TermID(tag)]++
 		}

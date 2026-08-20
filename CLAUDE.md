@@ -19,8 +19,8 @@ the usual culprit — see `sortedKeys` in `mapper` and the tie-break in `FindSim
 
 Orchestrated end to end by `runAnalyze` in `cmd/analyze.go`. Stages in execution order:
 
-1. **Walk & parse** — `filepath.WalkDir` + `shouldSkipDir`, then `parser.Parse` per `.go` file → `[]CodeUnit`. Unreadable files and parse errors are warned and skipped, never fatal. `fingerprint.Build` runs here, while the AST is still in hand.
-2. **Tag** — `tagger.Tag(unit.Body)` sets `unit.Patterns` (9 keyword-matched intent tags).
+1. **Walk & parse** — `filepath.WalkDir` + `shouldSkipDir`, then `parser.Parse` per `.go` file → `[]CodeUnit`. Unreadable files and parse errors are warned and skipped, never fatal. `fingerprint.Build` and `extractSignals` (the tagger's AST evidence) both run here, while the AST is still in hand.
+2. **Tag** — `tagger.Tag(unit)` sets `unit.Patterns` (9 intent tags matched against the unit's AST signals — selectors, imports, string-literal contents, identifiers, node kinds — never against raw source text). Tag counts feed the corpus IC in the same loop.
 3. **Build call graph** — `concepter.BuildCallGraph(units)` → `map[calleeName][]callerName`. Note this happens *before* concept docs, because docs need caller lists.
 4. **Generate + enrich concept docs** — `concepter.New()` makes bare docs; **`mapper.Map` does the real work**: attaches callers, calls `concepter.ClassifyRole`, and aggregates caller/callee patterns and packages.
 5. **Compare fingerprints** — `analyzer.FindSimilar` scores the full O(n²) upper triangle, keeps `score >= threshold`, sorts descending, truncates to `--top`.
@@ -43,10 +43,10 @@ cmd/            CLI commands (Cobra).
   config.go     .doppel.json loading (AnalysisConfig) and flag precedence
   ontology.go   doppel ontology: print the vocabulary, check its axioms
 internal/
-  parser/       parser.go is a thin dispatcher; go_parser.go does all go/ast work → CodeUnit
+  parser/       parser.go is a thin dispatcher; go_parser.go does the go/ast work; signals.go extracts the tagger's evidence channels → CodeUnit
   fingerprint/  AST token shingles + control-flow histogram + signature types; the code-similarity score
   ontology/     The formal vocabulary: entity kinds, typed relations, concept taxonomy, roles, axioms
-  tagger/       Keyword-substring intent detection → 9 pattern tags
+  tagger/       AST-signal intent detection → 9 pattern tags
   concepter/    ConceptDoc; callgraph.go (BuildCallGraph); role.go (ClassifyRole, role constants)
   mapper/       Where enrichment actually happens: callers, role classification, aggregated patterns/packages
   analyzer/     Pairwise fingerprint scoring, threshold filtering, top-N sorting
@@ -208,11 +208,22 @@ so most non-trivial functions clear the fan-out threshold and roles skew to
 Exactly 9, emitted in declaration order: `retry`, `http_call`, `db_access`, `validation`, `mapping`,
 `transaction`, `caching`, `concurrency`, `error_wrapping`. The rules name `ontology` concept terms
 rather than bare strings, so a rule pointing at a concept that does not exist stops compiling, and
-`tagger_test` enforces the other direction: every concrete concept has exactly one rule. The tag
-strings themselves are unchanged.
+`tagger_test` enforces the other direction: every concrete concept has exactly one rule.
 
-Their keyword lists still contain non-Go signals (`axios`, `urllib`, `Promise.`, `await `) left over
-from the pre-Go-only era — dead weight, since only `.go` files are ever parsed.
+Rules match **AST evidence** (`parser.TagSignals`), never raw source text, and each channel has its
+own semantics: selectors exact (`http.Get`, `sync.Map`), methods exact on the method or bare-call
+name, receivers exact on the receiver identifier (`tx.Commit` fires, `mtx.Lock` does not), imports
+and string-literal contents and identifier names by substring, plus node-kind flags
+(go/select/chan) for `concurrency`. Consequences worth knowing:
+
+- A comment saying `COMMIT` or `DELETE` no longer tags anything — comments are not evidence.
+- `error_wrapping` is deliberately tight: a `%w` verb anywhere in a format string (the old rule
+  only matched `%w"`) or a pkg/errors wrap helper. Bare `fmt.Errorf` and `errors.As`/`errors.Is`
+  no longer fire it, which makes the tag rare enough to be informative under IC.
+- `retry` is the one tag with no structural handle — its evidence is lexical, in identifier names.
+- String literals are still evidence, so a test whose fixture strings contain `%w` or `SELECT `
+  earns those tags. A function carrying SQL strings is db-flavored even when it is a test.
+- The pre-Go-only polyglot keywords (`axios`, `urllib`, `Promise.`, `await `) are gone.
 
 ### The ontology
 
@@ -300,8 +311,8 @@ Unknown keys are ignored rather than rejected, so a stale config file does not b
 - Skipped directories: `.git`, `.claude`, `vendor`, `testdata`, `build`, `.idea`, `.vscode`.
   `_test.go` files are **not** skipped, and test functions legitimately dominate the top of the
   report on this repo.
-- Tested: `ontology`, `fingerprint`, `analyzer`, `comparator`, `tagger`, `concepter/role`, `cmd`
-  config precedence. Untested and worth covering: `parser`, `mapper`, `reporter`.
+- Tested: `ontology`, `fingerprint`, `analyzer`, `comparator`, `tagger`, `parser`,
+  `concepter/role`, `cmd` config precedence. Untested and worth covering: `mapper`, `reporter`.
 
 ## Rough edges
 
