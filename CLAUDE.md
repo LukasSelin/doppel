@@ -121,8 +121,11 @@ doppel ontology --defs                                # print the vocabulary and
   `StartLine`, `Body`, `Signature`, `Package`, `Patterns`, `DocComment`, `Exported`, `ReceiverType`,
   `Callees`, `Fingerprint`. Methods are named `"*Server.Start"` — the receiver keeps its star.
 - **Fingerprint** (`internal/fingerprint/fingerprint.go`) — `Shingles` (sorted, deduped 3-gram
-  hashes), `Flow` (control-flow histogram), `Types` (normalized param/result types), `Nodes`.
-  The zero value means "no body" and never matches anything.
+  hashes), `Flow` (control-flow histogram), `Types` (normalized param/result types), `Nodes`, and
+  `Patterns` (the multi-level trophic pattern multiset — see *Trophic structural energy*).
+  `Shingles` still feeds the pinned `ast` Jaccard while `Patterns` feeds retrieval; the L0 overlap
+  between them is deliberate — different dedup semantics, different consumers. The zero value
+  means "no body" and never matches anything.
 - **Term / Ontology** (`internal/ontology/ontology.go`) — the vocabulary: four disjoint rooted trees
   (`entity`, `relation`, `concept`, `role`) carrying definitions, relation weights, and `Validate()`.
   Concept leaf IDs are exactly the tagger's tag strings and role IDs exactly `ClassifyRole`'s return
@@ -150,7 +153,7 @@ function's top `--channel-k` (default 5) by `(mass desc, idx asc)`.
 
 | Channel | Features | Cap (Options) | Extra gates |
 | --- | --- | --- | --- |
-| shape | fingerprint shingle hashes, IDF over eligible units | `MaxShingleDF` 50 | `--min-nodes` eligibility; admits only pairs with exact `code-shape >= --threshold`, probing at most `4*ChannelK` neighbors |
+| shape | multi-level trophic patterns (`fingerprint.Pattern`, presence-df IDF, min-count multiset mass) | `MaxPatternDF` 50 | `--min-nodes` eligibility; admits only pairs with exact `code-shape >= --threshold`, probing at most `4*ChannelK` neighbors |
 | concept | tagger tags + non-root taxonomy ancestors (enumeration only) | `MaxConceptDF` 250 | none — evidence is `Scorer.SharedInformation` (raw `Σ IC(LCS)`) over the leaf tag sets |
 | call | resolved internal callees (qualified) + import-qualified external calls via `RefPath` (full import path) | `MaxCallDF` 50 | none; bare names and variable-receiver calls are never tokens |
 
@@ -161,7 +164,7 @@ over the same corpus of N functions — do not normalize the components before s
 
 Consequences worth knowing:
 
-- A shingle/token in *every* unit has `idf = ln(N/N) = 0`; zero-mass neighbors are never admitted.
+- A pattern/token in *every* unit has `idf = ln(N/N) = 0`; zero-mass neighbors are never admitted.
   The 130-clone `Error()` bucket exceeds the df cap entirely — those functions contribute no
   structural candidates and can only enter via concept/call evidence, which is the intended
   common-idiom suppression (no name-based heuristics anywhere).
@@ -171,8 +174,37 @@ Consequences worth knowing:
 - `ontology.Scorer.SharedInformation` exists precisely so retrieval never recomputes mass as
   `Σ ic.Of(m.LCA)` — that hits `Of("")` (the unknown sentinel) for unknown-term self-matches.
 - `Stats.Suppressed` / `Stats.LargeBuckets` are diagnostics on stderr, not gates.
-- On the ~8.7k-function Sendify corpus: ~22k union pairs, ~2.5s end to end (the old all-pairs
-  scoring took ~20s), ~60% of pairs call-only, ~9% concept-only.
+- On the ~8.7k-function Sendify corpus: ~22k union pairs, a few seconds end to end (the old
+  all-pairs scoring took ~20s), ~60% of pairs call-only, ~9% concept-only.
+
+### Trophic structural energy
+
+The shape channel's features are the **multi-level pattern multiset** extracted by
+`fingerprint.extractPatterns` during `Build` (the AST exists only during parse): L0 token 3-gram
+windows, L1 call/binary-operator shapes, L2 statements with salient structure
+(`return(call:Sprintf)`, `defer(call:Close)`, `if(bin:!=(id,nil))` — nil/true/false keep their
+names so the err-check idiom falls out with no special case), and L3 motifs — loop call summaries
+covering header *and* body (`for{ call:Scan call:TrimSpace call:Atoi call:append }`, ≤ 8 callees)
+and adjacent-statement bigrams (`seq[ assign:=(call:Atoi) ; if(bin:!=(id,nil)) ]`). For levels 1–3
+the render string IS the hash serialization, so hash and explanation cannot drift; L2/L3 keep
+their renders, L0/L1 do not.
+
+Three quantities per pair, all from one sorted-intersection pass (`pairEvidence`):
+
+- **Shape evidence** = `Σ idf·min(count)` over cap-surviving shared patterns — shared structural
+  energy, the retrieval mass.
+- **TrophicSimilarity** = `2·SharedEnergy / (E_A + E_B)`, reported as `trophic:`. The denominator
+  energy covers **all** of each side's patterns — unique structure (df 1) at maximal idf and
+  capped idioms at their true small idf — while the numerator only counts cap-surviving shared
+  patterns. That asymmetry is load-bearing: it is what makes idiom twins (`DataSourceName ↔
+  Error`) read ~0.00 instead of a degenerate 1.00. Do not "simplify" the two energy definitions
+  into one.
+- **Shared chains** = the highest-energy shared L2/L3 patterns, `(energy desc, level desc,
+  render asc)`, top `ChainTopN` (3 default, 20 under `--debug`) — rendered as the
+  `shared structure:` block. A match has weight because of what it shares.
+
+Trophic explains; it never ranks (`Total` stays Shape+Concept+Call) and never blends into
+code-shape or overlap.
 
 ### Corpus culture
 
@@ -453,6 +485,14 @@ Known traps, documented so they aren't rediscovered. None are fixed:
 - **Typicality is corpus-relative, like roles.** A function's typicality — and whether a pair
   carries a culture note — can change when unrelated code shifts the concept's membership or the
   corpus norm. That is what "normal for this repo" means; same caveat as the role thresholds.
+- **Nested loops double-count inner calls in loop summaries.** An inner loop's callees appear in
+  both its own L3 summary and every enclosing loop's — each container is a real behavioral unit,
+  and de-duplicating would cost a pass per nesting level for no scoring benefit. Accepted.
+- **Trophic similarity of a pair of exact clones with mid-frequency structure is 1.0.** Any
+  normalized similarity gives identical inputs 1.0; the suppression story for trivia relies on the
+  df cap zeroing the numerator, which only engages once the idiom bucket exceeds `MaxPatternDF`.
+  Between df=2 and the cap, exact twins legitimately read trophic 1.0 with *small* energy — the
+  energy is what ranks, so this is display-level nuance, not a scoring bug.
 - **Repetitive scaffolding clusters can dominate the evidence ranking.** Fifteen `cmd/tool`
   `main.main` functions sharing ~100 mid-frequency setup calls each carry ~600 nats of call
   evidence and fill the Sendify top-20. That is real duplication, but it crowds the default view;
