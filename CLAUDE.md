@@ -4,27 +4,34 @@ Go CLI tool that detects structural similarities in a Go codebase to surface mer
 
 ## Goal
 
-Spot structural duplication that text-based tools miss. Doppel uses semantic embeddings (via Ollama) and structural analysis to find function pairs that share intent, call patterns, and role — not just string overlap. The output is a ranked list of merge candidates with confidence scores and evidence explaining *why* they are similar.
+Spot duplication that text-based tools miss. Doppel fingerprints each function from its AST and
+cross-checks matches against call-graph context, so it finds pairs that share shape and role rather
+than string overlap. The output is a ranked list of merge candidates with two scores and evidence
+explaining *why* they are similar.
+
+**The tool is fully self-contained.** No network, no LLM, no model, no cache. It was built around
+Ollama embeddings originally; that entire pass was removed. Anything suggesting otherwise is stale.
+The corollary worth internalizing: **every score is deterministic**, so an unchanged tree must
+produce a byte-identical report. Treat a nondeterministic report as a bug (map iteration order is
+the usual culprit — see `sortedKeys` in `mapper` and the tie-break in `FindSimilar`).
 
 ## Pipeline
 
 Orchestrated end to end by `runAnalyze` in `cmd/analyze.go`. Stages in execution order:
 
-1. **Walk & parse** — `filepath.WalkDir` + `shouldSkipDir`, then `parser.Parse` per `.go` file → `[]CodeUnit`. Unreadable files and parse errors are warned and skipped, never fatal.
+1. **Walk & parse** — `filepath.WalkDir` + `shouldSkipDir`, then `parser.Parse` per `.go` file → `[]CodeUnit`. Unreadable files and parse errors are warned and skipped, never fatal. `fingerprint.Build` runs here, while the AST is still in hand.
 2. **Tag** — `tagger.Tag(unit.Body)` sets `unit.Patterns` (9 keyword-matched intent tags).
 3. **Build call graph** — `concepter.BuildCallGraph(units)` → `map[calleeName][]callerName`. Note this happens *before* concept docs, because docs need caller lists.
 4. **Generate + enrich concept docs** — `concepter.New()` makes bare docs; **`mapper.Map` does the real work**: attaches callers, calls `concepter.ClassifyRole`, and aggregates caller/callee patterns and packages.
-5. **Render** — `ConceptDoc.Format()` produces the text block that is actually embedded.
-6. **Embed** — `embedder.Embed` per doc via Ollama `/api/embed`, wrapped in `embedWithBackoff`; cache saved afterwards.
-7. **Cosine similarity** — `analyzer.FindSimilar` scores the full O(n²) upper triangle, keeps `score >= threshold`, sorts descending, truncates to `--top`.
-8. **Structural comparison** — `comparator.Compare` per surviving pair → `pair.Evidence`.
-9. **Structural filter** — when `--struct-min > 0`, pairs below that overlap score are **dropped**. This is a selection stage, not just annotation.
-10. **Optional LLM reflection** — when `--reflect-model` is set, `reflector.Explain` fills `pair.Explanation`. Per-pair failures warn and continue.
-11. **Report** — `reporter.Print` to stdout always; `reporter.PrintMarkdown` to `--output` additionally.
+5. **Compare fingerprints** — `analyzer.FindSimilar` scores the full O(n²) upper triangle, keeps `score >= threshold`, sorts descending, truncates to `--top`.
+6. **Structural comparison** — `comparator.Compare` per surviving pair → `pair.Evidence`.
+7. **Structural filter** — when `--struct-min > 0`, pairs below that overlap score are **dropped**. This is a selection stage, not just annotation.
+8. **Report** — `reporter.Print` to stdout always; `reporter.PrintMarkdown` to `--output` additionally.
 
-**The single most important non-obvious fact:** what gets embedded is the *concept doc*
-(`ConceptDoc.Format()`), not the function body. Only the reflector ever sends real bodies to the
-LLM. The `--max-input` help text says "function body" and is wrong.
+`docs[i]` describes `units[i]`, and `SimilarPair` carries `AIdx`/`BIdx` into that slice. Evidence
+attachment is a positional lookup, deliberately — an earlier version keyed it on
+`Package + "." + Name` while the call graph keyed on bare names, so lookups silently missed and
+`--struct-min` then dropped the pair. Do not reintroduce name-keyed lookups between these stages.
 
 ## Module layout
 
@@ -32,21 +39,35 @@ LLM. The `--max-input` help text says "function body" and is wrong.
 main.go         Thin entry point → cmd.Execute()
 cmd/            CLI commands (Cobra).
   root.go       rootCmd, Execute()
-  analyze.go    Pipeline orchestrator; all flag registration; embed backoff helpers
+  analyze.go    Pipeline orchestrator; all flag registration
   config.go     .doppel.json loading (AnalysisConfig) and flag precedence
 internal/
   parser/       parser.go is a thin dispatcher; go_parser.go does all go/ast work → CodeUnit
+  fingerprint/  AST token shingles + control-flow histogram + signature types; the code-similarity score
   tagger/       Keyword-substring intent detection → 9 pattern tags
-  concepter/    ConceptDoc + Format(); callgraph.go (BuildCallGraph); role.go (ClassifyRole, role constants)
+  concepter/    ConceptDoc; callgraph.go (BuildCallGraph); role.go (ClassifyRole, role constants)
   mapper/       Where enrichment actually happens: callers, role classification, aggregated patterns/packages
-  embedder/     Ollama /api/embed client with SHA-256 keyed on-disk cache
-  analyzer/     Pairwise cosine similarity, threshold filtering, top-N sorting
+  analyzer/     Pairwise fingerprint scoring, threshold filtering, top-N sorting
   comparator/   Weighted structural overlap scoring (9 signals → 0.0–1.0 composite)
-  reflector/    LLM merge rationale via Ollama /api/generate; injects structural evidence into the prompt
   reporter/     Plain-text (stdout) and Markdown (--output) formatting
 ```
 
-`analyzer` imports `comparator` (for the `Evidence` field), so `comparator` must never import `analyzer`.
+Dependency directions that must hold: `analyzer` imports `comparator` (for the `Evidence` field), so
+`comparator` must never import `analyzer`. `parser` imports `fingerprint`, so `fingerprint` must
+never import `parser` — it works on `*ast.FuncDecl` directly.
+
+## Two scores, deliberately unblended
+
+Each pair carries two independent numbers, gated by two independent flags:
+
+| Score | Source | Flag | Means |
+| --- | --- | --- | --- |
+| `Score` | `fingerprint.Similarity` | `--threshold` | how alike the two bodies are |
+| `Evidence.OverlapScore` | `comparator.Compare` | `--struct-min` | how much architectural context they share |
+
+Do not merge these into one number. High code score + low overlap is a *different finding* (lookalike
+bodies in unrelated subsystems) from high on both (a real merge candidate), and collapsing them
+destroys that distinction.
 
 ## Development
 
@@ -65,11 +86,8 @@ Running the tool against this repo:
 
 ```bash
 doppel analyze .
-doppel analyze . --reflect-model llama3.2 --output report.md   # full run with LLM explanations
+doppel analyze . --struct-min 0.4 --output report.md
 ```
-
-Requires Ollama running locally (`http://localhost:11434`) with an embedding model pulled
-(default: `nomic-embed-text`).
 
 **Hooks and CI:**
 
@@ -84,13 +102,39 @@ Requires Ollama running locally (`http://localhost:11434`) with an embedding mod
 
 - **CodeUnit** (`internal/parser/parser.go`) — one function/method from the AST: `Name`, `File`,
   `StartLine`, `Body`, `Signature`, `Package`, `Patterns`, `DocComment`, `Exported`, `ReceiverType`,
-  `Callees`. Methods are named `"*Server.Start"` — the receiver keeps its star.
-- **ConceptDoc** (`internal/concepter/concepter.go`) — the semantic representation that gets embedded.
-  Beware: `Inputs`, `Outputs`, and `Dependencies` are declared and rendered by `Format()` but **never
-  populated by anything**, so those sections never appear in a real embedding input.
-- **SimilarPair** (`internal/analyzer/similarity.go`) — two `CodeUnit`s plus `Score`, `Explanation`
-  (empty unless `--reflect-model`), and `Evidence` (**nil until the structural comparison stage**).
+  `Callees`, `Fingerprint`. Methods are named `"*Server.Start"` — the receiver keeps its star.
+- **Fingerprint** (`internal/fingerprint/fingerprint.go`) — `Shingles` (sorted, deduped 3-gram
+  hashes), `Flow` (control-flow histogram), `Types` (normalized param/result types), `Nodes`.
+  The zero value means "no body" and never matches anything.
+- **ConceptDoc** (`internal/concepter/concepter.go`) — the architectural context the comparator
+  scores. It is no longer rendered to text anywhere; `Format()` existed only to build embedding
+  input and is gone.
+- **SimilarPair** (`internal/analyzer/similarity.go`) — two `CodeUnit`s plus `AIdx`/`BIdx`, `Score`,
+  `Breakdown` (per-component code similarity), and `Evidence` (**nil until the structural
+  comparison stage**).
 - **StructuralEvidence** (`internal/comparator/comparator.go`) — the weighted overlap result.
+
+### Fingerprint scoring
+
+`fingerprint.Similarity` blends three components; weights are constants and sum to exactly `1.00`.
+
+| Component | Metric | Weight |
+| --- | --- | --- |
+| AST shingles | Jaccard over hashed 3-grams | 0.60 |
+| Control flow | cosine over the node-kind histogram | 0.25 |
+| Signature | Jaccard over normalized param/result types | 0.15 |
+
+`SizeRatio` is reported in the `Breakdown` but **not** scored — Jaccard already penalizes size
+mismatch through the union, so damping again would double-count it.
+
+Two canonicalization rules do the heavy lifting in the token stream, and both are load-bearing:
+identifiers collapse to `ID` (so renamed clones still match), while call *selector* names survive as
+`CALL:Errorf` (intent-bearing) with the receiver expression dropped (`e`, `s`, `cfg` are arbitrary).
+
+`--min-nodes` (default `12`) excludes tiny bodies from comparison entirely. Without it one-line
+accessors match each other at 1.0 and flood the report. On this repo the guard currently excludes 4
+functions and changes no reported pair at the default threshold — it is preventive, so do not
+"simplify" it away on the evidence of a clean run here.
 
 ### Comparator weights
 
@@ -143,49 +187,43 @@ weight, since only `.go` files are ever parsed.
 
 ```json
 {
-  "threshold": 0.85,
+  "threshold": 0.65,
   "top": 10,
-  "reflect-model": "llama3.2",
+  "min-nodes": 12,
+  "struct-min": 0.4,
   "output": "doppel-report.md"
 }
 ```
 
-Precedence: `applyConfig` only calls `Flags().Set` when `!Flags().Changed(name)`, so explicit CLI
-flags always win over the file.
-
-Three gaps to know about:
-
-- `struct-min` is the only functional flag with **no config key** — CLI only.
-- `concept-cache` is a config key with **no matching flag**; the resulting "no such flag" error is
-  discarded, so setting it silently does nothing.
-- `--concept-model` and `--concept-prompt-file` are registered and parsed but **never read** by
-  `runAnalyze` — dead leftovers from the LLM-based concepter removed in `98541fd`.
+Every functional flag except `--config` has a config key. Precedence: `applyConfig` only calls
+`Flags().Set` when `!Flags().Changed(name)`, so explicit CLI flags always win over the file.
+Unknown keys are ignored rather than rejected, so a stale config file does not break a run.
 
 ## Conventions
 
 - Go-only. All parsing uses `go/ast` — no external parsers, no multi-language support.
-- One cache: `.embeddings.json`, keyed `sha256(model \x00 numCtx \x00 concept-doc-text)`.
-  `--cache ""` disables it. There is **no** `.concepts.json` — that cache was deleted in `98541fd`.
+- No caches and no generated state files. If you find yourself adding one, that is a design change,
+  not an optimization.
+- Cobra is the only direct dependency. Keep it that way unless there is a strong reason.
 - Skipped directories: `.git`, `.claude`, `vendor`, `testdata`, `build`, `.idea`, `.vscode`.
-- Only two test files exist: `internal/concepter/role_test.go` and `internal/comparator/comparator_test.go`.
-  Everything else is untested — new tests are welcome, especially for `parser`, `tagger`, `mapper`,
-  and `cmd` config precedence.
+  `_test.go` files are **not** skipped, and test functions legitimately dominate the top of the
+  report on this repo.
+- Tested: `fingerprint`, `analyzer`, `comparator`, `concepter/role`, `cmd` config precedence.
+  Untested and worth covering: `parser`, `tagger`, `mapper`, `reporter`.
 
 ## Rough edges
 
 Known traps, documented so they aren't rediscovered. None are fixed:
 
-- **Name-key mismatch.** `BuildCallGraph`, `mapper`'s index, and `extractCallees` all key on bare
-  function names, so `New` in two different packages shares call-graph edges. But `docIndex` in
-  `analyze.go` keys on `Package + "." + Name` — a different key space — so evidence attachment can
-  silently miss, leaving `Evidence == nil`, which then makes `--struct-min` drop the pair.
-- **No HTTP timeouts.** Both `embedder` and `reflector` use the package-level `http.Post` with no
-  timeout, no `context.Context`, and no retry. A hung Ollama hangs the entire run.
+- **Name-key mismatch in the call graph.** `BuildCallGraph`, `mapper`'s index, and `extractCallees`
+  all key on bare function names, so `New` in two different packages shares call-graph edges. The
+  pipeline no longer depends on name keys (see above), but `Callers`, `CallerPackages` and the role
+  classification derived from them are still affected by this conflation.
 - **Silent parse failures.** `parseGo` returns `nil, nil` on any syntax error, despite a comment
   claiming it returns partial results.
-- **Formatting drift.** `gofmt -l .` currently reports 5 unformatted files (`cmd/analyze.go`,
-  `cmd/config.go`, `internal/analyzer/similarity.go`, `internal/comparator/comparator.go`,
-  `internal/concepter/concepter.go`). The pre-commit hook will block commits touching them until
-  `task fmt` is run.
 - **Stale doc comment** on `BuildCallGraph` describes only the O(n²) text-scan fallback and predates
-  the AST-callee fast path that now handles virtually every case.
+  the AST-callee fast path that now handles virtually every case. With Go-only parsing, `Callees` is
+  always populated, so the text-scan branch is effectively dead code.
+- **O(n²) with no blocking.** Every function pair is compared. Fine at the current scale (74
+  functions here, ~2.7k pairs), but a large repo would want MinHash/LSH banding to cut the candidate
+  set before exact scoring.

@@ -20,8 +20,8 @@ const (
 	weightSharedCallerPkgs = 0.025
 	weightSharedCalleePkgs = 0.025
 
-	mergeThreshold   = 0.4
-	minMergeSignals  = 2
+	mergeThreshold  = 0.4
+	minMergeSignals = 2
 )
 
 // StructuralEvidence summarises the structural overlap between two ConceptDocs.

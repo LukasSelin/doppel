@@ -1,26 +1,20 @@
 # doppel
 
-A CLI tool that detects semantically similar functions across a Go codebase using local AI embeddings. It helps identify duplicate logic and refactoring opportunities by comparing structural concept documents — call graph context, intent patterns and role — with vector similarity rather than text matching.
+A CLI tool that detects structurally similar functions across a Go codebase. It helps identify duplicate logic and refactoring opportunities by fingerprinting each function from its AST and cross-checking matches against call-graph context — rather than by text matching.
+
+Everything runs locally and offline: no models, no network, no cache. The same source always produces the same report.
 
 For a detailed breakdown of the pipeline internals, see [How Doppel Works](.github/wiki/how-it-works.md).
 
 ## Quick Start
 
-**Prerequisites:**
-
-- [Go 1.25+](https://go.dev/dl/)
-- [Ollama](https://ollama.com) running locally
-
-**Pull the models and run:**
+**Prerequisites:** [Go 1.25+](https://go.dev/dl/)
 
 ```bash
-ollama pull qwen3-embedding:8b
-ollama pull llama3.2
-
-go run . analyze . --model qwen3-embedding:8b --reflect-model llama3.2 --output report.md
+go run . analyze .
 ```
 
-This scans the current directory, embeds every Go function, finds structurally similar pairs, uses `llama3.2` to explain why they match, and writes the results to `report.md`.
+This scans the current directory, fingerprints every Go function, and prints the most similar pairs with the evidence behind each match. Add `--output report.md` to also write a Markdown report.
 
 ## Installation
 
@@ -49,27 +43,43 @@ doppel analyze <path> [flags]
 doppel analyze .
 
 # Lower the threshold to catch more subtle similarities
-doppel analyze ./src --threshold 0.80
+doppel analyze ./src --threshold 0.50
 
-# Full run with LLM explanations and structural filtering
-doppel analyze . --reflect-model llama3.2 --struct-min 0.4 --output report.md
+# Keep only pairs that also share architectural context, and save a report
+doppel analyze . --struct-min 0.4 --output report.md
 ```
+
+### Two scores per pair
+
+Every reported pair carries two independent numbers:
+
+- **Code similarity** (`Score`, gated by `--threshold`) — how alike the two bodies are, from the AST fingerprint. The report breaks it into its components: `ast` (3-gram shingle overlap), `flow` (control-flow shape), `sig` (parameter and result types), and `size` (relative body size, shown for context but not scored).
+- **Structural overlap** (gated by `--struct-min`) — how much architectural context the two share: callees, callers, intent patterns, role, package.
+
+A high code score with low structural overlap means two lookalike bodies in unrelated parts of the system. High on both is the real merge candidate.
 
 ### Flags
 
-| Flag                | Default                  | Description                                                                         |
-| ------------------- | ------------------------ | ----------------------------------------------------------------------------------- |
-| `-t`, `--threshold` | `0.85`                   | Minimum cosine similarity score to report (0.0–1.0)                                 |
-| `-n`, `--top`       | `20`                     | Maximum number of similar pairs to show                                             |
-| `-m`, `--model`     | `nomic-embed-text`       | Ollama embedding model to use                                                       |
-| `--ollama-url`      | `http://localhost:11434` | Ollama base URL                                                                     |
-| `--cache`           | `.embeddings.json`       | Embedding cache file (empty string disables caching)                                |
-| `--max-input`       | `8192`                   | Max UTF-8 bytes of each concept doc sent to the embedder (auto-shrinks on context errors) |
-| `--ollama-num-ctx`  | `0` (server default)     | Ollama `options.num_ctx` token limit                                                |
-| `--struct-min`      | `0.0`                    | Minimum structural overlap score (0.0–1.0) to keep a pair after embedding selection |
-| `--reflect-model`   | *(disabled)*             | Ollama chat model for merge explanations (e.g. `llama3.2`)                          |
-| `-o`, `--output`    | *(disabled)*             | Write report as Markdown to this file                                               |
-| `--reflect-prompt-file` | *(built-in prompt)*  | `text/template` file overriding the reflect prompt (`{{.Score}}`, `{{.A.Name}}`, `{{.A.Body}}`, `{{.Evidence}}`, …) |
-| `--config`          | `.doppel.json` if present | Path to a JSON config file                                                         |
-| `--concept-model`   | *(inert)*                | Registered but currently unused — leftover from the removed LLM concepter           |
-| `--concept-prompt-file` | *(inert)*            | Registered but currently unused — leftover from the removed LLM concepter           |
+| Flag                | Default | Description                                                                 |
+| ------------------- | ------- | --------------------------------------------------------------------------- |
+| `-t`, `--threshold` | `0.60`  | Minimum code similarity score to report (0.0–1.0)                           |
+| `-n`, `--top`       | `20`    | Maximum number of pairs to show (`0` for no limit)                          |
+| `--struct-min`      | `0.0`   | Minimum structural overlap score (0.0–1.0) to keep a pair                   |
+| `--min-nodes`       | `12`    | Skip functions whose body has fewer than this many AST nodes. Guards against one-line accessors, which match each other perfectly and would otherwise flood the report |
+| `-o`, `--output`    | *(disabled)* | Write report as Markdown to this file. The stdout report is still printed |
+| `--config`          | `.doppel.json` if present | Path to a JSON config file                                |
+
+### Configuration
+
+Any flag above except `--config` can be set in a `.doppel.json` at the repo root. Keys are kebab-case, mirroring the flag names, and an explicit CLI flag always wins over the file:
+
+```json
+{
+  "threshold": 0.65,
+  "top": 10,
+  "struct-min": 0.4,
+  "output": "doppel-report.md"
+}
+```
+
+A missing config file is not an error; malformed JSON is.

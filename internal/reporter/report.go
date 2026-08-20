@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/lukse/doppel/internal/analyzer"
+	"github.com/lukse/doppel/internal/fingerprint"
 	"github.com/lukse/doppel/internal/parser"
 )
 
@@ -25,6 +26,7 @@ func Print(w io.Writer, pairs []analyzer.SimilarPair, threshold float64, totalFu
 		fmt.Fprintf(w, "#%-3d  score: %.4f\n", i+1, p.Score)
 		printUnit(w, "  A", p.A)
 		printUnit(w, "  B", p.B)
+		fmt.Fprintf(w, "  %s\n", breakdownLine(p.Breakdown))
 		if p.Evidence != nil {
 			fmt.Fprintf(w, "  structural overlap: %.2f", p.Evidence.OverlapScore)
 			if p.Evidence.MergeWorthy {
@@ -34,9 +36,6 @@ func Print(w io.Writer, pairs []analyzer.SimilarPair, threshold float64, totalFu
 			for _, reason := range p.Evidence.Reasons {
 				fmt.Fprintf(w, "    • %s\n", reason)
 			}
-		}
-		if p.Explanation != "" {
-			fmt.Fprintf(w, "  → %s\n", p.Explanation)
 		}
 		fmt.Fprintln(w)
 	}
@@ -63,6 +62,8 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, threshold float64,
 		mdTableRow(w, "B", p.B)
 		fmt.Fprintln(w)
 
+		fmt.Fprintf(w, "**Code similarity:** `%s`\n\n", breakdownLine(p.Breakdown))
+
 		if p.Evidence != nil {
 			label := "not merge-worthy"
 			if p.Evidence.MergeWorthy {
@@ -77,16 +78,14 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, threshold float64,
 			}
 		}
 
-		if p.Explanation != "" {
-			// Wrap explanation in a blockquote; handle multi-line responses
-			for _, line := range strings.Split(strings.TrimSpace(p.Explanation), "\n") {
-				fmt.Fprintf(w, "> %s\n", line)
-			}
-			fmt.Fprintln(w)
-		}
-
 		fmt.Fprintf(w, "---\n\n")
 	}
+}
+
+// breakdownLine renders the component scores behind a pair score, so a match
+// can be inspected without re-reading both function bodies.
+func breakdownLine(b fingerprint.Breakdown) string {
+	return fmt.Sprintf("ast %.2f  flow %.2f  sig %.2f  size %.2f", b.AST, b.Flow, b.Signature, b.SizeRatio)
 }
 
 func mdTableRow(w io.Writer, label string, u parser.CodeUnit) {
