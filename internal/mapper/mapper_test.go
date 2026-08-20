@@ -173,6 +173,38 @@ func two() {}`,
 	}
 }
 
+// On a dense corpus the adaptive threshold rises above the floor: a unit with
+// 2 callers is a "utility" under the historical fixed threshold but ordinary —
+// leaf — when over half the corpus has 2 or more callers.
+func TestMapAdaptiveThresholds(t *testing.T) {
+	// Degrees: t1,t3,t4,t5 have 2 callers, t2 has 3, the callers have 0.
+	// Sorted fan-in [0,0,0,2,2,2,2,3] has upper median 2, so the fan-in
+	// threshold rises to 3: two callers is ordinary here.
+	units, docs := buildCorpus(t, map[string]string{
+		"a/a.go": `package alpha
+func t1() {}
+func t2() {}
+func t3() {}
+func t4() {}
+func t5() {}
+func c1() { t1(); t2(); t3(); t4(); t5() }
+func c2() { t1(); t2(); t3(); t4(); t5() }
+func c3() { t2() }`,
+	})
+	// Sanity: t1 has exactly 2 callers, which would be "high" at the floor.
+	t1 := docByName(t, units, docs, "alpha.t1")
+	if len(t1.Callers) != 2 {
+		t.Fatalf("fixture broken: t1 has %d callers, want 2", len(t1.Callers))
+	}
+	if t1.Role != concepter.RoleLeaf {
+		t.Errorf("t1 role = %q, want leaf: 2 callers is ordinary in this corpus", t1.Role)
+	}
+	t2 := docByName(t, units, docs, "alpha.t2")
+	if t2.Role != concepter.RoleUtility {
+		t.Errorf("t2 role = %q, want utility: 3 callers clears the raised threshold", t2.Role)
+	}
+}
+
 func TestMapDeterministic(t *testing.T) {
 	files := map[string]string{
 		"a/a.go": `package alpha

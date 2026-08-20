@@ -23,6 +23,18 @@ func Map(units []parser.CodeUnit, g *concepter.Graph, c *concepter.Concepter) []
 		patternsByQN[concepter.QualifiedName(u)] = u.Patterns
 	}
 
+	// Derive the role thresholds from this corpus's own degree distribution
+	// before classifying anything: "high fan-in" should mean high for this
+	// repo, not high for a hard-coded idea of one.
+	fanIn := make([]int, len(units))
+	fanOut := make([]int, len(units))
+	for i, u := range units {
+		qn := concepter.QualifiedName(u)
+		fanIn[i] = len(g.Callers[qn])
+		fanOut[i] = len(g.Callees[qn])
+	}
+	th := concepter.ThresholdsFromDegrees(fanIn, fanOut)
+
 	docs := make([]concepter.ConceptDoc, len(units))
 	for i, u := range units {
 		doc := c.Generate(u)
@@ -30,7 +42,7 @@ func Map(units []parser.CodeUnit, g *concepter.Graph, c *concepter.Concepter) []
 		doc.Callers = g.Callers[qn]
 		doc.ResolvedCallees = g.Callees[qn]
 
-		doc.Role = concepter.ClassifyRole(len(doc.Callers), len(doc.ResolvedCallees))
+		doc.Role = concepter.ClassifyRoleAt(len(doc.Callers), len(doc.ResolvedCallees), th)
 		doc.CallerPatterns = collectPatterns(doc.Callers, patternsByQN)
 		doc.CalleePatterns = collectPatterns(doc.ResolvedCallees, patternsByQN)
 		doc.CallerPackages = collectPackages(doc.Callers)
