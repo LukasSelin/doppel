@@ -23,7 +23,7 @@ Orchestrated end to end by `runAnalyze` in `cmd/analyze.go`. Stages in execution
 1. **Walk & parse** — `filepath.WalkDir` + `shouldSkipDir`, then `parser.Parse` per `.go` file → `[]CodeUnit`. Unreadable files and parse errors are warned and skipped, never fatal. `fingerprint.Build` and `extractSignals` (the tagger's AST evidence) both run here, while the AST is still in hand.
 2. **Tag** — `tagger.Tag(unit)` sets `unit.Patterns` (9 intent tags matched against the unit's AST signals — selectors, imports, string-literal contents, identifiers, node kinds — never against raw source text). Tag counts feed the corpus IC in the same loop.
 3. **Build call graph** — `concepter.BuildCallGraph(units)` → `concepter.Graph`, both directions over **qualified names** (`package.Name`, methods keeping their receiver: `comparator.*Comparator.Compare`). A resolver maps each raw callee string to at most one unit: import-qualified selectors through the file's recorded import bindings (aliases included), variable-receiver method calls only when the method name is unique corpus-wide, bare names to the same-package function. Ambiguity drops the edge; recursion is excluded; only repo-internal edges exist. Happens *before* concept docs, because docs need caller lists.
-4. **Generate + enrich concept docs** — `concepter.New()` makes bare docs; **`mapper.Map` does the real work**: attaches qualified callers, resolved internal callees, and the depth-2 call-graph neighborhood; derives per-corpus role thresholds from the resolved degree distribution and classifies; aggregates caller/callee patterns and packages from resolved edges.
+4. **Generate + enrich concept docs** — `concepter.New()` makes bare docs; **`mapper.Map` does the real work**: attaches qualified callers, resolved internal callees, and the depth-2 call-graph neighborhood; derives per-corpus role thresholds from the resolved degree distribution and classifies; aggregates caller/callee patterns and packages from resolved edges. `culture.Build` then models the corpus's conceptual practice (see *Corpus culture*); its summary goes to stderr, and after the struct-min filter each surviving pair gets `Culture` notes for atypical realizations of its **shared** tags (positional attachment, like Evidence).
 5. **Candidate retrieval** — `retriever.Retrieve` runs three per-function top-K channels (structural shingle-IDF, concept IC, resolved-call IDF — see *Candidate retrieval* below), unions and dedupes them, and computes definitive per-pair evidence masses plus the exact `fingerprint.Breakdown` for every union pair. Retrieval stats go to stderr. `cmd` materializes the candidates into `analyzer.SimilarPair`s (with `Retrieval` set). `analyzer.FindSimilar` still exists as the simple library API but the pipeline no longer calls it.
 6. **Structural comparison** — a `comparator.Comparator` built over a corpus-weighted `ontology.Scorer` scores **every** candidate pair → `pair.Evidence`. Concept and role signals go through the ontology hierarchy, not string equality, and concept matching is weighted by information content computed from this run's tag counts — sharing a near-universal tag is weak evidence, sharing a rare one is strong.
 7. **Structural filter** — when `--struct-min > 0`, pairs below that overlap score are **dropped**. This is a selection stage, not just annotation.
@@ -51,6 +51,7 @@ internal/
   concepter/    ConceptDoc; callgraph.go (BuildCallGraph); role.go (ClassifyRole, role constants)
   mapper/       Where enrichment actually happens: callers, role classification, aggregated patterns/packages
   retriever/    Multi-channel candidate retrieval: shape.go / concept.go / calls.go inverted indexes, retriever.go union + evidence
+  culture/      Corpus-culture model: ecology.go (PMI associations), prototype.go (concept prototypes + typicality)
   analyzer/     SimilarPair + Retrieval types; FindSimilar (library API); SortByEvidence (final ranking)
   comparator/   Weighted structural overlap scoring (9 signals → 0.0–1.0 composite)
   reporter/     Plain-text (stdout) and Markdown (--output) formatting
@@ -61,7 +62,9 @@ Dependency directions that must hold: `analyzer` imports `comparator` (for the `
 never import `parser` — it works on `*ast.FuncDecl` directly. `ontology` imports nothing from this
 module and must stay that way: `tagger`, `concepter` and `comparator` all depend on it. `retriever`
 imports `parser`, `fingerprint`, `concepter`, `ontology` and must never import `analyzer` or
-`comparator` — `cmd` bridges retriever candidates into `analyzer.SimilarPair`.
+`comparator` — `cmd` bridges retriever candidates into `analyzer.SimilarPair`. `culture` imports
+`parser`, `concepter`, `fingerprint` only (not even `ontology` — it is a leaf-tag count model) and
+nothing imports it except `cmd`, which bridges its findings into `analyzer.CultureNote`.
 
 ## Two scores, deliberately unblended — and a third quantity that ranks
 
@@ -170,6 +173,37 @@ Consequences worth knowing:
 - `Stats.Suppressed` / `Stats.LargeBuckets` are diagnostics on stderr, not gates.
 - On the ~8.7k-function Sendify corpus: ~22k union pairs, ~2.5s end to end (the old all-pairs
   scoring took ~20s), ~60% of pairs call-only, ~9% concept-only.
+
+### Corpus culture
+
+`internal/culture` models the repo's *local conceptual practice* from counts alone — the ontology
+says what a concept is, culture says how this corpus normally expresses it. Built once per run by
+`culture.Build(units, docs, cg, DefaultOptions())`; summarized on stderr as
+`Culture: N concepts modeled, N associations, N unusual realizations`.
+
+**Ecology** — PMI associations over unit-level binary co-occurrence, three kinds: tag~tag,
+tag~role, tag~call (resolved call tokens, df ∈ [2, 50]). `PMI = ln(N·c(a,b)/(c(a)·c(b)))`.
+Reported only when informative: positives need `count >= 3` and `PMI >= ln 2`; negatives need
+`expected >= 3` and `count <= expected/2` (count 0 stores `PMI = -Inf`, rendered as "never" if
+ever rendered). Ordering: positives by PMI desc, negatives by PMI asc, ties on (Kind, A, B).
+**Associations are computed and pin-tested but deliberately unsurfaced per-pair** — an
+association annotates the corpus, not a pair; a future `doppel culture` command is their home.
+
+**Prototypes + typicality** — for each tag with **≥ 5 members**, five feature channels with
+integer-percent weights (sum pinned at exactly 100): calls 40 (resolved call tokens, no df cap —
+typicality measures normality, not rarity), flow 20 (binarized `FlowLabels`), cotags 15, role 15,
+package 10. Channel typicality is **leave-one-out**: for member i with feature set F,
+`T = Σ_{x∈F}(cnt(x)−1) / (|F|·(m−1))` — the mean over other members of `|F_i∩F_g|/|F_i|`,
+computed with an integer numerator so it is order-independent. Empty F scores
+`(#other empty members)/(m−1)` — doing nothing can be the norm, and no channel is ever skipped, so
+no weight renormalization exists. A member never certifies its own normality; identical members
+score exactly 1.0.
+
+`Atypical(i,c) ⇔ median(c) > 0 && Typ(i,c) < 0.5·median(c)` — relative to the concept's own
+median, so a legitimately diverse concept lowers its own bar and a tight concept can flag nobody.
+Membership stays binary (the tag); typicality grades it. The report surfaces notes only on a
+pair's **shared** tags ("you both claim transaction but B does it unlike anything else here" — the
+drift-vs-duplication signal), one `culture:` line per note, per-channel detail under `--debug`.
 
 ### Fingerprint scoring
 
@@ -377,8 +411,8 @@ Unknown keys are ignored rather than rejected, so a stale config file does not b
   `_test.go` files are **not** skipped, and test functions legitimately dominate the top of the
   report on this repo.
 - Tested: `ontology`, `fingerprint`, `analyzer`, `comparator`, `tagger`, `parser`,
-  `concepter/role`, `retriever`, `reporter`, `cmd` config precedence. Untested and worth
-  covering: `mapper`.
+  `concepter/role`, `retriever`, `culture`, `reporter`, `cmd` config precedence. Untested and
+  worth covering: `mapper`.
 
 ## Rough edges
 
@@ -411,6 +445,14 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   design trade (the old exhaustive `FindSimilar` pass remains available as a library call). The
   worst case of the inverted-index accumulation is `O(cap · postings)`, comfortably sub-quadratic
   at 10k functions (~2.5s on an 8.7k-function corpus, vs ~20s for the old all-pairs pass).
+- **Culture associations are computed but unsurfaced.** The ecology model (PMI associations) is
+  built, tested, and reported only as a stderr count — per-pair surfacing was deliberately
+  deferred because an association annotates the corpus, not a pair. A `doppel culture` command is
+  the natural next home. Relatedly, an unusual realization on a function that appears in *no*
+  retrieved pair is invisible in the report (stderr count only).
+- **Typicality is corpus-relative, like roles.** A function's typicality — and whether a pair
+  carries a culture note — can change when unrelated code shifts the concept's membership or the
+  corpus norm. That is what "normal for this repo" means; same caveat as the role thresholds.
 - **Repetitive scaffolding clusters can dominate the evidence ranking.** Fifteen `cmd/tool`
   `main.main` functions sharing ~100 mid-frequency setup calls each carry ~600 nats of call
   evidence and fill the Sendify top-20. That is real duplication, but it crowds the default view;

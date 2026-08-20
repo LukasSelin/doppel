@@ -79,6 +79,63 @@ func TestPrintMarkdownLabels(t *testing.T) {
 	}
 }
 
+func cultureNote() analyzer.CultureNote {
+	return analyzer.CultureNote{
+		Tag: "transaction", Side: "B", Typicality: 0.21, ConceptMedian: 0.68,
+		Channels: []analyzer.CultureChannel{
+			{Name: "calls", Typicality: 0.10}, {Name: "flow", Typicality: 0.45},
+			{Name: "cotags", Typicality: 0.20}, {Name: "role", Typicality: 0.00},
+			{Name: "package", Typicality: 0.30},
+		},
+	}
+}
+
+func TestPrintCultureNotes(t *testing.T) {
+	pair := samplePair(nil)
+	pair.Culture = []analyzer.CultureNote{cultureNote()}
+
+	var plain strings.Builder
+	Print(&plain, []analyzer.SimilarPair{pair}, Meta{})
+	if !strings.Contains(plain.String(),
+		"culture: B realizes transaction atypically (typicality 0.21, concept median 0.68)") {
+		t.Errorf("plain report missing culture line:\n%s", plain.String())
+	}
+	if strings.Contains(plain.String(), "channels:") {
+		t.Errorf("channel detail shown without Debug:\n%s", plain.String())
+	}
+
+	var debug strings.Builder
+	Print(&debug, []analyzer.SimilarPair{pair}, Meta{Debug: true})
+	if !strings.Contains(debug.String(),
+		"    channels: calls 0.10  flow 0.45  cotags 0.20  role 0.00  package 0.30") {
+		t.Errorf("debug report missing channels line:\n%s", debug.String())
+	}
+}
+
+func TestPrintMarkdownCultureNotes(t *testing.T) {
+	pair := samplePair(nil)
+	pair.Culture = []analyzer.CultureNote{cultureNote()}
+
+	var b strings.Builder
+	PrintMarkdown(&b, []analyzer.SimilarPair{pair}, Meta{Debug: true})
+	out := b.String()
+	if !strings.Contains(out,
+		"**Culture:** B realizes `transaction` atypically (typicality 0.21, concept median 0.68)") {
+		t.Errorf("markdown missing culture line:\n%s", out)
+	}
+	if !strings.Contains(out, "**Channels (B/transaction):** calls 0.10  flow 0.45") {
+		t.Errorf("markdown debug missing channels line:\n%s", out)
+	}
+}
+
+func TestPrintNilCultureRendersNothingNew(t *testing.T) {
+	var b strings.Builder
+	Print(&b, []analyzer.SimilarPair{samplePair(nil)}, Meta{Debug: true})
+	if strings.Contains(b.String(), "culture:") {
+		t.Errorf("nil-Culture pair rendered a culture line:\n%s", b.String())
+	}
+}
+
 func TestPrintEmpty(t *testing.T) {
 	var b strings.Builder
 	Print(&b, nil, Meta{Threshold: 0.6, TotalFuncs: 5})

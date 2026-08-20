@@ -16,6 +16,24 @@ type SimilarPair struct {
 	Breakdown  fingerprint.Breakdown          // per-component scores behind Score
 	Evidence   *comparator.StructuralEvidence // populated by structural comparison stage; nil until then
 	Retrieval  *Retrieval                     // multi-channel retrieval evidence; nil for FindSimilar-produced pairs
+	Culture    []CultureNote                  // unusual concept realizations; nil when none — set by the pipeline
+}
+
+// CultureNote flags one side of a pair as an unusual realization of a shared
+// concept: it carries the tag, but its typicality sits far below the corpus
+// norm for that concept. Culture annotates; it never affects ranking.
+type CultureNote struct {
+	Tag           string
+	Side          string // "A" or "B"
+	Typicality    float64
+	ConceptMedian float64
+	Channels      []CultureChannel // per-channel typicality; rendered only under --debug
+}
+
+// CultureChannel is one channel's contribution to a CultureNote's typicality.
+type CultureChannel struct {
+	Name       string
+	Typicality float64
 }
 
 // Retrieval carries the candidate-retrieval evidence for a pair: per-channel

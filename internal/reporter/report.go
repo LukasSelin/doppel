@@ -44,6 +44,13 @@ func Print(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 				fmt.Fprintf(w, "  retrieved-via: %s\n", strings.Join(p.Retrieval.Channels, "+"))
 			}
 		}
+		for _, note := range p.Culture {
+			fmt.Fprintf(w, "  culture: %s realizes %s atypically (typicality %.2f, concept median %.2f)\n",
+				note.Side, note.Tag, note.Typicality, note.ConceptMedian)
+			if meta.Debug {
+				fmt.Fprintf(w, "    channels: %s\n", cultureChannelLine(note.Channels))
+			}
+		}
 		if p.Evidence != nil {
 			fmt.Fprintf(w, "  structural overlap: %.2f", p.Evidence.OverlapScore)
 			if p.Evidence.MergeWorthy {
@@ -89,6 +96,15 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 			}
 		}
 
+		for _, note := range p.Culture {
+			fmt.Fprintf(w, "**Culture:** %s realizes `%s` atypically (typicality %.2f, concept median %.2f)\n\n",
+				note.Side, mdEscape(note.Tag), note.Typicality, note.ConceptMedian)
+			if meta.Debug {
+				fmt.Fprintf(w, "**Channels (%s/%s):** %s\n\n",
+					note.Side, mdEscape(note.Tag), cultureChannelLine(note.Channels))
+			}
+		}
+
 		if p.Evidence != nil {
 			label := "not merge-worthy"
 			if p.Evidence.MergeWorthy {
@@ -107,6 +123,16 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 
 		fmt.Fprintf(w, "---\n\n")
 	}
+}
+
+// cultureChannelLine renders a note's per-channel typicalities in their
+// fixed channel order.
+func cultureChannelLine(channels []analyzer.CultureChannel) string {
+	parts := make([]string, 0, len(channels))
+	for _, ch := range channels {
+		parts = append(parts, fmt.Sprintf("%s %.2f", ch.Name, ch.Typicality))
+	}
+	return strings.Join(parts, "  ")
 }
 
 // breakdownLine renders the component scores behind a pair score, so a match

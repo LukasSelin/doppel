@@ -6,10 +6,12 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/lukse/doppel/internal/analyzer"
 	"github.com/lukse/doppel/internal/comparator"
 	"github.com/lukse/doppel/internal/concepter"
+	"github.com/lukse/doppel/internal/culture"
 	"github.com/lukse/doppel/internal/mapper"
 	"github.com/lukse/doppel/internal/ontology"
 	"github.com/lukse/doppel/internal/parser"
@@ -118,6 +120,13 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	cptr := concepter.New()
 	docs := mapper.Map(units, cg, cptr)
 
+	// Model the corpus's own conceptual practice: which concepts/roles/calls
+	// co-occur beyond chance, and how each concept is normally realized here.
+	cult := culture.Build(units, docs, cg, culture.DefaultOptions())
+	cs := cult.Stats()
+	fmt.Fprintf(os.Stderr, "Culture: %d concepts modeled, %d associations, %d unusual realizations\n",
+		cs.ConceptsModeled, cs.AssociationCount, cs.UnusualRealizations)
+
 	// Multi-channel candidate retrieval: structural shape, shared concepts,
 	// and shared resolved calls each retrieve per-function top-K neighbors
 	// weighted by corpus rarity; the union goes to the expensive comparator.
@@ -169,6 +178,13 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Annotate surviving pairs with unusual concept realizations — positional
+	// lookup, like Evidence attachment; never name-keyed.
+	for i := range pairs {
+		pairs[i].Culture = cultureNotes(cult, pairs[i].AIdx, pairs[i].BIdx,
+			pairs[i].A.Patterns, pairs[i].B.Patterns)
+	}
+
 	// Final ranking: retrieval evidence mass decides the report order; the
 	// code-shape and overlap scores stay unblended, displayed per pair.
 	pairs = analyzer.SortByEvidence(pairs, topN)
@@ -203,6 +219,55 @@ func printRetrievalStats(w io.Writer, s retriever.Stats) {
 	}
 	fmt.Fprintf(w, "  concept-only %.1f%%  call-only %.1f%%  suppressed-shape functions: %d  large identity buckets: %d\n",
 		pct(s.OnlyConcept), pct(s.OnlyCall), s.Suppressed, s.LargeBuckets)
+}
+
+// cultureNotes flags unusual concept realizations on a pair's shared tags:
+// the pair report explains this pair, and "you both claim transaction but one
+// side does it unlike anything else here" is the drift-vs-duplication signal.
+// Tags ascend, side A precedes B, so note order is deterministic.
+func cultureNotes(cult *culture.Model, aIdx, bIdx int, aTags, bTags []string) []analyzer.CultureNote {
+	inB := make(map[string]bool, len(bTags))
+	for _, t := range bTags {
+		inB[t] = true
+	}
+	shared := make(map[string]bool)
+	for _, t := range aTags {
+		if inB[t] {
+			shared[t] = true
+		}
+	}
+	tags := make([]string, 0, len(shared))
+	for t := range shared {
+		tags = append(tags, t)
+	}
+	sort.Strings(tags)
+
+	var notes []analyzer.CultureNote
+	for _, tag := range tags {
+		for _, side := range []struct {
+			label string
+			idx   int
+		}{{"A", aIdx}, {"B", bIdx}} {
+			if !cult.Atypical(side.idx, tag) {
+				continue
+			}
+			typ, _ := cult.Typicality(side.idx, tag)
+			median, _ := cult.Median(tag)
+			note := analyzer.CultureNote{
+				Tag:           tag,
+				Side:          side.label,
+				Typicality:    typ,
+				ConceptMedian: median,
+			}
+			for _, ch := range cult.ChannelTypicality(side.idx, tag) {
+				note.Channels = append(note.Channels, analyzer.CultureChannel{
+					Name: ch.Name, Typicality: ch.Typicality,
+				})
+			}
+			notes = append(notes, note)
+		}
+	}
+	return notes
 }
 
 func shouldSkipDir(name string) bool {
