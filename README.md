@@ -1,6 +1,6 @@
 # doppel
 
-A CLI tool that detects semantically similar functions across a Go codebase using local AI embeddings. It helps identify duplicate logic and refactoring opportunities by comparing function bodies with vector similarity rather than text matching.
+A CLI tool that detects semantically similar functions across a Go codebase using local AI embeddings. It helps identify duplicate logic and refactoring opportunities by comparing structural concept documents — call graph context, intent patterns and role — with vector similarity rather than text matching.
 
 For a detailed breakdown of the pipeline internals, see [How Doppel Works](.github/wiki/how-it-works.md).
 
@@ -8,7 +8,7 @@ For a detailed breakdown of the pipeline internals, see [How Doppel Works](.gith
 
 **Prerequisites:**
 
-- [Go 1.21+](https://go.dev/dl/)
+- [Go 1.25+](https://go.dev/dl/)
 - [Ollama](https://ollama.com) running locally
 
 **Pull the models and run:**
@@ -24,17 +24,17 @@ This scans the current directory, embeds every Go function, finds structurally s
 
 ## Installation
 
-```bash
-go install github.com/LukasSelin/doppel@latest
-```
-
-Or build from source:
+Build from source:
 
 ```bash
 git clone https://github.com/LukasSelin/doppel
 cd doppel
 go build -o doppel .
 ```
+
+> `go install` is not yet supported: `go.mod` declares the module as
+> `github.com/lukse/doppel`, which does not resolve to this repository. Enabling it
+> requires renaming the module path to `github.com/LukasSelin/doppel`.
 
 ## Usage
 
@@ -64,8 +64,12 @@ doppel analyze . --reflect-model llama3.2 --struct-min 0.4 --output report.md
 | `-m`, `--model`     | `nomic-embed-text`       | Ollama embedding model to use                                                       |
 | `--ollama-url`      | `http://localhost:11434` | Ollama base URL                                                                     |
 | `--cache`           | `.embeddings.json`       | Embedding cache file (empty string disables caching)                                |
-| `--max-input`       | `8192`                   | Max bytes of each function body sent to the embedder                                |
+| `--max-input`       | `8192`                   | Max UTF-8 bytes of each concept doc sent to the embedder (auto-shrinks on context errors) |
 | `--ollama-num-ctx`  | `0` (server default)     | Ollama `options.num_ctx` token limit                                                |
 | `--struct-min`      | `0.0`                    | Minimum structural overlap score (0.0–1.0) to keep a pair after embedding selection |
 | `--reflect-model`   | *(disabled)*             | Ollama chat model for merge explanations (e.g. `llama3.2`)                          |
 | `-o`, `--output`    | *(disabled)*             | Write report as Markdown to this file                                               |
+| `--reflect-prompt-file` | *(built-in prompt)*  | `text/template` file overriding the reflect prompt (`{{.Score}}`, `{{.A.Name}}`, `{{.A.Body}}`, `{{.Evidence}}`, …) |
+| `--config`          | `.doppel.json` if present | Path to a JSON config file                                                         |
+| `--concept-model`   | *(inert)*                | Registered but currently unused — leftover from the removed LLM concepter           |
+| `--concept-prompt-file` | *(inert)*            | Registered but currently unused — leftover from the removed LLM concepter           |

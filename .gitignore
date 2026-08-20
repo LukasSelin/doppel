@@ -6,6 +6,7 @@ doppel.exe
 
 # Generated output
 report.md
+doppel-report.md
 .embeddings.json
 *.embeddings.json
 
