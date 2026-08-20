@@ -193,12 +193,12 @@ Three quantities per pair, all from one sorted-intersection pass (`pairEvidence`
 
 - **Shape evidence** = `Σ idf·min(count)` over cap-surviving shared patterns — shared structural
   energy, the retrieval mass.
-- **TrophicSimilarity** = `2·SharedEnergy / (E_A + E_B)`, reported as `trophic:`. The denominator
-  energy covers **all** of each side's patterns — unique structure (df 1) at maximal idf and
-  capped idioms at their true small idf — while the numerator only counts cap-surviving shared
-  patterns. That asymmetry is load-bearing: it is what makes idiom twins (`DataSourceName ↔
-  Error`) read ~0.00 instead of a degenerate 1.00. Do not "simplify" the two energy definitions
-  into one.
+- **TrophicSimilarity** = `2·SharedEnergy / (E_A + E_B)`, reported as `trophic:`, where energy on
+  both sides is **cap-surviving (informative) energy only**. Exact clones of a rich function read
+  1.00; an idiom bucket whose every pattern exceeds the df cap reads 0/0 = 0.00 (`DataSourceName ↔
+  Error`); everything between is the fraction of informative structure the pair shares. Two exact
+  twins whose shape sits *between* df 2 and the cap legitimately read 1.00 with small energy — the
+  energy ranks, trophic explains.
 - **Shared chains** = the highest-energy shared L2/L3 patterns, `(energy desc, level desc,
   render asc)`, top `ChainTopN` (3 default, 20 under `--debug`) — rendered as the
   `shared structure:` block. A match has weight because of what it shares.
@@ -488,11 +488,11 @@ Known traps, documented so they aren't rediscovered. None are fixed:
 - **Nested loops double-count inner calls in loop summaries.** An inner loop's callees appear in
   both its own L3 summary and every enclosing loop's — each container is a real behavioral unit,
   and de-duplicating would cost a pass per nesting level for no scoring benefit. Accepted.
-- **Trophic similarity of a pair of exact clones with mid-frequency structure is 1.0.** Any
-  normalized similarity gives identical inputs 1.0; the suppression story for trivia relies on the
-  df cap zeroing the numerator, which only engages once the idiom bucket exceeds `MaxPatternDF`.
-  Between df=2 and the cap, exact twins legitimately read trophic 1.0 with *small* energy — the
-  energy is what ranks, so this is display-level nuance, not a scoring bug.
+- **Trophic similarity of exact mid-frequency twins is 1.0.** Any normalized similarity gives
+  identical inputs 1.0; trivia suppression relies on the df cap zeroing *both* sides of the Dice,
+  which only engages once the idiom bucket exceeds `MaxPatternDF`. Between df=2 and the cap, exact
+  twins read trophic 1.0 with *small* energy — the energy is what ranks, so this is display-level
+  nuance, not a scoring bug.
 - **Repetitive scaffolding clusters can dominate the evidence ranking.** Fifteen `cmd/tool`
   `main.main` functions sharing ~100 mid-frequency setup calls each carry ~600 nats of call
   evidence and fill the Sendify top-20. That is real duplication, but it crowds the default view;

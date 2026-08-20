@@ -121,20 +121,15 @@ func buildShapeIndex(units []parser.CodeUnit, opt Options) *shapeIndex {
 			x.idf[h] = math.Log(float64(nEligible) / float64(n))
 		}
 	}
-	// A unit's total energy covers ALL its patterns — unique structure (df 1)
-	// at maximal idf and corpus idioms (df > cap) at their small true idf —
-	// while shared mass only ever counts cap-surviving patterns. That
-	// asymmetry is what makes trophic similarity honest: an idiom bucket's
-	// members have real structure in the denominator but their shared idiom
-	// earns no credit in the numerator, so trivia pairs score ~0 instead of
-	// a degenerate 1.0.
+	// A unit's energy is its cap-surviving (informative) structure, so
+	// trophic similarity is the Dice over informative energy: exact clones of
+	// a rich function score 1.0, a fully-capped idiom bucket scores 0/0 = 0,
+	// and everything between reads as the fraction of informative structure
+	// the pair shares. Common idioms count on neither side by construction.
 	for i := range units {
-		if !eligible[i] {
-			continue
-		}
 		var e float64
-		for _, p := range units[i].Fingerprint.Patterns { // ascending hash: fixed float order
-			e += math.Log(float64(nEligible)/float64(df[p.Hash])) * float64(p.Count)
+		for _, sp := range x.surviving[i] { // ascending hash: fixed float order
+			e += x.idf[sp.hash] * float64(sp.count)
 		}
 		x.energy[i] = e
 	}
