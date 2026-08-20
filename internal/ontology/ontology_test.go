@@ -116,8 +116,11 @@ func TestChildrenAreSorted(t *testing.T) {
 
 func TestWeight(t *testing.T) {
 	o := Default()
-	if got := o.Weight(RelCalls); got != 0.225 {
-		t.Errorf("Weight(calls) = %v, want 0.225", got)
+	if got := o.Weight(RelCalls); got != 0.210 {
+		t.Errorf("Weight(calls) = %v, want 0.210", got)
+	}
+	if got := o.Weight(RelSharesNeighborhood); got != 0.030 {
+		t.Errorf("Weight(shares_neighborhood) = %v, want 0.030", got)
 	}
 	if got := o.Weight(ConHTTPCall); got != 0 {
 		t.Errorf("Weight of a non-relation = %v, want 0", got)

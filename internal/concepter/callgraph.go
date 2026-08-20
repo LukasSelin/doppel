@@ -165,6 +165,43 @@ func BuildCallGraph(units []parser.CodeUnit) *Graph {
 	return g
 }
 
+// Neighborhood returns the depth-2 ball around a unit: its direct callers and
+// resolved callees, plus theirs, minus the unit itself. Sorted.
+//
+// A ball, not a sphere: two functions whose friends-of-friends coincide while
+// their direct neighbors are disjoint share nothing structurally meaningful,
+// so distance-1 neighbors stay in. The unit itself is excluded — membership in
+// your own neighborhood says nothing.
+func (g *Graph) Neighborhood(qualified string) []string {
+	direct := make(map[string]struct{})
+	for _, n := range g.Callers[qualified] {
+		direct[n] = struct{}{}
+	}
+	for _, n := range g.Callees[qualified] {
+		direct[n] = struct{}{}
+	}
+	ball := make(map[string]struct{}, len(direct))
+	for n := range direct {
+		ball[n] = struct{}{}
+		for _, nn := range g.Callers[n] {
+			ball[nn] = struct{}{}
+		}
+		for _, nn := range g.Callees[n] {
+			ball[nn] = struct{}{}
+		}
+	}
+	delete(ball, qualified)
+	if len(ball) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(ball))
+	for n := range ball {
+		out = append(out, n)
+	}
+	sort.Strings(out)
+	return out
+}
+
 func appendUnique(slice []string, s string) []string {
 	for _, v := range slice {
 		if v == s {

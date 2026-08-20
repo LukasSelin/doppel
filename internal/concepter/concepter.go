@@ -16,6 +16,7 @@ type ConceptDoc struct {
 	Callers         []string // qualified names of functions that call this one; from call graph
 	Callees         []string // AST-derived outgoing call edges, raw strings incl. stdlib
 	ResolvedCallees []string // qualified names of repo-internal callees; from call graph
+	Neighborhood    []string // depth-2 call-graph ball, qualified names, self excluded
 	Patterns        []string // tagger tags
 	Role            string   // structural role: leaf, utility, orchestrator, passthrough
 	CallerPatterns  []string // aggregated intent tags from caller functions

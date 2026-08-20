@@ -41,6 +41,7 @@ func Map(units []parser.CodeUnit, g *concepter.Graph, c *concepter.Concepter) []
 		qn := concepter.QualifiedName(u)
 		doc.Callers = g.Callers[qn]
 		doc.ResolvedCallees = g.Callees[qn]
+		doc.Neighborhood = g.Neighborhood(qn)
 
 		doc.Role = concepter.ClassifyRoleAt(len(doc.Callers), len(doc.ResolvedCallees), th)
 		doc.CallerPatterns = collectPatterns(doc.Callers, patternsByQN)

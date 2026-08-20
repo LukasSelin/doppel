@@ -249,6 +249,27 @@ func shared() {}`,
 	}
 }
 
+// Diamond: a calls b and c, b and c call d. N2(a) must reach d through both
+// arms while excluding a itself.
+func TestNeighborhoodDiamond(t *testing.T) {
+	units := corpus(t, map[string]string{
+		"a/a.go": `package alpha
+func a() { b(); c() }
+func b() { d() }
+func c() { d() }
+func d() {}`,
+	})
+	g := BuildCallGraph(units)
+	assertEdges(t, g.Neighborhood("alpha.a"), "alpha.b", "alpha.c", "alpha.d")
+	// d's ball: direct callers b,c, plus their caller a.
+	assertEdges(t, g.Neighborhood("alpha.d"), "alpha.a", "alpha.b", "alpha.c")
+	// An isolated function has no neighborhood at all.
+	iso := corpus(t, map[string]string{"i/i.go": "package iso\nfunc alone() {}"})
+	if got := BuildCallGraph(iso).Neighborhood("iso.alone"); got != nil {
+		t.Errorf("isolated neighborhood = %v, want nil", got)
+	}
+}
+
 func TestBuildCallGraphDeterministic(t *testing.T) {
 	units := corpus(t, map[string]string{
 		"a/a.go": `package alpha

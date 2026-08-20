@@ -171,7 +171,7 @@ func TestRelationWeightsSumToOne(t *testing.T) {
 	if !closeTo(sum, 1.0) {
 		t.Errorf("relation weights sum to %v, want 1.0", sum)
 	}
-	if scored != 11 {
-		t.Errorf("got %d scored relations, want 11", scored)
+	if scored != 12 {
+		t.Errorf("got %d scored relations, want 12", scored)
 	}
 }

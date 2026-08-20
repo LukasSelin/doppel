@@ -79,6 +79,8 @@ type StructuralEvidence struct {
 	RelatedCallerConcepts    []ontology.Match
 	CalleeConceptRelatedness float64 // what the two functions' callees do
 	RelatedCalleeConcepts    []ontology.Match
+	SharedNeighborhood       []string // depth-2 call-graph names both sit near
+	NeighborhoodOverlap      float64  // ratio behind the shares_neighborhood signal
 
 	OverlapScore float64  // 0.0–1.0 weighted composite
 	MergeWorthy  bool     // heuristic: high overlap + multiple signals
@@ -123,6 +125,17 @@ func (c *Comparator) Compare(a, b concepter.ConceptDoc) StructuralEvidence {
 		EntityKindA:         string(ontology.EntityKindOf(a.ReceiverType)),
 		EntityKindB:         string(ontology.EntityKindOf(b.ReceiverType)),
 	}
+	// Each side's depth-2 neighborhood, with the counterpart excluded: if a
+	// calls b then b sits in a's ball but never its own, so without the
+	// exclusion every directly-connected pair pays a systematic penalty in the
+	// symmetric difference. (The other direction of that asymmetry is inherent:
+	// a's ball then contains b's whole 1-neighborhood, mildly favoring adjacent
+	// pairs. Acceptable at this weight — adjacent nodes are structurally close.)
+	nbrA := excludeName(a.Neighborhood, qualifiedDocName(b))
+	nbrB := excludeName(b.Neighborhood, qualifiedDocName(a))
+	ev.SharedNeighborhood = intersect(nbrA, nbrB)
+	ev.NeighborhoodOverlap = overlapRatio(nbrA, nbrB, ev.SharedNeighborhood)
+
 	ev.PatternRelatedness, ev.RelatedPatterns = c.scorer.SetRelatedness(a.Patterns, b.Patterns)
 	ev.CallerConceptRelatedness, ev.RelatedCallerConcepts = c.scorer.SetRelatedness(a.CallerPatterns, b.CallerPatterns)
 	ev.CalleeConceptRelatedness, ev.RelatedCalleeConcepts = c.scorer.SetRelatedness(a.CalleePatterns, b.CalleePatterns)
@@ -144,6 +157,7 @@ func (c *Comparator) Compare(a, b concepter.ConceptDoc) StructuralEvidence {
 		onto.Weight(ontology.RelCalls)*overlapRatio(a.Callees, b.Callees, ev.SharedCallees) +
 		onto.Weight(ontology.RelExhibits)*ev.PatternRelatedness +
 		onto.Weight(ontology.RelCalledBy)*overlapRatio(a.Callers, b.Callers, ev.SharedCallers) +
+		onto.Weight(ontology.RelSharesNeighborhood)*ev.NeighborhoodOverlap +
 		onto.Weight(ontology.RelHasRole)*ev.RoleRelatedness +
 		onto.Weight(ontology.RelDeclaredIn)*boolFloat(ev.SamePackage) +
 		onto.Weight(ontology.RelCalledFromConcept)*ev.CallerConceptRelatedness +
@@ -223,6 +237,12 @@ func buildReasons(ev StructuralEvidence) []string {
 	}
 	if len(ev.SharedCallers) > 0 {
 		reasons = append(reasons, fmt.Sprintf("share %d callers: [%s]", len(ev.SharedCallers), strings.Join(ev.SharedCallers, ", ")))
+	}
+	// Count only: depth-2 name lists run long enough to bury a report, and the
+	// names are still on the struct for anyone who asks.
+	if ev.NeighborhoodOverlap > 0 {
+		reasons = append(reasons, fmt.Sprintf("overlapping call-graph neighborhoods (%.2f): %d shared",
+			ev.NeighborhoodOverlap, len(ev.SharedNeighborhood)))
 	}
 	if len(ev.SharedPatterns) > 0 {
 		reasons = append(reasons, fmt.Sprintf("share patterns: [%s]", strings.Join(ev.SharedPatterns, ", ")))
@@ -315,6 +335,27 @@ func sharedAxis(a, b string) string {
 		return "both high fan-out"
 	}
 	return "related"
+}
+
+// qualifiedDocName mirrors concepter.QualifiedName for a ConceptDoc.
+func qualifiedDocName(d concepter.ConceptDoc) string {
+	if d.Package == "" {
+		return d.Name
+	}
+	return d.Package + "." + d.Name
+}
+
+// excludeName returns names without the given entry, sharing the input slice
+// when the entry is absent.
+func excludeName(names []string, drop string) []string {
+	for i, n := range names {
+		if n == drop {
+			out := make([]string, 0, len(names)-1)
+			out = append(out, names[:i]...)
+			return append(out, names[i+1:]...)
+		}
+	}
+	return names
 }
 
 // intersect returns the sorted intersection of two sorted string slices.

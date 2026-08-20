@@ -15,10 +15,12 @@ func approx(got, want float64) bool { return math.Abs(got-want) < 1e-9 }
 // bracket, so a change in the weight table shows up as a diff here rather than
 // silently using up the slack in a bound.
 //
-// The nine original weights were scaled by 0.9 to make room for the two
-// caller/callee concept signals, so every score is 0.9x its historical value.
-// None of these documents carries caller or callee patterns, so the two new
-// signals contribute nothing and the scaling is the whole difference.
+// Two weight changes separate these from the historical values. First the nine
+// original weights were scaled by 0.9 for the caller/callee concept signals;
+// then shares_neighborhood took 0.030 out of calls (0.210) and called_by
+// (0.120). These documents carry no caller/callee patterns and no
+// neighborhoods, so the new signals contribute nothing and the re-weighted
+// calls/called_by terms are the whole difference from the previous pins.
 func TestCompareExactScores(t *testing.T) {
 	tests := []struct {
 		name string
@@ -31,7 +33,7 @@ func TestCompareExactScores(t *testing.T) {
 				Callees: []string{"bar", "baz"}, Callers: []string{"main"}, Patterns: []string{"retry", "http_call"}},
 			b: concepter.ConceptDoc{Name: "foo2", Package: "pkg", Exported: true, Role: "utility",
 				Callees: []string{"bar", "baz"}, Callers: []string{"main"}, Patterns: []string{"retry", "http_call"}},
-			want: 0.855, // was 0.950
+			want: 0.825, // was 0.950, then 0.855
 		},
 		{
 			name: "completely disjoint",
@@ -39,7 +41,7 @@ func TestCompareExactScores(t *testing.T) {
 				Callees: []string{"x"}, Patterns: []string{"retry"}},
 			b: concepter.ConceptDoc{Name: "beta", Package: "pkgB", Exported: false, Role: "orchestrator",
 				Callees: []string{"y"}, Patterns: []string{"db_access"}},
-			want: 0.045, // was 0.050
+			want: 0.045, // was 0.050; no calls/called_by contribution, so both carves leave it
 		},
 		{
 			name: "partial overlap",
@@ -47,13 +49,13 @@ func TestCompareExactScores(t *testing.T) {
 				Callees: []string{"validate", "save", "notify"}, Patterns: []string{"validation", "db_access"}},
 			b: concepter.ConceptDoc{Name: "handler2", Package: "api", Exported: true, Role: "utility",
 				Callees: []string{"validate", "save", "log"}, Patterns: []string{"validation"}},
-			want: 0.420, // was 0.4667; still clears the 0.4 merge threshold
+			want: 0.410, // was 0.4667, then 0.420; still clears the 0.4 merge threshold, now with 0.010 slack
 		},
 		{
 			name: "empty slices",
 			a:    concepter.ConceptDoc{Name: "empty1", Package: "pkg", Role: "leaf"},
 			b:    concepter.ConceptDoc{Name: "empty2", Package: "pkg", Role: "leaf"},
-			want: 0.315, // was 0.350
+			want: 0.315, // was 0.350; no calls/called_by contribution, so both carves leave it
 		},
 		{
 			name: "same receiver type methods",
@@ -61,7 +63,7 @@ func TestCompareExactScores(t *testing.T) {
 				Role: "orchestrator", Callees: []string{"listen", "serve"}, Patterns: []string{"concurrency"}},
 			b: concepter.ConceptDoc{Name: "Server.Stop", Package: "http", Exported: true, ReceiverType: "*Server",
 				Role: "orchestrator", Callees: []string{"shutdown", "serve"}, Patterns: []string{"concurrency"}},
-			want: 0.6075, // was 0.675
+			want: 0.600, // was 0.675, then 0.6075
 		},
 	}
 	for _, tt := range tests {
