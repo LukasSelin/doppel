@@ -2,6 +2,7 @@ package parser
 
 import (
 	"go/ast"
+	"path"
 	"sort"
 	"strconv"
 	"strings"
@@ -16,13 +17,39 @@ import (
 // Everything is deduplicated and sorted, so downstream consumers inherit
 // deterministic ordering for free.
 type TagSignals struct {
-	Imports    []string // import paths of the enclosing file, unquoted
-	Selectors  []string // every x.Sel expression in the body, call or not (sync.Map, sql.DB, atomic.AddInt64)
-	StringLits []string // contents of string literals in the body, unquoted
-	IdentNames []string // every identifier in the body, plus the function's own name
-	HasGoStmt  bool     // go statement anywhere in the body
-	HasSelect  bool     // select statement anywhere in the body
-	HasChan    bool     // channel type in the body or the signature
+	Imports     []string     // import paths of the enclosing file, unquoted
+	PackageRefs []PackageRef // local import name -> path, sorted by Local; see PackageRef
+	Selectors   []string     // every x.Sel expression in the body, call or not (sync.Map, sql.DB, atomic.AddInt64)
+	StringLits  []string     // contents of string literals in the body, unquoted
+	IdentNames  []string     // every identifier in the body, plus the function's own name
+	HasGoStmt   bool         // go statement anywhere in the body
+	HasSelect   bool         // select statement anywhere in the body
+	HasChan     bool         // channel type in the body or the signature
+}
+
+// PackageRef records one import binding of the enclosing file: the local name
+// a package is reachable under, and the path it resolves to. For an unaliased
+// import the local name is the path's last segment; an alias wins over that;
+// dot and blank imports bind no usable name and are skipped.
+//
+// This is what lets a resolver ask the question the substring era could not:
+// is the receiver in "x.Sel" an imported package or a local variable? A sorted
+// pair slice rather than a map, keeping TagSignals' documented invariant that
+// every field is deduplicated and sorted.
+type PackageRef struct {
+	Local string
+	Path  string
+}
+
+// RefPath returns the import path bound to a local name, if any. Import lists
+// are tiny; a linear scan is fine, and callers needing O(1) build their own map.
+func (s TagSignals) RefPath(local string) (string, bool) {
+	for _, ref := range s.PackageRefs {
+		if ref.Local == local {
+			return ref.Path, true
+		}
+	}
+	return "", false
 }
 
 // extractSignals walks the declaration once and collects every channel of tag
@@ -34,12 +61,32 @@ func extractSignals(fd *ast.FuncDecl, file *ast.File) TagSignals {
 	sig := TagSignals{}
 
 	importSet := make(map[string]struct{})
+	refs := make(map[string]string)
 	for _, imp := range file.Imports {
-		if path, err := strconv.Unquote(imp.Path.Value); err == nil {
-			importSet[path] = struct{}{}
+		p, err := strconv.Unquote(imp.Path.Value)
+		if err != nil {
+			continue
 		}
+		importSet[p] = struct{}{}
+		local := path.Base(p)
+		if imp.Name != nil {
+			local = imp.Name.Name
+		}
+		if local == "." || local == "_" {
+			continue // dot and blank imports bind no selector-usable name
+		}
+		refs[local] = p
 	}
 	sig.Imports = sortedSet(importSet)
+	if len(refs) > 0 {
+		sig.PackageRefs = make([]PackageRef, 0, len(refs))
+		for local, p := range refs {
+			sig.PackageRefs = append(sig.PackageRefs, PackageRef{Local: local, Path: p})
+		}
+		sort.Slice(sig.PackageRefs, func(i, j int) bool {
+			return sig.PackageRefs[i].Local < sig.PackageRefs[j].Local
+		})
+	}
 
 	selectors := make(map[string]struct{})
 	literals := make(map[string]struct{})
