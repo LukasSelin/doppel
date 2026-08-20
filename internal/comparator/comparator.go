@@ -6,25 +6,31 @@ import (
 	"strings"
 
 	"github.com/lukse/doppel/internal/concepter"
+	"github.com/lukse/doppel/internal/ontology"
 )
 
-// Weights for each structural signal in the composite OverlapScore.
 const (
-	weightSharedCallees    = 0.25
-	weightSharedCallers    = 0.15
-	weightSharedPatterns   = 0.20
-	weightSameRole         = 0.15
-	weightSamePackage      = 0.10
-	weightSameVisibility   = 0.05
-	weightSameReceiver     = 0.05
-	weightSharedCallerPkgs = 0.025
-	weightSharedCalleePkgs = 0.025
-
 	mergeThreshold  = 0.4
 	minMergeSignals = 2
+
+	// relatedEnough is the relatedness at which a non-identical concept match
+	// counts as a merge signal rather than merely nudging the score. Sibling
+	// concepts clear it; cousins, which top out at 0.33 in the current
+	// taxonomy, do not.
+	relatedEnough = 0.5
 )
 
+// The weight of each signal lives on its relation term in the ontology rather
+// than as a constant here, so the scoring table and the vocabulary cannot drift
+// apart and an axiom can assert the weights sum to 1.0.
+var onto = ontology.Default()
+
 // StructuralEvidence summarises the structural overlap between two ConceptDocs.
+//
+// The graded fields sit alongside the boolean and set-valued ones rather than
+// replacing them: the booleans still say whether two things are literally the
+// same, which is what the report's plain evidence bullets are about, while the
+// graded fields carry what the score is actually computed from.
 type StructuralEvidence struct {
 	SharedCallees    []string
 	SharedCallers    []string
@@ -38,40 +44,75 @@ type StructuralEvidence struct {
 	ReceiverB        string
 	SharedCallerPkgs []string
 	SharedCalleePkgs []string
-	OverlapScore     float64  // 0.0–1.0 weighted composite
-	MergeWorthy      bool     // heuristic: high overlap + multiple signals
-	Reasons          []string // human-readable evidence bullets
+
+	// Graded signals, from reasoning over the ontology.
+	PatternRelatedness       float64          // soft overlap of the two intent-tag sets
+	RelatedPatterns          []ontology.Match // the pairings behind it, matcher order
+	RoleRelatedness          float64          // shared fan-in/fan-out axes
+	ReceiverRelatedness      float64          // 1.0 same, 0.5 both methods, 0.0 mixed
+	EntityKindA              string           // "function" or "method"
+	EntityKindB              string
+	CallerConceptRelatedness float64 // what the two functions' callers do
+	RelatedCallerConcepts    []ontology.Match
+	CalleeConceptRelatedness float64 // what the two functions' callees do
+	RelatedCalleeConcepts    []ontology.Match
+
+	OverlapScore float64  // 0.0–1.0 weighted composite
+	MergeWorthy  bool     // heuristic: high overlap + multiple signals
+	Reasons      []string // human-readable evidence bullets
 }
 
 // Compare computes the structural overlap between two ConceptDocs.
+//
+// Concept and role signals are scored through the ontology rather than by
+// string equality. Two functions tagged http_call and db_access used to score
+// zero on intent — the same as two functions with nothing in common — even
+// though both are I/O; they now score partial credit as cousins under
+// io_operation. The same goes for roles that share one of their two axes.
 func Compare(a, b concepter.ConceptDoc) StructuralEvidence {
 	ev := StructuralEvidence{
-		SharedCallees:    intersect(a.Callees, b.Callees),
-		SharedCallers:    intersect(a.Callers, b.Callers),
-		SharedPatterns:   intersect(a.Patterns, b.Patterns),
-		SameRole:         a.Role == b.Role && a.Role != "",
-		RoleA:            a.Role,
-		RoleB:            b.Role,
-		SamePackage:      a.Package == b.Package && a.Package != "",
-		SameVisibility:   a.Exported == b.Exported,
-		SameReceiver:     a.ReceiverType == b.ReceiverType,
+		SharedCallees:  intersect(a.Callees, b.Callees),
+		SharedCallers:  intersect(a.Callers, b.Callers),
+		SharedPatterns: intersect(a.Patterns, b.Patterns),
+		SameRole:       a.Role == b.Role && a.Role != "",
+		RoleA:          a.Role,
+		RoleB:          b.Role,
+		SamePackage:    a.Package == b.Package && a.Package != "",
+		SameVisibility: a.Exported == b.Exported,
+		// Normalized, so a value-receiver and a pointer-receiver method on one
+		// type count as bound to the same thing. The parser keeps the star in
+		// the name, so these arrive here as "Server" and "*Server".
+		SameReceiver:     ontology.NormalizeReceiver(a.ReceiverType) == ontology.NormalizeReceiver(b.ReceiverType),
 		ReceiverA:        a.ReceiverType,
 		ReceiverB:        b.ReceiverType,
 		SharedCallerPkgs: intersect(a.CallerPackages, b.CallerPackages),
 		SharedCalleePkgs: intersect(a.CalleePackages, b.CalleePackages),
-	}
 
-	// Compute weighted overlap score.
+		RoleRelatedness:     ontology.RoleRelatedness(a.Role, b.Role),
+		ReceiverRelatedness: ontology.ReceiverRelatedness(a.ReceiverType, b.ReceiverType),
+		EntityKindA:         string(ontology.EntityKindOf(a.ReceiverType)),
+		EntityKindB:         string(ontology.EntityKindOf(b.ReceiverType)),
+	}
+	ev.PatternRelatedness, ev.RelatedPatterns = onto.SetRelatedness(a.Patterns, b.Patterns)
+	ev.CallerConceptRelatedness, ev.RelatedCallerConcepts = onto.SetRelatedness(a.CallerPatterns, b.CallerPatterns)
+	ev.CalleeConceptRelatedness, ev.RelatedCalleeConcepts = onto.SetRelatedness(a.CalleePatterns, b.CalleePatterns)
+
+	// One explicit ordered expression, deliberately. Summing over a map of
+	// weights would let iteration order change the low bits of a float sum,
+	// which is enough to move a pair across the merge threshold or the
+	// --struct-min cutoff and make the report vary between runs.
 	ev.OverlapScore = 0 +
-		weightSharedCallees*overlapRatio(a.Callees, b.Callees, ev.SharedCallees) +
-		weightSharedCallers*overlapRatio(a.Callers, b.Callers, ev.SharedCallers) +
-		weightSharedPatterns*overlapRatio(a.Patterns, b.Patterns, ev.SharedPatterns) +
-		weightSameRole*boolFloat(ev.SameRole) +
-		weightSamePackage*boolFloat(ev.SamePackage) +
-		weightSameVisibility*boolFloat(ev.SameVisibility) +
-		weightSameReceiver*boolFloat(ev.SameReceiver) +
-		weightSharedCallerPkgs*overlapRatio(a.CallerPackages, b.CallerPackages, ev.SharedCallerPkgs) +
-		weightSharedCalleePkgs*overlapRatio(a.CalleePackages, b.CalleePackages, ev.SharedCalleePkgs)
+		onto.Weight(ontology.RelCalls)*overlapRatio(a.Callees, b.Callees, ev.SharedCallees) +
+		onto.Weight(ontology.RelExhibits)*ev.PatternRelatedness +
+		onto.Weight(ontology.RelCalledBy)*overlapRatio(a.Callers, b.Callers, ev.SharedCallers) +
+		onto.Weight(ontology.RelHasRole)*ev.RoleRelatedness +
+		onto.Weight(ontology.RelDeclaredIn)*boolFloat(ev.SamePackage) +
+		onto.Weight(ontology.RelCalledFromConcept)*ev.CallerConceptRelatedness +
+		onto.Weight(ontology.RelCallsIntoConcept)*ev.CalleeConceptRelatedness +
+		onto.Weight(ontology.RelHasVisibility)*boolFloat(ev.SameVisibility) +
+		onto.Weight(ontology.RelBoundTo)*ev.ReceiverRelatedness +
+		onto.Weight(ontology.RelCalledFromPackage)*overlapRatio(a.CallerPackages, b.CallerPackages, ev.SharedCallerPkgs) +
+		onto.Weight(ontology.RelCallsIntoPackage)*overlapRatio(a.CalleePackages, b.CalleePackages, ev.SharedCalleePkgs)
 
 	if ev.OverlapScore > 1.0 {
 		ev.OverlapScore = 1.0
@@ -105,6 +146,11 @@ func boolFloat(v bool) float64 {
 }
 
 // countSignals counts how many distinct merge-supporting signals are present.
+//
+// Five of the eleven scored signals can count. Visibility, receiver binding,
+// the two package-overlap signals and the two caller/callee concept signals
+// raise the score but never the count: they are context, and context alone is
+// not a reason to merge two functions.
 func countSignals(ev StructuralEvidence) int {
 	n := 0
 	if len(ev.SharedCallees) > 0 {
@@ -113,7 +159,12 @@ func countSignals(ev StructuralEvidence) int {
 	if len(ev.SharedCallers) > 0 {
 		n++
 	}
-	if len(ev.SharedPatterns) > 0 {
+	// Judged on the best single pairing, not on the aggregate ratio. Thresholding
+	// the ratio would be a regression rather than a guard: three tags with one
+	// exact match average to 0.33, so a pair that counts today would stop
+	// counting at an unchanged score. Any exact match scores 1.0, so this is a
+	// strict generalization of "the two share a tag".
+	if ontology.BestMatch(ev.RelatedPatterns) >= relatedEnough {
 		n++
 	}
 	if ev.SameRole {
@@ -136,21 +187,42 @@ func buildReasons(ev StructuralEvidence) []string {
 	if len(ev.SharedPatterns) > 0 {
 		reasons = append(reasons, fmt.Sprintf("share patterns: [%s]", strings.Join(ev.SharedPatterns, ", ")))
 	}
+	// Without this line a pair of near-miss tags would raise the overlap score
+	// with nothing in the report to account for it.
+	if near := describeNearMatches(ev.RelatedPatterns); near != "" {
+		reasons = append(reasons, "related patterns: "+near)
+	}
 	if ev.SameRole {
 		reasons = append(reasons, fmt.Sprintf("both are %s functions", ev.RoleA))
+	} else if ev.RoleRelatedness > 0 {
+		reasons = append(reasons, fmt.Sprintf("related roles: %s ≈ %s (%s, %.2f)",
+			ev.RoleA, ev.RoleB, sharedAxis(ev.RoleA, ev.RoleB), ev.RoleRelatedness))
 	}
 	if ev.SamePackage {
 		reasons = append(reasons, "same package")
+	}
+	// The score goes before the list, not after it. A bullet ending in
+	// "[...] (0.67)" is link syntax in the Markdown report, and the score would
+	// silently become an href.
+	if ev.CallerConceptRelatedness > 0 {
+		reasons = append(reasons, fmt.Sprintf("callers do related work (%.2f): [%s]",
+			ev.CallerConceptRelatedness, describeMatches(ev.RelatedCallerConcepts)))
+	}
+	if ev.CalleeConceptRelatedness > 0 {
+		reasons = append(reasons, fmt.Sprintf("callees do related work (%.2f): [%s]",
+			ev.CalleeConceptRelatedness, describeMatches(ev.RelatedCalleeConcepts)))
 	}
 	if ev.SameVisibility {
 		reasons = append(reasons, "same visibility")
 	}
 	if ev.SameReceiver {
 		recv := "plain functions"
-		if ev.ReceiverA != "" {
-			recv = ev.ReceiverA
+		if r := ontology.NormalizeReceiver(ev.ReceiverA); r != "" {
+			recv = r
 		}
 		reasons = append(reasons, fmt.Sprintf("same receiver type: %s", recv))
+	} else if ev.ReceiverRelatedness > 0 {
+		reasons = append(reasons, fmt.Sprintf("both are methods, on %s and %s", ev.ReceiverA, ev.ReceiverB))
 	}
 	if len(ev.SharedCallerPkgs) > 0 {
 		reasons = append(reasons, fmt.Sprintf("called from same packages: [%s]", strings.Join(ev.SharedCallerPkgs, ", ")))
@@ -159,6 +231,50 @@ func buildReasons(ev StructuralEvidence) []string {
 		reasons = append(reasons, fmt.Sprintf("call into same packages: [%s]", strings.Join(ev.SharedCalleePkgs, ", ")))
 	}
 	return reasons
+}
+
+// describeNearMatches renders only the pairings between different concepts,
+// naming the ancestor that relates them. Exact matches are omitted: they are
+// already covered by the shared-patterns bullet.
+func describeNearMatches(matches []ontology.Match) string {
+	var parts []string
+	for _, m := range matches {
+		if m.Exact() {
+			continue
+		}
+		parts = append(parts, fmt.Sprintf("%s ≈ %s (both %s, %.2f)", m.A, m.B, m.LCA, m.Score))
+	}
+	return strings.Join(parts, "; ")
+}
+
+// describeMatches renders every pairing compactly, exact ones as a single term.
+func describeMatches(matches []ontology.Match) string {
+	var parts []string
+	for _, m := range matches {
+		if m.Exact() {
+			parts = append(parts, m.A)
+			continue
+		}
+		parts = append(parts, fmt.Sprintf("%s ≈ %s", m.A, m.B))
+	}
+	return strings.Join(parts, ", ")
+}
+
+// sharedAxis names why two different roles are related at all, which is always
+// exactly one of the two axes — a pair agreeing on both would be the same role.
+func sharedAxis(a, b string) string {
+	ax, okA := ontology.AxesFor(ontology.TermID(a))
+	bx, okB := ontology.AxesFor(ontology.TermID(b))
+	if !okA || !okB {
+		return "related"
+	}
+	if ax.HighFanIn && bx.HighFanIn {
+		return "both high fan-in"
+	}
+	if ax.HighFanOut && bx.HighFanOut {
+		return "both high fan-out"
+	}
+	return "related"
 }
 
 // intersect returns the sorted intersection of two sorted string slices.

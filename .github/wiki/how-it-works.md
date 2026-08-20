@@ -6,11 +6,11 @@ Doppel is fully self-contained: it parses Go with `go/ast`, scores every functio
 
 1. **Parse** — walks the target directory and extracts all Go function/method bodies, names, signatures, doc comments, visibility, receiver types, and AST-derived callees using the `go/ast` package; non-`.go` files are skipped
 2. **Fingerprint** — while the AST is still in hand, summarises each body into a `Fingerprint`: hashed 3-grams over a canonicalized AST token stream, a control-flow histogram, the normalized parameter/result types, and a node count
-3. **Tag** — scans each function body for intent patterns (`retry`, `http_call`, `db_access`, `validation`, `mapping`, `transaction`, `caching`, `concurrency`, `error_wrapping`) using keyword matching
+3. **Tag** — scans each function body for intent patterns (`retry`, `http_call`, `db_access`, `validation`, `mapping`, `transaction`, `caching`, `concurrency`, `error_wrapping`) using keyword matching. Each tag is a leaf of the concept taxonomy described below, which is what lets two different tags still score against each other
 4. **Generate concept docs** — creates a deterministic architectural summary per function (name, package, visibility, receiver, patterns) from static analysis alone
-5. **Map** — builds a call graph across all parsed functions and enriches each concept doc with callers, callees, aggregated caller/callee patterns and packages, and a structural role (`leaf`, `utility`, `orchestrator`, or `passthrough`) based on fan-in/fan-out counts
+5. **Map** — builds a call graph across all parsed functions and enriches each concept doc with callers, callees, aggregated caller/callee patterns and packages, and a structural role (`leaf`, `utility`, `orchestrator`, or `passthrough`) based on fan-in/fan-out counts. The role is really two independent booleans, high fan-in and high fan-out, which is why two different roles can still partly agree
 6. **Find similar** — compares every pair of fingerprints, keeps those at or above `--threshold`, sorts descending and truncates to `--top`. Functions with fewer than `--min-nodes` AST nodes are excluded from comparison entirely
-7. **Structural comparison** — scores each matched pair across 9 weighted signals (shared callees 25%, patterns 20%, role 15%, callers 15%, package 10%, visibility 5%, receiver type 5%, callee packages 2.5%, caller packages 2.5%) producing a 0.0–1.0 overlap score and a merge-worthiness flag; pairs below `--struct-min` are dropped
+7. **Structural comparison** — scores each matched pair across 11 weighted signals (shared callees 22.5%, concepts 18%, callers 13.5%, role 13.5%, package 9%, caller concepts 5%, callee concepts 5%, visibility 4.5%, receiver type 4.5%, caller packages 2.25%, callee packages 2.25%) producing a 0.0–1.0 overlap score and a merge-worthiness flag; pairs below `--struct-min` are dropped. Concepts, roles and receiver types are matched through the ontology rather than by string equality, so related-but-not-identical work earns partial credit
 8. **Report** — prints the surviving pairs to stdout and optionally saves a Markdown file
 
 ## The fingerprint
@@ -31,6 +31,59 @@ Sliding windows of 3 tokens are hashed, deduplicated and sorted; two functions a
 | Signature | Jaccard over normalized param/result types | 0.15 |
 
 The relative body size is reported alongside these but is not scored — Jaccard already penalizes size mismatch through the union.
+
+## The ontology
+
+Step 7 used to compare strings. Two functions tagged `http_call` and `db_access` scored **zero** on
+intent — exactly the same as two functions with nothing in common — even though both are I/O. Roles
+were just as binary: `utility` and `passthrough` scored zero against each other despite both being
+called from many places.
+
+The nine tags are now leaves of a small taxonomy. Everything above them is abstract: those interior
+nodes never describe a real function, they exist only to relate the leaves.
+
+```
+concept
+├── io_operation
+│   ├── remote_io → http_call
+│   └── data_store_access → db_access, caching, transaction
+├── data_transformation → mapping, validation
+├── control_flow
+│   ├── concurrency
+│   └── fault_tolerance → retry
+└── error_handling → error_wrapping
+```
+
+Two concepts are scored by how deep their nearest shared ancestor sits:
+
+| Pair | Nearest shared ancestor | Score |
+| --- | --- | --- |
+| `db_access` / `db_access` | itself | 1.00 |
+| `db_access` / `caching` | `data_store_access` | 0.67 |
+| `http_call` / `db_access` | `io_operation` | 0.33 |
+| `http_call` / `retry` | the root | 0.00 |
+
+Roles work the same way on two axes. `utility` and `passthrough` are both high fan-in, so they score
+0.5; `leaf` and `orchestrator` share only the *absence* of an axis, which scores nothing. And a pair
+of methods on different receiver types now scores 0.5 rather than 0, while a value receiver and a
+pointer receiver on the same type finally score 1.0.
+
+None of this can raise a pair above what an exact match would give, and every graded match that
+contributes to a score also produces an evidence line, so an elevated score always has a stated
+reason:
+
+```
+related patterns: db_access ≈ caching (both data_store_access, 0.67)
+related roles: utility ≈ passthrough (both high fan-in, 0.50)
+callees do related work (1.00): [error_wrapping, mapping]
+```
+
+A near match nudges the score but only counts as a *merge signal* once it reaches 0.5, so a pair of
+distant cousins cannot be flagged merge-worthy on that evidence alone.
+
+Run `doppel ontology --defs` to print the whole vocabulary with definitions and check it against its
+own consistency rules. Those rules are also enforced by the test suite, which is what stops the
+tagger and the taxonomy from drifting apart.
 
 ## Two scores, kept separate
 
