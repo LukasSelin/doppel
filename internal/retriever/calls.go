@@ -2,9 +2,6 @@ package retriever
 
 import (
 	"math"
-	"path"
-	"sort"
-	"strings"
 
 	"github.com/lukse/doppel/internal/concepter"
 	"github.com/lukse/doppel/internal/parser"
@@ -36,15 +33,12 @@ func buildCallIndex(units []parser.CodeUnit, g *concepter.Graph, opt Options) *c
 		postings:  make(map[string][]int),
 	}
 
-	internal := make(map[string]bool, len(units))
-	for i := range units {
-		internal[concepter.QualifiedName(units[i])] = true
-	}
+	internal := concepter.QualifiedNames(units)
 
 	tokens := make([][]string, len(units))
 	df := make(map[string]int)
 	for i := range units {
-		tokens[i] = callTokens(units[i], g, internal)
+		tokens[i] = concepter.CallTokens(units[i], g, internal)
 		for _, t := range tokens[i] {
 			df[t]++
 		}
@@ -66,41 +60,6 @@ func buildCallIndex(units []parser.CodeUnit, g *concepter.Graph, opt Options) *c
 		}
 	}
 	return x
-}
-
-// callTokens builds one unit's deduped, sorted token set. The internal-QN
-// guard keeps an internal package called through its own import from counting
-// twice — once as the resolved graph edge and once as an import-qualified
-// external token for the same call.
-func callTokens(u parser.CodeUnit, g *concepter.Graph, internal map[string]bool) []string {
-	set := make(map[string]bool)
-	for _, callee := range g.Callees[concepter.QualifiedName(u)] {
-		set[callee] = true
-	}
-	for _, raw := range u.Callees {
-		dot := strings.IndexByte(raw, '.')
-		if dot <= 0 {
-			continue // bare name: unresolved, never a token
-		}
-		recv, sel := raw[:dot], raw[dot+1:]
-		refPath, ok := u.Signals.RefPath(recv)
-		if !ok {
-			continue // variable receiver: unresolved, never a token
-		}
-		if internal[path.Base(refPath)+"."+sel] {
-			continue // repo-internal: the resolved graph edge already covers it
-		}
-		set[refPath+"."+sel] = true
-	}
-	if len(set) == 0 {
-		return nil
-	}
-	out := make([]string, 0, len(set))
-	for t := range set {
-		out = append(out, t)
-	}
-	sort.Strings(out)
-	return out
 }
 
 // admitPairs runs per-function retrieval over shared surviving tokens:

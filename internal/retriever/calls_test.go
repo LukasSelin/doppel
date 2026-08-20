@@ -3,8 +3,6 @@ package retriever
 import (
 	"math"
 	"testing"
-
-	"github.com/lukse/doppel/internal/concepter"
 )
 
 // Requirement: syntactically different functions sharing a rare
@@ -221,66 +219,5 @@ func RareB(cfg string) error {
 	}
 }
 
-// callTokens must not double-count an internal package called through its own
-// import: the resolved graph edge covers it, and the import-qualified form is
-// skipped.
-func TestCallTokensDoNotDoubleCountInternalCalls(t *testing.T) {
-	helperFile := `package helper
-
-func Normalize(s string) string {
-	out := ""
-	for _, c := range s {
-		if c != ' ' {
-			out += string(c)
-		}
-	}
-	return out
-}
-`
-	callerFile := `package caller
-
-import "example.com/proj/helper"
-
-func Clean(s string) string {
-	if s == "" {
-		return s
-	}
-	return helper.Normalize(s)
-}
-`
-	units := parseUnits(t, "helper.go", helperFile, "caller.go", callerFile)
-	g := concepter.BuildCallGraph(units)
-
-	internal := map[string]bool{}
-	for i := range units {
-		internal[concepter.QualifiedName(units[i])] = true
-	}
-	tokens := callTokens(units[unitIndex(t, units, "Clean")], g, internal)
-	count := 0
-	for _, tok := range tokens {
-		if tok == "helper.Normalize" || tok == "example.com/proj/helper.Normalize" {
-			count++
-		}
-	}
-	if count != 1 {
-		t.Errorf("tokens = %v; internal call must appear exactly once, got %d forms", tokens, count)
-	}
-}
-
-// Bare-name and variable-receiver calls never become tokens: unresolved
-// matching is forbidden.
-func TestCallTokensExcludeUnresolvedCalls(t *testing.T) {
-	src := `package fix
-
-func Use(tx interface{ Commit() error }) error {
-	doWork()
-	return tx.Commit()
-}
-`
-	units := parseUnits(t, "fix.go", src)
-	g := concepter.BuildCallGraph(units)
-	tokens := callTokens(units[0], g, map[string]bool{})
-	if len(tokens) != 0 {
-		t.Errorf("tokens = %v, want none: doWork is bare and tx.Commit has a variable receiver", tokens)
-	}
-}
+// Token-extraction semantics (double-count guard, unresolved-call exclusion)
+// are pinned in internal/concepter/calltokens_test.go, where CallTokens lives.
