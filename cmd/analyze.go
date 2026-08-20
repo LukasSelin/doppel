@@ -6,13 +6,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/lukse/doppel/internal/analyzer"
-	"github.com/lukse/doppel/internal/comparator"
-	"github.com/lukse/doppel/internal/concepter"
-	"github.com/lukse/doppel/internal/mapper"
-	"github.com/lukse/doppel/internal/parser"
-	"github.com/lukse/doppel/internal/reporter"
-	"github.com/lukse/doppel/internal/tagger"
+	"github.com/LukasSelin/doppel/internal/analyzer"
+	"github.com/LukasSelin/doppel/internal/comparator"
+	"github.com/LukasSelin/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/mapper"
+	"github.com/LukasSelin/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/reporter"
+	"github.com/LukasSelin/doppel/internal/tagger"
 	"github.com/spf13/cobra"
 )
 
