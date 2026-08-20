@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/lukse/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/concepter"
 )
 
 // Weights for each structural signal in the composite OverlapScore.

@@ -26,9 +26,11 @@ cd doppel
 go build -o doppel .
 ```
 
-> `go install` is not yet supported: `go.mod` declares the module as
-> `github.com/lukse/doppel`, which does not resolve to this repository. Enabling it
-> requires renaming the module path to `github.com/LukasSelin/doppel`.
+Or install directly:
+
+```bash
+go install github.com/LukasSelin/doppel@latest
+```
 
 ## Usage
 

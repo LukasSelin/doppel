@@ -3,7 +3,7 @@ package comparator
 import (
 	"testing"
 
-	"github.com/lukse/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/concepter"
 )
 
 func TestCompare(t *testing.T) {

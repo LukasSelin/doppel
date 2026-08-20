@@ -3,7 +3,7 @@ package concepter
 import (
 	"strings"
 
-	"github.com/lukse/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 // CallGraph maps each function Name to the list of other function Names whose
