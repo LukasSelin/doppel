@@ -40,6 +40,14 @@ const (
 	flowKinds
 )
 
+// FlowLabels names the control-flow histogram slots, index-aligned with
+// Fingerprint.Flow. The array length is tied to flowKinds so a new slot
+// cannot be added without naming it.
+var FlowLabels = [flowKinds]string{
+	"if", "for", "range", "switch", "typeswitch",
+	"select", "return", "defer", "go", "funclit",
+}
+
 // Fingerprint is a deterministic static summary of one function body.
 // The zero value means "no body" and never matches anything.
 type Fingerprint struct {
