@@ -19,12 +19,12 @@ the usual culprit — see `sortedKeys` in `mapper` and the tie-break in `FindSim
 
 Orchestrated end to end by `runAnalyze` in `cmd/analyze.go`. Stages in execution order:
 
-1. **Walk & parse** — `filepath.WalkDir` + `shouldSkipDir`, then `parser.Parse` per `.go` file → `[]CodeUnit`. Unreadable files and parse errors are warned and skipped, never fatal. `fingerprint.Build` runs here, while the AST is still in hand.
-2. **Tag** — `tagger.Tag(unit.Body)` sets `unit.Patterns` (9 keyword-matched intent tags).
-3. **Build call graph** — `concepter.BuildCallGraph(units)` → `map[calleeName][]callerName`. Note this happens *before* concept docs, because docs need caller lists.
-4. **Generate + enrich concept docs** — `concepter.New()` makes bare docs; **`mapper.Map` does the real work**: attaches callers, calls `concepter.ClassifyRole`, and aggregates caller/callee patterns and packages.
+1. **Walk & parse** — `filepath.WalkDir` + `shouldSkipDir`, then `parser.Parse` per `.go` file → `[]CodeUnit`. Unreadable files and parse errors are warned and skipped, never fatal. `fingerprint.Build` and `extractSignals` (the tagger's AST evidence) both run here, while the AST is still in hand.
+2. **Tag** — `tagger.Tag(unit)` sets `unit.Patterns` (9 intent tags matched against the unit's AST signals — selectors, imports, string-literal contents, identifiers, node kinds — never against raw source text). Tag counts feed the corpus IC in the same loop.
+3. **Build call graph** — `concepter.BuildCallGraph(units)` → `concepter.Graph`, both directions over **qualified names** (`package.Name`, methods keeping their receiver: `comparator.*Comparator.Compare`). A resolver maps each raw callee string to at most one unit: import-qualified selectors through the file's recorded import bindings (aliases included), variable-receiver method calls only when the method name is unique corpus-wide, bare names to the same-package function. Ambiguity drops the edge; recursion is excluded; only repo-internal edges exist. Happens *before* concept docs, because docs need caller lists.
+4. **Generate + enrich concept docs** — `concepter.New()` makes bare docs; **`mapper.Map` does the real work**: attaches qualified callers, resolved internal callees, and the depth-2 call-graph neighborhood; derives per-corpus role thresholds from the resolved degree distribution and classifies; aggregates caller/callee patterns and packages from resolved edges.
 5. **Compare fingerprints** — `analyzer.FindSimilar` scores the full O(n²) upper triangle, keeps `score >= threshold`, sorts descending, truncates to `--top`.
-6. **Structural comparison** — `comparator.Compare` per surviving pair → `pair.Evidence`.
+6. **Structural comparison** — a `comparator.Comparator` built over a corpus-weighted `ontology.Scorer` scores each surviving pair → `pair.Evidence`. Concept and role signals go through the ontology hierarchy, not string equality, and concept matching is weighted by information content computed from this run's tag counts — sharing a near-universal tag is weak evidence, sharing a rare one is strong.
 7. **Structural filter** — when `--struct-min > 0`, pairs below that overlap score are **dropped**. This is a selection stage, not just annotation.
 8. **Report** — `reporter.Print` to stdout always; `reporter.PrintMarkdown` to `--output` additionally.
 
@@ -41,10 +41,12 @@ cmd/            CLI commands (Cobra).
   root.go       rootCmd, Execute()
   analyze.go    Pipeline orchestrator; all flag registration
   config.go     .doppel.json loading (AnalysisConfig) and flag precedence
+  ontology.go   doppel ontology: print the vocabulary, check its axioms
 internal/
-  parser/       parser.go is a thin dispatcher; go_parser.go does all go/ast work → CodeUnit
+  parser/       parser.go is a thin dispatcher; go_parser.go does the go/ast work; signals.go extracts the tagger's evidence channels → CodeUnit
   fingerprint/  AST token shingles + control-flow histogram + signature types; the code-similarity score
-  tagger/       Keyword-substring intent detection → 9 pattern tags
+  ontology/     The formal vocabulary: entity kinds, typed relations, concept taxonomy, roles, axioms
+  tagger/       AST-signal intent detection → 9 pattern tags
   concepter/    ConceptDoc; callgraph.go (BuildCallGraph); role.go (ClassifyRole, role constants)
   mapper/       Where enrichment actually happens: callers, role classification, aggregated patterns/packages
   analyzer/     Pairwise fingerprint scoring, threshold filtering, top-N sorting
@@ -54,7 +56,8 @@ internal/
 
 Dependency directions that must hold: `analyzer` imports `comparator` (for the `Evidence` field), so
 `comparator` must never import `analyzer`. `parser` imports `fingerprint`, so `fingerprint` must
-never import `parser` — it works on `*ast.FuncDecl` directly.
+never import `parser` — it works on `*ast.FuncDecl` directly. `ontology` imports nothing from this
+module and must stay that way: `tagger`, `concepter` and `comparator` all depend on it.
 
 ## Two scores, deliberately unblended
 
@@ -87,6 +90,7 @@ Running the tool against this repo:
 ```bash
 doppel analyze .
 doppel analyze . --struct-min 0.4 --output report.md
+doppel ontology --defs                                # print the vocabulary and check its axioms
 ```
 
 **Hooks and CI:**
@@ -106,6 +110,10 @@ doppel analyze . --struct-min 0.4 --output report.md
 - **Fingerprint** (`internal/fingerprint/fingerprint.go`) — `Shingles` (sorted, deduped 3-gram
   hashes), `Flow` (control-flow histogram), `Types` (normalized param/result types), `Nodes`.
   The zero value means "no body" and never matches anything.
+- **Term / Ontology** (`internal/ontology/ontology.go`) — the vocabulary: four disjoint rooted trees
+  (`entity`, `relation`, `concept`, `role`) carrying definitions, relation weights, and `Validate()`.
+  Concept leaf IDs are exactly the tagger's tag strings and role IDs exactly `ClassifyRole`'s return
+  values, which is what let the ontology be introduced without changing any output.
 - **ConceptDoc** (`internal/concepter/concepter.go`) — the architectural context the comparator
   scores. It is no longer rendered to text anywhere; `Format()` existed only to build embedding
   input and is gone.
@@ -138,47 +146,150 @@ functions and changes no reported pair at the default threshold — it is preven
 
 ### Comparator weights
 
-Constants in `internal/comparator/comparator.go`; they sum to exactly `1.00` and the composite is clamped to `1.0`.
+Each weight lives on its relation term in `internal/ontology/relations.go`, not as a constant in the
+comparator, so the scoring table and the vocabulary cannot drift apart. They sum to exactly `1.00` —
+axiom 7 asserts it — and the composite is clamped to `1.0`.
 
-| Signal | Weight |
-| --- | --- |
-| shared callees | 0.25 |
-| shared patterns | 0.20 |
-| shared callers | 0.15 |
-| same role | 0.15 |
-| same package | 0.10 |
-| same visibility | 0.05 |
-| same receiver type | 0.05 |
-| shared caller packages | 0.025 |
-| shared callee packages | 0.025 |
+| Signal | Relation | Weight | Graded |
+| --- | --- | --- | --- |
+| shared callees (raw, incl. stdlib) | `calls` | 0.210 | no |
+| shared concepts | `exhibits` | 0.180 | **yes** |
+| shared callers (resolved, qualified) | `called_by` | 0.120 | no |
+| same role | `has_role` | 0.135 | **yes** |
+| same package | `declared_in` | 0.090 | no |
+| neighborhood overlap | `shares_neighborhood` | 0.030 | no |
+| caller concepts | `called_from_concept` | 0.050 | **yes** |
+| callee concepts | `calls_into_concept` | 0.050 | **yes** |
+| same visibility | `has_visibility` | 0.045 | no |
+| same receiver type | `bound_to` | 0.045 | **yes** |
+| shared caller packages | `called_from_package` | 0.0225 | no |
+| shared callee packages | `calls_into_package` | 0.0225 | no |
 
-`MergeWorthy = OverlapScore >= 0.4 && countSignals >= 2`. **`countSignals` counts only 5 of the 9**
-— callees, callers, patterns, role, package. Visibility, receiver, and the two package-overlap
-signals raise the score but never the signal count.
+Weight provenance, two carves deep: the nine original weights were scaled uniformly by `0.9` for
+the two concept-context signals (no judgment applied — a pair with no caller/callee concept overlap
+scores ~10% lower, which moved two unrelated test-helper pairs out of merge-worthiness when it
+landed); then `shares_neighborhood` took its `0.030` entirely from `calls` and `called_by`, because
+a depth-2 neighborhood generalizes exactly what those two edges measure. That second carve is the
+first change to relative order — `called_by` now sits below `has_role`, deliberately.
 
-Floor effect worth knowing: `SameVisibility` is true when both are unexported *or* both exported,
-and `SameReceiver` is true when both are plain functions (`"" == ""`). Any two plain unexported
-functions therefore start with a free `0.10`.
+`MergeWorthy = OverlapScore >= 0.4 && countSignals >= 2`. **`countSignals` counts only 5 of the 12**
+— callees, callers, concepts, role, package. Visibility, receiver, the two package-overlap signals
+and the two concept-context signals raise the score but never the signal count: context is not by
+itself a reason to merge two functions.
+
+The concept signal counts when its *best single pairing* reaches `0.5`, not when the aggregate ratio
+does. Thresholding the aggregate would be a regression rather than a guard — three tags with one
+exact match average to `0.33`, so a pair that counts today would stop counting at an unchanged score.
+
+Floor effect worth knowing: `SameVisibility` is true when both are unexported *or* both exported, and
+the receiver signal scores `1.0` when both are plain functions. Any two plain unexported functions
+therefore start with a free `0.09`.
 
 ### Roles
 
-`concepter.ClassifyRole(callerCount, calleeCount)`, one shared `roleThreshold = 2`, inclusive:
+Fan-in counts resolved callers, fan-out counts **resolved internal callees** — stdlib and builtin
+calls no longer inflate it. The pipeline classifies with `concepter.ClassifyRoleAt` against
+per-corpus `RoleThresholds`: high on an axis means strictly above that axis's median resolved
+degree, floored at 2, zero-degree units included in the median. On sparse graphs (most repos,
+this one included) both thresholds sit at the floor and the adaptive branch is dormant — do not
+simplify it away. `ClassifyRole` keeps the fixed threshold 2 for direct callers. The truth table
+itself lives in `internal/ontology/roles.go`, so there is one definition to change when a fifth
+role appears.
 
 | | few callees (<2) | many callees (>=2) |
 | --- | --- | --- |
 | **few callers (<2)** | `leaf` | `orchestrator` |
 | **many callers (>=2)** | `utility` | `passthrough` |
 
-Caveat: `Callees` counts *every* call expression including stdlib (`fmt.Errorf`, `len`, `append`),
-so most non-trivial functions clear the fan-out threshold and roles skew to
-`orchestrator`/`passthrough`, making `SameRole` fire often.
+Roles decompose into two independent axes, `HighFanIn` and `HighFanOut`. The comparator scores two
+roles as the Jaccard overlap of the axes on which **both** are high: `utility` vs `passthrough` is
+`0.5` (both high fan-in), `orchestrator` vs `passthrough` is `0.5`, `leaf` vs `orchestrator` is
+`0.0`. Agreement on a *low* axis deliberately scores nothing, which the caveat below explains.
+
+Caveat: roles are now corpus-relative twice over — resolved degrees shift as code is added, and
+the thresholds themselves follow the degree distribution — so a function's role (and the `SameRole`
+merge signal) can move when unrelated code changes. That is what "high for this repo" means, and it
+was chosen deliberately over a fixed absolute scale.
 
 ### Tagger patterns
 
 Exactly 9, emitted in declaration order: `retry`, `http_call`, `db_access`, `validation`, `mapping`,
-`transaction`, `caching`, `concurrency`, `error_wrapping`. Their keyword lists still contain
-non-Go signals (`axios`, `urllib`, `Promise.`, `await `) left over from the pre-Go-only era — dead
-weight, since only `.go` files are ever parsed.
+`transaction`, `caching`, `concurrency`, `error_wrapping`. The rules name `ontology` concept terms
+rather than bare strings, so a rule pointing at a concept that does not exist stops compiling, and
+`tagger_test` enforces the other direction: every concrete concept has exactly one rule.
+
+Rules match **AST evidence** (`parser.TagSignals`), never raw source text, and each channel has its
+own semantics: selectors exact (`http.Get`, `sync.Map`), methods exact on the method or bare-call
+name, receivers exact on the receiver identifier (`tx.Commit` fires, `mtx.Lock` does not), imports
+and string-literal contents and identifier names by substring, plus node-kind flags
+(go/select/chan) for `concurrency`. Consequences worth knowing:
+
+- A comment saying `COMMIT` or `DELETE` no longer tags anything — comments are not evidence.
+- `error_wrapping` is deliberately tight: a `%w` verb anywhere in a format string (the old rule
+  only matched `%w"`) or a pkg/errors wrap helper. Bare `fmt.Errorf` and `errors.As`/`errors.Is`
+  no longer fire it, which makes the tag rare enough to be informative under IC.
+- `retry` is the one tag with no structural handle — its evidence is lexical, in identifier names.
+- String literals are still evidence, so a test whose fixture strings contain `%w` or `SELECT `
+  earns those tags. A function carrying SQL strings is db-flavored even when it is a test.
+- The pre-Go-only polyglot keywords (`axios`, `urllib`, `Promise.`, `await `) are gone.
+
+### The ontology
+
+`internal/ontology` is the vocabulary the comparator reasons over, and the reason a pair tagged
+`http_call`/`db_access` no longer scores the same as a pair with nothing in common. The nine tags are
+leaves of a taxonomy whose interior nodes are abstract and exist purely to relate them:
+
+```
+concept → io_operation → remote_io → http_call
+                       → data_store_access → db_access, caching, transaction
+        → data_transformation → mapping, validation
+        → control_flow → concurrency, fault_tolerance → retry
+        → error_handling → error_wrapping
+```
+
+Relatedness is Wu–Palmer, `2·depth(LCA) / (depth(a) + depth(b))`: identical `1.00`, siblings under
+`data_store_access` `0.67`, cousins under `io_operation` `0.33`, different branches `0.00`. Sets of
+tags are matched pairwise by a **global-descending greedy** — every candidate pairing sorted by score
+and then by term name, consumed in that order. Walking one side greedily instead would let a merely
+related tag consume an exact match and score *below* plain exact matching, which would let a pair
+lose merge-worthiness purely by gaining a hierarchy. The tie-break on term name is equally
+load-bearing: cross-branch pairings all score exactly `0.0`, so ties are the common case, and without
+a total order the evidence lines would vary between runs.
+
+Two empty tag sets score `0.0`, while two `leaf` roles score `1.0`. The opposite conventions are
+deliberate — carrying no tags is not agreement, whereas two leaves are the same role — so the two
+Jaccard-shaped functions must not be merged into one helper.
+
+`ontology.Validate()` checks nine axioms and is exercised both by tests and by `doppel ontology`.
+Axiom 8, the tagger/ontology correspondence, lives in `internal/tagger` instead: the check needs the
+rule table, and importing `tagger` from `ontology` would be a cycle.
+
+### Corpus-weighted relatedness
+
+`ontology.NewCorpusIC` turns this run's tag counts into information content —
+`IC(c) = ln(1/P(c))`, add-one smoothed, ancestors accumulating their leaves — and
+`ontology.NewScorer` wraps the ontology with it. `cmd/analyze.go` builds the scorer from the tag
+counts and hands it to `comparator.New`; the free `comparator.Compare` stays corpus-independent
+(nil IC delegates literally to the Wu–Palmer methods) and is what the regression tests pin.
+
+With IC loaded, term relatedness is **Lin** (`2·IC(LCS)/(IC(a)+IC(b))`) and set relatedness is
+information-weighted: a matched pair contributes `IC(LCS)` exactly (Lin's denominator cancels the
+pair weight), so the score is the fraction of the larger side's information that is shared. The
+matcher is the same greedy **sorted by contribution, not similarity** — under IC a pair can be more
+similar yet share less information, and contribution order is what stays optimal (verified against
+a brute-force oracle in `oracle_test.go`/`scorer_test.go`, exhaustively).
+
+Two invariants worth knowing:
+
+- **The merge-signal gate never sees IC.** `countSignals` reads `PatternSignalBest`, a
+  taxonomy-only Wu–Palmer best match. Under Lin, sibling/cousin similarities move with tag
+  frequencies elsewhere in the tree; a pair's `MergeWorthy` must not flip because unrelated code
+  shifted the statistics. (The `OverlapScore >= 0.4` half of the verdict does include the weighted
+  score, so `MergeWorthy` is not fully corpus-independent — the signal count is.)
+- **Singleton sets cannot be discounted.** `{error_wrapping}` vs `{error_wrapping}` is still 1.0 —
+  the shared information and the total information are the same quantity. The discount only
+  manifests in sets of ≥ 2 tags. Fixing it would mean IC-scaling the `exhibits` relation weight,
+  which breaks axiom 7; documented instead.
 
 ## Configuration
 
@@ -208,22 +319,35 @@ Unknown keys are ignored rather than rejected, so a stale config file does not b
 - Skipped directories: `.git`, `.claude`, `vendor`, `testdata`, `build`, `.idea`, `.vscode`.
   `_test.go` files are **not** skipped, and test functions legitimately dominate the top of the
   report on this repo.
-- Tested: `fingerprint`, `analyzer`, `comparator`, `concepter/role`, `cmd` config precedence.
-  Untested and worth covering: `parser`, `tagger`, `mapper`, `reporter`.
+- Tested: `ontology`, `fingerprint`, `analyzer`, `comparator`, `tagger`, `parser`,
+  `concepter/role`, `cmd` config precedence. Untested and worth covering: `mapper`, `reporter`.
 
 ## Rough edges
 
 Known traps, documented so they aren't rediscovered. None are fixed:
 
-- **Name-key mismatch in the call graph.** `BuildCallGraph`, `mapper`'s index, and `extractCallees`
-  all key on bare function names, so `New` in two different packages shares call-graph edges. The
-  pipeline no longer depends on name keys (see above), but `Callers`, `CallerPackages` and the role
-  classification derived from them are still affected by this conflation.
+- **Resolver imprecision without go/types.** Call-graph edges are resolved from the AST alone:
+  a local variable shadowing an import name is mistaken for the package; an external import whose
+  path base equals an internal package name can produce a false edge on a name coincidence; import
+  paths whose base differs from the package clause (`yaml.v2`), dot imports, and ambiguous method
+  names all fail toward a *missed* edge. Documented at the resolver in
+  `internal/concepter/callgraph.go`; the cure for all of them is go/types, deliberately out of
+  proportion for this tool.
 - **Silent parse failures.** `parseGo` returns `nil, nil` on any syntax error, despite a comment
   claiming it returns partial results.
-- **Stale doc comment** on `BuildCallGraph` describes only the O(n²) text-scan fallback and predates
-  the AST-callee fast path that now handles virtually every case. With Go-only parsing, `Callees` is
-  always populated, so the text-scan branch is effectively dead code.
+- **Wu–Palmer depth convention.** `ontology.Relatedness` puts the root at depth 0, so a pair whose
+  least common ancestor is the root scores `0`. The textbook formulation puts the root at 1, and
+  "correcting" the depths to match would hand every cross-branch pair a nonzero floor and inflate
+  every structural score in the report. The redundant explicit guard in `Relatedness` exists to make
+  that trap visible.
+- **`remote_io` and `fault_tolerance` are unary.** A taxonomy node with one child adds no
+  discriminative power and costs its leaf a level of depth, which *lowers* that leaf relatedness to
+  everything. They are kept as the slot future siblings go in (`grpc_call`, `circuit_breaker`), so
+  removing them is a scoring change rather than a simplification.
+- **Adjacent pairs and the neighborhood signal.** Two directly-connected functions inherently
+  share each other's 1-neighborhood inside their depth-2 balls, mildly favoring adjacent pairs on
+  `shares_neighborhood`. The compared counterpart itself is excluded per pair (without that,
+  adjacency would be *penalized* instead); the residual bias is accepted at weight 0.030.
 - **O(n²) with no blocking.** Every function pair is compared. Fine at the current scale (74
   functions here, ~2.7k pairs), but a large repo would want MinHash/LSH banding to cut the candidate
   set before exact scoring.

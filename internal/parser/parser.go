@@ -20,6 +20,7 @@ type CodeUnit struct {
 	ReceiverType string                  // e.g. "*Server"; empty for plain functions
 	Callees      []string                // AST-derived outgoing call names
 	Fingerprint  fingerprint.Fingerprint // deterministic static summary of the body
+	Signals      TagSignals              // AST-level evidence channels the tagger reads
 }
 
 // Parse extracts all CodeUnits from the Go file at the given path.
@@ -29,4 +30,11 @@ func Parse(path string) ([]CodeUnit, error) {
 		return nil, nil
 	}
 	return parseGo(path)
+}
+
+// ParseSource extracts CodeUnits from in-memory Go source. The path is used
+// only for position information and the File field. This exists so tests —
+// here and in the tagger — can parse inline snippets without touching disk.
+func ParseSource(path string, src []byte) ([]CodeUnit, error) {
+	return parseGoSource(path, src)
 }

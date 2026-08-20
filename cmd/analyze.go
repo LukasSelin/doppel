@@ -10,6 +10,7 @@ import (
 	"github.com/LukasSelin/doppel/internal/comparator"
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/mapper"
+	"github.com/LukasSelin/doppel/internal/ontology"
 	"github.com/LukasSelin/doppel/internal/parser"
 	"github.com/LukasSelin/doppel/internal/reporter"
 	"github.com/LukasSelin/doppel/internal/tagger"
@@ -88,9 +89,19 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	// Tag every unit, counting tag occurrences as we go: the counts become
+	// the corpus statistics that weight concept matching. A tag most units
+	// carry says little about any pair sharing it; a rare one says a lot.
+	tagCounts := make(map[ontology.TermID]int)
 	for i := range units {
-		units[i].Patterns = tagger.Tag(units[i].Body)
+		units[i].Patterns = tagger.Tag(units[i])
+		for _, tag := range units[i].Patterns {
+			tagCounts[ontology.TermID(tag)]++
+		}
 	}
+	onto := ontology.Default()
+	scorer := ontology.NewScorer(onto, ontology.NewCorpusIC(onto, tagCounts))
+	comp := comparator.New(scorer)
 
 	// Build call graph and generate concept documents for every unit.
 	// docs[i] describes units[i]; the pipeline relies on that alignment.
@@ -107,7 +118,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	if len(pairs) > 0 {
 		fmt.Fprintf(os.Stderr, "Running structural comparison on %d pairs...\n", len(pairs))
 		for i := range pairs {
-			ev := comparator.Compare(docs[pairs[i].AIdx], docs[pairs[i].BIdx])
+			ev := comp.Compare(docs[pairs[i].AIdx], docs[pairs[i].BIdx])
 			pairs[i].Evidence = &ev
 		}
 

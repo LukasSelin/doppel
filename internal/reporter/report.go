@@ -72,7 +72,9 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, threshold float64,
 			fmt.Fprintf(w, "**Structural overlap:** `%.2f` (%s)\n\n", p.Evidence.OverlapScore, label)
 			if len(p.Evidence.Reasons) > 0 {
 				for _, reason := range p.Evidence.Reasons {
-					fmt.Fprintf(w, "- %s\n", reason)
+					// Escaped like the table cells. Reasons quote identifiers from
+					// the analysed source, and now bracketed lists of them too.
+					fmt.Fprintf(w, "- %s\n", mdEscape(reason))
 				}
 				fmt.Fprintln(w)
 			}

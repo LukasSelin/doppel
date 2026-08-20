@@ -49,6 +49,9 @@ doppel analyze ./src --threshold 0.50
 
 # Keep only pairs that also share architectural context, and save a report
 doppel analyze . --struct-min 0.4 --output report.md
+
+# Print the vocabulary scoring is based on, and check it is consistent
+doppel ontology --defs
 ```
 
 ### Two scores per pair
@@ -56,7 +59,7 @@ doppel analyze . --struct-min 0.4 --output report.md
 Every reported pair carries two independent numbers:
 
 - **Code similarity** (`Score`, gated by `--threshold`) — how alike the two bodies are, from the AST fingerprint. The report breaks it into its components: `ast` (3-gram shingle overlap), `flow` (control-flow shape), `sig` (parameter and result types), and `size` (relative body size, shown for context but not scored).
-- **Structural overlap** (gated by `--struct-min`) — how much architectural context the two share: callees, callers, intent patterns, role, package.
+- **Structural overlap** (gated by `--struct-min`) — how much architectural context the two share: callees, callers, intent patterns, role, package, and what their own callers and callees do. Intent patterns, roles and receiver types are matched through a concept hierarchy rather than compared as strings, so two functions doing related work — one hitting a database, the other a cache — score partial credit instead of zero. Every graded match comes with an evidence line saying which ancestor relates the two and how strongly.
 
 A high code score with low structural overlap means two lookalike bodies in unrelated parts of the system. High on both is the real merge candidate.
 

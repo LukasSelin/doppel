@@ -18,7 +18,10 @@ func parseGo(path string) ([]CodeUnit, error) {
 	if err != nil {
 		return nil, err
 	}
+	return parseGoSource(path, src)
+}
 
+func parseGoSource(path string, src []byte) ([]CodeUnit, error) {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, path, src, parser.ParseComments)
 	if err != nil {
@@ -57,6 +60,7 @@ func parseGo(path string) ([]CodeUnit, error) {
 			ReceiverType: recvType,
 			Callees:      extractCallees(fd),
 			Fingerprint:  fingerprint.Build(fd),
+			Signals:      extractSignals(fd, f),
 		})
 	}
 	return units, nil
