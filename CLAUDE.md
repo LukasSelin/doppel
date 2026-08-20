@@ -13,7 +13,8 @@ explaining *why* they are similar.
 Ollama embeddings originally; that entire pass was removed. Anything suggesting otherwise is stale.
 The corollary worth internalizing: **every score is deterministic**, so an unchanged tree must
 produce a byte-identical report. Treat a nondeterministic report as a bug (map iteration order is
-the usual culprit — see `sortedKeys` in `mapper` and the tie-break in `FindSimilar`).
+the usual culprit — see `sortedKeys` in `mapper`, the tie-breaks in `retriever` (`topK`, union key
+sort), and `analyzer.SortByEvidence`).
 
 ## Pipeline
 
@@ -23,10 +24,10 @@ Orchestrated end to end by `runAnalyze` in `cmd/analyze.go`. Stages in execution
 2. **Tag** — `tagger.Tag(unit)` sets `unit.Patterns` (9 intent tags matched against the unit's AST signals — selectors, imports, string-literal contents, identifiers, node kinds — never against raw source text). Tag counts feed the corpus IC in the same loop.
 3. **Build call graph** — `concepter.BuildCallGraph(units)` → `concepter.Graph`, both directions over **qualified names** (`package.Name`, methods keeping their receiver: `comparator.*Comparator.Compare`). A resolver maps each raw callee string to at most one unit: import-qualified selectors through the file's recorded import bindings (aliases included), variable-receiver method calls only when the method name is unique corpus-wide, bare names to the same-package function. Ambiguity drops the edge; recursion is excluded; only repo-internal edges exist. Happens *before* concept docs, because docs need caller lists.
 4. **Generate + enrich concept docs** — `concepter.New()` makes bare docs; **`mapper.Map` does the real work**: attaches qualified callers, resolved internal callees, and the depth-2 call-graph neighborhood; derives per-corpus role thresholds from the resolved degree distribution and classifies; aggregates caller/callee patterns and packages from resolved edges.
-5. **Compare fingerprints** — `analyzer.FindSimilar` scores the full O(n²) upper triangle, keeps `score >= threshold`, sorts descending, truncates to `--top`.
-6. **Structural comparison** — a `comparator.Comparator` built over a corpus-weighted `ontology.Scorer` scores each surviving pair → `pair.Evidence`. Concept and role signals go through the ontology hierarchy, not string equality, and concept matching is weighted by information content computed from this run's tag counts — sharing a near-universal tag is weak evidence, sharing a rare one is strong.
+5. **Candidate retrieval** — `retriever.Retrieve` runs three per-function top-K channels (structural shingle-IDF, concept IC, resolved-call IDF — see *Candidate retrieval* below), unions and dedupes them, and computes definitive per-pair evidence masses plus the exact `fingerprint.Breakdown` for every union pair. Retrieval stats go to stderr. `cmd` materializes the candidates into `analyzer.SimilarPair`s (with `Retrieval` set). `analyzer.FindSimilar` still exists as the simple library API but the pipeline no longer calls it.
+6. **Structural comparison** — a `comparator.Comparator` built over a corpus-weighted `ontology.Scorer` scores **every** candidate pair → `pair.Evidence`. Concept and role signals go through the ontology hierarchy, not string equality, and concept matching is weighted by information content computed from this run's tag counts — sharing a near-universal tag is weak evidence, sharing a rare one is strong.
 7. **Structural filter** — when `--struct-min > 0`, pairs below that overlap score are **dropped**. This is a selection stage, not just annotation.
-8. **Report** — `reporter.Print` to stdout always; `reporter.PrintMarkdown` to `--output` additionally.
+8. **Rank + report** — `analyzer.SortByEvidence` orders by retrieval evidence mass (desc), then code-shape score (desc), then `AIdx`/`BIdx`, and truncates to `--top`. `reporter.Print` to stdout always; `reporter.PrintMarkdown` to `--output` additionally. Both take a `reporter.Meta`; `--debug` adds per-pair retrieval provenance.
 
 `docs[i]` describes `units[i]`, and `SimilarPair` carries `AIdx`/`BIdx` into that slice. Evidence
 attachment is a positional lookup, deliberately — an earlier version keyed it on
@@ -49,7 +50,8 @@ internal/
   tagger/       AST-signal intent detection → 9 pattern tags
   concepter/    ConceptDoc; callgraph.go (BuildCallGraph); role.go (ClassifyRole, role constants)
   mapper/       Where enrichment actually happens: callers, role classification, aggregated patterns/packages
-  analyzer/     Pairwise fingerprint scoring, threshold filtering, top-N sorting
+  retriever/    Multi-channel candidate retrieval: shape.go / concept.go / calls.go inverted indexes, retriever.go union + evidence
+  analyzer/     SimilarPair + Retrieval types; FindSimilar (library API); SortByEvidence (final ranking)
   comparator/   Weighted structural overlap scoring (9 signals → 0.0–1.0 composite)
   reporter/     Plain-text (stdout) and Markdown (--output) formatting
 ```
@@ -57,20 +59,28 @@ internal/
 Dependency directions that must hold: `analyzer` imports `comparator` (for the `Evidence` field), so
 `comparator` must never import `analyzer`. `parser` imports `fingerprint`, so `fingerprint` must
 never import `parser` — it works on `*ast.FuncDecl` directly. `ontology` imports nothing from this
-module and must stay that way: `tagger`, `concepter` and `comparator` all depend on it.
+module and must stay that way: `tagger`, `concepter` and `comparator` all depend on it. `retriever`
+imports `parser`, `fingerprint`, `concepter`, `ontology` and must never import `analyzer` or
+`comparator` — `cmd` bridges retriever candidates into `analyzer.SimilarPair`.
 
-## Two scores, deliberately unblended
+## Two scores, deliberately unblended — and a third quantity that ranks
 
-Each pair carries two independent numbers, gated by two independent flags:
+Each pair carries two independent similarity numbers, gated by two independent flags:
 
 | Score | Source | Flag | Means |
 | --- | --- | --- | --- |
-| `Score` | `fingerprint.Similarity` | `--threshold` | how alike the two bodies are |
+| `Score` | `fingerprint.Similarity` | `--threshold` | how alike the two bodies are (reported as `code-shape:`) |
 | `Evidence.OverlapScore` | `comparator.Compare` | `--struct-min` | how much architectural context they share |
 
 Do not merge these into one number. High code score + low overlap is a *different finding* (lookalike
 bodies in unrelated subsystems) from high on both (a real merge candidate), and collapsing them
 destroys that distinction.
+
+The report is **ranked by neither**: ordering comes from `Retrieval.Total`, the candidate evidence
+mass (see *Candidate retrieval*). Similarity says *how alike*, evidence says *how much rare,
+informative material is shared* — a 1.0 code-shape match on a ubiquitous `Error()` idiom carries
+near-zero evidence and sinks, while a 0.5-shape pair sharing rare calls and tags rises. The report
+label was deliberately renamed from `score:` to `code-shape:` so nobody reads 1.0000 as a verdict.
 
 ## Development
 
@@ -118,9 +128,48 @@ doppel ontology --defs                                # print the vocabulary and
   scores. It is no longer rendered to text anywhere; `Format()` existed only to build embedding
   input and is gone.
 - **SimilarPair** (`internal/analyzer/similarity.go`) — two `CodeUnit`s plus `AIdx`/`BIdx`, `Score`,
-  `Breakdown` (per-component code similarity), and `Evidence` (**nil until the structural
-  comparison stage**).
+  `Breakdown` (per-component code similarity), `Evidence` (**nil until the structural
+  comparison stage**), and `Retrieval` (**nil for `FindSimilar`-produced pairs** — set by the
+  pipeline from retriever candidates).
 - **StructuralEvidence** (`internal/comparator/comparator.go`) — the weighted overlap result.
+- **Candidate / Stats / Options** (`internal/retriever/retriever.go`) — one retrieved pair with
+  per-channel evidence masses, the run's channel statistics, and the retrieval knobs (the df caps
+  live on `Options` so tests can shrink them; they are not flags).
+
+### Candidate retrieval
+
+Retrieval is an information-retrieval stage, not a similarity ranking: its job is recall — get every
+pair with enough informative shared evidence in front of the comparator cheaply — and its unit is
+**evidence mass in nats**, `Σ ln(N/df)` over shared rare features. All three channels share the
+skeleton: build an inverted index, drop features with `df < 2` (can't pair) or `df > cap` (corpus
+idiom, zero evidence), accumulate shared mass per neighbor in ascending feature order, keep each
+function's top `--channel-k` (default 5) by `(mass desc, idx asc)`.
+
+| Channel | Features | Cap (Options) | Extra gates |
+| --- | --- | --- | --- |
+| shape | fingerprint shingle hashes, IDF over eligible units | `MaxShingleDF` 50 | `--min-nodes` eligibility; admits only pairs with exact `code-shape >= --threshold`, probing at most `4*ChannelK` neighbors |
+| concept | tagger tags + non-root taxonomy ancestors (enumeration only) | `MaxConceptDF` 250 | none — evidence is `Scorer.SharedInformation` (raw `Σ IC(LCS)`) over the leaf tag sets |
+| call | resolved internal callees (qualified) + import-qualified external calls via `RefPath` (full import path) | `MaxCallDF` 50 | none; bare names and variable-receiver calls are never tokens |
+
+The union is deduped on `(min idx, max idx)`; every union pair then gets **definitive** evidence on
+all three channels regardless of which admitted it, plus the exact `fingerprint.Breakdown`
+(memoized). Summing the three masses into `Total` is coherent because all three are log-evidence
+over the same corpus of N functions — do not normalize the components before summing.
+
+Consequences worth knowing:
+
+- A shingle/token in *every* unit has `idf = ln(N/N) = 0`; zero-mass neighbors are never admitted.
+  The 130-clone `Error()` bucket exceeds the df cap entirely — those functions contribute no
+  structural candidates and can only enter via concept/call evidence, which is the intended
+  common-idiom suppression (no name-based heuristics anywhere).
+- The concept channel indexes ancestors so `db_access`-only can meet `caching`-only through
+  `data_store_access`, but the *evidence* is always `SharedInformation` on the leaf sets — a pair
+  meeting only at a shallow ancestor earns only that ancestor's small IC.
+- `ontology.Scorer.SharedInformation` exists precisely so retrieval never recomputes mass as
+  `Σ ic.Of(m.LCA)` — that hits `Of("")` (the unknown sentinel) for unknown-term self-matches.
+- `Stats.Suppressed` / `Stats.LargeBuckets` are diagnostics on stderr, not gates.
+- On the ~8.7k-function Sendify corpus: ~22k union pairs, ~2.5s end to end (the old all-pairs
+  scoring took ~20s), ~60% of pairs call-only, ~9% concept-only.
 
 ### Fingerprint scoring
 
@@ -139,10 +188,10 @@ Two canonicalization rules do the heavy lifting in the token stream, and both ar
 identifiers collapse to `ID` (so renamed clones still match), while call *selector* names survive as
 `CALL:Errorf` (intent-bearing) with the receiver expression dropped (`e`, `s`, `cfg` are arbitrary).
 
-`--min-nodes` (default `12`) excludes tiny bodies from comparison entirely. Without it one-line
-accessors match each other at 1.0 and flood the report. On this repo the guard currently excludes 4
-functions and changes no reported pair at the default threshold — it is preventive, so do not
-"simplify" it away on the evidence of a clean run here.
+`--min-nodes` (default `12`) excludes tiny bodies from the **structural retrieval channel** (and
+from `FindSimilar`). Without it one-line accessors match each other at 1.0 and flood the channel.
+Concept and call retrieval deliberately ignore it — a small function with rare tag or call evidence
+is still worth comparing.
 
 ### Comparator weights
 
@@ -302,9 +351,17 @@ Two invariants worth knowing:
   "top": 10,
   "min-nodes": 12,
   "struct-min": 0.4,
-  "output": "doppel-report.md"
+  "output": "doppel-report.md",
+  "channel-k": 5,
+  "debug": false
 }
 ```
+
+Flag semantics after the retrieval redesign: `--threshold` floors code-shape for
+**structural-channel admission only** (concept/call candidates bypass it); `--top` caps the
+**final report** after comparison, filtering and evidence ranking — not the candidate set;
+`--min-nodes` gates the structural channel only; `--channel-k` is the per-function per-channel
+top-K; `--debug` adds retrieval provenance lines to the report.
 
 Every functional flag except `--config` has a config key. Precedence: `applyConfig` only calls
 `Flags().Set` when `!Flags().Changed(name)`, so explicit CLI flags always win over the file.
@@ -320,7 +377,8 @@ Unknown keys are ignored rather than rejected, so a stale config file does not b
   `_test.go` files are **not** skipped, and test functions legitimately dominate the top of the
   report on this repo.
 - Tested: `ontology`, `fingerprint`, `analyzer`, `comparator`, `tagger`, `parser`,
-  `concepter/role`, `cmd` config precedence. Untested and worth covering: `mapper`, `reporter`.
+  `concepter/role`, `retriever`, `reporter`, `cmd` config precedence. Untested and worth
+  covering: `mapper`.
 
 ## Rough edges
 
@@ -348,6 +406,14 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   share each other's 1-neighborhood inside their depth-2 balls, mildly favoring adjacent pairs on
   `shares_neighborhood`. The compared counterpart itself is excluded per pair (without that,
   adjacency would be *penalized* instead); the residual bias is accepted at weight 0.030.
-- **O(n²) with no blocking.** Every function pair is compared. Fine at the current scale (74
-  functions here, ~2.7k pairs), but a large repo would want MinHash/LSH banding to cut the candidate
-  set before exact scoring.
+- **Retrieval recall is bounded by the channels.** A pair with no shared rare shingle, no shared
+  tag, and no shared resolved call is never compared, no matter how alike it is — that is the
+  design trade (the old exhaustive `FindSimilar` pass remains available as a library call). The
+  worst case of the inverted-index accumulation is `O(cap · postings)`, comfortably sub-quadratic
+  at 10k functions (~2.5s on an 8.7k-function corpus, vs ~20s for the old all-pairs pass).
+- **Repetitive scaffolding clusters can dominate the evidence ranking.** Fifteen `cmd/tool`
+  `main.main` functions sharing ~100 mid-frequency setup calls each carry ~600 nats of call
+  evidence and fill the Sendify top-20. That is real duplication, but it crowds the default view;
+  per-function top-K keeps them from crowding the *candidate set*, and `--struct-min` or a larger
+  `--top` gets past them in the report. A report-level diversity cap (max pairs per function) is
+  the natural follow-up if it grates.

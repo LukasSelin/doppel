@@ -91,7 +91,50 @@ func (s *Scorer) SetRelatedness(a, b []string) (float64, []Match) {
 	if len(as) == 0 || len(bs) == 0 {
 		return 0, nil
 	}
+	shared, matched := s.matchShared(as, bs)
 
+	var sumA, sumB float64
+	for _, t := range as {
+		sumA += s.ic.Of(TermID(t))
+	}
+	for _, t := range bs {
+		sumB += s.ic.Of(TermID(t))
+	}
+	denom := sumA
+	if sumB > denom {
+		denom = sumB
+	}
+	if denom <= 0 {
+		return 0, matched
+	}
+	return shared / denom, matched
+}
+
+// SharedInformation returns the un-normalized numerator of the weighted
+// SetRelatedness: Σ IC(LCS) over the greedy contribution-ordered matching of
+// the two term sets, plus the matches themselves. It is the "how much
+// information do these sets share" quantity, in nats, before any division by
+// either side's total — which is what candidate retrieval wants: a pair
+// sharing one rare tag carries more evidence than a pair sharing one
+// ubiquitous tag, even though both normalize to the same set relatedness.
+// A nil-IC scorer has no information table and returns (0, nil).
+func (s *Scorer) SharedInformation(a, b []string) (float64, []Match) {
+	if s.ic == nil {
+		return 0, nil
+	}
+	as, bs := sortedUnique(a), sortedUnique(b)
+	if len(as) == 0 || len(bs) == 0 {
+		return 0, nil
+	}
+	return s.matchShared(as, bs)
+}
+
+// matchShared runs the contribution-ordered greedy matching over two
+// sorted-unique term sets and returns the total shared information and the
+// matches in consumption order. Both SetRelatedness and SharedInformation
+// build on it, so the matching (and its tie-breaks) cannot drift between the
+// normalized and raw views.
+func (s *Scorer) matchShared(as, bs []string) (float64, []Match) {
 	type candidate struct {
 		i, j    int
 		contrib float64 // IC of the pair's most specific common ancestor
@@ -138,22 +181,7 @@ func (s *Scorer) SetRelatedness(a, b []string) (float64, []Match) {
 		shared += c.contrib
 		matched = append(matched, Match{A: as[c.i], B: bs[c.j], Score: c.sim, LCA: c.lcs})
 	}
-
-	var sumA, sumB float64
-	for _, t := range as {
-		sumA += s.ic.Of(TermID(t))
-	}
-	for _, t := range bs {
-		sumB += s.ic.Of(TermID(t))
-	}
-	denom := sumA
-	if sumB > denom {
-		denom = sumB
-	}
-	if denom <= 0 {
-		return 0, matched
-	}
-	return shared / denom, matched
+	return shared, matched
 }
 
 // pairContribution returns the information the two terms share: IC of their

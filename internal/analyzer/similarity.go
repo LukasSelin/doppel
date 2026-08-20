@@ -15,6 +15,19 @@ type SimilarPair struct {
 	Score      float64                        // composite fingerprint similarity, 0.0-1.0
 	Breakdown  fingerprint.Breakdown          // per-component scores behind Score
 	Evidence   *comparator.StructuralEvidence // populated by structural comparison stage; nil until then
+	Retrieval  *Retrieval                     // multi-channel retrieval evidence; nil for FindSimilar-produced pairs
+}
+
+// Retrieval carries the candidate-retrieval evidence for a pair: per-channel
+// shared-information masses in nats and the channels that admitted it. It is
+// a third quantity next to Score and Evidence.OverlapScore — evidence mass
+// ranks the report, while the two similarity scores stay unblended.
+type Retrieval struct {
+	Shape    float64  // shared rare-shingle IDF mass
+	Concept  float64  // shared tag information, Σ IC(LCS)
+	Call     float64  // shared rare-call IDF mass
+	Total    float64  // Shape + Concept + Call
+	Channels []string // which retrieval channels admitted the pair
 }
 
 // FindSimilar compares every pair of function fingerprints and returns those

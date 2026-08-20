@@ -1,0 +1,160 @@
+package retriever
+
+import (
+	"math"
+	"path"
+	"sort"
+	"strings"
+
+	"github.com/lukse/doppel/internal/concepter"
+	"github.com/lukse/doppel/internal/parser"
+)
+
+// callIndex is the call channel: an inverted index over resolved call tokens
+// with per-token IDF. Two token sources, both fully resolved:
+//
+//   - repo-internal callees from the call graph (qualified names), and
+//   - external calls whose selector receiver is an import binding of the
+//     calling file, keyed by full import path ("database/sql.Open") so two
+//     packages importing the same API meet on the same token.
+//
+// Bare names and variable-receiver method calls are never tokens — unresolved
+// matching is exactly what the resolved call graph exists to avoid. Ubiquity
+// handles itself: fmt.Sprintf-scale tokens exceed MaxCallDF and drop out of
+// the index entirely, mid-frequency helpers get smoothly small IDF, and rare
+// API combinations carry the mass.
+type callIndex struct {
+	surviving [][]string         // per unit: tokens that survived the df cap, ascending
+	idf       map[string]float64 // ln(nUnits / df) for surviving tokens
+	postings  map[string][]int   // surviving token → unit indices, ascending
+}
+
+func buildCallIndex(units []parser.CodeUnit, g *concepter.Graph, opt Options) *callIndex {
+	x := &callIndex{
+		surviving: make([][]string, len(units)),
+		idf:       make(map[string]float64),
+		postings:  make(map[string][]int),
+	}
+
+	internal := make(map[string]bool, len(units))
+	for i := range units {
+		internal[concepter.QualifiedName(units[i])] = true
+	}
+
+	tokens := make([][]string, len(units))
+	df := make(map[string]int)
+	for i := range units {
+		tokens[i] = callTokens(units[i], g, internal)
+		for _, t := range tokens[i] {
+			df[t]++
+		}
+	}
+
+	for i := range units {
+		var surv []string
+		for _, t := range tokens[i] {
+			if n := df[t]; n >= 2 && n <= opt.MaxCallDF {
+				surv = append(surv, t)
+				x.postings[t] = append(x.postings[t], i)
+			}
+		}
+		x.surviving[i] = surv
+	}
+	for t, n := range df {
+		if n >= 2 && n <= opt.MaxCallDF {
+			x.idf[t] = math.Log(float64(len(units)) / float64(n))
+		}
+	}
+	return x
+}
+
+// callTokens builds one unit's deduped, sorted token set. The internal-QN
+// guard keeps an internal package called through its own import from counting
+// twice — once as the resolved graph edge and once as an import-qualified
+// external token for the same call.
+func callTokens(u parser.CodeUnit, g *concepter.Graph, internal map[string]bool) []string {
+	set := make(map[string]bool)
+	for _, callee := range g.Callees[concepter.QualifiedName(u)] {
+		set[callee] = true
+	}
+	for _, raw := range u.Callees {
+		dot := strings.IndexByte(raw, '.')
+		if dot <= 0 {
+			continue // bare name: unresolved, never a token
+		}
+		recv, sel := raw[:dot], raw[dot+1:]
+		refPath, ok := u.Signals.RefPath(recv)
+		if !ok {
+			continue // variable receiver: unresolved, never a token
+		}
+		if internal[path.Base(refPath)+"."+sel] {
+			continue // repo-internal: the resolved graph edge already covers it
+		}
+		set[refPath+"."+sel] = true
+	}
+	if len(set) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(set))
+	for t := range set {
+		out = append(out, t)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// admitPairs runs per-function retrieval over shared surviving tokens:
+// accumulate Σ idf per neighbor, keep the top ChannelK by (mass desc, idx
+// asc). No similarity floor and no size gate — a syntactically alien pair
+// sharing rare resolved calls is exactly what this channel exists to admit.
+func (x *callIndex) admitPairs(opt Options) []pairKey {
+	var pairs []pairKey
+	for a := range x.surviving {
+		if len(x.surviving[a]) == 0 {
+			continue
+		}
+		acc := make(map[int]float64)
+		for _, t := range x.surviving[a] {
+			w := x.idf[t]
+			for _, b := range x.postings[t] {
+				if b != a {
+					acc[b] += w
+				}
+			}
+		}
+		neighbors := make([]neighborMass, 0, len(acc))
+		for b, mass := range acc {
+			// A token in every unit has idf 0; zero shared mass is zero
+			// evidence, not a candidate.
+			if mass > 0 {
+				neighbors = append(neighbors, neighborMass{idx: b, mass: mass})
+			}
+		}
+		for _, nb := range topK(neighbors, opt.ChannelK) {
+			pairs = append(pairs, orderPair(a, nb.idx))
+		}
+	}
+	return pairs
+}
+
+// sharedMass is the definitive call evidence for a pair: Σ idf over the
+// intersection of the two surviving token sets, summed in ascending token
+// order.
+func (x *callIndex) sharedMass(a, b int) float64 {
+	sa, sb := x.surviving[a], x.surviving[b]
+	var mass float64
+	i, j := 0, 0
+	for i < len(sa) && j < len(sb) {
+		switch {
+		case sa[i] < sb[j]:
+			i++
+		case sa[i] > sb[j]:
+			j++
+		default:
+			mass += x.idf[sa[i]]
+			i++
+			j++
+		}
+	}
+	return mass
+}
