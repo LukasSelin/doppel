@@ -11,21 +11,14 @@ import (
 )
 
 // AnalysisConfig holds optional overrides for analyze flags.
+// Keys mirror the flag names, so they are kebab-case, not snake_case.
 // Pointer fields let us distinguish "not set" from zero values.
 type AnalysisConfig struct {
-	Threshold    *float64 `json:"threshold,omitempty"`
-	TopN         *int     `json:"top,omitempty"`
-	Model        *string  `json:"model,omitempty"`
-	OllamaURL    *string  `json:"ollama-url,omitempty"`
-	CacheFile    *string  `json:"cache,omitempty"`
-	MaxInput     *int     `json:"max-input,omitempty"`
-	OllamaNumCtx *int     `json:"ollama-num-ctx,omitempty"`
-	ReflectModel *string  `json:"reflect-model,omitempty"`
-	OutputFile   *string  `json:"output,omitempty"`
-	ConceptModel      *string `json:"concept-model,omitempty"`
-	ConceptCache      *string `json:"concept-cache,omitempty"`
-	ConceptPromptFile *string `json:"concept-prompt-file,omitempty"`
-	ReflectPromptFile *string `json:"reflect-prompt-file,omitempty"`
+	Threshold  *float64 `json:"threshold,omitempty"`
+	TopN       *int     `json:"top,omitempty"`
+	MinNodes   *int     `json:"min-nodes,omitempty"`
+	StructMin  *float64 `json:"struct-min,omitempty"`
+	OutputFile *string  `json:"output,omitempty"`
 }
 
 // loadConfig reads a JSON config file. Returns nil (no error) if the file does not exist.
@@ -57,37 +50,13 @@ func applyConfig(cmd *cobra.Command, cfg *AnalysisConfig) {
 	if cfg.TopN != nil {
 		set("top", strconv.Itoa(*cfg.TopN))
 	}
-	if cfg.Model != nil {
-		set("model", *cfg.Model)
+	if cfg.MinNodes != nil {
+		set("min-nodes", strconv.Itoa(*cfg.MinNodes))
 	}
-	if cfg.OllamaURL != nil {
-		set("ollama-url", *cfg.OllamaURL)
-	}
-	if cfg.CacheFile != nil {
-		set("cache", *cfg.CacheFile)
-	}
-	if cfg.MaxInput != nil {
-		set("max-input", strconv.Itoa(*cfg.MaxInput))
-	}
-	if cfg.OllamaNumCtx != nil {
-		set("ollama-num-ctx", strconv.Itoa(*cfg.OllamaNumCtx))
-	}
-	if cfg.ReflectModel != nil {
-		set("reflect-model", *cfg.ReflectModel)
+	if cfg.StructMin != nil {
+		set("struct-min", strconv.FormatFloat(*cfg.StructMin, 'f', -1, 64))
 	}
 	if cfg.OutputFile != nil {
 		set("output", *cfg.OutputFile)
-	}
-	if cfg.ConceptModel != nil {
-		set("concept-model", *cfg.ConceptModel)
-	}
-	if cfg.ConceptCache != nil {
-		set("concept-cache", *cfg.ConceptCache)
-	}
-	if cfg.ConceptPromptFile != nil {
-		set("concept-prompt-file", *cfg.ConceptPromptFile)
-	}
-	if cfg.ReflectPromptFile != nil {
-		set("reflect-prompt-file", *cfg.ReflectPromptFile)
 	}
 }

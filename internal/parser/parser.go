@@ -1,6 +1,10 @@
 package parser
 
-import "path/filepath"
+import (
+	"path/filepath"
+
+	"github.com/lukse/doppel/internal/fingerprint"
+)
 
 // CodeUnit represents a single extracted function or method.
 type CodeUnit struct {
@@ -8,13 +12,14 @@ type CodeUnit struct {
 	File         string
 	StartLine    int
 	Body         string
-	Signature    string   // parameter + return types, e.g. "(ctx context.Context) (User, error)"
-	Package      string   // Go package name
-	Patterns     []string // detected intent tags, e.g. ["retry", "http_call"]
-	DocComment   string   // godoc comment above the declaration
-	Exported     bool     // true if the function name is exported
-	ReceiverType string   // e.g. "*Server"; empty for plain functions
-	Callees      []string // AST-derived outgoing call names
+	Signature    string                  // parameter + return types, e.g. "(ctx context.Context) (User, error)"
+	Package      string                  // Go package name
+	Patterns     []string                // detected intent tags, e.g. ["retry", "http_call"]
+	DocComment   string                  // godoc comment above the declaration
+	Exported     bool                    // true if the function name is exported
+	ReceiverType string                  // e.g. "*Server"; empty for plain functions
+	Callees      []string                // AST-derived outgoing call names
+	Fingerprint  fingerprint.Fingerprint // deterministic static summary of the body
 }
 
 // Parse extracts all CodeUnits from the Go file at the given path.

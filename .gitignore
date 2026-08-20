@@ -7,8 +7,6 @@ doppel.exe
 # Generated output
 report.md
 doppel-report.md
-.embeddings.json
-*.embeddings.json
 
 # Go test/coverage artifacts
 coverage.out

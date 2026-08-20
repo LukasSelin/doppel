@@ -9,6 +9,8 @@ import (
 	"os"
 	"sort"
 	"strings"
+
+	"github.com/lukse/doppel/internal/fingerprint"
 )
 
 func parseGo(path string) ([]CodeUnit, error) {
@@ -54,6 +56,7 @@ func parseGo(path string) ([]CodeUnit, error) {
 			Exported:     fd.Name.IsExported(),
 			ReceiverType: recvType,
 			Callees:      extractCallees(fd),
+			Fingerprint:  fingerprint.Build(fd),
 		})
 	}
 	return units, nil
