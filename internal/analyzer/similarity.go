@@ -41,11 +41,21 @@ type CultureChannel struct {
 // a third quantity next to Score and Evidence.OverlapScore — evidence mass
 // ranks the report, while the two similarity scores stay unblended.
 type Retrieval struct {
-	Shape    float64  // shared rare-shingle IDF mass
-	Concept  float64  // shared tag information, Σ IC(LCS)
-	Call     float64  // shared rare-call IDF mass
-	Total    float64  // Shape + Concept + Call
-	Channels []string // which retrieval channels admitted the pair
+	Shape      float64       // shared structural energy, Σ IC·min(count) over shared patterns
+	Concept    float64       // shared tag information, Σ IC(LCS)
+	Call       float64       // shared rare-call IDF mass
+	Total      float64       // Shape + Concept + Call
+	TrophicSim float64       // 2·SharedEnergy/(E_A+E_B): how much of their structure is shared
+	Channels   []string      // which retrieval channels admitted the pair
+	Chains     []SharedChain // highest-energy shared structures, the explanation
+}
+
+// SharedChain is one shared high-level structure behind a pair's shape
+// energy — where the match's weight actually comes from.
+type SharedChain struct {
+	Level  int
+	Energy float64
+	Render string
 }
 
 // FindSimilar compares every pair of function fingerprints and returns those

@@ -40,6 +40,13 @@ func Print(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 		if p.Retrieval != nil {
 			fmt.Fprintf(w, "  evidence: %.2f  (shape %.2f  concept %.2f  call %.2f)\n",
 				p.Retrieval.Total, p.Retrieval.Shape, p.Retrieval.Concept, p.Retrieval.Call)
+			fmt.Fprintf(w, "  trophic: %.2f\n", p.Retrieval.TrophicSim)
+			if len(p.Retrieval.Chains) > 0 {
+				fmt.Fprintf(w, "  shared structure:\n")
+				for _, ch := range p.Retrieval.Chains {
+					fmt.Fprintf(w, "    %.2f  %s\n", ch.Energy, ch.Render)
+				}
+			}
 			if meta.Debug {
 				fmt.Fprintf(w, "  retrieved-via: %s\n", strings.Join(p.Retrieval.Channels, "+"))
 			}
@@ -91,6 +98,14 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 		if p.Retrieval != nil {
 			fmt.Fprintf(w, "**Evidence:** `%.2f` (shape %.2f, concept %.2f, call %.2f)\n\n",
 				p.Retrieval.Total, p.Retrieval.Shape, p.Retrieval.Concept, p.Retrieval.Call)
+			fmt.Fprintf(w, "**Trophic:** `%.2f`\n\n", p.Retrieval.TrophicSim)
+			if len(p.Retrieval.Chains) > 0 {
+				fmt.Fprintf(w, "**Shared structure:**\n\n")
+				for _, ch := range p.Retrieval.Chains {
+					fmt.Fprintf(w, "- `%.2f` — `%s`\n", ch.Energy, mdEscape(ch.Render))
+				}
+				fmt.Fprintln(w)
+			}
 			if meta.Debug {
 				fmt.Fprintf(w, "**Retrieved via:** %s\n\n", strings.Join(p.Retrieval.Channels, ", "))
 			}

@@ -135,6 +135,9 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	opts.ChannelK = channelK
 	opts.Threshold = threshold
 	opts.MinNodes = minNodes
+	if debugFlag {
+		opts.ChainTopN = 20 // the "full list", bounded
+	}
 	cands, stats := retriever.Retrieve(units, cg, onto, ic, opts)
 	printRetrievalStats(os.Stderr, stats)
 
@@ -148,11 +151,13 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 			Score:     c.Breakdown.Score,
 			Breakdown: c.Breakdown,
 			Retrieval: &analyzer.Retrieval{
-				Shape:    c.Shape,
-				Concept:  c.Concept,
-				Call:     c.Call,
-				Total:    c.Total,
-				Channels: c.Channels,
+				Shape:      c.Shape,
+				Concept:    c.Concept,
+				Call:       c.Call,
+				Total:      c.Total,
+				TrophicSim: c.TrophicSim,
+				Channels:   c.Channels,
+				Chains:     sharedChains(c.Chains),
 			},
 		}
 	}
@@ -217,8 +222,21 @@ func printRetrievalStats(w io.Writer, s retriever.Stats) {
 		}
 		return 100 * float64(n) / float64(s.Union)
 	}
-	fmt.Fprintf(w, "  concept-only %.1f%%  call-only %.1f%%  suppressed-shape functions: %d  large identity buckets: %d\n",
-		pct(s.OnlyConcept), pct(s.OnlyCall), s.Suppressed, s.LargeBuckets)
+	fmt.Fprintf(w, "  concept-only %.1f%%  call-only %.1f%%  suppressed-shape functions: %d  large identity buckets: %d  surviving patterns: %d\n",
+		pct(s.OnlyConcept), pct(s.OnlyCall), s.Suppressed, s.LargeBuckets, s.SurvivingPatterns)
+}
+
+// sharedChains bridges retriever chain explanations into the analyzer's
+// plain-data mirror.
+func sharedChains(chains []retriever.SharedPattern) []analyzer.SharedChain {
+	if len(chains) == 0 {
+		return nil
+	}
+	out := make([]analyzer.SharedChain, len(chains))
+	for i, c := range chains {
+		out[i] = analyzer.SharedChain{Level: c.Level, Energy: c.Energy, Render: c.Render}
+	}
+	return out
 }
 
 // cultureNotes flags unusual concept realizations on a pair's shared tags:

@@ -79,6 +79,52 @@ func TestPrintMarkdownLabels(t *testing.T) {
 	}
 }
 
+func TestPrintTrophicAndSharedStructure(t *testing.T) {
+	pairs := []analyzer.SimilarPair{samplePair(&analyzer.Retrieval{
+		Total: 25.1, Shape: 23.7, TrophicSim: 0.43,
+		Chains: []analyzer.SharedChain{
+			{Level: 3, Energy: 6.2, Render: "for{ call:TrimSpace call:Atoi call:append }"},
+			{Level: 3, Energy: 1.8, Render: "seq[ assign:=(call:Atoi) ; if(bin:!=(id,nil)) ]"},
+		},
+	})}
+	var b strings.Builder
+	Print(&b, pairs, Meta{})
+	out := b.String()
+	if !strings.Contains(out, "trophic: 0.43") {
+		t.Errorf("missing trophic line:\n%s", out)
+	}
+	if !strings.Contains(out, "shared structure:\n    6.20  for{ call:TrimSpace call:Atoi call:append }\n    1.80  seq[") {
+		t.Errorf("missing shared-structure block:\n%s", out)
+	}
+}
+
+func TestPrintNoChainsOmitsSharedStructure(t *testing.T) {
+	var b strings.Builder
+	Print(&b, []analyzer.SimilarPair{samplePair(&analyzer.Retrieval{TrophicSim: 0.1})}, Meta{})
+	if strings.Contains(b.String(), "shared structure:") {
+		t.Errorf("empty chains rendered a shared-structure header:\n%s", b.String())
+	}
+	if !strings.Contains(b.String(), "trophic: 0.10") {
+		t.Errorf("trophic line missing when chains empty:\n%s", b.String())
+	}
+}
+
+func TestPrintMarkdownTrophic(t *testing.T) {
+	pairs := []analyzer.SimilarPair{samplePair(&analyzer.Retrieval{
+		TrophicSim: 0.43,
+		Chains:     []analyzer.SharedChain{{Level: 3, Energy: 6.2, Render: "for{ call:Scan }"}},
+	})}
+	var b strings.Builder
+	PrintMarkdown(&b, pairs, Meta{})
+	out := b.String()
+	if !strings.Contains(out, "**Trophic:** `0.43`") {
+		t.Errorf("markdown missing trophic:\n%s", out)
+	}
+	if !strings.Contains(out, "- `6.20` — `for{ call:Scan }`") {
+		t.Errorf("markdown missing shared-structure bullet:\n%s", out)
+	}
+}
+
 func cultureNote() analyzer.CultureNote {
 	return analyzer.CultureNote{
 		Tag: "transaction", Side: "B", Typicality: 0.21, ConceptMedian: 0.68,
