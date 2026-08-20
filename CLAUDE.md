@@ -24,7 +24,7 @@ Orchestrated end to end by `runAnalyze` in `cmd/analyze.go`. Stages in execution
 3. **Build call graph** — `concepter.BuildCallGraph(units)` → `map[calleeName][]callerName`. Note this happens *before* concept docs, because docs need caller lists.
 4. **Generate + enrich concept docs** — `concepter.New()` makes bare docs; **`mapper.Map` does the real work**: attaches callers, calls `concepter.ClassifyRole`, and aggregates caller/callee patterns and packages.
 5. **Compare fingerprints** — `analyzer.FindSimilar` scores the full O(n²) upper triangle, keeps `score >= threshold`, sorts descending, truncates to `--top`.
-6. **Structural comparison** — `comparator.Compare` per surviving pair → `pair.Evidence`. Concept and role signals are scored through the ontology hierarchy, not by string equality, so related-but-not-identical intent earns partial credit.
+6. **Structural comparison** — a `comparator.Comparator` built over a corpus-weighted `ontology.Scorer` scores each surviving pair → `pair.Evidence`. Concept and role signals go through the ontology hierarchy, not string equality, and concept matching is weighted by information content computed from this run's tag counts — sharing a near-universal tag is weak evidence, sharing a rare one is strong.
 7. **Structural filter** — when `--struct-min > 0`, pairs below that overlap score are **dropped**. This is a selection stage, not just annotation.
 8. **Report** — `reporter.Print` to stdout always; `reporter.PrintMarkdown` to `--output` additionally.
 
@@ -244,6 +244,33 @@ Jaccard-shaped functions must not be merged into one helper.
 `ontology.Validate()` checks nine axioms and is exercised both by tests and by `doppel ontology`.
 Axiom 8, the tagger/ontology correspondence, lives in `internal/tagger` instead: the check needs the
 rule table, and importing `tagger` from `ontology` would be a cycle.
+
+### Corpus-weighted relatedness
+
+`ontology.NewCorpusIC` turns this run's tag counts into information content —
+`IC(c) = ln(1/P(c))`, add-one smoothed, ancestors accumulating their leaves — and
+`ontology.NewScorer` wraps the ontology with it. `cmd/analyze.go` builds the scorer from the tag
+counts and hands it to `comparator.New`; the free `comparator.Compare` stays corpus-independent
+(nil IC delegates literally to the Wu–Palmer methods) and is what the regression tests pin.
+
+With IC loaded, term relatedness is **Lin** (`2·IC(LCS)/(IC(a)+IC(b))`) and set relatedness is
+information-weighted: a matched pair contributes `IC(LCS)` exactly (Lin's denominator cancels the
+pair weight), so the score is the fraction of the larger side's information that is shared. The
+matcher is the same greedy **sorted by contribution, not similarity** — under IC a pair can be more
+similar yet share less information, and contribution order is what stays optimal (verified against
+a brute-force oracle in `oracle_test.go`/`scorer_test.go`, exhaustively).
+
+Two invariants worth knowing:
+
+- **The merge-signal gate never sees IC.** `countSignals` reads `PatternSignalBest`, a
+  taxonomy-only Wu–Palmer best match. Under Lin, sibling/cousin similarities move with tag
+  frequencies elsewhere in the tree; a pair's `MergeWorthy` must not flip because unrelated code
+  shifted the statistics. (The `OverlapScore >= 0.4` half of the verdict does include the weighted
+  score, so `MergeWorthy` is not fully corpus-independent — the signal count is.)
+- **Singleton sets cannot be discounted.** `{error_wrapping}` vs `{error_wrapping}` is still 1.0 —
+  the shared information and the total information are the same quantity. The discount only
+  manifests in sets of ≥ 2 tags. Fixing it would mean IC-scaling the `exhibits` relation weight,
+  which breaks axiom 7; documented instead.
 
 ## Configuration
 

@@ -25,6 +25,28 @@ const (
 // apart and an axiom can assert the weights sum to 1.0.
 var onto = ontology.Default()
 
+// Comparator scores structural overlap through a Scorer, which decides whether
+// concept matching is corpus-weighted. The pipeline builds one with an
+// information-content table derived from the parsed tree, so a near-universal
+// tag contributes little evidence and a rare one a lot.
+type Comparator struct {
+	scorer *ontology.Scorer
+}
+
+// New creates a Comparator over the given scorer.
+func New(scorer *ontology.Scorer) *Comparator { return &Comparator{scorer: scorer} }
+
+// defaultComparator is corpus-independent: plain Wu-Palmer matching, the
+// behavior every regression test pins.
+var defaultComparator = New(ontology.NewScorer(onto, nil))
+
+// Compare computes the structural overlap between two ConceptDocs with the
+// corpus-independent default scorer. The pipeline uses a Comparator instance
+// instead; this remains for callers and tests that need no corpus weighting.
+func Compare(a, b concepter.ConceptDoc) StructuralEvidence {
+	return defaultComparator.Compare(a, b)
+}
+
 // StructuralEvidence summarises the structural overlap between two ConceptDocs.
 //
 // The graded fields sit alongside the boolean and set-valued ones rather than
@@ -46,8 +68,9 @@ type StructuralEvidence struct {
 	SharedCalleePkgs []string
 
 	// Graded signals, from reasoning over the ontology.
-	PatternRelatedness       float64          // soft overlap of the two intent-tag sets
+	PatternRelatedness       float64          // soft overlap of the two intent-tag sets, corpus-weighted when IC is loaded
 	RelatedPatterns          []ontology.Match // the pairings behind it, matcher order
+	PatternSignalBest        float64          // best taxonomy-only pattern match; feeds countSignals (see Compare)
 	RoleRelatedness          float64          // shared fan-in/fan-out axes
 	ReceiverRelatedness      float64          // 1.0 same, 0.5 both methods, 0.0 mixed
 	EntityKindA              string           // "function" or "method"
@@ -69,7 +92,14 @@ type StructuralEvidence struct {
 // zero on intent — the same as two functions with nothing in common — even
 // though both are I/O; they now score partial credit as cousins under
 // io_operation. The same goes for roles that share one of their two axes.
-func Compare(a, b concepter.ConceptDoc) StructuralEvidence {
+//
+// The merge-signal gate deliberately does not follow the scorer: it reads a
+// taxonomy-only (Wu-Palmer) best match, recorded in PatternSignalBest. Under
+// corpus weighting, sibling and cousin similarities move with tag frequencies
+// elsewhere in the tree, and a pair's MergeWorthy verdict must not flip
+// because unrelated code shifted the statistics. IC bends the score; the
+// signal count stays corpus-independent.
+func (c *Comparator) Compare(a, b concepter.ConceptDoc) StructuralEvidence {
 	ev := StructuralEvidence{
 		SharedCallees:  intersect(a.Callees, b.Callees),
 		SharedCallers:  intersect(a.Callers, b.Callers),
@@ -93,9 +123,18 @@ func Compare(a, b concepter.ConceptDoc) StructuralEvidence {
 		EntityKindA:         string(ontology.EntityKindOf(a.ReceiverType)),
 		EntityKindB:         string(ontology.EntityKindOf(b.ReceiverType)),
 	}
-	ev.PatternRelatedness, ev.RelatedPatterns = onto.SetRelatedness(a.Patterns, b.Patterns)
-	ev.CallerConceptRelatedness, ev.RelatedCallerConcepts = onto.SetRelatedness(a.CallerPatterns, b.CallerPatterns)
-	ev.CalleeConceptRelatedness, ev.RelatedCalleeConcepts = onto.SetRelatedness(a.CalleePatterns, b.CalleePatterns)
+	ev.PatternRelatedness, ev.RelatedPatterns = c.scorer.SetRelatedness(a.Patterns, b.Patterns)
+	ev.CallerConceptRelatedness, ev.RelatedCallerConcepts = c.scorer.SetRelatedness(a.CallerPatterns, b.CallerPatterns)
+	ev.CalleeConceptRelatedness, ev.RelatedCalleeConcepts = c.scorer.SetRelatedness(a.CalleePatterns, b.CalleePatterns)
+
+	if c.scorer.Weighted() {
+		// Recompute the pattern matches taxonomy-only for the gate.
+		_, taxonomyMatches := onto.SetRelatedness(a.Patterns, b.Patterns)
+		ev.PatternSignalBest = ontology.BestMatch(taxonomyMatches)
+	} else {
+		// The unweighted matches already are taxonomy-only.
+		ev.PatternSignalBest = ontology.BestMatch(ev.RelatedPatterns)
+	}
 
 	// One explicit ordered expression, deliberately. Summing over a map of
 	// weights would let iteration order change the low bits of a float sum,
@@ -159,12 +198,13 @@ func countSignals(ev StructuralEvidence) int {
 	if len(ev.SharedCallers) > 0 {
 		n++
 	}
-	// Judged on the best single pairing, not on the aggregate ratio. Thresholding
-	// the ratio would be a regression rather than a guard: three tags with one
-	// exact match average to 0.33, so a pair that counts today would stop
-	// counting at an unchanged score. Any exact match scores 1.0, so this is a
-	// strict generalization of "the two share a tag".
-	if ontology.BestMatch(ev.RelatedPatterns) >= relatedEnough {
+	// Judged on the best single taxonomy-only pairing, not on the aggregate
+	// ratio and not on the corpus-weighted matches — see the gate note on
+	// Compare. Thresholding the ratio would be a regression rather than a
+	// guard: three tags with one exact match average to 0.33, so a pair that
+	// counts today would stop counting at an unchanged score. Any exact match
+	// scores 1.0, so this is a strict generalization of "the two share a tag".
+	if ev.PatternSignalBest >= relatedEnough {
 		n++
 	}
 	if ev.SameRole {
