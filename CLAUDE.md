@@ -491,7 +491,8 @@ Two invariants worth knowing:
   "output": "doppel-report.md",
   "channel-k": 5,
   "debug": false,
-  "max-per-func": 2
+  "max-per-func": 2,
+  "tests": "exclude"
 }
 ```
 
@@ -500,7 +501,8 @@ Flag semantics after the retrieval redesign: `--threshold` floors code-shape for
 **final report** after comparison, filtering and evidence ranking — not the candidate set;
 `--min-nodes` gates the structural channel only; `--channel-k` is the per-function per-channel
 top-K; `--debug` adds retrieval provenance lines to the report; `--max-per-func` caps how many
-final-report pairs any one function may appear in (0 disables).
+final-report pairs any one function may appear in (0 disables); `--tests` picks the population
+(`include`/`exclude`/`only`, default `exclude`) before any statistic is computed.
 
 Every functional flag except `--config` has a config key. Precedence: `applyConfig` only calls
 `Flags().Set` when `!Flags().Changed(name)`, so explicit CLI flags always win over the file.
@@ -513,8 +515,14 @@ Unknown keys are ignored rather than rejected, so a stale config file does not b
   not an optimization.
 - Cobra is the only direct dependency. Keep it that way unless there is a strong reason.
 - Skipped directories: `.git`, `.claude`, `vendor`, `testdata`, `build`, `.idea`, `.vscode`.
-  `_test.go` files are **not** skipped, and test functions legitimately dominate the top of the
-  report on this repo.
+  `_test.go` files are always parsed; **`--tests` decides the population** (default `exclude`).
+  Tests are conventionally similar by design, so they form their own population: `exclude`
+  models production practice, `only` is test-suite hygiene mode, `include` mixes both but
+  **cross test/prod pairs are never reported** (different build units are never merge
+  candidates). The filter runs before tagging, so every corpus statistic — IC, dfs, culture,
+  habitats, arenas — models exactly the population the report describes; filtering at report
+  time instead would be the worst of both. `_test.go` is a compiler-recognized suffix, not a
+  naming heuristic.
 - Tested: `ontology`, `fingerprint`, `analyzer`, `comparator`, `tagger`, `parser`,
   `concepter/role`, `retriever`, `culture`, `reporter`, `cmd` config precedence. Untested and
   worth covering: `mapper`.
@@ -524,6 +532,8 @@ Unknown keys are ignored rather than rejected, so a stale config file does not b
   ever be committed** — the labels JSON is a local artifact the user keeps. Run:
   `DOPPEL_BENCH_CORPUS=<corpus> DOPPEL_BENCH_LABELS=<labels.json> go test ./internal/bench/ -v`.
   One labeled semantic false positive keeps two assertions deliberately red (see rough edges).
+  The harness analyzes the full population (`--tests include` semantics, cross pairs dropped)
+  because label files may span test and production pairs.
 
 ## Rough edges
 

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/lukse/doppel/internal/analyzer"
@@ -161,16 +162,23 @@ func TestGoldenRanking(t *testing.T) {
 	docs := mapper.Map(units, cg, concepter.New())
 	cands, _ := retriever.Retrieve(units, cg, onto, ic, retriever.DefaultOptions())
 
-	pairs := make([]analyzer.SimilarPair, len(cands))
-	for i, c := range cands {
-		pairs[i] = analyzer.SimilarPair{
+	// The harness analyzes the full population (labels span test and
+	// production pairs) but mirrors the pipeline's --tests include rule:
+	// cross test/prod pairs are never reported.
+	isTest := func(u parser.CodeUnit) bool { return strings.HasSuffix(u.File, "_test.go") }
+	pairs := make([]analyzer.SimilarPair, 0, len(cands))
+	for _, c := range cands {
+		if isTest(units[c.AIdx]) != isTest(units[c.BIdx]) {
+			continue
+		}
+		pairs = append(pairs, analyzer.SimilarPair{
 			A: units[c.AIdx], B: units[c.BIdx],
 			AIdx: c.AIdx, BIdx: c.BIdx,
 			Score: c.Breakdown.Score, Breakdown: c.Breakdown,
 			Retrieval: &analyzer.Retrieval{
 				Shape: c.Shape, Concept: c.Concept, Call: c.Call, Total: c.Total,
 			},
-		}
+		})
 	}
 	for i := range pairs {
 		ev := comp.Compare(docs[pairs[i].AIdx], docs[pairs[i].BIdx])

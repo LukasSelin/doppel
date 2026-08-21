@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/lukse/doppel/internal/analyzer"
 	"github.com/lukse/doppel/internal/comparator"
@@ -31,6 +32,7 @@ var (
 	channelK   int
 	debugFlag  bool
 	maxPerFunc int
+	testsMode  string
 )
 
 var analyzeCmd = &cobra.Command{
@@ -64,11 +66,18 @@ func init() {
 	analyzeCmd.Flags().IntVar(&channelK, "channel-k", 5, "Candidates each function keeps per retrieval channel")
 	analyzeCmd.Flags().BoolVar(&debugFlag, "debug", false, "Show per-pair retrieval provenance in the report")
 	analyzeCmd.Flags().IntVar(&maxPerFunc, "max-per-func", 2, "Maximum pairs any one function may appear in in the final report (0 = no cap)")
+	analyzeCmd.Flags().StringVar(&testsMode, "tests", "exclude", "Test-function population: include, exclude, or only. Tests are conventionally similar, so the default models production code; cross test/prod pairs are never reported.")
 	rootCmd.AddCommand(analyzeCmd)
 }
 
 func runAnalyze(cmd *cobra.Command, args []string) error {
 	root := args[0]
+
+	switch testsMode {
+	case "include", "exclude", "only":
+	default:
+		return fmt.Errorf("invalid --tests value %q: want include, exclude, or only", testsMode)
+	}
 
 	fmt.Fprintf(os.Stderr, "Scanning %s ...\n", root)
 	var units []parser.CodeUnit
@@ -93,6 +102,12 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("walk %s: %w", root, err)
 	}
+
+	// Population filter, applied before any corpus statistic exists: IC,
+	// dfs, culture, habitats, and arenas all model exactly the population
+	// the report describes. Tests are conventionally similar by design, so
+	// they form their own population rather than diluting production's.
+	units = filterTestUnits(units, testsMode)
 
 	if len(units) == 0 {
 		fmt.Println("No functions found.")
@@ -145,9 +160,16 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	cands, stats := retriever.Retrieve(units, cg, onto, ic, opts)
 	printRetrievalStats(os.Stderr, stats)
 
-	pairs := make([]analyzer.SimilarPair, len(cands))
-	for i, c := range cands {
-		pairs[i] = analyzer.SimilarPair{
+	pairs := make([]analyzer.SimilarPair, 0, len(cands))
+	crossDropped := 0
+	for _, c := range cands {
+		// A test and a production function are never merge candidates —
+		// different build units. Only possible under --tests include.
+		if isTestUnit(units[c.AIdx]) != isTestUnit(units[c.BIdx]) {
+			crossDropped++
+			continue
+		}
+		pairs = append(pairs, analyzer.SimilarPair{
 			A:         units[c.AIdx],
 			B:         units[c.BIdx],
 			AIdx:      c.AIdx,
@@ -163,7 +185,10 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 				Channels:   c.Channels,
 				Chains:     sharedChains(c.Chains),
 			},
-		}
+		})
+	}
+	if crossDropped > 0 {
+		fmt.Fprintf(os.Stderr, "  %d cross test/prod pairs dropped\n", crossDropped)
 	}
 
 	// Attach structural evidence to every candidate pair.
@@ -394,6 +419,28 @@ func printHabitatSummary(w io.Writer, s culture.Stats) {
 			s.StrongestConvention, s.StrongestConventionStrength,
 			s.LoosestConvention, s.LoosestConventionStrength)
 	}
+}
+
+// isTestUnit reports whether a unit lives in a _test.go file — a
+// compiler-recognized build distinction, not a naming heuristic.
+func isTestUnit(u parser.CodeUnit) bool {
+	return strings.HasSuffix(u.File, "_test.go")
+}
+
+// filterTestUnits applies the --tests population policy. Filtering preserves
+// slice order, so downstream positional alignment is untouched.
+func filterTestUnits(units []parser.CodeUnit, mode string) []parser.CodeUnit {
+	if mode == "include" {
+		return units
+	}
+	keepTests := mode == "only"
+	kept := units[:0]
+	for _, u := range units {
+		if isTestUnit(u) == keepTests {
+			kept = append(kept, u)
+		}
+	}
+	return kept
 }
 
 func shouldSkipDir(name string) bool {

@@ -20,8 +20,11 @@
 //
 // Pair identity is the unordered qualified-name pair, names rendered exactly
 // as the reporter shows them (Package + "." + Name, receiver stars kept).
-// The harness runs the pipeline's ranking-relevant stages as a library,
-// ranks with the production defaults, and scores the labeled pairs: each
+// The harness runs the pipeline's ranking-relevant stages as a library over
+// the FULL population (equivalent to --tests include, since labels may span
+// test and production pairs; cross test/prod pairs are dropped like the
+// pipeline does), ranks with the production defaults, and scores the
+// labeled pairs: each
 // gets a rank or an absence reason, and three hard assertions check that
 // merge findings are retrieved, that no false positive outranks a merge, and
 // that no false positive sits in the top 20. Everything else is a logged
