@@ -10,27 +10,27 @@ import (
 func scopeFixture() snapshot.Snapshot {
 	return snapshot.Snapshot{
 		Units: []snapshot.Unit{
-			{Key: "hubspot.PostClaim", Package: "hubspot", File: "internal/hubspot/service.go"},
-			{Key: "hubspot.PostLost", Package: "hubspot", File: "internal/hubspot/service.go"},
-			{Key: "hubspot.PostInbox", Package: "hubspot", File: "internal/hubspot/inbox.go"},
-			{Key: "aws.Send", Package: "aws", File: "internal/aws/send.go"},
+			{Key: "billing.PostClaim", Package: "billing", File: "internal/billing/service.go"},
+			{Key: "billing.PostLost", Package: "billing", File: "internal/billing/service.go"},
+			{Key: "billing.PostInbox", Package: "billing", File: "internal/billing/inbox.go"},
+			{Key: "shipping.Send", Package: "shipping", File: "internal/shipping/send.go"},
 			{Key: "quiet.F", Package: "quiet", File: "internal/quiet/f.go"},
 		},
 		Pairs: []snapshot.Pair{
-			{A: "hubspot.PostClaim", B: "hubspot.PostLost", Score: 1.00, Overlap: 0.86, MergeWorthy: true},
-			{A: "aws.Send", B: "hubspot.PostInbox", Score: 0.90, Overlap: 0.55, MergeWorthy: true},
-			{A: "hubspot.PostClaim", B: "hubspot.PostInbox", Score: 0.70, Overlap: 0.30, MergeWorthy: false},
+			{A: "billing.PostClaim", B: "billing.PostLost", Score: 1.00, Overlap: 0.86, MergeWorthy: true},
+			{A: "shipping.Send", B: "billing.PostInbox", Score: 0.90, Overlap: 0.55, MergeWorthy: true},
+			{A: "billing.PostClaim", B: "billing.PostInbox", Score: 0.70, Overlap: 0.30, MergeWorthy: false},
 		},
 	}
 }
 
 func TestScopeDigestReportsWithinAndCrossPairs(t *testing.T) {
 	s := scopeFixture()
-	got := ScopeDigest(s, []ScopedPackage{{Package: "hubspot", Mention: "internal/hubspot"}})
+	got := ScopeDigest(s, []ScopedPackage{{Package: "billing", Mention: "internal/billing"}})
 
 	for _, want := range []string{
-		"doppel: internal/hubspot (3 functions)",
-		"hubspot.PostClaim <-> hubspot.PostLost  shape 1.00  overlap 0.86",
+		"doppel: internal/billing (3 functions)",
+		"billing.PostClaim <-> billing.PostLost  shape 1.00  overlap 0.86",
 		"1 merge-worthy pair connects this package to others.",
 	} {
 		if !strings.Contains(got, want) {
@@ -39,7 +39,7 @@ func TestScopeDigestReportsWithinAndCrossPairs(t *testing.T) {
 	}
 	// The non-merge-worthy pair is below the bar everywhere; it must not
 	// appear just because the package is in scope.
-	if strings.Contains(got, "PostClaim <-> hubspot.PostInbox") {
+	if strings.Contains(got, "PostClaim <-> billing.PostInbox") {
 		t.Errorf("non-merge-worthy pair leaked into the digest:\n%s", got)
 	}
 }
@@ -59,17 +59,17 @@ func TestScopeDigestSilentForCleanPackage(t *testing.T) {
 
 func TestAdviceDigestScopesToTheFile(t *testing.T) {
 	s := scopeFixture()
-	got := AdviceDigest(s, "internal/hubspot/service.go")
+	got := AdviceDigest(s, "internal/billing/service.go")
 
 	if !strings.Contains(got, "as of session start") {
 		t.Errorf("advisory does not label its facts' age:\n%s", got)
 	}
-	if !strings.Contains(got, "hubspot.PostClaim <-> hubspot.PostLost") {
+	if !strings.Contains(got, "billing.PostClaim <-> billing.PostLost") {
 		t.Errorf("advisory missing the file's own twin pair:\n%s", got)
 	}
 	// inbox.go's cross pair involves no function in service.go, and the
 	// non-merge-worthy pair is below the bar.
-	if strings.Contains(got, "aws.Send") {
+	if strings.Contains(got, "shipping.Send") {
 		t.Errorf("pair from another file leaked in:\n%s", got)
 	}
 }

@@ -32,6 +32,10 @@ claude plugin install doppel@doppel
 If the binary is not on your `PATH`, set the `doppel_binary` option to an absolute path when the
 plugin asks, or in the plugin's configuration afterwards.
 
+For the argument behind these placements — why SessionStart is deliberately vague, why the Stop
+note costs a turn, why the pre-edit advisory reads session-start facts on purpose — see
+[Hooks and the Causal Window](../.github/wiki/hooks.md).
+
 ## What each hook does
 
 ### SessionStart
@@ -64,13 +68,13 @@ session.
 
 ### UserPromptSubmit
 
-Extracts package mentions from your message — `@backend/internal/hubspot` style paths and bare
+Extracts package mentions from your message — `@internal/billing` style paths and bare
 package names, confirmed against the corpus — and emits only that package's facts:
 
 ```
-doppel: backend/internal/hubspot (41 functions)
+doppel: internal/billing (41 functions)
   merge-worthy pairs within this package:
-    Service.postClaimChannelMessage <-> Service.postLostChannelMessage  shape 1.00  overlap 0.86
+    Service.notifyClaimOpened <-> Service.notifyClaimClosed  shape 1.00  overlap 0.86
   3 merge-worthy pairs connect this package to others.
 ```
 
@@ -82,8 +86,8 @@ analysis once per prompt — same cost as the Stop hook.
 Right before a file is edited, names the merge-worthy twins of the functions in it:
 
 ```
-doppel (as of session start): functions in internal/hubspot/service.go have merge-worthy twins:
-  Service.postClaimChannelMessage <-> Service.postLostChannelMessage  shape 1.00  overlap 0.86
+doppel (as of session start): functions in internal/billing/service.go have merge-worthy twins:
+  Service.notifyClaimOpened <-> Service.notifyClaimClosed  shape 1.00  overlap 0.86
 ```
 
 The facts come from the session-start baseline — the label says so — which is what makes this hook

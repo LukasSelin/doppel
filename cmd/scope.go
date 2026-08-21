@@ -19,7 +19,7 @@ const scopeMaxPackages = 3
 // Two mention forms match, both requiring the corpus to confirm them:
 //
 //   - a token containing '/' whose slash-normalized form is a path prefix of
-//     some unit's file directory — "backend/internal/hubspot" style, matching
+//     some unit's file directory — "svc/internal/billing" style, matching
 //     however deep the mention reaches;
 //   - a bare token exactly equal to a package name in the corpus.
 //
@@ -94,7 +94,7 @@ func scopedPackages(prompt string, s snapshot.Snapshot) []reporter.ScopedPackage
 
 // trimMention strips the decoration a prompt wraps around a path or name:
 // a leading @ (file mentions), and trailing punctuation from prose
-// ("internal/culture," or "hubspot?").
+// ("internal/culture," or "billing?").
 func trimMention(tok string) string {
 	tok = strings.TrimPrefix(tok, "@")
 	tok = strings.Trim(tok, "\"'`([{")

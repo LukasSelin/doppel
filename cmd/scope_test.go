@@ -9,8 +9,8 @@ import (
 func scopeSnap() snapshot.Snapshot {
 	return snapshot.Snapshot{
 		Units: []snapshot.Unit{
-			{Key: "hubspot.Post", Package: "hubspot", File: "backend/internal/hubspot/service.go"},
-			{Key: "aws.Get", Package: "aws", File: "backend/internal/aws/client.go"},
+			{Key: "billing.Post", Package: "billing", File: "svc/internal/billing/service.go"},
+			{Key: "shipping.Get", Package: "shipping", File: "svc/internal/shipping/client.go"},
 			{Key: "culture.Build", Package: "culture", File: "internal/culture/culture.go"},
 		},
 	}
@@ -23,16 +23,16 @@ func TestScopedPackagesMatchesPathsAndBareNames(t *testing.T) {
 		prompt string
 		want   []string // package names, in order
 	}{
-		{"at-mention path", "look at @backend/internal/hubspot please", []string{"hubspot"}},
-		{"path with trailing comma", "fix backend/internal/hubspot, then test", []string{"hubspot"}},
-		{"bare package name", "the hubspot integration is broken", []string{"hubspot"}},
-		{"deep-only suffix", "check internal/hubspot for dupes", []string{"hubspot"}},
-		{"backslash path", `open backend\internal\aws\client.go`, []string{"aws"}},
+		{"at-mention path", "look at @svc/internal/billing please", []string{"billing"}},
+		{"path with trailing comma", "fix svc/internal/billing, then test", []string{"billing"}},
+		{"bare package name", "the billing integration is broken", []string{"billing"}},
+		{"deep-only suffix", "check internal/billing for dupes", []string{"billing"}},
+		{"backslash path", `open svc\internal\shipping\client.go`, []string{"shipping"}},
 		{"prose only", "make the tests faster", nil},
 		{"unknown package", "look at stripe/webhooks", nil},
-		{"two mentions keep order", "compare internal/culture with backend/internal/aws", []string{"culture", "aws"}},
-		{"duplicate mention collapses", "hubspot hubspot hubspot", []string{"hubspot"}},
-		{"punctuation-wrapped", "is `hubspot` still duplicated?", []string{"hubspot"}},
+		{"two mentions keep order", "compare internal/culture with svc/internal/shipping", []string{"culture", "shipping"}},
+		{"duplicate mention collapses", "billing billing billing", []string{"billing"}},
+		{"punctuation-wrapped", "is `billing` still duplicated?", []string{"billing"}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

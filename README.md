@@ -136,9 +136,9 @@ turn, so it is worth understanding before leaving it on the default.
 
 ## Use as a Claude Code plugin
 
-The same analysis can run automatically around a coding session, answering two questions it is
-otherwise easy to skip: *does this codebase already have a concept for what I am about to write*,
-and *what did I just do to its duplication surface*.
+The same analysis can run automatically around a coding session, answering questions it is otherwise
+easy to skip: *does this codebase already have a concept for what I am about to write*, *does the
+file I am about to edit have twins*, and *what did I just do to its duplication surface*.
 
 ```bash
 go install github.com/LukasSelin/doppel@latest
@@ -152,14 +152,20 @@ claude plugin marketplace add LukasSelin/doppel
 claude plugin install doppel@doppel
 ```
 
-A **SessionStart** hook adds a corpus inventory to the conversation — which concept tags the repo
-carries and which it has none of, the role distribution, the concepts each package works in, and the
-existing merge candidates. A **Stop** hook re-runs the analysis at the end of each turn and reports
-the difference against the baseline taken at session start, leading with the pairs it can trace to a
-function you actually edited. It prints nothing on turns that changed nothing.
+Four hooks, placed by when a fact can still change what gets written:
 
-Both are driven by `doppel hook session-start` and `doppel hook stop`, which read a Claude Code hook
-payload on stdin and write a hook response on stdout. Neither ever exits non-zero: a measurement must
-not be able to break a session.
+- **SessionStart** — the corpus inventory: which concept tags the repo carries, which it has none
+  of, the role distribution.
+- **UserPromptSubmit** — the duplication facts for the packages your message mentions, and nothing
+  else. Silent when it recognises none.
+- **PreToolUse** on `Edit`/`Write` — immediately before a file changes, the merge-worthy twins of
+  the functions in it. Advisory only; it never blocks an edit.
+- **Stop** — what the session has done to the duplication surface, leading with the pairs it can
+  trace to a function you actually edited. Prints nothing on turns that changed nothing.
 
-See [plugin/README.md](plugin/README.md) for what the output means and how to read it honestly.
+Each is driven by a `doppel hook <name>` subcommand reading a Claude Code hook payload on stdin and
+writing a hook response on stdout. None ever exits non-zero: a measurement must not be able to break
+a session.
+
+See [plugin/README.md](plugin/README.md) for what the output means and how to read it honestly, and
+[Hooks and the Causal Window](.github/wiki/hooks.md) for why each hook fires where it does.

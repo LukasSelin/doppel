@@ -4,6 +4,54 @@
 
 set -euo pipefail
 
+# Leak tripwire: if a denylist exists at <git-common-dir>/info/leak-terms
+# (one term per line, # comments allowed), refuse to commit any staged change
+# whose diff or file names contain a listed term, case-insensitively. The
+# list lives inside the git dir so it can never itself be committed; this
+# hook is public, the terms are not. No list, no check.
+#
+# Pure bash on purpose: the obvious grep implementation fails OPEN on Git
+# Bash builds whose grep aborts on some inputs, and a tripwire that can fail
+# open is no tripwire. Substring matching over a few hundred KB of diff is
+# well within bash.
+LEAK_TERMS="$(git rev-parse --git-common-dir)/info/leak-terms"
+if [ -f "$LEAK_TERMS" ]; then
+    echo "pre-commit: checking staged changes against leak-terms..."
+    # Added lines and file names only: a commit that REMOVES a term must
+    # pass, or the cleanup for a leak could never be committed. The removed
+    # text is history's problem, not this commit's.
+    STAGED_CONTENT=""
+    while IFS= read -r dline; do
+        case "$dline" in
+            '+++'*) ;;
+            '+'*) STAGED_CONTENT+="${dline}"$'
+' ;;
+        esac
+    done < <(git diff --cached -U0)
+    STAGED_CONTENT+=$(git diff --cached --name-only)
+    STAGED_LC=${STAGED_CONTENT,,}
+    while IFS= read -r term || [ -n "$term" ]; do
+        term=${term%$'
+'}
+        case "$term" in ''|'#'*) continue ;; esac
+        term_lc=${term,,}
+        if [[ "$STAGED_LC" == *"$term_lc"* ]]; then
+            echo "ERROR: staged changes contain the denylisted term: $term"
+            shown=0
+            while IFS= read -r line; do
+                line_lc=${line,,}
+                if [[ "$line_lc" == *"$term_lc"* ]]; then
+                    echo "  $line"
+                    shown=$((shown + 1))
+                    [ "$shown" -ge 5 ] && break
+                fi
+            done <<< "$STAGED_CONTENT"
+            echo "Remove it (or edit $LEAK_TERMS if the term is no longer sensitive)."
+            exit 1
+        fi
+    done < "$LEAK_TERMS"
+fi
+
 echo "pre-commit: checking gofmt..."
 
 # Find staged .go files (only Added/Copied/Modified/Renamed, not Deleted)
