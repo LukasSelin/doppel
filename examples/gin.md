@@ -9,7 +9,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `e61ea20` |
+| doppel | `9e0e019` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -27,8 +27,8 @@ Habitats: 5 modeled, 17 misfits; most uniform binding (norm 0.91), most diverse 
 Conventions: strongest serialization (0.72), loosest caching (0.37)
 Ecosystems: 128 profiled (128 dominance, 0 coalition, 0 conflict, 0 weak)
 Found 497 functions. Retrieving candidates...
-Retrieval: shape 157, concept 317, call 609 -> 1023 unique pairs
-  concept-only 29.2%  call-only 54.3%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 3202
+Retrieval: shape 156, concept 317, call 609 -> 1023 unique pairs
+  concept-only 29.2%  call-only 54.4%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 3321
 Running structural comparison on 1023 pairs...
 ```
 
@@ -47,7 +47,7 @@ Running structural comparison on 1023 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `567.17` (shape 533.91, concept 0.00, call 33.26)
+**Evidence:** `595.84` (shape 562.58, concept 0.00, call 33.26)
 
 **Trophic:** `1.00`
 
@@ -83,7 +83,7 @@ Running structural comparison on 1023 pairs...
 
 **Code similarity:** `ast 0.87  flow 1.00  nesting 1.00  sig 0.50  size 0.87`
 
-**Evidence:** `402.35` (shape 377.32, concept 1.32, call 23.71)
+**Evidence:** `406.87` (shape 381.84, concept 1.32, call 23.71)
 
 **Trophic:** `0.85`
 
@@ -120,7 +120,7 @@ Running structural comparison on 1023 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `149.11` (shape 147.79, concept 1.32, call 0.00)
+**Evidence:** `172.86` (shape 171.53, concept 1.32, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -128,7 +128,7 @@ Running structural comparison on 1023 pairs...
 
 - `4.53` — `seq[ assign:=(call:NewDecoder) ; if(bin:!=(id,nil)) ]`
 - `4.24` — `assign:=(call:NewDecoder)`
-- `4.01` — `assign:=(call:Decode)`
+- `4.24` — `flow:call:NewDecoder→call:Decode`
 
 **Structural overlap:** `0.66` (merge-worthy)
 
@@ -155,7 +155,7 @@ Running structural comparison on 1023 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `149.11` (shape 147.79, concept 1.32, call 0.00)
+**Evidence:** `172.86` (shape 171.53, concept 1.32, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -163,7 +163,7 @@ Running structural comparison on 1023 pairs...
 
 - `4.53` — `seq[ assign:=(call:NewDecoder) ; if(bin:!=(id,nil)) ]`
 - `4.24` — `assign:=(call:NewDecoder)`
-- `4.01` — `assign:=(call:Decode)`
+- `4.24` — `flow:call:NewDecoder→call:Decode`
 
 **Structural overlap:** `0.57` (merge-worthy)
 
@@ -190,7 +190,7 @@ Running structural comparison on 1023 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `149.11` (shape 147.79, concept 1.32, call 0.00)
+**Evidence:** `172.86` (shape 171.53, concept 1.32, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -198,7 +198,7 @@ Running structural comparison on 1023 pairs...
 
 - `4.53` — `seq[ assign:=(call:NewDecoder) ; if(bin:!=(id,nil)) ]`
 - `4.24` — `assign:=(call:NewDecoder)`
-- `4.01` — `assign:=(call:Decode)`
+- `4.24` — `flow:call:NewDecoder→call:Decode`
 
 **Structural overlap:** `0.57` (merge-worthy)
 
@@ -225,15 +225,15 @@ Running structural comparison on 1023 pairs...
 
 **Code similarity:** `ast 0.89  flow 1.00  nesting 1.00  sig 1.00  size 0.89`
 
-**Evidence:** `150.19` (shape 145.29, concept 1.18, call 3.72)
+**Evidence:** `170.55` (shape 165.65, concept 1.18, call 3.72)
 
-**Trophic:** `0.91`
+**Trophic:** `0.92`
 
 **Shared structure:**
 
+- `7.09` — `flow:call:Marshal→return`
 - `4.01` — `seq[ if(bin:!=(id,nil)) ; assign=(call:Write) ]`
 - `3.68` — `seq[ assign:=(call:Marshal) ; if(bin:!=(id,nil)) ]`
-- `3.68` — `seq[ do(call:WriteContentType) ; assign:=(call:Marshal) ]`
 
 **Structural overlap:** `0.66` (merge-worthy)
 
@@ -259,15 +259,15 @@ Running structural comparison on 1023 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `153.94` (shape 150.22, concept 0.00, call 3.72)
+**Evidence:** `174.30` (shape 170.58, concept 0.00, call 3.72)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
+- `7.09` — `flow:call:Marshal→return`
 - `4.01` — `seq[ if(bin:!=(id,nil)) ; assign=(call:Write) ]`
 - `3.68` — `seq[ assign:=(call:Marshal) ; if(bin:!=(id,nil)) ]`
-- `3.68` — `seq[ do(call:WriteContentType) ; assign:=(call:Marshal) ]`
 
 **Structural overlap:** `0.49` (merge-worthy)
 
@@ -281,7 +281,38 @@ Running structural comparison on 1023 pairs...
 
 ---
 
-## Match #8 — Code-shape: `0.6573`
+## Match #8 — Code-shape: `0.7364`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `routergroup.go:181` | `gin.*RouterGroup.staticFileHandler` | ` ` | — |
+| **B** | `routergroup.go:203` | `gin.*RouterGroup.StaticFS` | ` ` | — |
+
+**Code similarity:** `ast 0.69  flow 1.00  nesting 1.00  sig 0.50  size 0.71`
+
+**Evidence:** `313.50` (shape 293.23, concept 0.00, call 20.27)
+
+**Trophic:** `0.88`
+
+**Shared structure:**
+
+- `9.05` — `flow:param→call:Contains`
+- `4.93` — `seq[ do(call:GET) ; do(call:HEAD) ]`
+- `4.93` — `seq[ do(call:HEAD) ; return(call:returnObj) ]`
+
+**Structural overlap:** `0.41` (merge-worthy)
+
+- share 5 callees: [group.GET, group.HEAD, group.returnObj, panic, strings.Contains]
+- overlapping call-graph neighborhoods (0.50): 7 shared
+- related roles: passthrough ≈ orchestrator (both high fan-out, 0.50)
+- same package
+- same receiver type: RouterGroup
+- called from same packages: [gin]
+- call into same packages: [gin]
+
+---
+
+## Match #9 — Code-shape: `0.6573`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -292,7 +323,7 @@ Running structural comparison on 1023 pairs...
 
 **Code similarity:** `ast 0.62  flow 0.94  nesting 0.99  sig 0.33  size 0.69`
 
-**Evidence:** `347.75` (shape 335.48, concept 0.00, call 12.27)
+**Evidence:** `352.68` (shape 340.41, concept 0.00, call 12.27)
 
 **Trophic:** `0.80`
 
@@ -314,65 +345,40 @@ Running structural comparison on 1023 pairs...
 
 ---
 
-## Match #9 — Code-shape: `0.7320`
+## Match #10 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `gin.go:561` | `gin.*Engine.RunTLS` | ` ` | — |
-| **B** | `gin.go:645` | `gin.*Engine.RunListener` | ` ` | — |
+| **A** | `binding/binding.go:122` | `binding.validate` | ` ` | validation |
+| **B** | `binding/binding_nomsgpack.go:116` | `binding.validate` | ` ` | validation |
 
-**Code similarity:** `ast 0.72  flow 1.00  nesting 1.00  sig 0.33  size 0.98`
+**Profile A:** `validation` 1.00 (dominance)
 
-**Evidence:** `294.42` (shape 282.16, concept 0.00, call 12.27)
+**Profile B:** `validation` 1.00 (dominance)
 
-**Trophic:** `0.81`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Evidence:** `87.23` (shape 80.39, concept 1.32, call 5.52)
+
+**Trophic:** `1.00`
 
 **Shared structure:**
 
-- `5.97` — `do(call:debugPrint)`
-- `4.93` — `seq[ if(call:isUnsafeTrustedProxies) ; assign:=(unary) ]`
-- `4.01` — `seq[ do(call:debugPrint) ; defer(funclit) ]`
+- `4.93` — `seq[ if(bin:==(id,nil)) ; return(call:ValidateStruct) ]`
+- `4.93` — `flow:param→call:ValidateStruct`
+- `4.53` — `return(call:ValidateStruct)`
 
-**Structural overlap:** `0.51` (merge-worthy)
+**Structural overlap:** `0.81` (merge-worthy)
 
-- share 4 callees: [debugPrint, debugPrintError, engine.Handler, engine.isUnsafeTrustedProxies]
-- overlapping call-graph neighborhoods (1.00): 19 shared
-- both are orchestrator functions
+- share 1 callees: [Validator.ValidateStruct]
+- overlapping call-graph neighborhoods (1.00): 2 shared
+- share patterns: [validation]
+- both are leaf functions
 - same package
+- callees do related work (1.00): [validation]
 - same visibility
-- same receiver type: Engine
-- call into same packages: [gin]
-
----
-
-## Match #10 — Code-shape: `0.7364`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `routergroup.go:181` | `gin.*RouterGroup.staticFileHandler` | ` ` | — |
-| **B** | `routergroup.go:203` | `gin.*RouterGroup.StaticFS` | ` ` | — |
-
-**Code similarity:** `ast 0.69  flow 1.00  nesting 1.00  sig 0.50  size 0.71`
-
-**Evidence:** `304.45` (shape 284.18, concept 0.00, call 20.27)
-
-**Trophic:** `0.88`
-
-**Shared structure:**
-
-- `4.93` — `seq[ do(call:GET) ; do(call:HEAD) ]`
-- `4.93` — `seq[ do(call:HEAD) ; return(call:returnObj) ]`
-- `4.93` — `do(call:GET)`
-
-**Structural overlap:** `0.41` (merge-worthy)
-
-- share 5 callees: [group.GET, group.HEAD, group.returnObj, panic, strings.Contains]
-- overlapping call-graph neighborhoods (0.50): 7 shared
-- related roles: passthrough ≈ orchestrator (both high fan-out, 0.50)
-- same package
-- same receiver type: RouterGroup
-- called from same packages: [gin]
-- call into same packages: [gin]
+- same receiver type: plain functions
+- call into same packages: [binding]
 
 ---
 

@@ -9,7 +9,7 @@ HTTP router; a narrow core with a middleware package beside it
 | Corpus | [chi](https://github.com/go-chi/chi) |
 | Pinned at | `v5.3.2` (`38939062c5df4d3e8814aad1a488983112627ced`) |
 | Project since | 2015 |
-| doppel | `e61ea20` |
+| doppel | `9e0e019` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -28,7 +28,7 @@ Conventions: strongest validation (0.41), loosest validation (0.41)
 Ecosystems: 53 profiled (53 dominance, 0 coalition, 0 conflict, 0 weak)
 Found 254 functions. Retrieving candidates...
 Retrieval: shape 86, concept 36, call 542 -> 617 unique pairs
-  concept-only 5.0%  call-only 80.6%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 2555
+  concept-only 5.0%  call-only 80.6%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 2639
 Running structural comparison on 617 pairs...
 ```
 
@@ -47,15 +47,15 @@ Running structural comparison on 617 pairs...
 
 **Code similarity:** `ast 0.74  flow 1.00  nesting 0.90  sig 1.00  size 0.99`
 
-**Evidence:** `819.60` (shape 804.11, concept 0.00, call 15.49)
+**Evidence:** `849.54` (shape 834.05, concept 0.00, call 15.49)
 
-**Trophic:** `0.70`
+**Trophic:** `0.71`
 
 **Shared structure:**
 
+- `15.53` — `flow:param→call:cW`
 - `14.63` — `do(call:cW)`
-- `5.57` — `assign:=(id)`
-- `4.57` — `seq[ assign:=(call:LastIndex) ; if(bin:<(id,lit:INT)) ]`
+- `8.34` — `flow:call:LastIndex→cond`
 
 **Structural overlap:** `0.72` (merge-worthy)
 
@@ -80,15 +80,15 @@ Running structural comparison on 617 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 0.90`
 
-**Evidence:** `440.20` (shape 434.54, concept 0.00, call 5.66)
+**Evidence:** `468.07` (shape 462.41, concept 0.00, call 5.66)
 
 **Trophic:** `0.95`
 
 **Shared structure:**
 
+- `7.76` — `flow:call:NewRouter→call:Put`
 - `6.95` — `do(call:Put)`
-- `5.12` — `do(call:Get)`
-- `4.57` — `seq[ do(call:Post) ; do(call:Put) ]`
+- `5.26` — `flow:call:NewRouter→call:Get`
 
 **Structural overlap:** `0.55` (merge-worthy)
 
@@ -111,7 +111,7 @@ Running structural comparison on 617 pairs...
 
 **Code similarity:** `ast 0.85  flow 0.96  nesting 0.74  sig 0.67  size 0.80`
 
-**Evidence:** `540.84` (shape 540.84, concept 0.00, call 0.00)
+**Evidence:** `545.36` (shape 545.36, concept 0.00, call 0.00)
 
 **Trophic:** `0.92`
 
@@ -140,7 +140,7 @@ Running structural comparison on 617 pairs...
 
 **Code similarity:** `ast 0.86  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `350.08` (shape 335.95, concept 0.00, call 14.13)
+**Evidence:** `354.65` (shape 340.53, concept 0.00, call 14.13)
 
 **Trophic:** `0.89`
 
@@ -173,9 +173,9 @@ Running structural comparison on 617 pairs...
 
 **Code similarity:** `ast 0.79  flow 0.82  nesting 1.00  sig 0.75  size 0.74`
 
-**Evidence:** `261.51` (shape 253.43, concept 0.00, call 8.08)
+**Evidence:** `265.39` (shape 257.31, concept 0.00, call 8.08)
 
-**Trophic:** `0.82`
+**Trophic:** `0.81`
 
 **Shared structure:**
 
@@ -195,38 +195,7 @@ Running structural comparison on 617 pairs...
 
 ---
 
-## Match #6 — Code-shape: `1.0000`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `_examples/rest/main.go:415` | `main.ErrInvalidRequest` | ` ` | validation |
-| **B** | `_examples/rest/main.go:424` | `main.ErrRender` | ` ` | — |
-
-**Profile A:** `validation` 1.00 (dominance)
-
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
-
-**Evidence:** `121.77` (shape 121.77, concept 0.00, call 0.00)
-
-**Trophic:** `1.00`
-
-**Shared structure:**
-
-- `4.17` — `return(unary)`
-
-**Structural overlap:** `0.55` (merge-worthy)
-
-- share 1 callees: [err.Error]
-- overlapping call-graph neighborhoods (0.25): 2 shared
-- both are utility functions
-- same package
-- same visibility
-- same receiver type: plain functions
-- called from same packages: [main]
-
----
-
-## Match #7 — Code-shape: `0.8429`
+## Match #6 — Code-shape: `0.8429`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -235,15 +204,15 @@ Running structural comparison on 617 pairs...
 
 **Code similarity:** `ast 0.74  flow 1.00  nesting 1.00  sig 1.00  size 0.69`
 
-**Evidence:** `288.68` (shape 237.56, concept 0.00, call 51.12)
+**Evidence:** `303.28` (shape 252.16, concept 0.00, call 51.12)
 
 **Trophic:** `0.73`
 
 **Shared structure:**
 
 - `8.90` — `do(call:Use)`
+- `8.90` — `flow:call:NewRouter→call:Use`
 - `6.64` — `seq[ do(call:Use) ; do(call:Use) ]`
-- `3.07` — `seq[ do(call:Use) ; do(call:Get) ]`
 
 **Structural overlap:** `0.52` (merge-worthy)
 
@@ -257,6 +226,38 @@ Running structural comparison on 617 pairs...
 
 ---
 
+## Match #7 — Code-shape: `1.0000`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `_examples/rest/main.go:415` | `main.ErrInvalidRequest` | ` ` | validation |
+| **B** | `_examples/rest/main.go:424` | `main.ErrRender` | ` ` | — |
+
+**Profile A:** `validation` 1.00 (dominance)
+
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Evidence:** `125.94` (shape 125.94, concept 0.00, call 0.00)
+
+**Trophic:** `1.00`
+
+**Shared structure:**
+
+- `4.17` — `return(unary)`
+- `4.17` — `flow:param→call:Error`
+
+**Structural overlap:** `0.55` (merge-worthy)
+
+- share 1 callees: [err.Error]
+- overlapping call-graph neighborhoods (0.25): 2 shared
+- both are utility functions
+- same package
+- same visibility
+- same receiver type: plain functions
+- called from same packages: [main]
+
+---
+
 ## Match #8 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Patterns |
@@ -266,7 +267,7 @@ Running structural comparison on 617 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `94.40` (shape 91.42, concept 0.00, call 2.97)
+**Evidence:** `95.90` (shape 92.93, concept 0.00, call 2.97)
 
 **Trophic:** `1.00`
 
@@ -289,7 +290,44 @@ Running structural comparison on 617 pairs...
 
 ---
 
-## Match #9 — Code-shape: `0.6704`
+## Match #9 — Code-shape: `0.6600`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `_examples/rest/main.go:155` | `main.CreateArticle` | `—` | validation |
+| **B** | `_examples/rest/main.go:186` | `main.UpdateArticle` | `—` | validation |
+
+**Profile A:** `validation` 1.00 (dominance)
+
+**Profile B:** `validation` 1.00 (dominance)
+
+**Code similarity:** `ast 0.43  flow 1.00  nesting 1.00  sig 1.00  size 0.85`
+
+**Evidence:** `270.57` (shape 252.41, concept 1.35, call 16.80)
+
+**Trophic:** `0.72`
+
+**Shared structure:**
+
+- `13.90` — `flow:param→call:Render`
+- `6.64` — `do(call:Render)`
+- `4.57` — `assign:=(call:Bind)`
+
+**Structural overlap:** `0.69` (merge-worthy)
+
+- share 4 callees: [ErrInvalidRequest, NewArticleResponse, render.Bind, render.Render]
+- overlapping call-graph neighborhoods (0.33): 7 shared
+- share patterns: [validation]
+- both are orchestrator functions
+- same package
+- callees do related work (1.00): [validation]
+- same visibility
+- same receiver type: plain functions
+- call into same packages: [main]
+
+---
+
+## Match #10 — Code-shape: `0.6704`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -298,7 +336,7 @@ Running structural comparison on 617 pairs...
 
 **Code similarity:** `ast 0.62  flow 0.98  nesting 0.98  sig 0.33  size 0.98`
 
-**Evidence:** `396.32` (shape 387.31, concept 0.00, call 9.01)
+**Evidence:** `400.61` (shape 391.60, concept 0.00, call 9.01)
 
 **Trophic:** `0.68`
 
@@ -315,43 +353,6 @@ Running structural comparison on 617 pairs...
 - same package
 - same visibility
 - same receiver type: plain functions
-
----
-
-## Match #10 — Code-shape: `0.6600`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `_examples/rest/main.go:155` | `main.CreateArticle` | `—` | validation |
-| **B** | `_examples/rest/main.go:186` | `main.UpdateArticle` | `—` | validation |
-
-**Profile A:** `validation` 1.00 (dominance)
-
-**Profile B:** `validation` 1.00 (dominance)
-
-**Code similarity:** `ast 0.43  flow 1.00  nesting 1.00  sig 1.00  size 0.85`
-
-**Evidence:** `242.94` (shape 224.79, concept 1.35, call 16.80)
-
-**Trophic:** `0.71`
-
-**Shared structure:**
-
-- `6.64` — `do(call:Render)`
-- `4.57` — `assign:=(call:Bind)`
-- `4.17` — `seq[ assign:=(unary) ; if(bin:!=(id,nil)) ]`
-
-**Structural overlap:** `0.69` (merge-worthy)
-
-- share 4 callees: [ErrInvalidRequest, NewArticleResponse, render.Bind, render.Render]
-- overlapping call-graph neighborhoods (0.33): 7 shared
-- share patterns: [validation]
-- both are orchestrator functions
-- same package
-- callees do related work (1.00): [validation]
-- same visibility
-- same receiver type: plain functions
-- call into same packages: [main]
 
 ---
 

@@ -93,7 +93,7 @@ func Build(fd *ast.FuncDecl) Fingerprint {
 		Depth:    depth,
 		Types:    typeStrings(fd.Type),
 		Nodes:    nodes,
-		Patterns: extractPatterns(fd.Body, tokens),
+		Patterns: extractPatterns(fd, tokens),
 	}
 }
 

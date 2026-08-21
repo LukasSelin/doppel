@@ -252,11 +252,19 @@ w5 windows are width-tagged, never clamp on short streams, and certify longer sh
 vocabulary-heavy false positives; see `l0ExtraWidths`), L1 call/binary-operator shapes, L2
 statements with salient structure
 (`return(call:Sprintf)`, `defer(call:Close)`, `if(bin:!=(id,nil))` — nil/true/false keep their
-names so the err-check idiom falls out with no special case), and L3 motifs — loop call summaries
+names so the err-check idiom falls out with no special case), L3 motifs — loop call summaries
 covering header *and* body (`for{ call:Scan call:TrimSpace call:Atoi call:append }`, ≤ 8 callees)
-and adjacent-statement bigrams (`seq[ assign:=(call:Atoi) ; if(bin:!=(id,nil)) ]`). For levels 1–3
-the render string IS the hash serialization, so hash and explanation cannot drift; L2/L3 keep
-their renders, L0/L1 do not.
+and adjacent-statement bigrams (`seq[ assign:=(call:Atoi) ; if(bin:!=(id,nil)) ]`) — and L4
+def-use flow edges (`defuse.go`): single-hop role edges from a def source (a parameter, or a
+binding whose RHS contains a call) to a use sink (a call it is passed to or invoked on, a return,
+or a condition) — `flow:param→call:Errorf`, `flow:call:Open→call:Close`, `flow:call:Atoi→cond`.
+Renders name roles, never identifiers, so the edges are rename-invariant; the tuple rule
+(`x, err := f()` binds both names to `call:f`) is what makes the errcheck idiom fall out free. A
+value computed and dropped emits no onward edge — previously indistinguishable from one that
+flows. For levels 1–4 the render string IS the hash serialization, so hash and explanation cannot
+drift; L2/L3/L4 keep their renders, L0/L1 do not. In the `shared structure:` block L4 sorts below
+L2/L3 at equal energy (`chainRank`): a role edge is a coarser explanation than a concrete
+statement shape.
 
 Three quantities per pair, all from one sorted-intersection pass (`pairEvidence`):
 
@@ -827,6 +835,12 @@ Known traps, documented so they aren't rediscovered. None are fixed:
 - **Nested loops double-count inner calls in loop summaries.** An inner loop's callees appear in
   both its own L3 summary and every enclosing loop's — each container is a real behavioral unit,
   and de-duplicating would cost a pass per nesting level for no scoring benefit. Accepted.
+- **The L4 def-use pass is deliberately crude.** Bindings are name-keyed within the function, so
+  shadowing merges with the first binding winning; pointer/closure/field aliasing, field writes,
+  multi-hop chains, tuple position, control-flow sensitivity and cross-function flow are all
+  outside it — the full non-capture list is documented at `extractDefUse`. Each would cost a
+  resolution pass out of proportion for evidence rendering; the cure, as with the call-graph
+  resolver, is go/types.
 - **Trophic similarity of exact mid-frequency twins is 1.0.** Any normalized similarity gives
   identical inputs 1.0; trivia suppression relies on the df cap zeroing *both* sides of the Dice,
   which only engages once the idiom bucket exceeds `MaxPatternDF`. Between df=2 and the cap, exact

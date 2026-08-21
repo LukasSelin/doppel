@@ -16,6 +16,7 @@ const (
 	LevelExpr                // L1: call / binary-operator shapes
 	LevelAction              // L2: statement-with-salient-structure
 	LevelMotif               // L3: loop-body call summaries, statement bigrams
+	LevelFlow                // L4: single-hop def-use role edges (defuse.go)
 )
 
 // l0ExtraWidths are the additional L0 window widths beside shingleK: 5-grams
@@ -87,11 +88,13 @@ func patternHashL0(tag string, window []string) uint64 {
 // widthTag names an extra L0 width in the hash input: "w2", "w5".
 func widthTag(w int) string { return "w" + string(rune('0'+w)) }
 
-// extractPatterns walks the body once and accumulates the multi-level pattern
-// multiset. tokens is the walk() token stream, reused for the L0 windows.
-// Output is sorted by (Hash, Level, Render) — a total order, so the
-// accumulator map cannot leak iteration order.
-func extractPatterns(body *ast.BlockStmt, tokens []string) []Pattern {
+// extractPatterns walks the declaration and accumulates the multi-level
+// pattern multiset. tokens is the walk() token stream, reused for the L0
+// windows; the declaration's signature feeds the L4 def-use pass its
+// parameter names. Output is sorted by (Hash, Level, Render) — a total
+// order, so the accumulator map cannot leak iteration order.
+func extractPatterns(fd *ast.FuncDecl, tokens []string) []Pattern {
+	body := fd.Body
 	acc := make(map[uint64]*Pattern)
 	add := func(hash uint64, level uint8, render string) {
 		if p, ok := acc[hash]; ok {
@@ -161,6 +164,8 @@ func extractPatterns(body *ast.BlockStmt, tokens []string) []Pattern {
 		}
 		return true
 	})
+
+	extractDefUse(fd, addRendered)
 
 	if len(acc) == 0 {
 		return nil

@@ -9,7 +9,7 @@ static site generator; a large monolith with heavy template and resource subsyst
 | Corpus | [hugo](https://github.com/gohugoio/hugo) |
 | Pinned at | `v0.165.0` (`76a5e1880ab46688155b02e99bab9be2a6134492`) |
 | Project since | 2013 |
-| doppel | `e61ea20` |
+| doppel | `9e0e019` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -27,9 +27,9 @@ Habitats: 126 modeled, 665 misfits; most uniform partials (norm 0.98), most dive
 Conventions: strongest error_wrapping (0.64), loosest serialization (0.52)
 Ecosystems: 1999 profiled (1410 dominance, 589 coalition, 0 conflict, 0 weak)
 Found 5460 functions. Retrieving candidates...
-Retrieval: shape 2263, concept 4068, call 8309 -> 13852 unique pairs
-  concept-only 28.1%  call-only 54.5%  suppressed-shape functions: 71  large identity buckets: 0  surviving patterns: 29668
-Running structural comparison on 13852 pairs...
+Retrieval: shape 2265, concept 4068, call 8309 -> 13856 unique pairs
+  concept-only 28.1%  call-only 54.5%  suppressed-shape functions: 70  large identity buckets: 0  surviving patterns: 31559
+Running structural comparison on 13856 pairs...
 ```
 
 # Code Similarity Report
@@ -51,15 +51,15 @@ Running structural comparison on 13852 pairs...
 
 **Code similarity:** `ast 0.78  flow 1.00  nesting 1.00  sig 0.86  size 0.75`
 
-**Evidence:** `3378.70` (shape 3324.07, concept 4.61, call 50.02)
+**Evidence:** `3736.59` (shape 3681.96, concept 4.61, call 50.02)
 
-**Trophic:** `0.87`
+**Trophic:** `0.88`
 
 **Shared structure:**
 
-- `20.68` — `if(call:IsVariadic)`
-- `17.98` — `do(call:errorf)`
-- `15.17` — `assign=(call:evalArg)`
+- `41.36` — `flow:call:Type→call:NumIn`
+- `34.46` — `flow:call:Type→call:In`
+- `22.76` — `flow:call:Interface→return`
 
 **Culture:** B realizes `error_wrapping` atypically (typicality 0.16, concept median 0.36, convention 0.64)
 
@@ -92,15 +92,15 @@ Running structural comparison on 13852 pairs...
 
 **Code similarity:** `ast 0.88  flow 1.00  nesting 1.00  sig 1.00  size 0.75`
 
-**Evidence:** `1942.39` (shape 1926.48, concept 2.49, call 13.43)
+**Evidence:** `2232.59` (shape 2216.68, concept 2.49, call 13.43)
 
-**Trophic:** `0.90`
+**Trophic:** `0.89`
 
 **Shared structure:**
 
 - `40.45` — `do(call:errorf)`
-- `12.97` — `assign:=(call:FieldByName)`
-- `7.59` — `seq[ assign:=(call:FieldByIndexErr) ; if(unary) ]`
+- `35.26` — `flow:param→call:errorf`
+- `34.46` — `flow:param→call:evalCall`
 
 **Structural overlap:** `0.77` (merge-worthy)
 
@@ -125,7 +125,7 @@ Running structural comparison on 13852 pairs...
 
 **Code similarity:** `ast 0.77  flow 0.94  nesting 0.95  sig 1.00  size 0.92`
 
-**Evidence:** `3171.02` (shape 3160.74, concept 0.00, call 10.29)
+**Evidence:** `3176.08` (shape 3165.80, concept 0.00, call 10.29)
 
 **Trophic:** `0.81`
 
@@ -159,7 +159,7 @@ Running structural comparison on 13852 pairs...
 
 **Code similarity:** `ast 0.93  flow 1.00  nesting 1.00  sig 1.00  size 0.86`
 
-**Evidence:** `2847.05` (shape 2836.76, concept 0.00, call 10.29)
+**Evidence:** `2852.11` (shape 2841.82, concept 0.00, call 10.29)
 
 **Trophic:** `0.75`
 
@@ -196,15 +196,15 @@ Running structural comparison on 13852 pairs...
 
 **Code similarity:** `ast 0.82  flow 1.00  nesting 1.00  sig 0.00  size 0.96`
 
-**Evidence:** `1154.93` (shape 1094.14, concept 7.07, call 53.72)
+**Evidence:** `1231.80` (shape 1171.01, concept 7.07, call 53.72)
 
-**Trophic:** `0.96`
+**Trophic:** `0.97`
 
 **Shared structure:**
 
+- `17.64` — `flow:call:ReadAll→cond`
+- `17.64` — `flow:call:ReadAll→return`
 - `7.59` — `seq[ assign:=(call:NewEncoder) ; return(call:Encode) ]`
-- `7.59` — `seq[ assign:=(call:ReadOrCreate) ; return(id,id) ]`
-- `7.59` — `seq[ assign:=(call:ToImageMetaImageFormatFormat) ; if(bin:==(id,unary)) ]`
 
 **Habitat:** A fits poorly in `resources` (fit 0.27, package norm 0.75)
 
@@ -239,15 +239,15 @@ Running structural comparison on 13852 pairs...
 
 **Code similarity:** `ast 0.92  flow 1.00  nesting 0.99  sig 1.00  size 0.92`
 
-**Evidence:** `1333.03` (shape 1309.90, concept 2.49, call 20.65)
+**Evidence:** `1458.77` (shape 1435.64, concept 2.49, call 20.65)
 
-**Trophic:** `0.97`
+**Trophic:** `0.96`
 
 **Shared structure:**
 
+- `27.11` — `flow:param→call:Type`
+- `25.95` — `flow:param→call:AssignableTo`
 - `13.48` — `do(call:errorf)`
-- `12.67` — `return(call:ValueOf)`
-- `10.67` — `assign=(call:Elem)`
 
 **Structural overlap:** `0.49` (merge-worthy)
 
@@ -274,15 +274,15 @@ Running structural comparison on 13852 pairs...
 
 **Code similarity:** `ast 0.69  flow 1.00  nesting 1.00  sig 1.00  size 0.91`
 
-**Evidence:** `2034.59` (shape 1921.78, concept 5.81, call 106.99)
+**Evidence:** `2166.91` (shape 2054.10, concept 5.81, call 106.99)
 
 **Trophic:** `0.77`
 
 **Shared structure:**
 
+- `30.34` — `flow:call:ResolveJSConfigFile→cond`
 - `14.73` — `seq[ assign=(call:append) ; assign=(call:append) ]`
 - `14.36` — `assign=(call:ResolveJSConfigFile)`
-- `14.36` — `if(call:IsNotFound)`
 
 **Culture:** A realizes `concurrency` atypically (typicality 0.13, concept median 0.35, convention 0.60)
 
@@ -320,7 +320,7 @@ Running structural comparison on 13852 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 0.99`
 
-**Evidence:** `597.02` (shape 560.06, concept 1.65, call 35.31)
+**Evidence:** `634.14` (shape 597.18, concept 1.65, call 35.31)
 
 **Trophic:** `1.00`
 
@@ -358,9 +358,9 @@ Running structural comparison on 13852 pairs...
 
 **Code similarity:** `ast 0.61  flow 0.98  nesting 0.99  sig 1.00  size 0.75`
 
-**Evidence:** `1583.07` (shape 1466.20, concept 5.81, call 111.05)
+**Evidence:** `1662.98` (shape 1546.11, concept 5.81, call 111.05)
 
-**Trophic:** `0.74`
+**Trophic:** `0.73`
 
 **Shared structure:**
 
@@ -390,40 +390,42 @@ Running structural comparison on 13852 pairs...
 
 ---
 
-## Match #10 — Code-shape: `1.0000`
+## Match #10 — Code-shape: `0.8171`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `internal/js/esbuild/batch.go:1021` | `esbuild.*scriptGroup.Runner` | ` ` | validation, concurrency |
-| **B** | `internal/js/esbuild/batch.go:1050` | `esbuild.*scriptGroup.Script` | ` ` | validation, concurrency |
+| **A** | `common/hreflect/convert.go:128` | `hreflect.convertToUintIfPossible` | ` ` | mapping |
+| **B** | `common/hreflect/convert.go:190` | `hreflect.convertToIntIfPossible` | ` ` | mapping |
 
-**Profile A:** `validation` 1.00 (dominance)
+**Profile A:** `mapping` 1.00 (dominance)
 
-**Profile B:** `validation` 1.00 (dominance)
+**Profile B:** `mapping` 1.00 (dominance)
 
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+**Code similarity:** `ast 0.70  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `507.68` (shape 496.69, concept 3.99, call 7.00)
+**Evidence:** `1027.08` (shape 996.90, concept 1.83, call 28.35)
 
-**Trophic:** `1.00`
+**Trophic:** `0.76`
 
 **Shared structure:**
 
-- `13.34` — `return(call:Get)`
-- `7.59` — `seq[ assign:=(call:scriptID) ; if(id) ]`
-- `7.59` — `seq[ defer(call:Unlock) ; assign:=(call:scriptID) ]`
+- `40.56` — `return(composite,false)`
+- `25.95` — `flow:param→call:Convert`
+- `21.54` — `flow:call:Float→cond`
 
-**Structural overlap:** `0.81` (merge-worthy)
+**Structural overlap:** `0.92` (merge-worthy)
 
-- share 8 callees: [Get, Lock, Unlock, ValidateBatchID, panic, s.key, scriptID, v.Get]
-- overlapping call-graph neighborhoods (1.00): 4 shared
-- share patterns: [concurrency, validation]
-- both are leaf functions
+- share 13 callees: [Convert, IsFloat, IsInt, IsUint, float64, math.Trunc, reflect.ValueOf, uint64, val.Convert, val.Float, val.Int, val.Kind, val.Uint]
+- share 1 callers: [hreflect.ConvertIfPossible]
+- overlapping call-graph neighborhoods (1.00): 15 shared
+- share patterns: [mapping]
+- both are orchestrator functions
 - same package
-- callees do related work (1.00): [validation]
+- callers do related work (1.00): [mapping]
 - same visibility
-- same receiver type: scriptGroup
-- call into same packages: [esbuild]
+- same receiver type: plain functions
+- called from same packages: [hreflect]
+- call into same packages: [hreflect]
 
 ---
 

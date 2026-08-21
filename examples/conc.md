@@ -9,7 +9,7 @@ structured concurrency library; generics-heavy, one idea, written recently and a
 | Corpus | [conc](https://github.com/sourcegraph/conc) |
 | Pinned at | `v0.3.0` (`7b8c8f2875cb861bb61844c9bcaa1aed070adbd4`) |
 | Project since | 2023 |
-| doppel | `e61ea20` |
+| doppel | `9e0e019` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -28,8 +28,9 @@ Conventions: strongest concurrency (0.37), loosest concurrency (0.37)
 Ecosystems: 8 profiled (8 dominance, 0 coalition, 0 conflict, 0 weak)
 Found 81 functions. Retrieving candidates...
 Retrieval: shape 43, concept 25, call 15 -> 79 unique pairs
-  concept-only 29.1%  call-only 15.2%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 434
+  concept-only 29.1%  call-only 15.2%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 448
 Running structural comparison on 79 pairs...
+  6 pairs suppressed by max-per-func=2
 ```
 
 # Code Similarity Report
@@ -47,9 +48,9 @@ Running structural comparison on 79 pairs...
 
 **Code similarity:** `ast 0.79  flow 1.00  nesting 1.00  sig 0.00  size 0.87`
 
-**Evidence:** `137.33` (shape 134.03, concept 0.00, call 3.30)
+**Evidence:** `146.48` (shape 143.19, concept 0.00, call 3.30)
 
-**Trophic:** `0.93`
+**Trophic:** `0.94`
 
 **Shared structure:**
 
@@ -83,15 +84,15 @@ Running structural comparison on 79 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `90.71` (shape 90.71, concept 0.00, call 0.00)
+**Evidence:** `94.13` (shape 94.13, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
+- `3.42` — `flow:param→call:WithContext`
 - `2.72` — `seq[ do(call:panicIfInitialized) ; return(unary) ]`
 - `1.91` — `return(unary)`
-- `1.07` — `do(call:panicIfInitialized)`
 
 **Structural overlap:** `0.50` (merge-worthy)
 
@@ -112,7 +113,7 @@ Running structural comparison on 79 pairs...
 
 **Code similarity:** `ast 0.81  flow 1.00  nesting 1.00  sig 1.00  size 0.91`
 
-**Evidence:** `141.91` (shape 138.21, concept 0.00, call 3.70)
+**Evidence:** `145.33` (shape 141.62, concept 0.00, call 3.70)
 
 **Trophic:** `0.92`
 
@@ -145,7 +146,7 @@ Running structural comparison on 79 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `52.86` (shape 52.86, concept 0.00, call 0.00)
+**Evidence:** `56.28` (shape 56.28, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -176,13 +177,14 @@ Running structural comparison on 79 pairs...
 
 **Code similarity:** `ast 0.53  flow 0.82  nesting 0.89  sig 0.40  size 0.50`
 
-**Evidence:** `158.79` (shape 155.09, concept 0.00, call 3.70)
+**Evidence:** `168.23` (shape 164.53, concept 0.00, call 3.70)
 
-**Trophic:** `0.71`
+**Trophic:** `0.72`
 
 **Shared structure:**
 
 - `3.42` — `assign=(call:f)`
+- `3.42` — `flow:call:make→return`
 - `3.01` — `do(call:ForEachIdx)`
 
 **Structural overlap:** `0.49` (merge-worthy)
@@ -197,7 +199,123 @@ Running structural comparison on 79 pairs...
 
 ---
 
-## Match #6 — Code-shape: `0.8500`
+## Match #6 — Code-shape: `0.9000`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `pool/context_pool.go:86` | `pool.*ContextPool.WithMaxGoroutines` | ` ` | — |
+| **B** | `pool/error_pool.go:65` | `pool.*ErrorPool.WithMaxGoroutines` | ` ` | — |
+
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
+
+**Evidence:** `48.72` (shape 48.72, concept 0.00, call 0.00)
+
+**Trophic:** `1.00`
+
+**Shared structure:**
+
+- `2.50` — `seq[ do(call:WithMaxGoroutines) ; return(id) ]`
+- `2.50` — `seq[ do(call:panicIfInitialized) ; do(call:WithMaxGoroutines) ]`
+- `2.50` — `do(call:WithMaxGoroutines)`
+
+**Structural overlap:** `0.50` (merge-worthy)
+
+- share 2 callees: [WithMaxGoroutines, p.panicIfInitialized]
+- both are leaf functions
+- same package
+- same visibility
+- both are methods, on *ContextPool and *ErrorPool
+
+---
+
+## Match #7 — Code-shape: `0.9000`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `pool/context_pool.go:86` | `pool.*ContextPool.WithMaxGoroutines` | ` ` | — |
+| **B** | `pool/result_context_pool.go:67` | `pool.*ResultContextPool[T].WithMaxGoroutines` | ` ` | — |
+
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
+
+**Evidence:** `48.72` (shape 48.72, concept 0.00, call 0.00)
+
+**Trophic:** `1.00`
+
+**Shared structure:**
+
+- `2.50` — `seq[ do(call:WithMaxGoroutines) ; return(id) ]`
+- `2.50` — `seq[ do(call:panicIfInitialized) ; do(call:WithMaxGoroutines) ]`
+- `2.50` — `do(call:WithMaxGoroutines)`
+
+**Structural overlap:** `0.50` (merge-worthy)
+
+- share 2 callees: [WithMaxGoroutines, p.panicIfInitialized]
+- both are leaf functions
+- same package
+- same visibility
+- both are methods, on *ContextPool and *ResultContextPool[T]
+
+---
+
+## Match #8 — Code-shape: `0.9000`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `pool/error_pool.go:65` | `pool.*ErrorPool.WithMaxGoroutines` | ` ` | — |
+| **B** | `pool/result_context_pool.go:67` | `pool.*ResultContextPool[T].WithMaxGoroutines` | ` ` | — |
+
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
+
+**Evidence:** `48.72` (shape 48.72, concept 0.00, call 0.00)
+
+**Trophic:** `1.00`
+
+**Shared structure:**
+
+- `2.50` — `seq[ do(call:WithMaxGoroutines) ; return(id) ]`
+- `2.50` — `seq[ do(call:panicIfInitialized) ; do(call:WithMaxGoroutines) ]`
+- `2.50` — `do(call:WithMaxGoroutines)`
+
+**Structural overlap:** `0.50` (merge-worthy)
+
+- share 2 callees: [WithMaxGoroutines, p.panicIfInitialized]
+- both are leaf functions
+- same package
+- same visibility
+- both are methods, on *ErrorPool and *ResultContextPool[T]
+
+---
+
+## Match #9 — Code-shape: `0.9000`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `pool/result_error_pool.go:72` | `pool.*ResultErrorPool[T].WithMaxGoroutines` | ` ` | — |
+| **B** | `pool/result_pool.go:72` | `pool.*ResultPool[T].WithMaxGoroutines` | ` ` | — |
+
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
+
+**Evidence:** `48.72` (shape 48.72, concept 0.00, call 0.00)
+
+**Trophic:** `1.00`
+
+**Shared structure:**
+
+- `2.50` — `seq[ do(call:WithMaxGoroutines) ; return(id) ]`
+- `2.50` — `seq[ do(call:panicIfInitialized) ; do(call:WithMaxGoroutines) ]`
+- `2.50` — `do(call:WithMaxGoroutines)`
+
+**Structural overlap:** `0.50` (merge-worthy)
+
+- share 2 callees: [WithMaxGoroutines, p.panicIfInitialized]
+- both are leaf functions
+- same package
+- same visibility
+- both are methods, on *ResultErrorPool[T] and *ResultPool[T]
+
+---
+
+## Match #10 — Code-shape: `0.8500`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -219,122 +337,6 @@ Running structural comparison on 79 pairs...
 **Structural overlap:** `0.50` (merge-worthy)
 
 - share 2 callees: [WithFirstError, p.panicIfInitialized]
-- both are leaf functions
-- same package
-- same visibility
-- both are methods, on *ContextPool and *ResultContextPool[T]
-
----
-
-## Match #7 — Code-shape: `0.8500`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `pool/context_pool.go:64` | `pool.*ContextPool.WithFirstError` | ` ` | — |
-| **B** | `pool/result_error_pool.go:64` | `pool.*ResultErrorPool[T].WithFirstError` | ` ` | — |
-
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.00  size 1.00`
-
-**Evidence:** `50.32` (shape 50.32, concept 0.00, call 0.00)
-
-**Trophic:** `1.00`
-
-**Shared structure:**
-
-- `3.01` — `seq[ do(call:WithFirstError) ; return(id) ]`
-- `3.01` — `seq[ do(call:panicIfInitialized) ; do(call:WithFirstError) ]`
-- `3.01` — `do(call:WithFirstError)`
-
-**Structural overlap:** `0.50` (merge-worthy)
-
-- share 2 callees: [WithFirstError, p.panicIfInitialized]
-- both are leaf functions
-- same package
-- same visibility
-- both are methods, on *ContextPool and *ResultErrorPool[T]
-
----
-
-## Match #8 — Code-shape: `0.8500`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `pool/result_context_pool.go:50` | `pool.*ResultContextPool[T].WithFirstError` | ` ` | — |
-| **B** | `pool/result_error_pool.go:64` | `pool.*ResultErrorPool[T].WithFirstError` | ` ` | — |
-
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.00  size 1.00`
-
-**Evidence:** `50.32` (shape 50.32, concept 0.00, call 0.00)
-
-**Trophic:** `1.00`
-
-**Shared structure:**
-
-- `3.01` — `seq[ do(call:WithFirstError) ; return(id) ]`
-- `3.01` — `seq[ do(call:panicIfInitialized) ; do(call:WithFirstError) ]`
-- `3.01` — `do(call:WithFirstError)`
-
-**Structural overlap:** `0.50` (merge-worthy)
-
-- share 2 callees: [WithFirstError, p.panicIfInitialized]
-- both are leaf functions
-- same package
-- same visibility
-- both are methods, on *ResultContextPool[T] and *ResultErrorPool[T]
-
----
-
-## Match #9 — Code-shape: `0.9000`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `pool/context_pool.go:86` | `pool.*ContextPool.WithMaxGoroutines` | ` ` | — |
-| **B** | `pool/error_pool.go:65` | `pool.*ErrorPool.WithMaxGoroutines` | ` ` | — |
-
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
-
-**Evidence:** `46.22` (shape 46.22, concept 0.00, call 0.00)
-
-**Trophic:** `1.00`
-
-**Shared structure:**
-
-- `2.50` — `seq[ do(call:WithMaxGoroutines) ; return(id) ]`
-- `2.50` — `seq[ do(call:panicIfInitialized) ; do(call:WithMaxGoroutines) ]`
-- `2.50` — `do(call:WithMaxGoroutines)`
-
-**Structural overlap:** `0.50` (merge-worthy)
-
-- share 2 callees: [WithMaxGoroutines, p.panicIfInitialized]
-- both are leaf functions
-- same package
-- same visibility
-- both are methods, on *ContextPool and *ErrorPool
-
----
-
-## Match #10 — Code-shape: `0.9000`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `pool/context_pool.go:86` | `pool.*ContextPool.WithMaxGoroutines` | ` ` | — |
-| **B** | `pool/result_context_pool.go:67` | `pool.*ResultContextPool[T].WithMaxGoroutines` | ` ` | — |
-
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
-
-**Evidence:** `46.22` (shape 46.22, concept 0.00, call 0.00)
-
-**Trophic:** `1.00`
-
-**Shared structure:**
-
-- `2.50` — `seq[ do(call:WithMaxGoroutines) ; return(id) ]`
-- `2.50` — `seq[ do(call:panicIfInitialized) ; do(call:WithMaxGoroutines) ]`
-- `2.50` — `do(call:WithMaxGoroutines)`
-
-**Structural overlap:** `0.50` (merge-worthy)
-
-- share 2 callees: [WithMaxGoroutines, p.panicIfInitialized]
 - both are leaf functions
 - same package
 - same visibility

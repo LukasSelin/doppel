@@ -9,7 +9,7 @@ container engine; a decade of accretion across daemon, API, and plugin layers
 | Corpus | [moby](https://github.com/moby/moby) |
 | Pinned at | `v28.5.2` (`89c5e8fd66634b6128fc4c0e6f1236e2540e46e0`) |
 | Project since | 2013 |
-| doppel | `e61ea20` |
+| doppel | `9e0e019` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -27,10 +27,10 @@ Habitats: 168 modeled, 371 misfits; most uniform checker (norm 0.98), most diver
 Conventions: strongest error_wrapping (0.62), loosest db_access (0.37)
 Ecosystems: 4050 profiled (3750 dominance, 300 coalition, 0 conflict, 0 weak)
 Found 8003 functions. Retrieving candidates...
-Retrieval: shape 4629, concept 2410, call 12559 -> 18106 unique pairs
-  concept-only 12.6%  call-only 61.4%  suppressed-shape functions: 218  large identity buckets: 4  surviving patterns: 43206
-Running structural comparison on 18106 pairs...
-  6 pairs suppressed by max-per-func=2
+Retrieval: shape 4710, concept 2410, call 12559 -> 18189 unique pairs
+  concept-only 12.6%  call-only 61.1%  suppressed-shape functions: 204  large identity buckets: 4  surviving patterns: 46820
+Running structural comparison on 18189 pairs...
+  4 pairs suppressed by max-per-func=2
 ```
 
 # Code Similarity Report
@@ -52,15 +52,15 @@ Running structural comparison on 18106 pairs...
 
 **Code similarity:** `ast 0.92  flow 1.00  nesting 1.00  sig 1.00  size 0.99`
 
-**Evidence:** `3222.04` (shape 3206.08, concept 1.98, call 13.99)
+**Evidence:** `3376.91` (shape 3360.95, concept 1.98, call 13.99)
 
 **Trophic:** `0.95`
 
 **Shared structure:**
 
+- `36.74` — `flow:call:int→cond`
 - `27.90` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
 - `27.90` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
-- `27.90` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
 
 **Habitat:** A fits poorly in `networkdb` (fit 0.21, package norm 0.68)
 
@@ -93,15 +93,15 @@ Running structural comparison on 18106 pairs...
 
 **Code similarity:** `ast 0.87  flow 1.00  nesting 1.00  sig 1.00  size 0.80`
 
-**Evidence:** `3430.41` (shape 3414.44, concept 1.98, call 13.99)
+**Evidence:** `3585.27` (shape 3569.31, concept 1.98, call 13.99)
 
-**Trophic:** `0.90`
+**Trophic:** `0.91`
 
 **Shared structure:**
 
+- `36.74` — `flow:call:int→cond`
 - `27.90` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
 - `27.90` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
-- `27.90` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
 
 **Habitat:** A fits poorly in `networkdb` (fit 0.21, package norm 0.68)
 
@@ -134,15 +134,15 @@ Running structural comparison on 18106 pairs...
 
 **Code similarity:** `ast 0.85  flow 1.00  nesting 1.00  sig 1.00  size 0.98`
 
-**Evidence:** `3780.67` (shape 3778.69, concept 1.98, call 0.00)
+**Evidence:** `3918.16` (shape 3916.18, concept 1.98, call 0.00)
 
-**Trophic:** `0.93`
+**Trophic:** `0.92`
 
 **Shared structure:**
 
+- `47.24` — `flow:call:int→cond`
 - `33.48` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
 - `33.48` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
-- `33.48` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
 
 **Habitat:** A fits poorly in `logdriver` (fit 0.05, package norm 0.71)
 
@@ -174,15 +174,15 @@ Running structural comparison on 18106 pairs...
 
 **Code similarity:** `ast 0.68  flow 1.00  nesting 1.00  sig 1.00  size 0.81`
 
-**Evidence:** `5138.50` (shape 5136.52, concept 1.98, call 0.00)
+**Evidence:** `5353.56` (shape 5351.58, concept 1.98, call 0.00)
 
 **Trophic:** `0.81`
 
 **Shared structure:**
 
+- `73.49` — `flow:call:int→cond`
 - `50.21` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
 - `50.21` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
-- `50.21` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
 
 **Habitat:** B fits poorly in `networkdb` (fit 0.21, package norm 0.68)
 
@@ -212,15 +212,15 @@ Running structural comparison on 18106 pairs...
 
 **Code similarity:** `ast 0.96  flow 1.00  nesting 1.00  sig 1.00  size 0.79`
 
-**Evidence:** `2692.88` (shape 2676.92, concept 1.98, call 13.99)
+**Evidence:** `2820.15` (shape 2804.18, concept 1.98, call 13.99)
 
 **Trophic:** `0.89`
 
 **Shared structure:**
 
+- `26.24` — `flow:call:int→cond`
+- `26.07` — `flow:call:skipNetworkdb→cond`
 - `22.32` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
-- `22.32` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
-- `22.32` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
 
 **Habitat:** A fits poorly in `networkdb` (fit 0.21, package norm 0.68)
 
@@ -253,15 +253,15 @@ Running structural comparison on 18106 pairs...
 
 **Code similarity:** `ast 0.78  flow 1.00  nesting 1.00  sig 1.00  size 0.94`
 
-**Evidence:** `3580.40` (shape 3578.43, concept 1.98, call 0.00)
+**Evidence:** `3728.21` (shape 3726.23, concept 1.98, call 0.00)
 
 **Trophic:** `0.86`
 
 **Shared structure:**
 
+- `47.24` — `flow:call:int→cond`
 - `33.48` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
 - `33.48` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
-- `33.48` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
 
 **Habitat:** A fits poorly in `logdriver` (fit 0.05, package norm 0.71)
 
@@ -280,7 +280,45 @@ Running structural comparison on 18106 pairs...
 
 ---
 
-## Match #7 — Code-shape: `1.0000`
+## Match #7 — Code-shape: `0.9631`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `daemon/cluster/internal/runtime/plugin.pb.go:379` | `runtime.*PluginSpec.Unmarshal` | ` ` | validation |
+| **B** | `libnetwork/agent.pb.go:618` | `libnetwork.*EndpointRecord.Unmarshal` | ` ` | validation |
+
+**Profile A:** `validation` 1.00 (dominance)
+
+**Profile B:** `validation` 1.00 (dominance)
+
+**Code similarity:** `ast 0.94  flow 1.00  nesting 1.00  sig 1.00  size 0.61`
+
+**Evidence:** `4323.69` (shape 4321.71, concept 1.98, call 0.00)
+
+**Trophic:** `0.74`
+
+**Shared structure:**
+
+- `52.49` — `flow:call:int→cond`
+- `33.48` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
+- `33.48` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
+
+**Habitat:** A fits poorly in `runtime` (fit 0.06, package norm 0.70)
+
+**Structural overlap:** `0.66` (merge-worthy)
+
+- share 10 callees: [Unmarshal, append, bool, fmt.Errorf, int, int32, len, string, uint, uint64]
+- overlapping call-graph neighborhoods (1.00): 106 shared
+- share patterns: [validation]
+- both are orchestrator functions
+- callees do related work (1.00): [validation]
+- same visibility
+- both are methods, on *PluginSpec and *EndpointRecord
+- call into same packages: [ipbits]
+
+---
+
+## Match #8 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -293,7 +331,7 @@ Running structural comparison on 18106 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `2089.79` (shape 2087.81, concept 1.98, call 0.00)
+**Evidence:** `2122.40` (shape 2120.42, concept 1.98, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -320,7 +358,7 @@ Running structural comparison on 18106 pairs...
 
 ---
 
-## Match #8 — Code-shape: `1.0000`
+## Match #9 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -333,7 +371,7 @@ Running structural comparison on 18106 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `2089.79` (shape 2087.81, concept 1.98, call 0.00)
+**Evidence:** `2122.40` (shape 2120.42, concept 1.98, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -358,7 +396,7 @@ Running structural comparison on 18106 pairs...
 
 ---
 
-## Match #9 — Code-shape: `1.0000`
+## Match #10 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -371,7 +409,7 @@ Running structural comparison on 18106 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `2089.79` (shape 2087.81, concept 1.98, call 0.00)
+**Evidence:** `2122.40` (shape 2120.42, concept 1.98, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -392,44 +430,6 @@ Running structural comparison on 18106 pairs...
 - callers do related work (1.00): [validation]
 - same visibility
 - same receiver type: plain functions
-- call into same packages: [ipbits]
-
----
-
-## Match #10 — Code-shape: `0.9631`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `daemon/cluster/internal/runtime/plugin.pb.go:379` | `runtime.*PluginSpec.Unmarshal` | ` ` | validation |
-| **B** | `libnetwork/agent.pb.go:618` | `libnetwork.*EndpointRecord.Unmarshal` | ` ` | validation |
-
-**Profile A:** `validation` 1.00 (dominance)
-
-**Profile B:** `validation` 1.00 (dominance)
-
-**Code similarity:** `ast 0.94  flow 1.00  nesting 1.00  sig 1.00  size 0.61`
-
-**Evidence:** `4158.49` (shape 4156.51, concept 1.98, call 0.00)
-
-**Trophic:** `0.75`
-
-**Shared structure:**
-
-- `33.48` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
-- `33.48` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
-- `33.48` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
-
-**Habitat:** A fits poorly in `runtime` (fit 0.06, package norm 0.70)
-
-**Structural overlap:** `0.66` (merge-worthy)
-
-- share 10 callees: [Unmarshal, append, bool, fmt.Errorf, int, int32, len, string, uint, uint64]
-- overlapping call-graph neighborhoods (1.00): 106 shared
-- share patterns: [validation]
-- both are orchestrator functions
-- callees do related work (1.00): [validation]
-- same visibility
-- both are methods, on *PluginSpec and *EndpointRecord
 - call into same packages: [ipbits]
 
 ---

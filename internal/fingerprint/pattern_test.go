@@ -132,6 +132,54 @@ func tiny() {
 	}
 }
 
+// The def-use flow edges, pinned on the idioms the pass exists for: a
+// parameter flowing into a call, a call result deciding a condition (the
+// errcheck idiom, via the tuple rule), a call result invoked on
+// (open→close), and a parameter flowing straight to a return.
+func TestPatternsDefUseFlowEdges(t *testing.T) {
+	fp := buildFrom(t, `
+func load(path string) ([]byte, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return readAll(f)
+}`)
+	for _, want := range []string{
+		"flow:param→call:Open",      // path into os.Open
+		"flow:call:Open→cond",       // err (tuple-bound to call:Open) in the if
+		"flow:call:Open→call:Close", // f invoked on
+		"flow:call:Open→call:readAll",
+		"flow:call:Open→return", // err returned in the error branch
+	} {
+		if !hasRender(fp, LevelFlow, want) {
+			t.Errorf("missing flow edge %q; have %v", want, renders(fp, LevelFlow))
+		}
+	}
+
+	passthrough := buildFrom(t, `
+func id(x int) int {
+	return x
+}`)
+	if !hasRender(passthrough, LevelFlow, "flow:param→return") {
+		t.Errorf("missing flow:param→return; have %v", renders(passthrough, LevelFlow))
+	}
+
+	// A value computed and dropped produces no edge: the whole point is that
+	// it is now distinguishable from one that flows onward.
+	dropped := buildFrom(t, `
+func drop(x int) {
+	y := compute(x)
+	_ = y
+}`)
+	for _, r := range renders(dropped, LevelFlow) {
+		if strings.HasPrefix(r, "flow:call:compute→") {
+			t.Errorf("dropped value emitted an onward edge: %v", renders(dropped, LevelFlow))
+		}
+	}
+}
+
 // walkFixture exposes the walk() token stream for a fixture.
 func walkFixture(t *testing.T, src string) ([]string, []int, []int, int) {
 	t.Helper()

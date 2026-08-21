@@ -9,7 +9,7 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `e61ea20` |
+| doppel | `9e0e019` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -27,9 +27,9 @@ Habitats: 90 modeled, 566 misfits; most uniform tracing (norm 0.97), most divers
 Conventions: strongest error_wrapping (0.63), loosest retry (0.34)
 Ecosystems: 2520 profiled (1738 dominance, 782 coalition, 0 conflict, 0 weak)
 Found 6245 functions. Retrieving candidates...
-Retrieval: shape 4499, concept 3885, call 8864 -> 15764 unique pairs
-  concept-only 23.3%  call-only 47.3%  suppressed-shape functions: 201  large identity buckets: 5  surviving patterns: 36313
-Running structural comparison on 15764 pairs...
+Retrieval: shape 4512, concept 3885, call 8864 -> 15776 unique pairs
+  concept-only 23.3%  call-only 47.2%  suppressed-shape functions: 199  large identity buckets: 5  surviving patterns: 38503
+Running structural comparison on 15776 pairs...
 ```
 
 # Code Similarity Report
@@ -51,7 +51,7 @@ Running structural comparison on 15764 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 0.97`
 
-**Evidence:** `9868.83` (shape 9861.63, concept 2.23, call 4.98)
+**Evidence:** `10150.99` (shape 10143.78, concept 2.23, call 4.98)
 
 **Trophic:** `0.99`
 
@@ -91,7 +91,7 @@ Running structural comparison on 15764 pairs...
 
 **Code similarity:** `ast 0.93  flow 1.00  nesting 0.98  sig 1.00  size 1.00`
 
-**Evidence:** `8766.68` (shape 8759.48, concept 2.23, call 4.98)
+**Evidence:** `9006.13` (shape 8998.92, concept 2.23, call 4.98)
 
 **Trophic:** `0.91`
 
@@ -131,7 +131,7 @@ Running structural comparison on 15764 pairs...
 
 **Code similarity:** `ast 0.93  flow 1.00  nesting 0.99  sig 1.00  size 0.98`
 
-**Evidence:** `8780.53` (shape 8773.33, concept 2.23, call 4.98)
+**Evidence:** `9019.98` (shape 9012.78, concept 2.23, call 4.98)
 
 **Trophic:** `0.90`
 
@@ -167,15 +167,15 @@ Running structural comparison on 15764 pairs...
 
 **Code similarity:** `ast 0.86  flow 1.00  nesting 1.00  sig 1.00  size 0.69`
 
-**Evidence:** `15356.42` (shape 15356.42, concept 0.00, call 0.00)
+**Evidence:** `15458.42` (shape 15458.42, concept 0.00, call 0.00)
 
 **Trophic:** `0.77`
 
 **Shared structure:**
 
 - `306.00` — `assign=(call:next)`
+- `102.00` — `flow:call:next→cond`
 - `77.16` — `if(false)`
-- `73.69` — `seq[ assign=(id) ; return(id) ]`
 
 **Structural overlap:** `0.37` (not merge-worthy)
 
@@ -197,15 +197,15 @@ Running structural comparison on 15764 pairs...
 
 **Code similarity:** `ast 0.99  flow 1.00  nesting 1.00  sig 1.00  size 0.96`
 
-**Evidence:** `4627.83` (shape 4622.83, concept 0.00, call 5.00)
+**Evidence:** `4805.14` (shape 4800.14, concept 0.00, call 5.00)
 
 **Trophic:** `0.99`
 
 **Shared structure:**
 
 - `51.91` — `assign=(call:encodeVarintTypes)`
-- `27.60` — `seq[ assign-=(lit:INT) ; do(call:PutUint64) ]`
-- `27.23` — `assign-=(id)`
+- `51.91` — `flow:call:len→call:encodeVarintTypes`
+- `51.91` — `flow:param→call:encodeVarintTypes`
 
 **Habitat:** A fits poorly in `writev2` (fit 0.01, package norm 0.59)
 
@@ -235,7 +235,7 @@ Running structural comparison on 15764 pairs...
 
 **Code similarity:** `ast 0.91  flow 1.00  nesting 1.00  sig 0.67  size 0.98`
 
-**Evidence:** `3015.31` (shape 3007.06, concept 2.23, call 6.03)
+**Evidence:** `3149.66` (shape 3141.40, concept 2.23, call 6.03)
 
 **Trophic:** `0.98`
 
@@ -275,15 +275,15 @@ Running structural comparison on 15764 pairs...
 
 **Code similarity:** `ast 0.71  flow 1.00  nesting 0.99  sig 1.00  size 0.91`
 
-**Evidence:** `4327.97` (shape 4207.47, concept 8.24, call 112.27)
+**Evidence:** `4730.38` (shape 4609.87, concept 8.24, call 112.27)
 
-**Trophic:** `0.80`
+**Trophic:** `0.81`
 
 **Shared structure:**
 
+- `44.15` — `flow:call:get→cond`
+- `38.58` — `flow:call:Histogram→cond`
 - `21.07` — `seq[ if(bin:>(sel,lit:INT)) ; if(bin:>(sel,lit:INT)) ]`
-- `20.45` — `if(bin:>(sel,lit:INT))`
-- `20.40` — `return(id,id,id,id)`
 
 **Structural overlap:** `0.74` (merge-worthy)
 
@@ -312,15 +312,15 @@ Running structural comparison on 15764 pairs...
 
 **Code similarity:** `ast 0.78  flow 0.99  nesting 1.00  sig 0.71  size 0.84`
 
-**Evidence:** `2787.80` (shape 2751.76, concept 7.99, call 28.04)
+**Evidence:** `3059.43` (shape 3023.40, concept 7.99, call 28.04)
 
-**Trophic:** `0.89`
+**Trophic:** `0.90`
 
 **Shared structure:**
 
+- `46.32` — `flow:call:AddEventHandler→call:Error`
+- `46.32` — `flow:call:AddEventHandler→cond`
 - `39.71` — `assign:=(call:WithLabelValues)`
-- `33.09` — `seq[ assign:=(call:WithLabelValues) ; assign:=(call:WithLabelValues) ]`
-- `23.15` — `seq[ do(call:Inc) ; do(call:serviceUpdate) ]`
 
 **Structural overlap:** `0.93` (merge-worthy)
 
@@ -348,15 +348,15 @@ Running structural comparison on 15764 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
 
-**Evidence:** `1938.64` (shape 1938.64, concept 0.00, call 0.00)
+**Evidence:** `1990.11` (shape 1990.11, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
+- `23.15` — `flow:call:len→call:min`
 - `11.40` — `assign:=(call:max)`
-- `10.83` — `assign=(id,id)`
-- `10.23` — `seq[ assign:=(bin) ; assign:=(bin) ]`
+- `11.27` — `flow:call:len→call:float64`
 
 **Structural overlap:** `0.72` (merge-worthy)
 
@@ -385,15 +385,15 @@ Running structural comparison on 15764 pairs...
 
 **Code similarity:** `ast 0.66  flow 0.99  nesting 0.99  sig 0.67  size 0.54`
 
-**Evidence:** `5774.61` (shape 5725.55, concept 5.06, call 44.00)
+**Evidence:** `6014.62` (shape 5965.56, concept 5.06, call 44.00)
 
-**Trophic:** `0.65`
+**Trophic:** `0.64`
 
 **Shared structure:**
 
+- `40.80` — `flow:call:Get→call:len`
 - `30.86` — `seq[ assign=(unary) ; return() ]`
 - `30.86` — `do(call:counterAddNonZero)`
-- `23.15` — `seq[ do(call:counterAddNonZero) ; do(call:counterAddNonZero) ]`
 
 **Structural overlap:** `0.68` (merge-worthy)
 
