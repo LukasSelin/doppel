@@ -27,7 +27,7 @@ Orchestrated end to end by `runAnalyze` in `cmd/analyze.go`. Stages in execution
 5. **Candidate retrieval** — `retriever.Retrieve` runs three per-function top-K channels (structural shingle-IDF, concept IC, resolved-call IDF — see *Candidate retrieval* below), unions and dedupes them, and computes definitive per-pair evidence masses plus the exact `fingerprint.Breakdown` for every union pair. Retrieval stats go to stderr. `cmd` materializes the candidates into `analyzer.SimilarPair`s (with `Retrieval` set). `analyzer.FindSimilar` still exists as the simple library API but the pipeline no longer calls it.
 6. **Structural comparison** — a `comparator.Comparator` built over a corpus-weighted `ontology.Scorer` scores **every** candidate pair → `pair.Evidence`. Concept and role signals go through the ontology hierarchy, not string equality, and concept matching is weighted by information content computed from this run's tag counts — sharing a near-universal tag is weak evidence, sharing a rare one is strong.
 7. **Structural filter** — when `--struct-min > 0`, pairs below that overlap score are **dropped**. This is a selection stage, not just annotation.
-8. **Rank + report** — `analyzer.SortByEvidence` orders by retrieval evidence mass (desc), then code-shape score (desc), then `AIdx`/`BIdx`, and truncates to `--top`. `reporter.Print` to stdout always; `reporter.PrintMarkdown` to `--output` additionally. Both take a `reporter.Meta`; `--debug` adds per-pair retrieval provenance.
+8. **Rank + report** — `analyzer.SortForReport` orders by corroborated evidence (`Total × OverlapScore × Score`, then code-shape, then `AIdx`/`BIdx`), applies the `--max-per-func` diversity cap greedily with backfill, and truncates to `--top`. `reporter.Print` to stdout always; `reporter.PrintMarkdown` to `--output` additionally. Both take a `reporter.Meta`; `--debug` adds per-pair retrieval provenance.
 
 `docs[i]` describes `units[i]`, and `SimilarPair` carries `AIdx`/`BIdx` into that slice. Evidence
 attachment is a positional lookup, deliberately — an earlier version keyed it on
@@ -79,10 +79,15 @@ Do not merge these into one number. High code score + low overlap is a *differen
 bodies in unrelated subsystems) from high on both (a real merge candidate), and collapsing them
 destroys that distinction.
 
-The report is **ranked by neither**: ordering comes from `Retrieval.Total`, the candidate evidence
-mass (see *Candidate retrieval*). Similarity says *how alike*, evidence says *how much rare,
-informative material is shared* — a 1.0 code-shape match on a ubiquitous `Error()` idiom carries
-near-zero evidence and sinks, while a 0.5-shape pair sharing rare calls and tags rises. The report
+The report is **ranked by neither alone**: `analyzer.SortForReport` orders by **corroborated
+evidence** — `Retrieval.Total × Evidence.OverlapScore × Score` — evidence mass discounted by
+architectural corroboration and structural similarity. Raw mass alone let verbose shared
+vocabularies (PDF drawing APIs) outrank a self-documented production clone; the human-reviewed
+ground truth showed every true finding is high on at least one quality axis while mechanical
+false positives are low on both. This is a *ranking key only* — the displayed quantities stay
+unblended. A per-function diversity cap (`--max-per-func`, default 2) then bounds how many pairs
+any one function fills, greedily in rank order with backfill; a suppression count goes to stderr.
+`SortByEvidence` (plain `Retrieval.Total` ordering) remains the simple library API. The report
 label was deliberately renamed from `score:` to `code-shape:` so nobody reads 1.0000 as a verdict.
 
 ## Development
@@ -174,8 +179,8 @@ Consequences worth knowing:
 - `ontology.Scorer.SharedInformation` exists precisely so retrieval never recomputes mass as
   `Σ ic.Of(m.LCA)` — that hits `Of("")` (the unknown sentinel) for unknown-term self-matches.
 - `Stats.Suppressed` / `Stats.LargeBuckets` are diagnostics on stderr, not gates.
-- On the ~8.7k-function Sendify corpus: ~22k union pairs, a few seconds end to end (the old
-  all-pairs scoring took ~20s), ~60% of pairs call-only, ~9% concept-only.
+- On the large reference corpus (~8k functions): ~22k union pairs, a few seconds end to end (the
+  old all-pairs scoring took ~20s), ~60% of pairs call-only, ~9% concept-only.
 
 ### Trophic structural energy
 
@@ -485,7 +490,8 @@ Two invariants worth knowing:
   "struct-min": 0.4,
   "output": "doppel-report.md",
   "channel-k": 5,
-  "debug": false
+  "debug": false,
+  "max-per-func": 2
 }
 ```
 
@@ -493,7 +499,8 @@ Flag semantics after the retrieval redesign: `--threshold` floors code-shape for
 **structural-channel admission only** (concept/call candidates bypass it); `--top` caps the
 **final report** after comparison, filtering and evidence ranking — not the candidate set;
 `--min-nodes` gates the structural channel only; `--channel-k` is the per-function per-channel
-top-K; `--debug` adds retrieval provenance lines to the report.
+top-K; `--debug` adds retrieval provenance lines to the report; `--max-per-func` caps how many
+final-report pairs any one function may appear in (0 disables).
 
 Every functional flag except `--config` has a config key. Precedence: `applyConfig` only calls
 `Flags().Set` when `!Flags().Changed(name)`, so explicit CLI flags always win over the file.
@@ -511,6 +518,12 @@ Unknown keys are ignored rather than rejected, so a stale config file does not b
 - Tested: `ontology`, `fingerprint`, `analyzer`, `comparator`, `tagger`, `parser`,
   `concepter/role`, `retriever`, `culture`, `reporter`, `cmd` config precedence. Untested and
   worth covering: `mapper`.
+- **Golden ranking benchmark** (`internal/bench`): a corpus-agnostic, env-guarded harness scoring
+  the final ranking against a human-reviewed labels file. Both inputs come from outside the repo
+  (`DOPPEL_BENCH_CORPUS` + `DOPPEL_BENCH_LABELS`); **no corpus names, paths, or labeled pairs may
+  ever be committed** — the labels JSON is a local artifact the user keeps. Run:
+  `DOPPEL_BENCH_CORPUS=<corpus> DOPPEL_BENCH_LABELS=<labels.json> go test ./internal/bench/ -v`.
+  One labeled semantic false positive keeps two assertions deliberately red (see rough edges).
 
 ## Rough edges
 
@@ -547,8 +560,9 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   interaction matrix all move with unrelated code, so a function's profile and state can change
   when the corpus does. Convergence is capped at 64 rounds, not proven (small fitness gaps end
   `capped`, which the debug line shows honestly). A concept can only invade a function through a
-  *reported* association — the ecology's cutoffs bound the arena's imagination. On Sendify the
-  states degenerate gracefully: ~98% dominance, few coalitions, conflict/weak ≈ 0 (any invaded
+  *reported* association — the ecology's cutoffs bound the arena's imagination. On the large
+  reference corpus the states degenerate gracefully: ~98% dominance, few coalitions,
+  conflict/weak ≈ 0 (any invaded
   candidate carries ≥ ln 2 evidence by construction, so the weak floor rarely triggers).
   Function-vs-function niches, invasion/speciation/overcrowding, dominant-set clustering, and
   Potts-style domains are named future work.
@@ -577,9 +591,9 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   which only engages once the idiom bucket exceeds `MaxPatternDF`. Between df=2 and the cap, exact
   twins read trophic 1.0 with *small* energy — the energy is what ranks, so this is display-level
   nuance, not a scoring bug.
-- **Repetitive scaffolding clusters can dominate the evidence ranking.** Fifteen `cmd/tool`
-  `main.main` functions sharing ~100 mid-frequency setup calls each carry ~600 nats of call
-  evidence and fill the Sendify top-20. That is real duplication, but it crowds the default view;
-  per-function top-K keeps them from crowding the *candidate set*, and `--struct-min` or a larger
-  `--top` gets past them in the report. A report-level diversity cap (max pairs per function) is
-  the natural follow-up if it grates.
+- **Corroborated ranking has thin margins on vocabulary-heavy pairs.** The rank key demotes
+  verbose-API shape mass only through the overlap and code-shape factors; a cross-package true
+  clone and a vocabulary false positive can sit ~10% apart in key. The golden benchmark exists
+  to watch exactly this; a labeled semantic false positive with genuinely high corroboration
+  (sibling table-driven tests of different functions) keeps the benchmark's assertions
+  deliberately red until a mechanism can express it.
