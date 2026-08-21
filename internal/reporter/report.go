@@ -73,7 +73,7 @@ func Print(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 		}
 		if p.Evidence != nil {
 			fmt.Fprintf(w, "  structural overlap: %.2f", p.Evidence.OverlapScore)
-			if p.Evidence.MergeWorthy {
+			if p.MergeWorthy() {
 				fmt.Fprintf(w, " (merge-worthy)")
 			}
 			fmt.Fprintln(w)
@@ -151,7 +151,7 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 
 		if p.Evidence != nil {
 			label := "not merge-worthy"
-			if p.Evidence.MergeWorthy {
+			if p.MergeWorthy() {
 				label = "merge-worthy"
 			}
 			fmt.Fprintf(w, "**Structural overlap:** `%.2f` (%s)\n\n", p.Evidence.OverlapScore, label)

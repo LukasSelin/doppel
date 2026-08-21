@@ -121,8 +121,8 @@ func TestCompareGradedConcepts(t *testing.T) {
 			if !approx(ev.OverlapScore, tt.wantScore) {
 				t.Errorf("OverlapScore = %.4f, want %.4f", ev.OverlapScore, tt.wantScore)
 			}
-			if ev.MergeWorthy != tt.wantMerge {
-				t.Errorf("MergeWorthy = %t, want %t", ev.MergeWorthy, tt.wantMerge)
+			if ev.ContextMergeWorthy != tt.wantMerge {
+				t.Errorf("ContextMergeWorthy = %t, want %t", ev.ContextMergeWorthy, tt.wantMerge)
 			}
 			if len(ev.SharedPatterns) != 0 {
 				t.Errorf("SharedPatterns = %v, want none: these tags are not equal", ev.SharedPatterns)
@@ -328,8 +328,8 @@ func TestCompareIsSymmetric(t *testing.T) {
 	if ab.OverlapScore != ba.OverlapScore {
 		t.Errorf("Compare(a,b) = %v but Compare(b,a) = %v", ab.OverlapScore, ba.OverlapScore)
 	}
-	if ab.MergeWorthy != ba.MergeWorthy {
-		t.Errorf("MergeWorthy differs by argument order")
+	if ab.ContextMergeWorthy != ba.ContextMergeWorthy {
+		t.Errorf("ContextMergeWorthy differs by argument order")
 	}
 	if ab.PatternRelatedness != ba.PatternRelatedness {
 		t.Errorf("PatternRelatedness differs by argument order: %v vs %v", ab.PatternRelatedness, ba.PatternRelatedness)

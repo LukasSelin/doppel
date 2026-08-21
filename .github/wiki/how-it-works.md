@@ -228,6 +228,12 @@ flowchart TB
 Collapsing the two into one number would average those cells into an unreadable middle. Tighten
 `--struct-min` when you only want the bottom-right one.
 
+The **merge-worthy** label names that bottom-right cell, and it asserts both axes: overlap at least
+0.4 with at least two counting signals, *and* code-shape at least 0.4. The shape half is not
+redundant. Two functions in the same package share callers and callees by construction, so overlap
+reaches 0.4 on siblings whose bodies have almost nothing in common — the label was observed on a
+pair at code-shape 0.31, which is the top-left cell wearing the bottom-right cell's name.
+
 **Ranking uses neither score on its own.** The report is ordered by *corroborated* evidence — the
 retrieval mass multiplied by the overlap score, the code-shape score, and the squared trophic
 similarity (the fraction of informative structure the pair actually shares). Raw evidence mass alone

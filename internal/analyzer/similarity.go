@@ -21,6 +21,15 @@ type SimilarPair struct {
 	Profile    []ProfileNote                  // equilibrium concept profiles; nil when neither side qualifies
 }
 
+// MergeWorthy is the whole merge verdict, and SimilarPair is the only type
+// that can state it: enough shared architectural context, from the comparator,
+// and enough shared code shape, from the fingerprint. False when Evidence is
+// nil — a FindSimilar-produced pair has never been through the comparator, so
+// nothing here has judged its context.
+func (p SimilarPair) MergeWorthy() bool {
+	return p.Evidence != nil && comparator.MergeWorthy(*p.Evidence, p.Score)
+}
+
 // ProfileNote is one side's concept-arena equilibrium: which concepts
 // survived the competition for the function's evidence, and what kind of
 // ecosystem they form. Profiles annotate; they never affect ranking.

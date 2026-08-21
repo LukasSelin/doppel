@@ -236,31 +236,46 @@ func head[T any](s []T, n int) []T {
 	return s
 }
 
+// impactKey is corroborated evidence: how alike the two bodies are, weighted
+// by how much architectural context corroborates it.
+//
+// Neither number alone is the finding. A 1.00 shape in unrelated subsystems is
+// a lookalike; a high overlap at 0.31 shape is two same-package siblings, which
+// share callers and callees by construction and so score high on context no
+// matter how different their bodies are. Ranking on overlap alone therefore
+// promotes intentional variants over cross-package copy-paste — measured on a
+// real corpus, a third byte-identical copy of a helper (shape 1.00, overlap
+// 0.43) sorted below four sibling variants at shape 0.52-0.61.
+//
+// It is the same quantity analyzer.SortForReport ranks the full report by, cut
+// down to the two numbers a snapshot pair carries.
+func impactKey(p snapshot.PairChange) float64 { return p.Score * p.Overlap }
+
 // sortForReading orders pair changes so the few the digest has room to print
 // are the ones worth printing.
 //
-// Diff hands these over in snapshot order, which is score-first — fine when a
-// session touches one function, useless on a corpus where dozens of pairs move
-// at once and the six that get listed are then whichever happened to score
-// highest on code shape alone. Merge-worthiness leads because it is the only
-// bit here that claims a decision is warranted, and overlap breaks its ties
-// because a shared architectural context is what separates a real merge
-// candidate from two look-alike bodies in unrelated subsystems.
+// Diff hands these over attributable-first, then merge-worthy, then score —
+// fine as a total order for a stored delta, but the digest lists six of what
+// can be a hundred changes, so its own key decides what a reader ever sees.
+// Merge-worthiness is deliberately not that key: it is a boolean over a
+// continuum, and one that puts a pair three signals past the gate level with a
+// pair one signal past it. impactKey grades what the flag rounds off, and the
+// flag stays where it belongs, on the rendered line.
 //
 // This is presentation, and only presentation: the delta still carries every
 // pair, the hook still diffs the full candidate set, and nothing here feeds a
 // score. The trailing name keys make the order total, which the repo's
 // byte-identical-output invariant requires — without them, two pairs equal on
-// all three numbers could swap between runs.
+// the numbers could swap between runs.
 func sortForReading(pairs []snapshot.PairChange) {
 	sort.SliceStable(pairs, func(i, j int) bool {
 		a, b := pairs[i], pairs[j]
-		if a.MergeWorthy != b.MergeWorthy {
-			return a.MergeWorthy
+		if ka, kb := impactKey(a), impactKey(b); ka != kb {
+			return ka > kb
 		}
-		if a.Overlap != b.Overlap {
-			return a.Overlap > b.Overlap
-		}
+		// Shape breaks ties on the product, so that two pairs of equal
+		// corroborated evidence are separated by the half that is
+		// corpus-independent.
 		if a.Score != b.Score {
 			return a.Score > b.Score
 		}
@@ -389,16 +404,22 @@ func Notable(d snapshot.Delta) []Finding {
 	return out
 }
 
-// AgentDigest renders findings as a note for the model, or "" for none.
+// AgentDigest renders findings as a note for the model, or "" for none, and
+// returns the findings it actually rendered.
+//
+// The second return is what the caller must remember, and it is deliberately
+// not the input: the digest prints a bounded head of the list, so recording
+// the whole set would retire findings that were only ever counted. They keep
+// their turn — on the next one.
 //
 // Phrasing follows the same rule as ConceptDigest, and for a sharper reason:
 // this text arrives while the turn is being deliberately continued, so a line
 // that reads as an instruction would be an out-of-band order to go refactor
 // something the user never asked about. Every line states a fact and asks for
 // nothing. The closing sentence exists to bound that explicitly.
-func AgentDigest(findings []Finding) string {
+func AgentDigest(findings []Finding) (string, []Finding) {
 	if len(findings) == 0 {
-		return ""
+		return "", nil
 	}
 
 	noun := "near-duplicate findings"
@@ -409,12 +430,13 @@ func AgentDigest(findings []Finding) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "doppel measured this session's effect on the repository's duplication surface and found %d new %s:\n",
 		len(findings), noun)
-	for _, f := range head(findings, maxAgentListed) {
+	shown := head(findings, maxAgentListed)
+	for _, f := range shown {
 		fmt.Fprintf(&b, "  %s\n", f.Line)
 	}
-	if more := len(findings) - maxAgentListed; more > 0 {
+	if more := len(findings) - len(shown); more > 0 {
 		fmt.Fprintf(&b, "  (%d further findings not listed)\n", more)
 	}
 	b.WriteString("This is a measurement, not a request. No change is required.\n")
-	return truncate(b.String())
+	return truncate(b.String()), shown
 }

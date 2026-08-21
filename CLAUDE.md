@@ -402,7 +402,16 @@ landed); then `shares_neighborhood` took its `0.030` entirely from `calls` and `
 a depth-2 neighborhood generalizes exactly what those two edges measure. That second carve is the
 first change to relative order — `called_by` now sits below `has_role`, deliberately.
 
-`MergeWorthy = OverlapScore >= 0.4 && countSignals >= 2`. **`countSignals` counts only 5 of the 12**
+`ContextMergeWorthy = OverlapScore >= 0.4 && countSignals >= 2` — the **architectural half only**.
+The verdict itself is `comparator.MergeWorthy(ev, shape) = ev.ContextMergeWorthy && shape >=
+MergeShapeFloor` (0.4, mirroring the overlap gate), surfaced as `analyzer.SimilarPair.MergeWorthy()`,
+which is the one type holding both halves. The split is forced: the comparator sees two ConceptDocs
+and no fingerprint, so it cannot floor on shape itself. It is also the point — shared architectural
+context structurally favours same-package siblings, which share callers and callees by construction,
+so context alone reached 0.4 on pairs whose bodies had almost nothing in common (measured: a
+merge-worthy label at code-shape 0.31). The field rename is deliberate: every reader of the old
+`Evidence.MergeWorthy` is a compile error, so no surface can silently keep half a verdict.
+**`countSignals` counts only 5 of the 12**
 — callees, callers, concepts, role, package. Visibility, receiver, the two package-overlap signals
 and the two concept-context signals raise the score but never the signal count: context is not by
 itself a reason to merge two functions.
@@ -515,7 +524,8 @@ Two invariants worth knowing:
   taxonomy-only Wu–Palmer best match. Under Lin, sibling/cousin similarities move with tag
   frequencies elsewhere in the tree; a pair's `MergeWorthy` must not flip because unrelated code
   shifted the statistics. (The `OverlapScore >= 0.4` half of the verdict does include the weighted
-  score, so `MergeWorthy` is not fully corpus-independent — the signal count is.)
+  score, so `MergeWorthy` is not fully corpus-independent — the signal count and the shape floor
+  are.)
 - **Singleton sets cannot be discounted.** `{error_wrapping}` vs `{error_wrapping}` is still 1.0 —
   the shared information and the total information are the same quantity. The discount only
   manifests in sets of ≥ 2 tags. Fixing it would mean IC-scaling the `exhibits` relation weight,
@@ -592,6 +602,9 @@ to rewrite on every turn:
   deliberate exception: no internal consumer reads it either, but the `--format` row in `README.md`
   documents it as part of the `--format json` payload, so it stays until that promise changes.
   Anything added back needs a reader, or it is weight in a file the Stop hook rewrites every turn.
+  `Schema` 3 added no field: it changed what `Pair.MergeWorthy` asserts (the shape floor). A
+  meaning change with no shape change is exactly what the version exists for — the two files would
+  otherwise compare cleanly and report a merge-worthy drop nobody caused.
 
 **What a delta may and may not claim.** `UnitsAdded`, `UnitsRemoved` and `BodiesChanged` are solid:
 they come from names and from `Digest`, an FNV-1a hash of the unit's own fingerprint, so nothing
@@ -631,6 +644,13 @@ reason rather than returning a partial delta.
   `permissionDecision` never is — a blocking dedupe hook misfiring on a genuine near-duplicate
   (exactly what it fires on) would be worse than none. An `Advised` ledger in the baseline
   wrapper (same mechanism as `Reported`) makes each file's advisory fire once per session.
+- Both digests rank the pairs they have room to print by **corroborated evidence**,
+  `shape x overlap` (`impactKey` in `reporter`), then shape, then names. Not by overlap, and not by
+  the merge-worthy flag: shared context favours same-package siblings by construction, so overlap
+  alone promotes intentional variants over cross-package copy-paste, and the flag is a boolean over
+  a continuum that cannot separate a pair three signals past the gate from one barely over it. The
+  flag stays on the rendered line. This is presentation only — `snapshot.Diff`'s own total order
+  (attributable, merge-worthy, score) is untouched, and nothing here feeds a score.
 - `stop` emits `systemMessage` to the user and, under `hook-notify: agent` (the default),
   `additionalContext` to the model. **`additionalContext` on a Stop hook continues the turn** —
   verified against the shipped Claude Code binary, because the public docs do not document Stop's
@@ -652,7 +672,9 @@ reason rather than returning a partial delta.
   3. **The `Reported` ledger** in the baseline wrapper. A delta is cumulative against the
      session-start origin, so an unremembered finding is re-reported — and re-continues the turn —
      every turn thereafter. The ledger rides in the baseline file rather than a second one, and
-     never touches its `Snapshot`.
+     never touches its `Snapshot`. It records **only what the digest printed**, which is why
+     `AgentDigest` returns the findings it rendered: the note prints a bounded head, and ledgering
+     the rest would retire findings nobody was ever shown. They lead the next turn's list instead.
 
   `hook-notify` (`agent` | `user` | `off`) is the escape hatch; `user` is the pre-existing
   behaviour exactly. It is deliberately **not** in `Params`, because who gets told has no bearing
