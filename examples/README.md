@@ -19,17 +19,17 @@ corpus is a decade of accretion". Both ends are visible below.
 
 | Corpus | Since | Pinned | Functions | Pairs compared | Concepts modeled | Habitats |
 | --- | --- | --- | --- | --- | --- | --- |
-| [moby](moby.md) | 2013 | `v28.5.2` | 8003 | 16514 | 9 | 168 |
-| [prometheus](prometheus.md) | 2012 | `v3.14.0` | 6245 | 14371 | 9 | 90 |
-| [hugo](hugo.md) | 2013 | `v0.165.0` | 5460 | 13284 | 5 | 126 |
-| [gin](gin.md) | 2014 | `v1.12.0` | 497 | 896 | 4 | 5 |
-| [cobra](cobra.md) | 2015 | `v1.10.2` | 269 | 810 | 1 | 2 |
-| [chi](chi.md) | 2015 | `v5.3.2` | 254 | 614 | 1 | 3 |
+| [moby](moby.md) | 2013 | `v28.5.2` | 8003 | 18189 | 12 | 168 |
+| [prometheus](prometheus.md) | 2012 | `v3.14.0` | 6245 | 15776 | 12 | 90 |
+| [hugo](hugo.md) | 2013 | `v0.165.0` | 5460 | 13856 | 8 | 126 |
+| [gin](gin.md) | 2014 | `v1.12.0` | 497 | 1023 | 5 | 5 |
+| [cobra](cobra.md) | 2015 | `v1.10.2` | 269 | 826 | 2 | 2 |
+| [chi](chi.md) | 2015 | `v5.3.2` | 254 | 617 | 1 | 3 |
 | [conc](conc.md) | 2023 | `v0.3.0` | 81 | 79 | 1 | 4 |
 
 Counts are for the production population (`--tests exclude`, the default).
 "Concepts modeled" is how many of the fourteen tags reached the five-member floor
-culture needs to build a prototype: nine on moby, one on conc. That column is
+culture needs to build a prototype: twelve on moby, one on conc. That column is
 the ladder in miniature — the culture, habitat and arena layers have real
 material at the top and almost nothing to work with at the bottom, and say so
 rather than inventing structure.
