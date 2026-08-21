@@ -92,29 +92,37 @@ func (x *callIndex) callSim(a, b int, sharedMass float64) float64 {
 func (x *callIndex) admitPairs(opt Options) []pairKey {
 	var pairs []pairKey
 	for a := range x.surviving {
-		if len(x.surviving[a]) == 0 {
-			continue
-		}
-		acc := make(map[int]float64)
-		for _, t := range x.surviving[a] {
-			w := x.idf[t]
-			for _, b := range x.postings[t] {
-				if b != a {
-					acc[b] += w
-				}
+		pairs = append(pairs, x.admitFor(a, opt)...)
+	}
+	return pairs
+}
+
+// admitFor is one function's turn of the admitPairs loop, factored out so a
+// single probe unit can be retrieved without the all-pairs pass.
+func (x *callIndex) admitFor(a int, opt Options) []pairKey {
+	if len(x.surviving[a]) == 0 {
+		return nil
+	}
+	acc := make(map[int]float64)
+	for _, t := range x.surviving[a] {
+		w := x.idf[t]
+		for _, b := range x.postings[t] {
+			if b != a {
+				acc[b] += w
 			}
 		}
-		neighbors := make([]neighborMass, 0, len(acc))
-		for b, mass := range acc {
-			// A token in every unit has idf 0; zero shared mass is zero
-			// evidence, not a candidate.
-			if mass > 0 {
-				neighbors = append(neighbors, neighborMass{idx: b, mass: mass})
-			}
+	}
+	neighbors := make([]neighborMass, 0, len(acc))
+	for b, mass := range acc {
+		// A token in every unit has idf 0; zero shared mass is zero
+		// evidence, not a candidate.
+		if mass > 0 {
+			neighbors = append(neighbors, neighborMass{idx: b, mass: mass})
 		}
-		for _, nb := range topK(neighbors, opt.ChannelK) {
-			pairs = append(pairs, orderPair(a, nb.idx))
-		}
+	}
+	var pairs []pairKey
+	for _, nb := range topK(neighbors, opt.ChannelK) {
+		pairs = append(pairs, orderPair(a, nb.idx))
 	}
 	return pairs
 }

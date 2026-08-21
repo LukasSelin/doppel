@@ -53,6 +53,8 @@ type Result struct {
 	Graph     *concepter.Graph
 	Culture   *culture.Model
 	TagCounts map[ontology.TermID]int
+	Onto      *ontology.Ontology
+	IC        *ontology.IC
 	Pairs     []analyzer.SimilarPair
 }
 
@@ -65,9 +67,32 @@ type Result struct {
 // stderr surfaces to the user as a hook-error notice, and a routine parse
 // warning is not an error anyone needs to see.
 func analyze(root string, p Params, progress io.Writer) (Result, error) {
-	if progress == nil {
-		progress = io.Discard
+	res, err := index(root, p, progress, nil)
+	if err != nil || len(res.Units) == 0 {
+		return res, err
 	}
+	return finishAnalyze(res, p, progressOr(progress))
+}
+
+func progressOr(w io.Writer) io.Writer {
+	if w == nil {
+		return io.Discard
+	}
+	return w
+}
+
+// index runs the corpus-building prefix of the pipeline: walk, parse, filter,
+// tag, corpus IC, call graph, concept docs. It is everything a lookup needs
+// and nothing a report does — no retrieval, no comparator, no culture.
+//
+// extra units are appended to the corpus before tagging, which is how a query
+// probe joins: the call-graph resolver hands it resolved callees, mapper
+// classifies its role against the same thresholds as everyone, and every
+// corpus statistic sees it. The statistics therefore differ from a plain
+// analyze by exactly the extras' own contribution, which is the honest way
+// to ask how a proposed function would sit in this corpus.
+func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (Result, error) {
+	progress = progressOr(progress)
 	res := Result{Root: root, Params: p, TagCounts: map[ontology.TermID]int{}}
 
 	if err := validateTestsMode(p.TestsMode); err != nil {
@@ -103,6 +128,9 @@ func analyze(root string, p Params, progress io.Writer) (Result, error) {
 	// the report describes. Tests are conventionally similar by design, so
 	// they form their own population rather than diluting production's.
 	units = filterTestUnits(units, p.TestsMode)
+	// Extras join after the population filter: a probe is part of whatever
+	// population was chosen, not a reason to change it.
+	units = append(units, extra...)
 	res.Units = units
 
 	if len(units) == 0 {
@@ -126,8 +154,7 @@ func analyze(root string, p Params, progress io.Writer) (Result, error) {
 
 	onto := ontology.Default()
 	ic := ontology.NewCorpusIC(onto, tagCounts)
-	scorer := ontology.NewScorer(onto, ic)
-	comp := comparator.New(scorer)
+	res.Onto, res.IC = onto, ic
 
 	// Build call graph and generate concept documents for every unit.
 	// docs[i] describes units[i]; the pipeline relies on that alignment.
@@ -138,6 +165,18 @@ func analyze(root string, p Params, progress io.Writer) (Result, error) {
 	cptr := concepter.New()
 	docs := mapper.Map(units, cg, cptr)
 	res.Docs = docs
+
+	return res, nil
+}
+
+// finishAnalyze is the reporting tail of the pipeline: culture modeling,
+// retrieval, structural comparison, culture annotation. Split from index so a
+// query can stop at the corpus without paying for any of it.
+func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
+	units, docs, cg := res.Units, res.Docs, res.Graph
+	onto, ic := res.Onto, res.IC
+	scorer := ontology.NewScorer(onto, ic)
+	comp := comparator.New(scorer)
 
 	// Model the corpus's own conceptual practice: which concepts/roles/calls
 	// co-occur beyond chance, and how each concept is normally realized here.

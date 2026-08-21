@@ -97,6 +97,11 @@ func ConceptDigest(s snapshot.Snapshot, root string) string {
 		shown++
 	}
 
+	// Declarative, like every line above: the command exists whether or not
+	// anyone runs it. Without this sentence the query feature is invisible to
+	// the one reader positioned to use it before writing code.
+	b.WriteString("A proposed function can be checked against this corpus before writing it: doppel query --near <package> <root> reads a Go snippet on stdin and reports its nearest existing relatives.\n")
+
 	return truncate(b.String())
 }
 

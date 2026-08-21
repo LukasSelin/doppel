@@ -48,6 +48,11 @@ Near-duplicate pairs reported at threshold 0.60: 552, of which 101 are merge-wor
 The absent-tags line is usually the most useful: "nothing here is tagged `retry`" is a direct answer
 where the present-tags list only narrows the search.
 
+The digest also names `doppel query`, which is the agent's follow-up tool: it can pipe a draft of a
+function it intends to write into `doppel query --near <package> <root>` and get back the corpus
+functions most related to it, nearest-by-call-graph first — answering "does something like this
+already exist, and where" before the code is written rather than measuring the duplication after.
+
 It also records a **baseline** — the measurement origin the Stop hook compares against. The baseline
 is written once per session; SessionStart also fires on resume and after compaction, and re-recording
 then would quietly move the origin so the impact report described the last few minutes instead of the

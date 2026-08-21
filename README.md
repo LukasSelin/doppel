@@ -66,7 +66,33 @@ doppel analyze . --struct-min 0.4 --output report.md
 
 # Print the vocabulary scoring is based on, and check it is consistent
 doppel ontology --defs
+
+# Before writing a function, ask whether the repo already has one like it
+doppel query --near billing . < draft.go
 ```
+
+### Querying before you write
+
+`doppel query` reads a Go snippet — the function you are about to write — and reports the corpus
+functions most related to it by structure, concept tags and calls:
+
+```
+query: cmd.validateHookSetup — tags: validation
+  role: orchestrator   resolved calls: 3
+
+Corpus: 304 functions. 5 related functions:
+
+#1  cmd.hookParams  cmd/config.go:130
+    evidence: 69.7 nats (shape 59.1, concept 1.4, call 9.2)  code-shape: 0.49  locality: 1.00
+    tags: validation   role: orchestrator
+```
+
+Matches are ranked by evidence boosted with **locality** — the fraction of the snippet's resolved
+call neighborhood the match inhabits — so architecturally near code outranks equally-similar code
+from elsewhere. `--near` names the package the function will live in: a bare snippet is wrapped in
+it, and its bare-name calls resolve to that package's functions, which is what locality is built
+from. Include the snippet's imports — calls into imported packages only count as evidence when the
+import that binds them is present.
 
 ### Two scores per pair
 

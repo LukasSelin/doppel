@@ -18,8 +18,27 @@ sort), and `analyzer.SortByEvidence`).
 
 ## Pipeline
 
-The pipeline lives in `analyze()` in `cmd/pipeline.go`; `runAnalyze` in `cmd/analyze.go` is the CLI
-wrapper that supplies flags and renders, and `cmd/hook.go` is the other caller. Stages 1-7 below are
+The pipeline lives in `cmd/pipeline.go`, split in two: `index()` is the corpus-building prefix
+(walk → parse → filter → tag → IC → call graph → mapper), `finishAnalyze()` is the reporting tail
+(culture, retrieval, comparison, annotation), and `analyze()` is exactly the two in sequence — the
+split is a pure refactoring, verified byte-identical on `--format json`. `runAnalyze` in
+`cmd/analyze.go` is the CLI wrapper that supplies flags and renders, and `cmd/hook.go` is the other
+`analyze()` caller. `cmd/query.go` calls only `index()`: a lookup needs the corpus, not the report.
+
+`index()` takes `extra` units appended after the population filter — that is how a query probe
+joins the corpus. Appending before anything runs is the load-bearing choice: the call-graph
+resolver hands the probe resolved callees, mapper classifies its role against the same thresholds
+as everyone, and every corpus statistic sees it — so query statistics differ from a plain analyze
+by exactly the probe's own contribution, which is the honest way to ask how a proposed function
+would sit in this corpus. `retriever.Probe` then runs the same three channels, gates and evidence
+arithmetic as `Retrieve`, narrowed to the probe's admission turn (`admitFor`, extracted from each
+channel's loop; the shared `evaluate` tail keeps the two from drifting). Query ranking is
+`Total × (1 + Locality)` where locality is the fraction of the probe's depth-2 call-graph ball the
+candidate inhabits — a ranking key only, displayed unblended, ties broken by code-shape then index.
+`--near` names the package a bare snippet is wrapped in, which is what makes its bare-name calls
+resolve (and locality light up); query's `--channel-k` defaults to 10, not 5, because a probe's
+retrieval costs one function's worth and an exact-clone family larger than K gets cut on an index
+tie-break. Stages 1-7 below are
 `analyze()`; stage 8 belongs to the caller, because ranking is a presentation choice and the two
 callers make it differently. `analyze()` takes a progress writer rather than using `os.Stderr`
 directly: a hook must stay silent, since stderr from a SessionStart hook surfaces to the user as a
@@ -46,7 +65,8 @@ main.go         Thin entry point → cmd.Execute()
 cmd/            CLI commands (Cobra).
   root.go       rootCmd, Execute()
   analyze.go    Pipeline orchestrator; all flag registration
-  pipeline.go   analyze(): the pipeline itself, with progress routed to a writer; filterByOverlap; snapshotOf
+  pipeline.go   index() + finishAnalyze(): the pipeline split into corpus-building prefix and reporting tail; filterByOverlap; snapshotOf
+  query.go      doppel query: check a proposed function (a snippet on stdin) against the corpus, locality-weighted
   config.go     .doppel.json loading (AnalysisConfig), flag precedence, hookParams
   hook.go       doppel hook session-start / stop: Claude Code hook entry points, baseline file I/O
   version.go    build identity, for deciding whether a baseline is still comparable
