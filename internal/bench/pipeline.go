@@ -1,0 +1,198 @@
+package bench
+
+import (
+	"fmt"
+	"io/fs"
+	"path/filepath"
+	"strings"
+
+	"github.com/LukasSelin/doppel/internal/analyzer"
+	"github.com/LukasSelin/doppel/internal/comparator"
+	"github.com/LukasSelin/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/mapper"
+	"github.com/LukasSelin/doppel/internal/ontology"
+	"github.com/LukasSelin/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/retriever"
+	"github.com/LukasSelin/doppel/internal/tagger"
+)
+
+// Population mirrors the --tests flag: which functions the corpus statistics
+// are computed over. The filter runs before tagging, exactly as the pipeline
+// does it, so IC and every df model the population being described.
+type Population string
+
+const (
+	PopInclude Population = "include"
+	PopExclude Population = "exclude"
+	PopOnly    Population = "only"
+)
+
+func (p Population) valid() bool {
+	switch p {
+	case PopInclude, PopExclude, PopOnly:
+		return true
+	}
+	return false
+}
+
+// skipDir mirrors the walker's skip list. Kept here rather than imported so
+// the harness never depends on cmd.
+func skipDir(name string) bool {
+	switch name {
+	case ".git", ".claude", "vendor", "testdata", "build", ".idea", ".vscode":
+		return true
+	}
+	return false
+}
+
+func isTest(u parser.CodeUnit) bool { return strings.HasSuffix(u.File, "_test.go") }
+
+// qualifiedName renders a unit the way the reporter does: Package + "." +
+// Name, receiver stars kept.
+func qualifiedName(u parser.CodeUnit) string {
+	if u.Package == "" {
+		return u.Name
+	}
+	return u.Package + "." + u.Name
+}
+
+// Load walks a corpus and returns its functions under the given population.
+// Unreadable files and parse errors are skipped, as in the pipeline.
+func Load(root string, pop Population) ([]parser.CodeUnit, error) {
+	if !pop.valid() {
+		return nil, fmt.Errorf("invalid population %q", pop)
+	}
+	var units []parser.CodeUnit
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if d.IsDir() {
+			if skipDir(d.Name()) {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		parsed, err := parser.Parse(path)
+		if err != nil {
+			return nil
+		}
+		units = append(units, parsed...)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if pop != PopInclude {
+		keepTests := pop == PopOnly
+		kept := units[:0]
+		for _, u := range units {
+			if isTest(u) == keepTests {
+				kept = append(kept, u)
+			}
+		}
+		units = kept
+	}
+	return units, nil
+}
+
+// Run holds one corpus's intermediate pipeline state. Every field is filled
+// by the stage named after it, so a benchmark can time one stage with its
+// predecessors already computed.
+type Run struct {
+	Units     []parser.CodeUnit
+	TagCounts map[ontology.TermID]int
+	Onto      *ontology.Ontology
+	IC        *ontology.IC
+	Comp      *comparator.Comparator
+	Graph     *concepter.Graph
+	Docs      []concepter.ConceptDoc
+	Cands     []retriever.Candidate
+	Stats     retriever.Stats
+	Pairs     []analyzer.SimilarPair
+}
+
+// The stages below are the pipeline's ranking-relevant half, as a library at
+// production defaults. Culture, habitats and arenas are deliberately absent:
+// they annotate a pair, they never move it. Each stage mutates the Run in
+// place and is safe to call repeatedly on the same predecessors, which is
+// what makes per-stage benchmarking honest.
+
+// StageTag tags every unit and accumulates the corpus tag counts.
+func (r *Run) StageTag() {
+	r.TagCounts = make(map[ontology.TermID]int)
+	for i := range r.Units {
+		r.Units[i].Patterns = tagger.Tag(r.Units[i])
+		for _, tag := range r.Units[i].Patterns {
+			r.TagCounts[ontology.TermID(tag)]++
+		}
+	}
+	r.Onto = ontology.Default()
+	r.IC = ontology.NewCorpusIC(r.Onto, r.TagCounts)
+	r.Comp = comparator.New(ontology.NewScorer(r.Onto, r.IC))
+}
+
+// StageGraph resolves the corpus call graph.
+func (r *Run) StageGraph() { r.Graph = concepter.BuildCallGraph(r.Units) }
+
+// StageMap builds and enriches the concept documents.
+func (r *Run) StageMap() { r.Docs = mapper.Map(r.Units, r.Graph, concepter.New()) }
+
+// StageRetrieve runs the three retrieval channels.
+func (r *Run) StageRetrieve(opt retriever.Options) {
+	r.Cands, r.Stats = retriever.Retrieve(r.Units, r.Graph, r.Onto, r.IC, opt)
+}
+
+// StagePairs materializes candidates into pairs, dropping cross test/prod
+// pairs the way the pipeline does — different build units are never merge
+// candidates, whatever the population.
+func (r *Run) StagePairs() {
+	pairs := make([]analyzer.SimilarPair, 0, len(r.Cands))
+	for _, c := range r.Cands {
+		if isTest(r.Units[c.AIdx]) != isTest(r.Units[c.BIdx]) {
+			continue
+		}
+		pairs = append(pairs, analyzer.SimilarPair{
+			A: r.Units[c.AIdx], B: r.Units[c.BIdx],
+			AIdx: c.AIdx, BIdx: c.BIdx,
+			Score: c.Breakdown.Score, Breakdown: c.Breakdown,
+			Retrieval: &analyzer.Retrieval{
+				Shape: c.Shape, Concept: c.Concept, Call: c.Call, Total: c.Total,
+				TrophicSim: c.TrophicSim, CallSim: c.CallSim,
+			},
+		})
+	}
+	r.Pairs = pairs
+}
+
+// StageCompare scores every pair's architectural context.
+func (r *Run) StageCompare() {
+	for i := range r.Pairs {
+		ev := r.Comp.Compare(r.Docs[r.Pairs[i].AIdx], r.Docs[r.Pairs[i].BIdx])
+		r.Pairs[i].Evidence = &ev
+	}
+}
+
+// Analyze runs every stage in pipeline order.
+func Analyze(units []parser.CodeUnit, opt retriever.Options) *Run {
+	r := &Run{Units: units}
+	r.StageTag()
+	r.StageGraph()
+	r.StageMap()
+	r.StageRetrieve(opt)
+	r.StagePairs()
+	r.StageCompare()
+	return r
+}
+
+// RankKey is the corroborated-evidence ordering quantity SortForReport uses,
+// recomputed here so a scorecard can print it. Ranking itself stays in
+// analyzer; this must track it.
+func RankKey(p analyzer.SimilarPair) float64 {
+	t := p.Retrieval.TrophicSim
+	k := p.Retrieval.Total * p.Evidence.OverlapScore * p.Score * t * t
+	if isTest(p.A) && isTest(p.B) {
+		k *= p.Retrieval.CallSim
+	}
+	return k
+}

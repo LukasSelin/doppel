@@ -31,3 +31,23 @@ tasks:
     desc: Print a deterministic JSON snapshot of this repo's analysis
     cmds:
       - go run . analyze . --format json
+
+  corpora:
+    desc: Fetch the pinned public reference corpora (a few hundred MB, network)
+    cmds:
+      - DOPPEL_BENCH_FETCH=1 go test ./internal/bench/ -run TestFetchCorpora -v -timeout 30m
+
+  bench:
+    desc: Per-stage pipeline benchmarks over every fetched corpus
+    cmds:
+      - go test ./internal/bench/ -run '^$' -bench BenchmarkCorpus -timeout 60m
+
+  golden:
+    desc: Score the committed golden labels against the fetched corpora
+    cmds:
+      - go test ./internal/bench/ -run TestGoldenCorpora -v
+
+  examples:
+    desc: Regenerate examples/ from the fetched corpora
+    cmds:
+      - DOPPEL_BENCH_EXAMPLES=1 go test ./internal/bench/ -run TestGenerateExamples -v -timeout 30m

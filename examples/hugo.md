@@ -1,0 +1,424 @@
+# hugo
+
+static site generator; a large monolith with heavy template and resource subsystems
+
+**What this rung shows:** habitats — many packages large enough to have a temperature of their own
+
+| | |
+|---|---|
+| Corpus | [hugo](https://github.com/gohugoio/hugo) |
+| Pinned at | `v0.165.0` (`76a5e1880ab46688155b02e99bab9be2a6134492`) |
+| Project since | 2013 |
+| doppel | `acebce0` |
+| Command | `doppel analyze . --tests exclude --top 10` |
+
+Run from the corpus root, so every path below is corpus-relative.
+Regenerate with `task examples`.
+
+## Run diagnostics
+
+The corpus-level models doppel builds before ranking anything, as printed to stderr:
+
+```
+Scanning . ...
+Generating concept documents...
+Culture: 5 concepts modeled, 252 associations, 46 unusual realizations
+Habitats: 126 modeled, 661 misfits; most uniform partials (norm 0.98), most diverse page (norm 0.61)
+Conventions: strongest error_wrapping (0.63), loosest validation (0.58)
+Ecosystems: 1954 profiled (1369 dominance, 585 coalition, 0 conflict, 0 weak)
+Found 5460 functions. Retrieving candidates...
+Retrieval: shape 2058, concept 3644, call 8309 -> 13284 unique pairs
+  concept-only 26.7%  call-only 57.2%  suppressed-shape functions: 141  large identity buckets: 0  surviving patterns: 12924
+Running structural comparison on 13284 pairs...
+```
+
+# Code Similarity Report
+
+**Functions analyzed:** 5460 | **Threshold:** 0.60 | **Pairs found:** 10
+
+---
+
+## Match #1 — Code-shape: `0.8458`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `tpl/internal/go_templates/texttemplate/exec.go:772` | `template.*state.evalCallOld` | ` ` | validation, error_wrapping |
+| **B** | `tpl/internal/go_templates/texttemplate/hugo_template.go:294` | `template.*state.evalCall` | ` ` | validation, error_wrapping |
+
+**Profile A:** `validation` 1.00 (dominance)
+
+**Profile B:** `validation` 1.00 (dominance)
+
+**Code similarity:** `ast 0.78  flow 1.00  sig 0.86  size 0.75`
+
+**Evidence:** `1525.22` (shape 1470.98, concept 4.22, call 50.02)
+
+**Trophic:** `0.89`
+
+**Shared structure:**
+
+- `20.68` — `if(call:IsVariadic)`
+- `17.98` — `do(call:errorf)`
+- `15.17` — `assign=(call:evalArg)`
+
+**Culture:** B realizes `error_wrapping` atypically (typicality 0.16, concept median 0.39, convention 0.63)
+
+**Culture:** B realizes `validation` atypically (typicality 0.16, concept median 0.34, convention 0.58)
+
+**Structural overlap:** `0.68` (merge-worthy)
+
+- share 25 callees: [Elem, Interface, String, append, final.Equal, final.String, fun.Type, goodFunc, isMissing, len, make, reflect.ValueOf, s.at, s.errorf, s.evalArg, s.validateType, safeCall, t.Elem, truth, typ.In, typ.IsVariadic, typ.NumIn, unwrap, v.Interface, v.Type]
+- overlapping call-graph neighborhoods (0.65): 36 shared
+- share patterns: [error_wrapping, validation]
+- related roles: orchestrator ≈ passthrough (both high fan-out, 0.50)
+- same package
+- callees do related work (1.00): [validation, mapping]
+- same visibility
+- same receiver type: state
+- call into same packages: [template]
+
+---
+
+## Match #2 — Code-shape: `0.8493`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `tpl/math/init.go:26` | `math.init` | `—` | — |
+| **B** | `tpl/strings/init.go:25` | `strings.init` | `—` | — |
+
+**Code similarity:** `ast 0.77  flow 0.94  sig 1.00  size 0.92`
+
+**Evidence:** `1634.98` (shape 1624.69, concept 0.00, call 10.29)
+
+**Trophic:** `0.87`
+
+**Shared structure:**
+
+- `149.49` — `do(call:AddMethodMapping)`
+- `146.74` — `seq[ do(call:AddMethodMapping) ; do(call:AddMethodMapping) ]`
+- `5.06` — `seq[ assign:=(call:New) ; assign:=(unary) ]`
+
+**Habitat:** A fits poorly in `math` (fit 0.24, package norm 0.87)
+
+**Habitat:** B fits poorly in `strings` (fit 0.17, package norm 0.84)
+
+**Structural overlap:** `0.48` (merge-worthy)
+
+- share 3 callees: [New, internal.AddTemplateFuncsNamespace, ns.AddMethodMapping]
+- overlapping call-graph neighborhoods (0.97): 32 shared
+- both are orchestrator functions
+- same visibility
+- same receiver type: plain functions
+- call into same packages: [internal]
+
+---
+
+## Match #3 — Code-shape: `0.9248`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `tpl/internal/go_templates/texttemplate/exec.go:682` | `template.*state.evalFieldOld` | ` ` | validation |
+| **B** | `tpl/internal/go_templates/texttemplate/hugo_template.go:156` | `template.*state.evalField` | ` ` | validation |
+
+**Profile A:** `validation` 1.00 (dominance)
+
+**Profile B:** `validation` 1.00 (dominance)
+
+**Code similarity:** `ast 0.88  flow 1.00  sig 1.00  size 0.75`
+
+**Evidence:** `842.62` (shape 826.90, concept 2.29, call 13.43)
+
+**Trophic:** `0.88`
+
+**Shared structure:**
+
+- `40.45` — `do(call:errorf)`
+- `12.97` — `assign:=(call:FieldByName)`
+- `7.59` — `seq[ assign:=(call:FieldByIndexErr) ; if(unary) ]`
+
+**Structural overlap:** `0.77` (merge-worthy)
+
+- share 26 callees: [AssignableTo, Elem, FieldByName, Key, etyp.FieldByName, etyp.Kind, indirect, len, method.IsValid, nameVal.Type, panic, ptr.Addr, ptr.CanAddr, ptr.Kind, ptr.MethodByName, receiver.FieldByIndexErr, receiver.IsValid, receiver.Kind, receiver.MapIndex, receiver.Type, reflect.ValueOf, reflect.Zero, result.IsValid, s.errorf, s.evalCall, tField.IsExported]
+- overlapping call-graph neighborhoods (0.59): 13 shared
+- share patterns: [validation]
+- both are orchestrator functions
+- same package
+- callees do related work (1.00): [validation, error_wrapping]
+- same visibility
+- same receiver type: state
+- call into same packages: [template]
+
+---
+
+## Match #4 — Code-shape: `0.9564`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `tpl/collections/init.go:25` | `collections.init` | `—` | — |
+| **B** | `tpl/strings/init.go:25` | `strings.init` | `—` | — |
+
+**Code similarity:** `ast 0.93  flow 1.00  sig 1.00  size 0.86`
+
+**Evidence:** `1432.59` (shape 1422.30, concept 0.00, call 10.29)
+
+**Trophic:** `0.80`
+
+**Shared structure:**
+
+- `134.54` — `do(call:AddMethodMapping)`
+- `131.56` — `seq[ do(call:AddMethodMapping) ; do(call:AddMethodMapping) ]`
+- `5.06` — `seq[ assign:=(call:New) ; assign:=(unary) ]`
+
+**Habitat:** B fits poorly in `strings` (fit 0.17, package norm 0.84)
+
+**Structural overlap:** `0.52` (merge-worthy)
+
+- share 3 callees: [New, internal.AddTemplateFuncsNamespace, ns.AddMethodMapping]
+- overlapping call-graph neighborhoods (0.91): 32 shared
+- both are orchestrator functions
+- callees do related work (1.00): [caching]
+- same visibility
+- same receiver type: plain functions
+- call into same packages: [internal]
+
+---
+
+## Match #5 — Code-shape: `0.7425`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `resources/image.go:82` | `resources.*imageResource.newExifInfoFn` | ` ` | mapping, caching |
+| **B** | `resources/image.go:125` | `resources.*imageResource.newMetaInfoFn` | ` ` | mapping, caching |
+
+**Profile A:** `caching` 1.00 (dominance)
+
+**Profile B:** `caching` 1.00 (dominance)
+
+**Code similarity:** `ast 0.82  flow 1.00  sig 0.00  size 0.96`
+
+**Evidence:** `603.56` (shape 546.95, concept 2.89, call 53.72)
+
+**Trophic:** `0.97`
+
+**Shared structure:**
+
+- `7.59` — `seq[ assign:=(call:NewEncoder) ; return(call:Encode) ]`
+- `7.59` — `seq[ assign:=(call:ReadOrCreate) ; return(id,id) ]`
+- `7.59` — `seq[ assign:=(call:ToImageMetaImageFormatFormat) ; if(bin:==(id,unary)) ]`
+
+**Habitat:** A fits poorly in `resources` (fit 0.32, package norm 0.75)
+
+**Habitat:** B fits poorly in `resources` (fit 0.33, package norm 0.75)
+
+**Structural overlap:** `0.89` (merge-worthy)
+
+- share 14 callees: [InternalResourceSourcePathBestEffort, ReadOrCreate, ToImageMetaImageFormatFormat, Warnf, enc.Encode, f.Close, i.Key, i.ReadSeekCloser, i.getSpec, io.ReadAll, json.NewEncoder, json.Unmarshal, sync.OnceValues, w.Close]
+- share 1 callers: [resources.newImageResource]
+- overlapping call-graph neighborhoods (0.55): 24 shared
+- share patterns: [caching, mapping]
+- both are orchestrator functions
+- same package
+- callees do related work (1.00): [caching, concurrency]
+- same visibility
+- same receiver type: imageResource
+- called from same packages: [resources]
+- call into same packages: [filecache, images, resources]
+
+---
+
+## Match #6 — Code-shape: `0.7595`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `resources/resource_transformers/cssjs/postcss.go:146` | `cssjs.*postcssTransformation.Transform` | ` ` | mapping, concurrency |
+| **B** | `resources/resource_transformers/cssjs/tailwindcss.go:80` | `cssjs.*tailwindcssTransformation.Transform` | ` ` | mapping, concurrency |
+
+**Profile A:** `mapping` 1.00 (dominance)
+
+**Profile B:** `mapping` 1.00 (dominance)
+
+**Code similarity:** `ast 0.61  flow 0.98  sig 1.00  size 0.75`
+
+**Evidence:** `855.08` (shape 741.28, concept 2.75, call 111.05)
+
+**Trophic:** `0.80`
+
+**Shared structure:**
+
+- `14.73` — `seq[ assign=(call:append) ; assign=(call:append) ]`
+- `14.36` — `if(call:IsNotFound)`
+- `7.59` — `seq[ assign:=(call:LevelLoggerToWriter) ; assign:=(sel) ]`
+
+**Culture:** A realizes `concurrency` atypically (typicality 0.13, concept median 0.36, convention 0.60)
+
+**Culture:** B realizes `concurrency` atypically (typicality 0.13, concept median 0.36, convention 0.60)
+
+**Culture:** A realizes `mapping` atypically (typicality 0.14, concept median 0.31, convention 0.62)
+
+**Culture:** B realizes `mapping` atypically (typicality 0.14, concept median 0.31, convention 0.62)
+
+**Structural overlap:** `0.72` (merge-worthy)
+
+- share 21 callees: [BaseConfig, InfoCommand, append, cmd.Run, cmd.StdinPipe, errBuf.String, ex.Npx, hexec.IsNotFound, hexec.WithDir, hexec.WithEnviron, hexec.WithStderr, hexec.WithStdout, hugo.GetExecEnviron, imp.resolve, imp.toFileError, io.Copy, io.MultiWriter, loggers.LevelLoggerToWriter, newImportResolver, options.toArgs, stdin.Close]
+- overlapping call-graph neighborhoods (0.90): 44 shared
+- share patterns: [concurrency, mapping]
+- both are orchestrator functions
+- same package
+- callees do related work (1.00): [caching]
+- same visibility
+- both are methods, on *postcssTransformation and *tailwindcssTransformation
+- call into same packages: [allconfig, cssjs, hexec, hugo, loggers]
+
+---
+
+## Match #7 — Code-shape: `0.8181`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `tpl/collections/init.go:25` | `collections.init` | `—` | — |
+| **B** | `tpl/math/init.go:26` | `math.init` | `—` | — |
+
+**Code similarity:** `ast 0.72  flow 0.94  sig 1.00  size 0.94`
+
+**Evidence:** `1254.95` (shape 1244.66, concept 0.00, call 10.29)
+
+**Trophic:** `0.75`
+
+**Shared structure:**
+
+- `134.54` — `do(call:AddMethodMapping)`
+- `131.56` — `seq[ do(call:AddMethodMapping) ; do(call:AddMethodMapping) ]`
+- `5.06` — `seq[ assign:=(call:New) ; assign:=(unary) ]`
+
+**Habitat:** B fits poorly in `math` (fit 0.24, package norm 0.87)
+
+**Structural overlap:** `0.47` (merge-worthy)
+
+- share 3 callees: [New, internal.AddTemplateFuncsNamespace, ns.AddMethodMapping]
+- overlapping call-graph neighborhoods (0.91): 32 shared
+- both are orchestrator functions
+- same visibility
+- same receiver type: plain functions
+- call into same packages: [internal]
+
+---
+
+## Match #8 — Code-shape: `0.9535`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `tpl/internal/go_templates/texttemplate/exec.go:892` | `template.*state._validateType` | ` ` | validation |
+| **B** | `tpl/internal/go_templates/texttemplate/hugo_template.go:435` | `template.*state.validateType` | ` ` | validation, mapping |
+
+**Profile A:** `validation` 1.00 (dominance)
+
+**Profile B:** `validation` 1.00 (dominance)
+
+**Code similarity:** `ast 0.92  flow 1.00  sig 1.00  size 0.92`
+
+**Evidence:** `604.55` (shape 581.61, concept 2.29, call 20.65)
+
+**Trophic:** `0.97`
+
+**Shared structure:**
+
+- `13.48` — `do(call:errorf)`
+- `12.67` — `return(call:ValueOf)`
+- `10.67` — `assign=(call:Elem)`
+
+**Structural overlap:** `0.50` (merge-worthy)
+
+- share 14 callees: [AssignableTo, Elem, canBeNil, reflect.PointerTo, reflect.ValueOf, reflect.Zero, s.errorf, value.Addr, value.CanAddr, value.Elem, value.IsNil, value.IsValid, value.Kind, value.Type]
+- overlapping call-graph neighborhoods (0.07): 3 shared
+- share patterns: [validation]
+- same package
+- same visibility
+- same receiver type: state
+- call into same packages: [template]
+
+---
+
+## Match #9 — Code-shape: `0.8114`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `resources/resource_transformers/babel/babel.go:115` | `babel.*babelTransformation.Transform` | ` ` | mapping, concurrency, error_wrapping |
+| **B** | `resources/resource_transformers/cssjs/postcss.go:146` | `cssjs.*postcssTransformation.Transform` | ` ` | mapping, concurrency |
+
+**Profile A:** `mapping` 1.00 (dominance)
+
+**Profile B:** `mapping` 1.00 (dominance)
+
+**Code similarity:** `ast 0.69  flow 1.00  sig 1.00  size 0.91`
+
+**Evidence:** `981.33` (shape 871.59, concept 2.75, call 106.99)
+
+**Trophic:** `0.79`
+
+**Shared structure:**
+
+- `14.73` — `seq[ assign=(call:append) ; assign=(call:append) ]`
+- `14.36` — `assign=(call:ResolveJSConfigFile)`
+- `14.36` — `if(call:IsNotFound)`
+
+**Culture:** A realizes `concurrency` atypically (typicality 0.12, concept median 0.36, convention 0.60)
+
+**Culture:** B realizes `concurrency` atypically (typicality 0.13, concept median 0.36, convention 0.60)
+
+**Culture:** A realizes `mapping` atypically (typicality 0.14, concept median 0.31, convention 0.62)
+
+**Culture:** B realizes `mapping` atypically (typicality 0.14, concept median 0.31, convention 0.62)
+
+**Habitat:** A fits poorly in `babel` (fit 0.36, package norm 0.85)
+
+**Structural overlap:** `0.53` (merge-worthy)
+
+- share 23 callees: [BaseConfig, InfoCommand, ResolveJSConfigFile, append, cmd.Run, cmd.StdinPipe, errBuf.String, ex.Npx, filepath.Clean, filepath.IsAbs, fmt.Errorf, hexec.IsNotFound, hexec.WithDir, hexec.WithEnviron, hexec.WithStderr, hexec.WithStdout, hugo.GetExecEnviron, infol.Logf, io.Copy, io.MultiWriter, len, loggers.LevelLoggerToWriter, stdin.Close]
+- overlapping call-graph neighborhoods (0.39): 34 shared
+- share patterns: [concurrency, mapping]
+- both are orchestrator functions
+- callees do related work (1.00): [caching]
+- same visibility
+- both are methods, on *babelTransformation and *postcssTransformation
+- call into same packages: [allconfig, filesystems, hexec, hugo, loggers]
+
+---
+
+## Match #10 — Code-shape: `1.0000`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `resources/image.go:198` | `resources.*imageResource.getImageMetaInfoCacheTargetPath` | ` ` | caching |
+| **B** | `resources/image.go:501` | `resources.*imageResource.getImageMetaCacheTargetPath` | ` ` | caching |
+
+**Profile A:** `caching` 1.00 (dominance)
+
+**Profile B:** `caching` 1.00 (dominance)
+
+**Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 0.99`
+
+**Evidence:** `315.56` (shape 278.79, concept 1.45, call 35.31)
+
+**Trophic:** `1.00`
+
+**Shared structure:**
+
+- `7.59` — `seq[ assign:=(call:FileAndExt) ; assign:=(call:hash) ]`
+- `7.59` — `seq[ assign:=(call:HashStringHex) ; assign=(call:Sprintf) ]`
+- `7.59` — `seq[ assign:=(call:getResourcePaths) ; assign:=(call:FileAndExt) ]`
+
+**Structural overlap:** `0.83` (merge-worthy)
+
+- share 8 callees: [df.TargetPath, fmt.Sprintf, hashing.HashStringHex, i.getResourcePaths, i.getSpec, i.hash, i.size, paths.FileAndExt]
+- overlapping call-graph neighborhoods (0.92): 23 shared
+- share patterns: [caching]
+- both are orchestrator functions
+- same package
+- callers do related work (1.00): [caching, mapping]
+- same visibility
+- same receiver type: imageResource
+- called from same packages: [resources]
+- call into same packages: [hashing, paths, resources]
+
+---
+
