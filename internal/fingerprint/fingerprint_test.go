@@ -142,3 +142,14 @@ func TestTypeStringsSeparatesInputsFromOutputs(t *testing.T) {
 		t.Errorf("jaccardStrings = %v, want 0: a param error must not match a returned error", got)
 	}
 }
+
+// FlowLabels is index-aligned with the slot constants; pin the two ends so a
+// reordering cannot slip through silently.
+func TestFlowLabelsAlignWithSlots(t *testing.T) {
+	if FlowLabels[flowIf] != "if" {
+		t.Errorf("FlowLabels[flowIf] = %q, want if", FlowLabels[flowIf])
+	}
+	if FlowLabels[flowFuncLit] != "funclit" {
+		t.Errorf("FlowLabels[flowFuncLit] = %q, want funclit", FlowLabels[flowFuncLit])
+	}
+}

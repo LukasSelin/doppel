@@ -15,6 +15,86 @@ type SimilarPair struct {
 	Score      float64                        // composite fingerprint similarity, 0.0-1.0
 	Breakdown  fingerprint.Breakdown          // per-component scores behind Score
 	Evidence   *comparator.StructuralEvidence // populated by structural comparison stage; nil until then
+	Retrieval  *Retrieval                     // multi-channel retrieval evidence; nil for FindSimilar-produced pairs
+	Culture    []CultureNote                  // unusual concept realizations; nil when none — set by the pipeline
+	Habitat    []HabitatNote                  // habitat misfits; nil when neither side misfits — set by the pipeline
+	Profile    []ProfileNote                  // equilibrium concept profiles; nil when neither side qualifies
+}
+
+// ProfileNote is one side's concept-arena equilibrium: which concepts
+// survived the competition for the function's evidence, and what kind of
+// ecosystem they form. Profiles annotate; they never affect ranking.
+type ProfileNote struct {
+	Side      string        // "A" or "B"
+	State     string        // dominance | coalition | conflict | weak
+	Concepts  []ProfileMass // survivors, (Mass desc, Tag asc)
+	Extinct   []ProfileMass // candidates that died; rendered only under --debug
+	Rounds    int
+	Converged bool
+}
+
+// ProfileMass is one concept's equilibrium mass.
+type ProfileMass struct {
+	Tag  string
+	Mass float64
+}
+
+// HabitatNote flags one side of a pair as notably out of place in its own
+// package: its features are far more surprising there than the package's
+// norm tolerates. Habitat annotates; it never affects ranking.
+type HabitatNote struct {
+	Side        string           // "A" or "B"
+	Package     string           // the unit's habitat
+	Fit         float64          // 0-1, excess-strain Boltzmann factor
+	PackageNorm float64          // the habitat's mean member fit, for contrast
+	Channels    []HabitatChannel // per-channel surprise; rendered only under --debug
+}
+
+// HabitatChannel is one channel's contribution to a HabitatNote's strain.
+type HabitatChannel struct {
+	Name     string
+	Surprise float64
+}
+
+// CultureNote flags one side of a pair as an unusual realization of a shared
+// concept: it carries the tag, but its typicality sits far below the corpus
+// norm for that concept. Culture annotates; it never affects ranking.
+type CultureNote struct {
+	Tag           string
+	Side          string // "A" or "B"
+	Typicality    float64
+	ConceptMedian float64
+	Convention    float64          // the concept's convention strength, for context
+	Channels      []CultureChannel // per-channel typicality; rendered only under --debug
+}
+
+// CultureChannel is one channel's contribution to a CultureNote's typicality.
+type CultureChannel struct {
+	Name       string
+	Typicality float64
+}
+
+// Retrieval carries the candidate-retrieval evidence for a pair: per-channel
+// shared-information masses in nats and the channels that admitted it. It is
+// a third quantity next to Score and Evidence.OverlapScore — evidence mass
+// ranks the report, while the two similarity scores stay unblended.
+type Retrieval struct {
+	Shape      float64       // shared structural energy, Σ IC·min(count) over shared patterns
+	Concept    float64       // shared tag information, Σ IC(LCS)
+	Call       float64       // shared rare-call IDF mass
+	Total      float64       // Shape + Concept + Call
+	TrophicSim float64       // 2·SharedEnergy/(E_A+E_B): how much of their structure is shared
+	CallSim    float64       // call-channel Dice: mutual fraction of informative call energy
+	Channels   []string      // which retrieval channels admitted the pair
+	Chains     []SharedChain // highest-energy shared structures, the explanation
+}
+
+// SharedChain is one shared high-level structure behind a pair's shape
+// energy — where the match's weight actually comes from.
+type SharedChain struct {
+	Level  int
+	Energy float64
+	Render string
 }
 
 // FindSimilar compares every pair of function fingerprints and returns those

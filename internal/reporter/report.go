@@ -11,22 +11,66 @@ import (
 	"github.com/LukasSelin/doppel/internal/parser"
 )
 
-// Print writes the similarity report to w.
-func Print(w io.Writer, pairs []analyzer.SimilarPair, threshold float64, totalFuncs int) {
+// Meta carries the run-level context a report renders alongside the pairs.
+type Meta struct {
+	Threshold  float64 // the structural-channel floor, echoed in the header
+	TotalFuncs int
+	Debug      bool // when set, show per-pair retrieval provenance
+}
+
+// Print writes the similarity report to w. The headline number per pair is
+// the code-shape score — how alike the two normalized bodies are — which is
+// deliberately not named "score": pairs are ranked by retrieval evidence, and
+// a 1.0 shape match on a trivial idiom is not a 1.0 verdict.
+func Print(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 	fmt.Fprintf(w, "\nCode Similarity Report\n")
 	fmt.Fprintf(w, "======================\n")
-	fmt.Fprintf(w, "Functions analyzed: %d  |  Threshold: %.2f\n\n", totalFuncs, threshold)
+	fmt.Fprintf(w, "Functions analyzed: %d  |  Threshold: %.2f\n\n", meta.TotalFuncs, meta.Threshold)
 
 	if len(pairs) == 0 {
-		fmt.Fprintf(w, "No similar function pairs found above threshold %.2f\n", threshold)
+		fmt.Fprintf(w, "No similar function pairs found\n")
 		return
 	}
 
 	for i, p := range pairs {
-		fmt.Fprintf(w, "#%-3d  score: %.4f\n", i+1, p.Score)
+		fmt.Fprintf(w, "#%-3d  code-shape: %.4f\n", i+1, p.Score)
 		printUnit(w, "  A", p.A)
 		printUnit(w, "  B", p.B)
+		for _, note := range p.Profile {
+			fmt.Fprintf(w, "  profile %s: %s (%s)\n", note.Side, profileMassLine(note.Concepts, "  "), note.State)
+			if meta.Debug {
+				fmt.Fprintf(w, "    arena %s: %s\n", note.Side, arenaDebugLine(note))
+			}
+		}
 		fmt.Fprintf(w, "  %s\n", breakdownLine(p.Breakdown))
+		if p.Retrieval != nil {
+			fmt.Fprintf(w, "  evidence: %.2f  (shape %.2f  concept %.2f  call %.2f)\n",
+				p.Retrieval.Total, p.Retrieval.Shape, p.Retrieval.Concept, p.Retrieval.Call)
+			fmt.Fprintf(w, "  trophic: %.2f\n", p.Retrieval.TrophicSim)
+			if len(p.Retrieval.Chains) > 0 {
+				fmt.Fprintf(w, "  shared structure:\n")
+				for _, ch := range p.Retrieval.Chains {
+					fmt.Fprintf(w, "    %.2f  %s\n", ch.Energy, ch.Render)
+				}
+			}
+			if meta.Debug {
+				fmt.Fprintf(w, "  retrieved-via: %s\n", strings.Join(p.Retrieval.Channels, "+"))
+			}
+		}
+		for _, note := range p.Culture {
+			fmt.Fprintf(w, "  culture: %s realizes %s atypically (typicality %.2f, concept median %.2f, convention %.2f)\n",
+				note.Side, note.Tag, note.Typicality, note.ConceptMedian, note.Convention)
+			if meta.Debug {
+				fmt.Fprintf(w, "    channels: %s\n", cultureChannelLine(note.Channels))
+			}
+		}
+		for _, note := range p.Habitat {
+			fmt.Fprintf(w, "  habitat: %s fits poorly in %s (fit %.2f, package norm %.2f)\n",
+				note.Side, note.Package, note.Fit, note.PackageNorm)
+			if meta.Debug {
+				fmt.Fprintf(w, "    surprise: %s\n", habitatChannelLine(note.Channels))
+			}
+		}
 		if p.Evidence != nil {
 			fmt.Fprintf(w, "  structural overlap: %.2f", p.Evidence.OverlapScore)
 			if p.Evidence.MergeWorthy {
@@ -42,18 +86,18 @@ func Print(w io.Writer, pairs []analyzer.SimilarPair, threshold float64, totalFu
 }
 
 // PrintMarkdown writes the similarity report as a Markdown document to w.
-func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, threshold float64, totalFuncs int) {
+func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 	fmt.Fprintf(w, "# Code Similarity Report\n\n")
-	fmt.Fprintf(w, "**Functions analyzed:** %d | **Threshold:** %.2f | **Pairs found:** %d\n\n", totalFuncs, threshold, len(pairs))
+	fmt.Fprintf(w, "**Functions analyzed:** %d | **Threshold:** %.2f | **Pairs found:** %d\n\n", meta.TotalFuncs, meta.Threshold, len(pairs))
 	fmt.Fprintf(w, "---\n\n")
 
 	if len(pairs) == 0 {
-		fmt.Fprintf(w, "_No similar function pairs found above threshold %.2f._\n", threshold)
+		fmt.Fprintf(w, "_No similar function pairs found._\n")
 		return
 	}
 
 	for i, p := range pairs {
-		fmt.Fprintf(w, "## Match #%d — Score: `%.4f`\n\n", i+1, p.Score)
+		fmt.Fprintf(w, "## Match #%d — Code-shape: `%.4f`\n\n", i+1, p.Score)
 
 		// Table header
 		fmt.Fprintf(w, "| | Location | Function | Signature | Patterns |\n")
@@ -62,7 +106,48 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, threshold float64,
 		mdTableRow(w, "B", p.B)
 		fmt.Fprintln(w)
 
+		for _, note := range p.Profile {
+			fmt.Fprintf(w, "**Profile %s:** %s (%s)\n\n", note.Side, mdProfileMassLine(note.Concepts), note.State)
+			if meta.Debug {
+				fmt.Fprintf(w, "**Arena %s:** %s\n\n", note.Side, mdArenaDebugLine(note))
+			}
+		}
+
 		fmt.Fprintf(w, "**Code similarity:** `%s`\n\n", breakdownLine(p.Breakdown))
+
+		if p.Retrieval != nil {
+			fmt.Fprintf(w, "**Evidence:** `%.2f` (shape %.2f, concept %.2f, call %.2f)\n\n",
+				p.Retrieval.Total, p.Retrieval.Shape, p.Retrieval.Concept, p.Retrieval.Call)
+			fmt.Fprintf(w, "**Trophic:** `%.2f`\n\n", p.Retrieval.TrophicSim)
+			if len(p.Retrieval.Chains) > 0 {
+				fmt.Fprintf(w, "**Shared structure:**\n\n")
+				for _, ch := range p.Retrieval.Chains {
+					fmt.Fprintf(w, "- `%.2f` — `%s`\n", ch.Energy, mdEscape(ch.Render))
+				}
+				fmt.Fprintln(w)
+			}
+			if meta.Debug {
+				fmt.Fprintf(w, "**Retrieved via:** %s\n\n", strings.Join(p.Retrieval.Channels, ", "))
+			}
+		}
+
+		for _, note := range p.Culture {
+			fmt.Fprintf(w, "**Culture:** %s realizes `%s` atypically (typicality %.2f, concept median %.2f, convention %.2f)\n\n",
+				note.Side, mdEscape(note.Tag), note.Typicality, note.ConceptMedian, note.Convention)
+			if meta.Debug {
+				fmt.Fprintf(w, "**Channels (%s/%s):** %s\n\n",
+					note.Side, mdEscape(note.Tag), cultureChannelLine(note.Channels))
+			}
+		}
+
+		for _, note := range p.Habitat {
+			fmt.Fprintf(w, "**Habitat:** %s fits poorly in `%s` (fit %.2f, package norm %.2f)\n\n",
+				note.Side, mdEscape(note.Package), note.Fit, note.PackageNorm)
+			if meta.Debug {
+				fmt.Fprintf(w, "**Surprise (%s/%s):** %s\n\n",
+					note.Side, mdEscape(note.Package), habitatChannelLine(note.Channels))
+			}
+		}
 
 		if p.Evidence != nil {
 			label := "not merge-worthy"
@@ -82,6 +167,77 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, threshold float64,
 
 		fmt.Fprintf(w, "---\n\n")
 	}
+}
+
+// cultureChannelLine renders a note's per-channel typicalities in their
+// fixed channel order.
+func cultureChannelLine(channels []analyzer.CultureChannel) string {
+	parts := make([]string, 0, len(channels))
+	for _, ch := range channels {
+		parts = append(parts, fmt.Sprintf("%s %.2f", ch.Name, ch.Typicality))
+	}
+	return strings.Join(parts, "  ")
+}
+
+// profileMassLine renders survivor masses as "tag 0.39" entries.
+func profileMassLine(concepts []analyzer.ProfileMass, sep string) string {
+	parts := make([]string, 0, len(concepts))
+	for _, c := range concepts {
+		parts = append(parts, fmt.Sprintf("%s %.2f", c.Tag, c.Mass))
+	}
+	return strings.Join(parts, sep)
+}
+
+func mdProfileMassLine(concepts []analyzer.ProfileMass) string {
+	parts := make([]string, 0, len(concepts))
+	for _, c := range concepts {
+		parts = append(parts, fmt.Sprintf("`%s` %.2f", mdEscape(c.Tag), c.Mass))
+	}
+	return strings.Join(parts, ", ")
+}
+
+// arenaDebugLine renders the dynamics detail: rounds, convergence verb, and
+// the extinct candidates at %.4f so near-extinction stays visible.
+func arenaDebugLine(note analyzer.ProfileNote) string {
+	verb := "capped"
+	if note.Converged {
+		verb = "converged"
+	}
+	out := fmt.Sprintf("%d rounds, %s", note.Rounds, verb)
+	if len(note.Extinct) > 0 {
+		parts := make([]string, 0, len(note.Extinct))
+		for _, c := range note.Extinct {
+			parts = append(parts, fmt.Sprintf("%s %.4f", c.Tag, c.Mass))
+		}
+		out += "; extinct: " + strings.Join(parts, "  ")
+	}
+	return out
+}
+
+func mdArenaDebugLine(note analyzer.ProfileNote) string {
+	verb := "capped"
+	if note.Converged {
+		verb = "converged"
+	}
+	out := fmt.Sprintf("%d rounds, %s", note.Rounds, verb)
+	if len(note.Extinct) > 0 {
+		parts := make([]string, 0, len(note.Extinct))
+		for _, c := range note.Extinct {
+			parts = append(parts, fmt.Sprintf("`%s` %.4f", mdEscape(c.Tag), c.Mass))
+		}
+		out += "; extinct: " + strings.Join(parts, "  ")
+	}
+	return out
+}
+
+// habitatChannelLine renders a habitat note's per-channel surprises in their
+// fixed channel order.
+func habitatChannelLine(channels []analyzer.HabitatChannel) string {
+	parts := make([]string, 0, len(channels))
+	for _, ch := range channels {
+		parts = append(parts, fmt.Sprintf("%s %.2f", ch.Name, ch.Surprise))
+	}
+	return strings.Join(parts, "  ")
 }
 
 // breakdownLine renders the component scores behind a pair score, so a match

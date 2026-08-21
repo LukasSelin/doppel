@@ -7,7 +7,7 @@ import (
 )
 
 // analyzeFlagNames are every flag applyConfig can touch.
-var analyzeFlagNames = []string{"threshold", "top", "min-nodes", "struct-min", "output"}
+var analyzeFlagNames = []string{"threshold", "top", "min-nodes", "struct-min", "output", "channel-k", "debug", "max-per-func", "tests"}
 
 // resetAnalyzeFlags restores analyzeCmd to its registered defaults. The command
 // is a package-level singleton, so tests must not leak state into each other.
@@ -54,7 +54,7 @@ func TestApplyConfigSetsUntouchedFlags(t *testing.T) {
 	resetAnalyzeFlags(t)
 	t.Cleanup(func() { resetAnalyzeFlags(t) })
 
-	cfg, err := loadConfig(writeConfig(t, `{"threshold":0.9,"top":5,"min-nodes":30,"struct-min":0.5,"output":"r.md"}`))
+	cfg, err := loadConfig(writeConfig(t, `{"threshold":0.9,"top":5,"min-nodes":30,"struct-min":0.5,"output":"r.md","channel-k":9,"debug":true,"max-per-func":4,"tests":"only"}`))
 	if err != nil {
 		t.Fatalf("loadConfig: %v", err)
 	}
@@ -74,6 +74,18 @@ func TestApplyConfigSetsUntouchedFlags(t *testing.T) {
 	}
 	if outputFile != "r.md" {
 		t.Errorf("output = %q, want r.md", outputFile)
+	}
+	if channelK != 9 {
+		t.Errorf("channel-k = %v, want 9", channelK)
+	}
+	if !debugFlag {
+		t.Errorf("debug = %v, want true", debugFlag)
+	}
+	if maxPerFunc != 4 {
+		t.Errorf("max-per-func = %v, want 4", maxPerFunc)
+	}
+	if testsMode != "only" {
+		t.Errorf("tests = %q, want only", testsMode)
 	}
 }
 

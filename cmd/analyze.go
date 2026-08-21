@@ -2,17 +2,22 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 
 	"github.com/LukasSelin/doppel/internal/analyzer"
 	"github.com/LukasSelin/doppel/internal/comparator"
 	"github.com/LukasSelin/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/culture"
 	"github.com/LukasSelin/doppel/internal/mapper"
 	"github.com/LukasSelin/doppel/internal/ontology"
 	"github.com/LukasSelin/doppel/internal/parser"
 	"github.com/LukasSelin/doppel/internal/reporter"
+	"github.com/LukasSelin/doppel/internal/retriever"
 	"github.com/LukasSelin/doppel/internal/tagger"
 	"github.com/spf13/cobra"
 )
@@ -24,6 +29,10 @@ var (
 	outputFile string
 	configFile string
 	structMin  float64
+	channelK   int
+	debugFlag  bool
+	maxPerFunc int
+	testsMode  string
 )
 
 var analyzeCmd = &cobra.Command{
@@ -48,17 +57,27 @@ var analyzeCmd = &cobra.Command{
 }
 
 func init() {
-	analyzeCmd.Flags().Float64VarP(&threshold, "threshold", "t", 0.60, "Minimum code similarity score (0.0–1.0)")
-	analyzeCmd.Flags().IntVarP(&topN, "top", "n", 20, "Maximum number of pairs to show")
-	analyzeCmd.Flags().IntVar(&minNodes, "min-nodes", 12, "Skip functions whose body has fewer than this many AST nodes")
+	analyzeCmd.Flags().Float64VarP(&threshold, "threshold", "t", 0.60, "Minimum code-shape score for structural-channel candidates (0.0–1.0)")
+	analyzeCmd.Flags().IntVarP(&topN, "top", "n", 20, "Maximum number of pairs in the final report")
+	analyzeCmd.Flags().IntVar(&minNodes, "min-nodes", 12, "Exclude functions with fewer body AST nodes from structural retrieval")
 	analyzeCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write report as markdown to this file (e.g. report.md). Stdout text report is still printed.")
 	analyzeCmd.Flags().StringVar(&configFile, "config", "", "Path to JSON config file (default: .doppel.json if present)")
 	analyzeCmd.Flags().Float64Var(&structMin, "struct-min", 0.0, "Minimum structural overlap score (0.0–1.0) to keep a pair")
+	analyzeCmd.Flags().IntVar(&channelK, "channel-k", 5, "Candidates each function keeps per retrieval channel")
+	analyzeCmd.Flags().BoolVar(&debugFlag, "debug", false, "Show per-pair retrieval provenance in the report")
+	analyzeCmd.Flags().IntVar(&maxPerFunc, "max-per-func", 2, "Maximum pairs any one function may appear in in the final report (0 = no cap)")
+	analyzeCmd.Flags().StringVar(&testsMode, "tests", "exclude", "Test-function population: include, exclude, or only. Tests are conventionally similar, so the default models production code; cross test/prod pairs are never reported.")
 	rootCmd.AddCommand(analyzeCmd)
 }
 
 func runAnalyze(cmd *cobra.Command, args []string) error {
 	root := args[0]
+
+	switch testsMode {
+	case "include", "exclude", "only":
+	default:
+		return fmt.Errorf("invalid --tests value %q: want include, exclude, or only", testsMode)
+	}
 
 	fmt.Fprintf(os.Stderr, "Scanning %s ...\n", root)
 	var units []parser.CodeUnit
@@ -84,6 +103,12 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("walk %s: %w", root, err)
 	}
 
+	// Population filter, applied before any corpus statistic exists: IC,
+	// dfs, culture, habitats, and arenas all model exactly the population
+	// the report describes. Tests are conventionally similar by design, so
+	// they form their own population rather than diluting production's.
+	units = filterTestUnits(units, testsMode)
+
 	if len(units) == 0 {
 		fmt.Println("No functions found.")
 		return nil
@@ -100,7 +125,8 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		}
 	}
 	onto := ontology.Default()
-	scorer := ontology.NewScorer(onto, ontology.NewCorpusIC(onto, tagCounts))
+	ic := ontology.NewCorpusIC(onto, tagCounts)
+	scorer := ontology.NewScorer(onto, ic)
 	comp := comparator.New(scorer)
 
 	// Build call graph and generate concept documents for every unit.
@@ -111,10 +137,62 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	cptr := concepter.New()
 	docs := mapper.Map(units, cg, cptr)
 
-	fmt.Fprintf(os.Stderr, "Found %d functions. Comparing fingerprints...\n", len(units))
-	pairs := analyzer.FindSimilar(units, threshold, topN, minNodes)
+	// Model the corpus's own conceptual practice: which concepts/roles/calls
+	// co-occur beyond chance, and how each concept is normally realized here.
+	cult := culture.Build(units, docs, cg, culture.DefaultOptions())
+	cs := cult.Stats()
+	fmt.Fprintf(os.Stderr, "Culture: %d concepts modeled, %d associations, %d unusual realizations\n",
+		cs.ConceptsModeled, cs.AssociationCount, cs.UnusualRealizations)
+	printHabitatSummary(os.Stderr, cs)
+	printArenaSummary(os.Stderr, cs)
 
-	// Attach structural evidence to each surviving pair.
+	// Multi-channel candidate retrieval: structural shape, shared concepts,
+	// and shared resolved calls each retrieve per-function top-K neighbors
+	// weighted by corpus rarity; the union goes to the expensive comparator.
+	fmt.Fprintf(os.Stderr, "Found %d functions. Retrieving candidates...\n", len(units))
+	opts := retriever.DefaultOptions()
+	opts.ChannelK = channelK
+	opts.Threshold = threshold
+	opts.MinNodes = minNodes
+	if debugFlag {
+		opts.ChainTopN = 20 // the "full list", bounded
+	}
+	cands, stats := retriever.Retrieve(units, cg, onto, ic, opts)
+	printRetrievalStats(os.Stderr, stats)
+
+	pairs := make([]analyzer.SimilarPair, 0, len(cands))
+	crossDropped := 0
+	for _, c := range cands {
+		// A test and a production function are never merge candidates —
+		// different build units. Only possible under --tests include.
+		if isTestUnit(units[c.AIdx]) != isTestUnit(units[c.BIdx]) {
+			crossDropped++
+			continue
+		}
+		pairs = append(pairs, analyzer.SimilarPair{
+			A:         units[c.AIdx],
+			B:         units[c.BIdx],
+			AIdx:      c.AIdx,
+			BIdx:      c.BIdx,
+			Score:     c.Breakdown.Score,
+			Breakdown: c.Breakdown,
+			Retrieval: &analyzer.Retrieval{
+				Shape:      c.Shape,
+				Concept:    c.Concept,
+				Call:       c.Call,
+				Total:      c.Total,
+				TrophicSim: c.TrophicSim,
+				CallSim:    c.CallSim,
+				Channels:   c.Channels,
+				Chains:     sharedChains(c.Chains),
+			},
+		})
+	}
+	if crossDropped > 0 {
+		fmt.Fprintf(os.Stderr, "  %d cross test/prod pairs dropped\n", crossDropped)
+	}
+
+	// Attach structural evidence to every candidate pair.
 	if len(pairs) > 0 {
 		fmt.Fprintf(os.Stderr, "Running structural comparison on %d pairs...\n", len(pairs))
 		for i := range pairs {
@@ -135,7 +213,27 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	reporter.Print(os.Stdout, pairs, threshold, len(units))
+	// Annotate surviving pairs with unusual concept realizations and habitat
+	// misfits — positional lookup, like Evidence attachment; never name-keyed.
+	for i := range pairs {
+		pairs[i].Culture = cultureNotes(cult, pairs[i].AIdx, pairs[i].BIdx,
+			pairs[i].A.Patterns, pairs[i].B.Patterns)
+		pairs[i].Habitat = habitatNotes(cult, pairs[i].AIdx, pairs[i].BIdx,
+			pairs[i].A.Package, pairs[i].B.Package)
+		pairs[i].Profile = profileNotes(cult, pairs[i].AIdx, pairs[i].BIdx,
+			pairs[i].A.Patterns, pairs[i].B.Patterns)
+	}
+
+	// Final ranking: corroborated evidence — retrieval mass discounted by
+	// architectural corroboration and structural similarity — with a
+	// per-function diversity cap. The displayed scores stay unblended.
+	pairs, suppressed := analyzer.SortForReport(pairs, topN, maxPerFunc)
+	if suppressed > 0 {
+		fmt.Fprintf(os.Stderr, "  %d pairs suppressed by max-per-func=%d\n", suppressed, maxPerFunc)
+	}
+
+	meta := reporter.Meta{Threshold: threshold, TotalFuncs: len(units), Debug: debugFlag}
+	reporter.Print(os.Stdout, pairs, meta)
 
 	if outputFile != "" {
 		f, err := os.Create(outputFile)
@@ -143,11 +241,207 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("create output file: %w", err)
 		}
 		defer f.Close()
-		reporter.PrintMarkdown(f, pairs, threshold, len(units))
+		reporter.PrintMarkdown(f, pairs, meta)
 		fmt.Fprintf(os.Stderr, "Markdown report written to %s\n", outputFile)
 	}
 
 	return nil
+}
+
+// printRetrievalStats summarizes one retrieval run on stderr: how much each
+// channel contributed and how much trivial idiom mass was suppressed. This is
+// diagnostic output for tuning and evaluation, never part of the report.
+func printRetrievalStats(w io.Writer, s retriever.Stats) {
+	fmt.Fprintf(w, "Retrieval: shape %d, concept %d, call %d -> %d unique pairs\n",
+		s.ShapePairs, s.ConceptPairs, s.CallPairs, s.Union)
+	pct := func(n int) float64 {
+		if s.Union == 0 {
+			return 0
+		}
+		return 100 * float64(n) / float64(s.Union)
+	}
+	fmt.Fprintf(w, "  concept-only %.1f%%  call-only %.1f%%  suppressed-shape functions: %d  large identity buckets: %d  surviving patterns: %d\n",
+		pct(s.OnlyConcept), pct(s.OnlyCall), s.Suppressed, s.LargeBuckets, s.SurvivingPatterns)
+}
+
+// sharedChains bridges retriever chain explanations into the analyzer's
+// plain-data mirror.
+func sharedChains(chains []retriever.SharedPattern) []analyzer.SharedChain {
+	if len(chains) == 0 {
+		return nil
+	}
+	out := make([]analyzer.SharedChain, len(chains))
+	for i, c := range chains {
+		out[i] = analyzer.SharedChain{Level: c.Level, Energy: c.Energy, Render: c.Render}
+	}
+	return out
+}
+
+// cultureNotes flags unusual concept realizations on a pair's shared tags:
+// the pair report explains this pair, and "you both claim transaction but one
+// side does it unlike anything else here" is the drift-vs-duplication signal.
+// Tags ascend, side A precedes B, so note order is deterministic.
+func cultureNotes(cult *culture.Model, aIdx, bIdx int, aTags, bTags []string) []analyzer.CultureNote {
+	inB := make(map[string]bool, len(bTags))
+	for _, t := range bTags {
+		inB[t] = true
+	}
+	shared := make(map[string]bool)
+	for _, t := range aTags {
+		if inB[t] {
+			shared[t] = true
+		}
+	}
+	tags := make([]string, 0, len(shared))
+	for t := range shared {
+		tags = append(tags, t)
+	}
+	sort.Strings(tags)
+
+	var notes []analyzer.CultureNote
+	for _, tag := range tags {
+		for _, side := range []struct {
+			label string
+			idx   int
+		}{{"A", aIdx}, {"B", bIdx}} {
+			if !cult.Atypical(side.idx, tag) {
+				continue
+			}
+			typ, _ := cult.Typicality(side.idx, tag)
+			median, _ := cult.Median(tag)
+			convention, _ := cult.ConventionStrength(tag)
+			note := analyzer.CultureNote{
+				Tag:           tag,
+				Side:          side.label,
+				Typicality:    typ,
+				ConceptMedian: median,
+				Convention:    convention,
+			}
+			for _, ch := range cult.ChannelTypicality(side.idx, tag) {
+				note.Channels = append(note.Channels, analyzer.CultureChannel{
+					Name: ch.Name, Typicality: ch.Typicality,
+				})
+			}
+			notes = append(notes, note)
+		}
+	}
+	return notes
+}
+
+// habitatNotes flags pair sides that are notably out of place in their own
+// package. Positional lookup, A before B; only misfits carry notes, so the
+// default report stays lean.
+func habitatNotes(cult *culture.Model, aIdx, bIdx int, aPkg, bPkg string) []analyzer.HabitatNote {
+	var notes []analyzer.HabitatNote
+	for _, side := range []struct {
+		label string
+		idx   int
+		pkg   string
+	}{{"A", aIdx, aPkg}, {"B", bIdx, bPkg}} {
+		if !cult.Misfit(side.idx) {
+			continue
+		}
+		fit, _ := cult.HabitatFit(side.idx)
+		norm, _ := cult.HabitatNorm(side.pkg)
+		note := analyzer.HabitatNote{
+			Side:        side.label,
+			Package:     side.pkg,
+			Fit:         fit,
+			PackageNorm: norm,
+		}
+		for _, ch := range cult.ChannelSurprise(side.idx) {
+			note.Channels = append(note.Channels, analyzer.HabitatChannel{
+				Name: ch.Name, Surprise: ch.Surprise,
+			})
+		}
+		notes = append(notes, note)
+	}
+	return notes
+}
+
+// profileNotes attaches each side's arena equilibrium — positional lookup,
+// A before B. A side qualifies when it carries at least one tag and has a
+// profile, which is exactly when a tags: line already renders, so profiles
+// add no lines to previously silent units.
+func profileNotes(cult *culture.Model, aIdx, bIdx int, aTags, bTags []string) []analyzer.ProfileNote {
+	var notes []analyzer.ProfileNote
+	for _, side := range []struct {
+		label string
+		idx   int
+		tags  []string
+	}{{"A", aIdx, aTags}, {"B", bIdx, bTags}} {
+		if len(side.tags) == 0 {
+			continue
+		}
+		p, ok := cult.ArenaProfile(side.idx)
+		if !ok {
+			continue
+		}
+		note := analyzer.ProfileNote{
+			Side:      side.label,
+			State:     p.State,
+			Rounds:    p.Rounds,
+			Converged: p.Converged,
+		}
+		for _, cm := range p.Survivors {
+			note.Concepts = append(note.Concepts, analyzer.ProfileMass{Tag: cm.Tag, Mass: cm.Mass})
+		}
+		for _, cm := range p.Extinct {
+			note.Extinct = append(note.Extinct, analyzer.ProfileMass{Tag: cm.Tag, Mass: cm.Mass})
+		}
+		notes = append(notes, note)
+	}
+	return notes
+}
+
+// printArenaSummary emits the ecosystem stderr line.
+func printArenaSummary(w io.Writer, s culture.Stats) {
+	if s.ArenaProfiled == 0 {
+		fmt.Fprintf(w, "Ecosystems: 0 profiled\n")
+		return
+	}
+	fmt.Fprintf(w, "Ecosystems: %d profiled (%d dominance, %d coalition, %d conflict, %d weak)\n",
+		s.ArenaProfiled, s.ArenaDominance, s.ArenaCoalition, s.ArenaConflict, s.ArenaWeak)
+}
+
+// printHabitatSummary emits the habitat and convention stderr lines in human
+// vocabulary. Superlatives are omitted entirely when nothing is modeled.
+func printHabitatSummary(w io.Writer, s culture.Stats) {
+	if s.HabitatsModeled == 0 {
+		fmt.Fprintf(w, "Habitats: 0 modeled\n")
+	} else {
+		fmt.Fprintf(w, "Habitats: %d modeled, %d misfits; most uniform %s (norm %.2f), most diverse %s (norm %.2f)\n",
+			s.HabitatsModeled, s.HabitatMisfits,
+			s.MostUniformHabitat, s.MostUniformNorm,
+			s.MostDiverseHabitat, s.MostDiverseNorm)
+	}
+	if s.ConceptsModeled >= 1 {
+		fmt.Fprintf(w, "Conventions: strongest %s (%.2f), loosest %s (%.2f)\n",
+			s.StrongestConvention, s.StrongestConventionStrength,
+			s.LoosestConvention, s.LoosestConventionStrength)
+	}
+}
+
+// isTestUnit reports whether a unit lives in a _test.go file — a
+// compiler-recognized build distinction, not a naming heuristic.
+func isTestUnit(u parser.CodeUnit) bool {
+	return strings.HasSuffix(u.File, "_test.go")
+}
+
+// filterTestUnits applies the --tests population policy. Filtering preserves
+// slice order, so downstream positional alignment is untouched.
+func filterTestUnits(units []parser.CodeUnit, mode string) []parser.CodeUnit {
+	if mode == "include" {
+		return units
+	}
+	keepTests := mode == "only"
+	kept := units[:0]
+	for _, u := range units {
+		if isTestUnit(u) == keepTests {
+			kept = append(kept, u)
+		}
+	}
+	return kept
 }
 
 func shouldSkipDir(name string) bool {

@@ -13,7 +13,8 @@ explaining *why* they are similar.
 Ollama embeddings originally; that entire pass was removed. Anything suggesting otherwise is stale.
 The corollary worth internalizing: **every score is deterministic**, so an unchanged tree must
 produce a byte-identical report. Treat a nondeterministic report as a bug (map iteration order is
-the usual culprit — see `sortedKeys` in `mapper` and the tie-break in `FindSimilar`).
+the usual culprit — see `sortedKeys` in `mapper`, the tie-breaks in `retriever` (`topK`, union key
+sort), and `analyzer.SortByEvidence`).
 
 ## Pipeline
 
@@ -22,11 +23,11 @@ Orchestrated end to end by `runAnalyze` in `cmd/analyze.go`. Stages in execution
 1. **Walk & parse** — `filepath.WalkDir` + `shouldSkipDir`, then `parser.Parse` per `.go` file → `[]CodeUnit`. Unreadable files and parse errors are warned and skipped, never fatal. `fingerprint.Build` and `extractSignals` (the tagger's AST evidence) both run here, while the AST is still in hand.
 2. **Tag** — `tagger.Tag(unit)` sets `unit.Patterns` (9 intent tags matched against the unit's AST signals — selectors, imports, string-literal contents, identifiers, node kinds — never against raw source text). Tag counts feed the corpus IC in the same loop.
 3. **Build call graph** — `concepter.BuildCallGraph(units)` → `concepter.Graph`, both directions over **qualified names** (`package.Name`, methods keeping their receiver: `comparator.*Comparator.Compare`). A resolver maps each raw callee string to at most one unit: import-qualified selectors through the file's recorded import bindings (aliases included), variable-receiver method calls only when the method name is unique corpus-wide, bare names to the same-package function. Ambiguity drops the edge; recursion is excluded; only repo-internal edges exist. Happens *before* concept docs, because docs need caller lists.
-4. **Generate + enrich concept docs** — `concepter.New()` makes bare docs; **`mapper.Map` does the real work**: attaches qualified callers, resolved internal callees, and the depth-2 call-graph neighborhood; derives per-corpus role thresholds from the resolved degree distribution and classifies; aggregates caller/callee patterns and packages from resolved edges.
-5. **Compare fingerprints** — `analyzer.FindSimilar` scores the full O(n²) upper triangle, keeps `score >= threshold`, sorts descending, truncates to `--top`.
-6. **Structural comparison** — a `comparator.Comparator` built over a corpus-weighted `ontology.Scorer` scores each surviving pair → `pair.Evidence`. Concept and role signals go through the ontology hierarchy, not string equality, and concept matching is weighted by information content computed from this run's tag counts — sharing a near-universal tag is weak evidence, sharing a rare one is strong.
+4. **Generate + enrich concept docs** — `concepter.New()` makes bare docs; **`mapper.Map` does the real work**: attaches qualified callers, resolved internal callees, and the depth-2 call-graph neighborhood; derives per-corpus role thresholds from the resolved degree distribution and classifies; aggregates caller/callee patterns and packages from resolved edges. `culture.Build` then models the corpus's conceptual practice (see *Corpus culture*); its summary goes to stderr, and after the struct-min filter each surviving pair gets `Culture` notes for atypical realizations of its **shared** tags (positional attachment, like Evidence).
+5. **Candidate retrieval** — `retriever.Retrieve` runs three per-function top-K channels (structural shingle-IDF, concept IC, resolved-call IDF — see *Candidate retrieval* below), unions and dedupes them, and computes definitive per-pair evidence masses plus the exact `fingerprint.Breakdown` for every union pair. Retrieval stats go to stderr. `cmd` materializes the candidates into `analyzer.SimilarPair`s (with `Retrieval` set). `analyzer.FindSimilar` still exists as the simple library API but the pipeline no longer calls it.
+6. **Structural comparison** — a `comparator.Comparator` built over a corpus-weighted `ontology.Scorer` scores **every** candidate pair → `pair.Evidence`. Concept and role signals go through the ontology hierarchy, not string equality, and concept matching is weighted by information content computed from this run's tag counts — sharing a near-universal tag is weak evidence, sharing a rare one is strong.
 7. **Structural filter** — when `--struct-min > 0`, pairs below that overlap score are **dropped**. This is a selection stage, not just annotation.
-8. **Report** — `reporter.Print` to stdout always; `reporter.PrintMarkdown` to `--output` additionally.
+8. **Rank + report** — `analyzer.SortForReport` orders by corroborated evidence (`Total × OverlapScore × Score × TrophicSim²`, then code-shape, then `AIdx`/`BIdx`), applies the `--max-per-func` diversity cap greedily with backfill, and truncates to `--top`. `reporter.Print` to stdout always; `reporter.PrintMarkdown` to `--output` additionally. Both take a `reporter.Meta`; `--debug` adds per-pair retrieval provenance.
 
 `docs[i]` describes `units[i]`, and `SimilarPair` carries `AIdx`/`BIdx` into that slice. Evidence
 attachment is a positional lookup, deliberately — an earlier version keyed it on
@@ -49,7 +50,9 @@ internal/
   tagger/       AST-signal intent detection → 9 pattern tags
   concepter/    ConceptDoc; callgraph.go (BuildCallGraph); role.go (ClassifyRole, role constants)
   mapper/       Where enrichment actually happens: callers, role classification, aggregated patterns/packages
-  analyzer/     Pairwise fingerprint scoring, threshold filtering, top-N sorting
+  retriever/    Multi-channel candidate retrieval: shape.go / concept.go / calls.go inverted indexes, retriever.go union + evidence
+  culture/      Corpus-culture model: ecology.go (PMI), prototype.go (prototypes + typicality), habitat.go (fit), convention.go
+  analyzer/     SimilarPair + Retrieval types; FindSimilar (library API); SortByEvidence (final ranking)
   comparator/   Weighted structural overlap scoring (9 signals → 0.0–1.0 composite)
   reporter/     Plain-text (stdout) and Markdown (--output) formatting
 ```
@@ -57,20 +60,43 @@ internal/
 Dependency directions that must hold: `analyzer` imports `comparator` (for the `Evidence` field), so
 `comparator` must never import `analyzer`. `parser` imports `fingerprint`, so `fingerprint` must
 never import `parser` — it works on `*ast.FuncDecl` directly. `ontology` imports nothing from this
-module and must stay that way: `tagger`, `concepter` and `comparator` all depend on it.
+module and must stay that way: `tagger`, `concepter` and `comparator` all depend on it. `retriever`
+imports `parser`, `fingerprint`, `concepter`, `ontology` and must never import `analyzer` or
+`comparator` — `cmd` bridges retriever candidates into `analyzer.SimilarPair`. `culture` imports
+`parser`, `concepter`, `fingerprint` only (not even `ontology` — it is a leaf-tag count model) and
+nothing imports it except `cmd`, which bridges its findings into `analyzer.CultureNote`.
 
-## Two scores, deliberately unblended
+## Two scores, deliberately unblended — and a third quantity that ranks
 
-Each pair carries two independent numbers, gated by two independent flags:
+Each pair carries two independent similarity numbers, gated by two independent flags:
 
 | Score | Source | Flag | Means |
 | --- | --- | --- | --- |
-| `Score` | `fingerprint.Similarity` | `--threshold` | how alike the two bodies are |
+| `Score` | `fingerprint.Similarity` | `--threshold` | how alike the two bodies are (reported as `code-shape:`) |
 | `Evidence.OverlapScore` | `comparator.Compare` | `--struct-min` | how much architectural context they share |
 
 Do not merge these into one number. High code score + low overlap is a *different finding* (lookalike
 bodies in unrelated subsystems) from high on both (a real merge candidate), and collapsing them
 destroys that distinction.
+
+The report is **ranked by neither alone**: `analyzer.SortForReport` orders by **corroborated
+evidence** — `Retrieval.Total × Evidence.OverlapScore × Score × TrophicSim²`, with one further
+linear factor `CallSim` (the call-channel Dice: the mutual fraction of the two functions'
+informative call energy) **when both sides live in `_test.go` files** — SUT-aware test
+discounting: two tests are related through what they exercise, not their driver skeleton.
+Near-identical table-driven harnesses over different functions share no informative call tokens
+and key to zero, while tests of the same machinery keep their shared call mass. Under
+`--tests only` every pair is a test pair, so the hygiene view is SUT-aware globally. Raw mass alone let verbose shared vocabularies (PDF drawing APIs) outrank a
+self-documented production clone; adding overlap and code-shape fixed that but left
+family-skeleton siblings (a shared compose-send prologue with large unshared bodies) beating
+genuine family clones. Trophic² separates them: squared because the Dice, squared, approximates
+the product of the two per-side shared fractions — one discount per side that does its own
+thing. A linear trophic factor verifiably leaves a skeleton sibling within a fraction of a
+percent of a true clone; the golden benchmark pins the separation. This is a *ranking key only*
+— the displayed quantities stay unblended. A per-function diversity cap (`--max-per-func`, default 2) then bounds how many pairs
+any one function fills, greedily in rank order with backfill; a suppression count goes to stderr.
+`SortByEvidence` (plain `Retrieval.Total` ordering) remains the simple library API. The report
+label was deliberately renamed from `score:` to `code-shape:` so nobody reads 1.0000 as a verdict.
 
 ## Development
 
@@ -108,8 +134,11 @@ doppel ontology --defs                                # print the vocabulary and
   `StartLine`, `Body`, `Signature`, `Package`, `Patterns`, `DocComment`, `Exported`, `ReceiverType`,
   `Callees`, `Fingerprint`. Methods are named `"*Server.Start"` — the receiver keeps its star.
 - **Fingerprint** (`internal/fingerprint/fingerprint.go`) — `Shingles` (sorted, deduped 3-gram
-  hashes), `Flow` (control-flow histogram), `Types` (normalized param/result types), `Nodes`.
-  The zero value means "no body" and never matches anything.
+  hashes), `Flow` (control-flow histogram), `Types` (normalized param/result types), `Nodes`, and
+  `Patterns` (the multi-level trophic pattern multiset — see *Trophic structural energy*).
+  `Shingles` still feeds the pinned `ast` Jaccard while `Patterns` feeds retrieval; the L0 overlap
+  between them is deliberate — different dedup semantics, different consumers. The zero value
+  means "no body" and never matches anything.
 - **Term / Ontology** (`internal/ontology/ontology.go`) — the vocabulary: four disjoint rooted trees
   (`entity`, `relation`, `concept`, `role`) carrying definitions, relation weights, and `Validate()`.
   Concept leaf IDs are exactly the tagger's tag strings and role IDs exactly `ClassifyRole`'s return
@@ -118,9 +147,174 @@ doppel ontology --defs                                # print the vocabulary and
   scores. It is no longer rendered to text anywhere; `Format()` existed only to build embedding
   input and is gone.
 - **SimilarPair** (`internal/analyzer/similarity.go`) — two `CodeUnit`s plus `AIdx`/`BIdx`, `Score`,
-  `Breakdown` (per-component code similarity), and `Evidence` (**nil until the structural
-  comparison stage**).
+  `Breakdown` (per-component code similarity), `Evidence` (**nil until the structural
+  comparison stage**), and `Retrieval` (**nil for `FindSimilar`-produced pairs** — set by the
+  pipeline from retriever candidates).
 - **StructuralEvidence** (`internal/comparator/comparator.go`) — the weighted overlap result.
+- **Candidate / Stats / Options** (`internal/retriever/retriever.go`) — one retrieved pair with
+  per-channel evidence masses, the run's channel statistics, and the retrieval knobs (the df caps
+  live on `Options` so tests can shrink them; they are not flags).
+
+### Candidate retrieval
+
+Retrieval is an information-retrieval stage, not a similarity ranking: its job is recall — get every
+pair with enough informative shared evidence in front of the comparator cheaply — and its unit is
+**evidence mass in nats**, `Σ ln(N/df)` over shared rare features. All three channels share the
+skeleton: build an inverted index, drop features with `df < 2` (can't pair) or `df > cap` (corpus
+idiom, zero evidence), accumulate shared mass per neighbor in ascending feature order, keep each
+function's top `--channel-k` (default 5) by `(mass desc, idx asc)`.
+
+| Channel | Features | Cap (Options) | Extra gates |
+| --- | --- | --- | --- |
+| shape | multi-level trophic patterns (`fingerprint.Pattern`, presence-df IDF, min-count multiset mass) | `MaxPatternDF` 50 | `--min-nodes` eligibility; admits only pairs with exact `code-shape >= --threshold`, probing at most `4*ChannelK` neighbors |
+| concept | tagger tags + non-root taxonomy ancestors (enumeration only) | `MaxConceptDF` 250 | none — evidence is `Scorer.SharedInformation` (raw `Σ IC(LCS)`) over the leaf tag sets |
+| call | resolved internal callees (qualified) + import-qualified external calls via `RefPath` (full import path) | `MaxCallDF` 50 | none; bare names and variable-receiver calls are never tokens |
+
+The union is deduped on `(min idx, max idx)`; every union pair then gets **definitive** evidence on
+all three channels regardless of which admitted it, plus the exact `fingerprint.Breakdown`
+(memoized). Summing the three masses into `Total` is coherent because all three are log-evidence
+over the same corpus of N functions — do not normalize the components before summing.
+
+Consequences worth knowing:
+
+- A pattern/token in *every* unit has `idf = ln(N/N) = 0`; zero-mass neighbors are never admitted.
+  The 130-clone `Error()` bucket exceeds the df cap entirely — those functions contribute no
+  structural candidates and can only enter via concept/call evidence, which is the intended
+  common-idiom suppression (no name-based heuristics anywhere).
+- The concept channel indexes ancestors so `db_access`-only can meet `caching`-only through
+  `data_store_access`, but the *evidence* is always `SharedInformation` on the leaf sets — a pair
+  meeting only at a shallow ancestor earns only that ancestor's small IC.
+- `ontology.Scorer.SharedInformation` exists precisely so retrieval never recomputes mass as
+  `Σ ic.Of(m.LCA)` — that hits `Of("")` (the unknown sentinel) for unknown-term self-matches.
+- `Stats.Suppressed` / `Stats.LargeBuckets` are diagnostics on stderr, not gates.
+- On the large reference corpus (~8k functions): ~22k union pairs, a few seconds end to end (the
+  old all-pairs scoring took ~20s), ~60% of pairs call-only, ~9% concept-only.
+
+### Trophic structural energy
+
+The shape channel's features are the **multi-level pattern multiset** extracted by
+`fingerprint.extractPatterns` during `Build` (the AST exists only during parse): L0 token 3-gram
+windows, L1 call/binary-operator shapes, L2 statements with salient structure
+(`return(call:Sprintf)`, `defer(call:Close)`, `if(bin:!=(id,nil))` — nil/true/false keep their
+names so the err-check idiom falls out with no special case), and L3 motifs — loop call summaries
+covering header *and* body (`for{ call:Scan call:TrimSpace call:Atoi call:append }`, ≤ 8 callees)
+and adjacent-statement bigrams (`seq[ assign:=(call:Atoi) ; if(bin:!=(id,nil)) ]`). For levels 1–3
+the render string IS the hash serialization, so hash and explanation cannot drift; L2/L3 keep
+their renders, L0/L1 do not.
+
+Three quantities per pair, all from one sorted-intersection pass (`pairEvidence`):
+
+- **Shape evidence** = `Σ idf·min(count)` over cap-surviving shared patterns — shared structural
+  energy, the retrieval mass.
+- **TrophicSimilarity** = `2·SharedEnergy / (E_A + E_B)`, reported as `trophic:`, where energy on
+  both sides is **cap-surviving (informative) energy only**. Exact clones of a rich function read
+  1.00; an idiom bucket whose every pattern exceeds the df cap reads 0/0 = 0.00 (`DataSourceName ↔
+  Error`); everything between is the fraction of informative structure the pair shares. Two exact
+  twins whose shape sits *between* df 2 and the cap legitimately read 1.00 with small energy — the
+  energy ranks, trophic explains.
+- **Shared chains** = the highest-energy shared L2/L3 patterns, `(energy desc, level desc,
+  render asc)`, top `ChainTopN` (3 default, 20 under `--debug`) — rendered as the
+  `shared structure:` block. A match has weight because of what it shares.
+
+Trophic explains; it never ranks (`Total` stays Shape+Concept+Call) and never blends into
+code-shape or overlap.
+
+### Corpus culture
+
+`internal/culture` models the repo's *local conceptual practice* from counts alone — the ontology
+says what a concept is, culture says how this corpus normally expresses it. Built once per run by
+`culture.Build(units, docs, cg, DefaultOptions())`; summarized on stderr as
+`Culture: N concepts modeled, N associations, N unusual realizations`.
+
+**Ecology** — PMI associations over unit-level binary co-occurrence, three kinds: tag~tag,
+tag~role, tag~call (resolved call tokens, df ∈ [2, 50]). `PMI = ln(N·c(a,b)/(c(a)·c(b)))`.
+Reported only when informative: positives need `count >= 3` and `PMI >= ln 2`; negatives need
+`expected >= 3` and `count <= expected/2` (count 0 stores `PMI = -Inf`, rendered as "never" if
+ever rendered). Ordering: positives by PMI desc, negatives by PMI asc, ties on (Kind, A, B).
+**Associations are computed and pin-tested but deliberately unsurfaced per-pair** — an
+association annotates the corpus, not a pair; a future `doppel culture` command is their home.
+
+**Prototypes + typicality** — for each tag with **≥ 5 members**, five feature channels with
+integer-percent weights (sum pinned at exactly 100): calls 40 (resolved call tokens, no df cap —
+typicality measures normality, not rarity), flow 20 (binarized `FlowLabels`), cotags 15, role 15,
+package 10. Channel typicality is **leave-one-out**: for member i with feature set F,
+`T = Σ_{x∈F}(cnt(x)−1) / (|F|·(m−1))` — the mean over other members of `|F_i∩F_g|/|F_i|`,
+computed with an integer numerator so it is order-independent. Empty F scores
+`(#other empty members)/(m−1)` — doing nothing can be the norm, and no channel is ever skipped, so
+no weight renormalization exists. A member never certifies its own normality; identical members
+score exactly 1.0.
+
+`Atypical(i,c) ⇔ median(c) > 0 && Typ(i,c) < 0.5·median(c)` — relative to the concept's own
+median, so a legitimately diverse concept lowers its own bar and a tight concept can flag nobody.
+Membership stays binary (the tag); typicality grades it. The report surfaces notes only on a
+pair's **shared** tags ("you both claim transaction but B does it unlike anything else here" — the
+drift-vs-duplication signal), one `culture:` line per note, per-channel detail under `--debug`.
+
+### Habitats and conventions
+
+The thermodynamic static layer, also in `internal/culture` (habitat.go, convention.go): how well a
+function fits where it lives, and how strict each concept's practice is. Human vocabulary in
+output (fit, surprise, convention); precise terms live here.
+
+**Habitat** = a Go package with ≥ `MinHabitatMembers` (5) functions (empty package names are
+skipped; smaller packages are silent). Channels are the culture channels minus `package`
+(constant within a habitat): calls 44 / flow 22 / tags 17 / role 17 — integer weights summing to
+exactly 100, pinned. **The smoothing identity is load-bearing**: leave-one-out counts plus one
+pseudo-count collapse to the plain presence fraction, `P_i(x|h) = (cnt_-i(x)+1)/((m−1)+1) =
+cnt(x)/m` — no surprisal is ever infinite, everything is integer counts over one denominator, and
+a member never certifies its own normality beyond the pseudo-count.
+
+- **Strain** = weighted mean feature surprisal (mean per channel, so richness is not penalized;
+  an empty feature set scores the empty-set event — doing nothing can be the norm).
+- **Temperature** = median member strain (one alien cannot heat the habitat enough to excuse
+  itself).
+- **Fit** = excess-energy Boltzmann factor: 1.0 when strain ≤ T; `exp(−(strain−T)/T)` above; the
+  median member reads exactly 1.0 by construction. T = 0 (frozen habitat) makes any deviation
+  fit 0.0 — branch order keeps all-identical habitats at 1.0.
+- **Misfit** ⇔ strain > `MisfitFactor` (2.0) × T, or any positive strain when T = 0. At factor
+  2.0 this is fit < e⁻¹. Only misfits produce `habitat:` report lines.
+- **Norm** = mean member fit — the `package norm` contrast number and the stderr superlative
+  ranking (median fit would be ≈ 1.0 always; the mean is dragged by outliers, which is the
+  signal).
+
+**Convention strength** per prototyped concept: 1 − the mass-weighted mean **Bernoulli** entropy
+of feature presence across members, per channel, combined with the prototype's 40/20/15/15/10
+weights. Bernoulli-per-feature rather than entropy over the mass distribution, deliberately: a
+concept where every member does the same two things has uniform masses (maximal mass-entropy)
+but zero presence-disorder — universal co-occurrence is unanimity, not diversity. Empty channels
+score 1.0 (unanimity of absence). Shown as `convention` on culture notes; superlatives on stderr.
+
+### The concept arena
+
+`internal/culture/arena.go`: instead of five independent booleans, each function is an arena where
+candidate concepts compete for its evidence under deterministic replicator dynamics, yielding an
+equilibrium **concept profile** (masses summing to 1) and an **ecosystem state**. Everything is
+corpus-derived — the PMI ecology is the arena's physics.
+
+- **Candidates**: the unit's own tags ∪ concepts with a reported positive (PMI ≥ ln 2) tag~call
+  association to any of its resolved call tokens ∪ positive tag~role associations to its role.
+  Empty set → silence (`ArenaProfile` ok=false), not a state.
+- **Evidence(f,c)** in nats, fixed order: tag presence → `IC(c) = ln(N/df)` (plain, matching the
+  retriever idiom), + each positive tag~call PMI over the unit's tokens, + positive tag~role PMI.
+  Deliberately not typicality-scaled (asymmetric for unprototyped concepts; future work).
+- **Interactions**: reported TagTag PMI as-is; `-Inf` (never co-occur) maps to `−ln N`, the
+  largest finite repulsion the corpus can express; unreported pairs 0; diagonal 0 (the
+  replicator's own mass term carries self-reinforcement).
+- **Dynamics** (consts, not Options: η 0.25, 64-round cap, 1e-9 convergence, 1e-6 extinction
+  clamp): `x' ∝ x·exp(η·(F − maxF))` with `F = E + Σ M·x`, all in fixed ascending-candidate
+  order; the max-shift makes overflow impossible and is scan-order independent; clamped concepts
+  never revive.
+- **States, pinned precedence**: **weak** (TotalEvidence < ln 2 — an equilibrium over noise is
+  noise) → **conflict** (≥2 survivors with a reported-negative interaction — checked before
+  dominance so the smell is never masked by a big top mass) → **dominance** (1 survivor or top ≥
+  0.6) → **coalition**. Survivor floor 0.05 (max mass ≥ 1/9 so someone always survives).
+- **Report**: `profile A: transaction 0.39  db_access 0.34 (coalition)` under the unit lines
+  (the flat `tags:` line stays); extinct candidates + rounds under `--debug`; stderr
+  `Ecosystems: N profiled (…)`. Profiles never rank.
+
+On real corpora the flagship behavior is visible: units tagged `validation, db_access, mapping`
+(fixture-string tags) equilibrate to `validation 1.00 (dominance)` — the unsupported tags go
+extinct because they explain none of the surrounding evidence.
 
 ### Fingerprint scoring
 
@@ -139,10 +333,10 @@ Two canonicalization rules do the heavy lifting in the token stream, and both ar
 identifiers collapse to `ID` (so renamed clones still match), while call *selector* names survive as
 `CALL:Errorf` (intent-bearing) with the receiver expression dropped (`e`, `s`, `cfg` are arbitrary).
 
-`--min-nodes` (default `12`) excludes tiny bodies from comparison entirely. Without it one-line
-accessors match each other at 1.0 and flood the report. On this repo the guard currently excludes 4
-functions and changes no reported pair at the default threshold — it is preventive, so do not
-"simplify" it away on the evidence of a clean run here.
+`--min-nodes` (default `12`) excludes tiny bodies from the **structural retrieval channel** (and
+from `FindSimilar`). Without it one-line accessors match each other at 1.0 and flood the channel.
+Concept and call retrieval deliberately ignore it — a small function with rare tag or call evidence
+is still worth comparing.
 
 ### Comparator weights
 
@@ -302,9 +496,21 @@ Two invariants worth knowing:
   "top": 10,
   "min-nodes": 12,
   "struct-min": 0.4,
-  "output": "doppel-report.md"
+  "output": "doppel-report.md",
+  "channel-k": 5,
+  "debug": false,
+  "max-per-func": 2,
+  "tests": "exclude"
 }
 ```
+
+Flag semantics after the retrieval redesign: `--threshold` floors code-shape for
+**structural-channel admission only** (concept/call candidates bypass it); `--top` caps the
+**final report** after comparison, filtering and evidence ranking — not the candidate set;
+`--min-nodes` gates the structural channel only; `--channel-k` is the per-function per-channel
+top-K; `--debug` adds retrieval provenance lines to the report; `--max-per-func` caps how many
+final-report pairs any one function may appear in (0 disables); `--tests` picks the population
+(`include`/`exclude`/`only`, default `exclude`) before any statistic is computed.
 
 Every functional flag except `--config` has a config key. Precedence: `applyConfig` only calls
 `Flags().Set` when `!Flags().Changed(name)`, so explicit CLI flags always win over the file.
@@ -317,10 +523,25 @@ Unknown keys are ignored rather than rejected, so a stale config file does not b
   not an optimization.
 - Cobra is the only direct dependency. Keep it that way unless there is a strong reason.
 - Skipped directories: `.git`, `.claude`, `vendor`, `testdata`, `build`, `.idea`, `.vscode`.
-  `_test.go` files are **not** skipped, and test functions legitimately dominate the top of the
-  report on this repo.
+  `_test.go` files are always parsed; **`--tests` decides the population** (default `exclude`).
+  Tests are conventionally similar by design, so they form their own population: `exclude`
+  models production practice, `only` is test-suite hygiene mode, `include` mixes both but
+  **cross test/prod pairs are never reported** (different build units are never merge
+  candidates). The filter runs before tagging, so every corpus statistic — IC, dfs, culture,
+  habitats, arenas — models exactly the population the report describes; filtering at report
+  time instead would be the worst of both. `_test.go` is a compiler-recognized suffix, not a
+  naming heuristic.
 - Tested: `ontology`, `fingerprint`, `analyzer`, `comparator`, `tagger`, `parser`,
-  `concepter/role`, `cmd` config precedence. Untested and worth covering: `mapper`, `reporter`.
+  `concepter/role`, `retriever`, `culture`, `reporter`, `cmd` config precedence. Untested and
+  worth covering: `mapper`.
+- **Golden ranking benchmark** (`internal/bench`): a corpus-agnostic, env-guarded harness scoring
+  the final ranking against a human-reviewed labels file. Both inputs come from outside the repo
+  (`DOPPEL_BENCH_CORPUS` + `DOPPEL_BENCH_LABELS`); **no corpus names, paths, or labeled pairs may
+  ever be committed** — the labels JSON is a local artifact the user keeps. Run:
+  `DOPPEL_BENCH_CORPUS=<corpus> DOPPEL_BENCH_LABELS=<labels.json> go test ./internal/bench/ -v`.
+  One labeled semantic false positive keeps two assertions deliberately red (see rough edges).
+  The harness analyzes the full population (`--tests include` semantics, cross pairs dropped)
+  because label files may span test and production pairs.
 
 ## Rough edges
 
@@ -348,6 +569,54 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   share each other's 1-neighborhood inside their depth-2 balls, mildly favoring adjacent pairs on
   `shares_neighborhood`. The compared counterpart itself is excluded per pair (without that,
   adjacency would be *penalized* instead); the residual bias is accepted at weight 0.030.
-- **O(n²) with no blocking.** Every function pair is compared. Fine at the current scale (74
-  functions here, ~2.7k pairs), but a large repo would want MinHash/LSH banding to cut the candidate
-  set before exact scoring.
+- **Retrieval recall is bounded by the channels.** A pair with no shared rare shingle, no shared
+  tag, and no shared resolved call is never compared, no matter how alike it is — that is the
+  design trade (the old exhaustive `FindSimilar` pass remains available as a library call). The
+  worst case of the inverted-index accumulation is `O(cap · postings)`, comfortably sub-quadratic
+  at 10k functions (~2.5s on an 8.7k-function corpus, vs ~20s for the old all-pairs pass).
+- **Arena equilibria are corpus-relative thrice over.** Tag dfs, association cutoffs, and the
+  interaction matrix all move with unrelated code, so a function's profile and state can change
+  when the corpus does. Convergence is capped at 64 rounds, not proven (small fitness gaps end
+  `capped`, which the debug line shows honestly). A concept can only invade a function through a
+  *reported* association — the ecology's cutoffs bound the arena's imagination. On the large
+  reference corpus the states degenerate gracefully: ~98% dominance, few coalitions,
+  conflict/weak ≈ 0 (any invaded
+  candidate carries ≥ ln 2 evidence by construction, so the weak floor rarely triggers).
+  Function-vs-function niches, invasion/speciation/overcrowding, dominant-set clustering, and
+  Potts-style domains are named future work.
+- **Habitat = package is crude.** One Go package can host several micro-habitats (handlers next
+  to helpers next to tests — test functions in a production package legitimately read as
+  misfits). Directory- or subsystem-level habitat rollup is future work, as are all the delta
+  quantities: Δentropy/fragmentation, phase transitions, chemical potential (marginal duplication
+  pressure), git-derived heat, inter-package JS divergence, free energy.
+- **Convention entropy is a dispersion proxy, not realization clustering.** It measures how
+  predictable each practice is across members, not how many distinct whole realizations exist.
+  Habitat fit and misfit notes are corpus-relative like roles and typicality — a function's fit
+  can move when unrelated code shifts its package.
+- **Culture associations are computed but unsurfaced.** The ecology model (PMI associations) is
+  built, tested, and reported only as a stderr count — per-pair surfacing was deliberately
+  deferred because an association annotates the corpus, not a pair. A `doppel culture` command is
+  the natural next home. Relatedly, an unusual realization on a function that appears in *no*
+  retrieved pair is invisible in the report (stderr count only).
+- **Typicality is corpus-relative, like roles.** A function's typicality — and whether a pair
+  carries a culture note — can change when unrelated code shifts the concept's membership or the
+  corpus norm. That is what "normal for this repo" means; same caveat as the role thresholds.
+- **Nested loops double-count inner calls in loop summaries.** An inner loop's callees appear in
+  both its own L3 summary and every enclosing loop's — each container is a real behavioral unit,
+  and de-duplicating would cost a pass per nesting level for no scoring benefit. Accepted.
+- **Trophic similarity of exact mid-frequency twins is 1.0.** Any normalized similarity gives
+  identical inputs 1.0; trivia suppression relies on the df cap zeroing *both* sides of the Dice,
+  which only engages once the idiom bucket exceeds `MaxPatternDF`. Between df=2 and the cap, exact
+  twins read trophic 1.0 with *small* energy — the energy is what ranks, so this is display-level
+  nuance, not a scoring bug.
+- **Corroborated ranking has thin margins on vocabulary-heavy pairs.** A cross-package true
+  clone and a vocabulary false positive can sit ~10-20% apart in key; the golden benchmark
+  watches exactly this. Trophic² also discounts non-identical true clones somewhat (the
+  production clone sits mid-top-50, not top-20, in the full-population view) — the price of
+  demoting skeleton siblings.
+- **SUT-aware test discounting is only as good as call resolution.** A test pair with zero
+  informative call tokens keys to zero even when genuinely duplicated (mock-heavy tests whose
+  every call is variable-receiver read CallSim 0 — harsh but honest: no call evidence, no SUT
+  corroboration). Both label sets pin the behavior; the historical semantic false positive
+  (sibling table-driven tests of different calculations) is resolved by this factor, and both
+  benchmarks' assertions are green.

@@ -19,6 +19,10 @@ type AnalysisConfig struct {
 	MinNodes   *int     `json:"min-nodes,omitempty"`
 	StructMin  *float64 `json:"struct-min,omitempty"`
 	OutputFile *string  `json:"output,omitempty"`
+	ChannelK   *int     `json:"channel-k,omitempty"`
+	Debug      *bool    `json:"debug,omitempty"`
+	MaxPerFunc *int     `json:"max-per-func,omitempty"`
+	Tests      *string  `json:"tests,omitempty"`
 }
 
 // loadConfig reads a JSON config file. Returns nil (no error) if the file does not exist.
@@ -58,5 +62,17 @@ func applyConfig(cmd *cobra.Command, cfg *AnalysisConfig) {
 	}
 	if cfg.OutputFile != nil {
 		set("output", *cfg.OutputFile)
+	}
+	if cfg.ChannelK != nil {
+		set("channel-k", strconv.Itoa(*cfg.ChannelK))
+	}
+	if cfg.Debug != nil {
+		set("debug", strconv.FormatBool(*cfg.Debug))
+	}
+	if cfg.MaxPerFunc != nil {
+		set("max-per-func", strconv.Itoa(*cfg.MaxPerFunc))
+	}
+	if cfg.Tests != nil {
+		set("tests", *cfg.Tests)
 	}
 }

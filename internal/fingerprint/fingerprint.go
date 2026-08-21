@@ -40,13 +40,22 @@ const (
 	flowKinds
 )
 
+// FlowLabels names the control-flow histogram slots, index-aligned with
+// Fingerprint.Flow. The array length is tied to flowKinds so a new slot
+// cannot be added without naming it.
+var FlowLabels = [flowKinds]string{
+	"if", "for", "range", "switch", "typeswitch",
+	"select", "return", "defer", "go", "funclit",
+}
+
 // Fingerprint is a deterministic static summary of one function body.
 // The zero value means "no body" and never matches anything.
 type Fingerprint struct {
-	Shingles []uint64 // sorted, deduped FNV-1a hashes of AST 3-grams
-	Flow     []int    // control-flow node histogram, length flowKinds
-	Types    []string // sorted, deduped normalized param + result types
-	Nodes    int      // AST node count of the body (size / triviality guard)
+	Shingles []uint64  // sorted, deduped FNV-1a hashes of AST 3-grams
+	Flow     []int     // control-flow node histogram, length flowKinds
+	Types    []string  // sorted, deduped normalized param + result types
+	Nodes    int       // AST node count of the body (size / triviality guard)
+	Patterns []Pattern // multi-level structural pattern multiset, sorted by hash
 }
 
 // Breakdown is the per-component result of comparing two Fingerprints.
@@ -70,6 +79,7 @@ func Build(fd *ast.FuncDecl) Fingerprint {
 		Flow:     flow,
 		Types:    typeStrings(fd.Type),
 		Nodes:    nodes,
+		Patterns: extractPatterns(fd.Body, tokens),
 	}
 }
 

@@ -349,6 +349,83 @@ func TestWeightedGreedyMatchingIsOptimal(t *testing.T) {
 	}
 }
 
+// SharedInformation is the raw numerator of the weighted SetRelatedness, so
+// the two must agree through the max-side-IC denominator on every input.
+func TestSharedInformationIsSetRelatednessNumerator(t *testing.T) {
+	s := toyScorer()
+	sets := [][2][]string{
+		{{"error_wrapping", "db_access"}, {"error_wrapping", "caching"}},
+		{{"db_access"}, {"caching", "http_call"}},
+		{{"retry"}, {"db_access"}},
+		{{"error_wrapping"}, {"error_wrapping"}},
+	}
+	for _, p := range sets {
+		mass, massMatches := s.SharedInformation(p[0], p[1])
+		score, scoreMatches := s.SetRelatedness(p[0], p[1])
+		var sumA, sumB float64
+		for _, x := range sortedUnique(p[0]) {
+			sumA += s.ic.Of(TermID(x))
+		}
+		for _, x := range sortedUnique(p[1]) {
+			sumB += s.ic.Of(TermID(x))
+		}
+		denom := sumA
+		if sumB > denom {
+			denom = sumB
+		}
+		if want := score * denom; math.Abs(mass-want) > 1e-9 {
+			t.Errorf("SharedInformation(%v, %v) = %v, want score*denom = %v", p[0], p[1], mass, want)
+		}
+		if len(massMatches) != len(scoreMatches) {
+			t.Errorf("SharedInformation(%v, %v) returned %d matches, SetRelatedness %d",
+				p[0], p[1], len(massMatches), len(scoreMatches))
+		}
+	}
+}
+
+// The retrieval-side point of the raw view: two singleton sets both normalize
+// to 1.0, but the rare tag carries strictly more shared information than the
+// ubiquitous one.
+func TestSharedInformationDiscountsUbiquity(t *testing.T) {
+	s := toyScorer()
+	rare, _ := s.SharedInformation([]string{"db_access"}, []string{"db_access"})
+	ubiquitous, _ := s.SharedInformation([]string{"error_wrapping"}, []string{"error_wrapping"})
+	if rare <= ubiquitous {
+		t.Errorf("mass(db_access)=%v should exceed mass(error_wrapping)=%v", rare, ubiquitous)
+	}
+	if want := s.ic.Of(ConDBAccess); !closeTo(rare, want) {
+		t.Errorf("singleton exact-match mass = %v, want IC(db_access) = %v", rare, want)
+	}
+}
+
+// An unknown term matching itself must contribute its (unknown-sentinel) IC —
+// pinned here because recomputing mass externally as Σ ic.Of(m.LCA) would hit
+// Of("") instead, which is why SharedInformation exists at all.
+func TestSharedInformationUnknownTermSelfMatch(t *testing.T) {
+	s := toyScorer()
+	mass, matches := s.SharedInformation([]string{"grpc_call"}, []string{"grpc_call"})
+	if want := s.ic.Of("grpc_call"); !closeTo(mass, want) {
+		t.Errorf("unknown-term self-match mass = %v, want ic.Of(grpc_call) = %v", mass, want)
+	}
+	if len(matches) != 1 || matches[0].A != "grpc_call" {
+		t.Fatalf("matches = %+v, want the single grpc_call self-match", matches)
+	}
+}
+
+func TestSharedInformationGuards(t *testing.T) {
+	if mass, matches := NewScorer(Default(), nil).SharedInformation(
+		[]string{"db_access"}, []string{"db_access"}); mass != 0 || matches != nil {
+		t.Errorf("nil-IC SharedInformation = (%v, %v), want (0, nil)", mass, matches)
+	}
+	s := toyScorer()
+	if mass, _ := s.SharedInformation(nil, []string{"db_access"}); mass != 0 {
+		t.Errorf("empty-side SharedInformation = %v, want 0", mass)
+	}
+	if mass, _ := s.SharedInformation([]string{"retry"}, []string{"db_access"}); mass != 0 {
+		t.Errorf("cross-branch SharedInformation = %v, want 0", mass)
+	}
+}
+
 func TestWeightedSetRelatednessDeterministic(t *testing.T) {
 	s := toyScorer()
 	a := []string{"error_wrapping", "db_access", "concurrency"}
