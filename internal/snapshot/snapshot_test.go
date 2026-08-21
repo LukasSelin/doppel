@@ -3,6 +3,7 @@ package snapshot
 import (
 	"bytes"
 	"encoding/json"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -183,17 +184,43 @@ func TestUnitKeysDisambiguateCollisions(t *testing.T) {
 	}
 }
 
-// TestPathsAreRelativeAndSlashed is the Windows regression: the hook analyses
-// an absolute cwd while `doppel analyze .` analyses a relative root, and the
-// two snapshots must still describe the same files.
+// TestPathsAreRelativeAndSlashed pins the property that lets two runs be
+// compared at all: a hook analyses an absolute cwd while `doppel analyze .`
+// analyses a relative root, and both must describe the same file the same way.
+//
+// The paths are built with filepath.Join rather than written as literals so the
+// test exercises whatever separator the host actually uses. Hard-coding
+// backslashes only tests Windows, and on Linux it does not even fail
+// meaningfully: `\` is an ordinary character there, so filepath.Rel cannot
+// relativize the path and returns a `../` escape instead.
 func TestPathsAreRelativeAndSlashed(t *testing.T) {
-	root := "C:" + string('\\') + "repo"
-	units := []parser.CodeUnit{unit("app", "F", root+string('\\')+"internal"+string('\\')+"a.go", 1, 20)}
+	root := filepath.Join(string(filepath.Separator)+"repo", "project")
+	file := filepath.Join(root, "internal", "pkg", "a.go")
+	units := []parser.CodeUnit{unit("app", "F", file, 1, 20)}
+
 	s := Build(units, []concepter.ConceptDoc{{}}, nil, nil, root, "test", Params{})
 
 	got := s.Units[0].File
-	if want := "internal/a.go"; got != want {
-		t.Errorf("File = %q, want %q", got, want)
+	if want := "internal/pkg/a.go"; got != want {
+		t.Fatalf("File = %q, want %q", got, want)
+	}
+	if strings.ContainsRune(got, filepath.Separator) && filepath.Separator != '/' {
+		t.Errorf("File %q still carries a native separator", got)
+	}
+	if filepath.IsAbs(got) || strings.HasPrefix(got, "..") {
+		t.Errorf("File %q is not contained within the analysis root", got)
+	}
+}
+
+// A path the root cannot explain must still be recorded deterministically
+// rather than dropped, and must still be slash-separated.
+func TestPathsOutsideRootStaySlashed(t *testing.T) {
+	units := []parser.CodeUnit{unit("app", "F", filepath.Join("elsewhere", "a.go"), 1, 20)}
+
+	s := Build(units, []concepter.ConceptDoc{{}}, nil, nil, "", "test", Params{})
+
+	if got := s.Units[0].File; got != "elsewhere/a.go" {
+		t.Errorf("File = %q, want elsewhere/a.go", got)
 	}
 }
 
