@@ -1,28 +1,98 @@
 # How Doppel Works
 
-Doppel is fully self-contained: it parses Go with `go/ast`, scores every function pair from static data, and prints a report. There is no model, no network call, and no cache anywhere in the pipeline, so a given tree always yields the same output.
+Doppel is fully self-contained: it parses Go with `go/ast`, scores function pairs from static data, and prints a report. There is no model, no network call, and no cache anywhere in the pipeline, so a given tree always yields the same output.
 
 ## Pipeline
 
+Everything below happens in one pass, in this order — the shape of it matters, because each flag bites at a different stage:
+
+```mermaid
+flowchart TD
+    parse["1 · Walk and parse<br/>go/ast → CodeUnit + Fingerprint"]
+    pop["2 · Population filter"]
+    tag["3 · Tag + corpus IC<br/>9 intent tags, tag frequencies"]
+    cg["4 · Call graph<br/>resolved, repo-internal, qualified names"]
+    docs["5 · Concept docs<br/>callers, callees, neighbourhood, role"]
+    cult["6 · Culture model<br/>typicality, habitats, arenas"]
+    ret["7 · Candidate retrieval<br/>three channels, union"]
+    cmp["8 · Structural comparison<br/>12 weighted signals → overlap score"]
+    filt["9 · Overlap filter"]
+    rank["10 · Rank and report<br/>corroborated evidence, diversity cap"]
+    out["stdout, --output markdown, --format json"]
+
+    parse -->|"--tests include / exclude / only"| pop
+    pop --> tag --> cg --> docs
+    docs --> cult
+    docs -->|"--threshold, --min-nodes, --channel-k"| ret
+    ret --> cmp
+    cmp -->|"--struct-min"| filt
+    filt -->|"--top, --max-per-func"| rank
+    cult -.->|"per-pair notes"| rank
+    rank --> out
+```
+
 1. **Parse** — walks the target directory and extracts all Go function/method bodies, names, signatures, doc comments, visibility, receiver types, and AST-derived callees using the `go/ast` package; non-`.go` files are skipped
-2. **Fingerprint** — while the AST is still in hand, summarises each body into a `Fingerprint`: hashed 3-grams over a canonicalized AST token stream, a control-flow histogram, the normalized parameter/result types, and a node count
-3. **Tag** — detects intent patterns (`retry`, `http_call`, `db_access`, `validation`, `mapping`, `transaction`, `caching`, `concurrency`, `error_wrapping`) from AST evidence: call selectors, imports, string-literal contents, identifier names, and node kinds. Comments are not evidence, so SQL in a comment tags nothing. Each tag is a leaf of the concept taxonomy described below, which is what lets two different tags still score against each other. Tag frequencies over the whole corpus then weight concept matching in step 7 — sharing a near-universal tag is weak evidence, sharing a rare one is strong
-4. **Generate concept docs** — creates a deterministic architectural summary per function (name, package, visibility, receiver, patterns) from static analysis alone
-5. **Map** — builds a resolved, repo-internal call graph (qualified names; import-aware; method calls resolved when unambiguous; no stdlib noise) and enriches each concept doc with callers, resolved callees, the depth-2 call-graph neighborhood, aggregated caller/callee patterns and packages, and a structural role (`leaf`, `utility`, `orchestrator`, or `passthrough`). Role thresholds adapt to the repo: high fan-in/fan-out means above this corpus's median resolved degree, floored at 2. The role is really two independent booleans, which is why two different roles can still partly agree
-6. **Find similar** — compares every pair of fingerprints, keeps those at or above `--threshold`, sorts descending and truncates to `--top`. Functions with fewer than `--min-nodes` AST nodes are excluded from comparison entirely
-7. **Structural comparison** — scores each matched pair across 12 weighted signals (shared callees 21%, concepts 18%, role 13.5%, callers 12%, package 9%, caller concepts 5%, callee concepts 5%, visibility 4.5%, receiver type 4.5%, neighborhood overlap 3%, caller packages 2.25%, callee packages 2.25%) producing a 0.0–1.0 overlap score and a merge-worthiness flag; pairs below `--struct-min` are dropped. Concepts, roles and receiver types are matched through the ontology rather than by string equality, so related-but-not-identical work earns partial credit, and two functions sitting in overlapping call-graph neighborhoods share context even when their direct edges differ
-8. **Report** — prints the surviving pairs to stdout and optionally saves a Markdown file
+2. **Fingerprint** — while the AST is still in hand, summarises each body into a `Fingerprint`: hashed 3-grams over a canonicalized AST token stream, a control-flow histogram, the normalized parameter/result types, a node count, and the multi-level pattern multiset the shape channel retrieves on
+3. **Choose the population** — `--tests` (`include`, `exclude`, `only`; default `exclude`) decides which functions exist for the rest of the run. This runs *before* any corpus statistic is computed, so tag frequencies, document frequencies and every culture model describe exactly the population the report describes. Cross test/production pairs are never reported in any mode — different build units are not merge candidates
+4. **Tag** — detects intent patterns (`retry`, `http_call`, `db_access`, `validation`, `mapping`, `transaction`, `caching`, `concurrency`, `error_wrapping`) from AST evidence: call selectors, imports, string-literal contents, identifier names, and node kinds. Comments are not evidence, so SQL in a comment tags nothing. Each tag is a leaf of the concept taxonomy described below, which is what lets two different tags still score against each other. Tag frequencies over the whole corpus then weight concept matching in step 7 — sharing a near-universal tag is weak evidence, sharing a rare one is strong
+5. **Map** — builds a resolved, repo-internal call graph (qualified names; import-aware; method calls resolved when unambiguous; no stdlib noise) and enriches each concept doc with callers, resolved callees, the depth-2 call-graph neighbourhood, aggregated caller/callee patterns and packages, and a structural role (`leaf`, `utility`, `orchestrator`, or `passthrough`). Role thresholds adapt to the repo: high fan-in/fan-out means above this corpus's median resolved degree, floored at 2. The role is really two independent booleans, which is why two different roles can still partly agree
+6. **Retrieve candidates** — three independent channels propose the pairs worth the expense of a full comparison; see below. This is a *recall* stage, not a ranking one
+7. **Structural comparison** — scores each candidate pair across 12 weighted signals (shared callees 21%, concepts 18%, role 13.5%, callers 12%, package 9%, caller concepts 5%, callee concepts 5%, visibility 4.5%, receiver type 4.5%, neighbourhood overlap 3%, caller packages 2.25%, callee packages 2.25%) producing a 0.0–1.0 overlap score and a merge-worthiness flag; pairs below `--struct-min` are dropped. Concepts, roles and receiver types are matched through the ontology rather than by string equality, so related-but-not-identical work earns partial credit, and two functions sitting in overlapping call-graph neighbourhoods share context even when their direct edges differ
+8. **Rank and report** — orders the survivors by corroborated evidence, caps how many pairs any one function may fill, truncates to `--top`, prints to stdout and optionally writes Markdown or JSON
+
+## Candidate retrieval
+
+Comparing every pair of functions is quadratic, and most pairs share nothing. Instead, three inverted indexes each nominate a bounded number of neighbours per function, and their union goes to the comparator:
+
+```mermaid
+flowchart LR
+    fns["N functions"]
+
+    fns --> shape["shape channel<br/>multi-level AST patterns"]
+    fns --> con["concept channel<br/>tags + taxonomy ancestors"]
+    fns --> calls["call channel<br/>resolved and import-qualified calls"]
+
+    shape -->|"2 ≤ df ≤ 50<br/>code-shape ≥ --threshold<br/>nodes ≥ --min-nodes"| U["union of candidate pairs<br/>deduped on the index pair"]
+    con -->|"2 ≤ df ≤ 250"| U
+    calls -->|"2 ≤ df ≤ 50"| U
+
+    U --> ev["every union pair re-scored<br/>on all three channels"]
+    ev --> tot["Total = Shape + Concept + Call<br/>plus trophic similarity and shared chains"]
+
+    ev -.-> shape
+    ev -.-> con
+    ev -.-> calls
+```
+
+Two things about that picture are load-bearing:
+
+- **The unit is evidence mass in nats.** Each channel accumulates `Σ ln(N / df)` over the rare features a pair shares, so a feature carried by *every* function scores `ln(N/N) = 0` and nominates nobody. That is how a 130-clone `Error()` bucket suppresses itself — no name-based heuristic is involved, the arithmetic simply refuses to call an idiom evidence. Because all three channels measure log-evidence over the same corpus, their masses are summed directly rather than normalized first.
+- **Admission and evidence are separate.** A pair admitted by the call channel alone still gets definitive shape *and* concept evidence — those are the dotted edges. Which channel found a pair says nothing about what the pair is worth.
+
+Each channel keeps only its top `--channel-k` (default 5) neighbours per function, which bounds the work and also bounds recall: a pair sharing no rare pattern, no tag and no resolved call is never compared, however alike it looks. That is the deliberate trade retrieval makes.
 
 ## The fingerprint
 
-Step 2 is what replaces text matching. Each body is walked in pre-order and reduced to a stream of short tokens: statement and expression kinds (`IF`, `RANGE`, `RETURN`, `DEFER`), operators (`BIN:+`, `ASSIGN::=`), literal kinds (`LIT:STRING`), and call targets (`CALL:Errorf`).
+The fingerprint is what replaces text matching. Each body is walked in pre-order and reduced to a stream of short tokens, which are then windowed, hashed and compared as sets:
 
-Two rules matter:
+```mermaid
+flowchart LR
+    src["function body"] --> walk["pre-order AST walk"]
+    walk -->|"identifiers → ID<br/>call selectors survive as CALL:Errorf"| toks["token stream<br/>IF · RANGE · BIN:+ · LIT:STRING · CALL:Errorf"]
+    toks -->|"sliding windows of 3"| sh["hashed, deduped, sorted shingles"]
+
+    walk --> flow["control-flow histogram"]
+    src --> sig["normalized param and result types"]
+
+    sh -->|"Jaccard · 0.60"| score(["code-shape score"])
+    flow -->|"cosine · 0.25"| score
+    sig -->|"Jaccard · 0.15"| score
+```
+
+Two canonicalization rules do the heavy lifting:
 
 - **Identifiers collapse to `ID`.** A copy of a function with every variable renamed produces exactly the same token stream, so renamed clones score as clones.
 - **Call selector names survive.** `Errorf`, `Query` and `Lock` carry real intent, while the receiver variable they are called on (`e`, `s`, `cfg`) is arbitrary and is discarded.
-
-Sliding windows of 3 tokens are hashed, deduplicated and sorted; two functions are compared by Jaccard overlap of those shingle sets, blended with control-flow cosine similarity and signature-type overlap:
 
 | Component | Metric | Weight |
 | --- | --- | --- |
@@ -34,27 +104,49 @@ The relative body size is reported alongside these but is not scored — Jaccard
 
 ## The ontology
 
-Step 7 used to compare strings. Two functions tagged `http_call` and `db_access` scored **zero** on
-intent — exactly the same as two functions with nothing in common — even though both are I/O. Roles
-were just as binary: `utility` and `passthrough` scored zero against each other despite both being
-called from many places.
+Structural comparison used to compare strings. Two functions tagged `http_call` and `db_access` scored
+**zero** on intent — exactly the same as two functions with nothing in common — even though both are
+I/O. Roles were just as binary: `utility` and `passthrough` scored zero against each other despite
+both being called from many places.
 
 The nine tags are now leaves of a small taxonomy. Everything above them is abstract: those interior
-nodes never describe a real function, they exist only to relate the leaves.
+nodes (rounded, below) never describe a real function, they exist only to relate the leaves.
 
-```
-concept
-├── io_operation
-│   ├── remote_io → http_call
-│   └── data_store_access → db_access, caching, transaction
-├── data_transformation → mapping, validation
-├── control_flow
-│   ├── concurrency
-│   └── fault_tolerance → retry
-└── error_handling → error_wrapping
+```mermaid
+flowchart TD
+    root(["concept"])
+    io(["io_operation"])
+    remote(["remote_io"])
+    store(["data_store_access"])
+    xform(["data_transformation"])
+    ctrl(["control_flow"])
+    fault(["fault_tolerance"])
+    err(["error_handling"])
+
+    root --> io
+    root --> xform
+    root --> ctrl
+    root --> err
+
+    io --> remote
+    io --> store
+    remote --> http_call["http_call"]
+    store --> db_access["db_access"]
+    store --> caching["caching"]
+    store --> transaction["transaction"]
+
+    xform --> mapping["mapping"]
+    xform --> validation["validation"]
+
+    ctrl --> concurrency["concurrency"]
+    ctrl --> fault
+    fault --> retry["retry"]
+
+    err --> error_wrapping["error_wrapping"]
 ```
 
-Two concepts are scored by how deep their nearest shared ancestor sits:
+Two concepts are scored by how deep their nearest shared ancestor sits — read the table as distances
+on the graph above:
 
 | Pair | Nearest shared ancestor | Score |
 | --- | --- | --- |
@@ -63,10 +155,38 @@ Two concepts are scored by how deep their nearest shared ancestor sits:
 | `http_call` / `db_access` | `io_operation` | 0.33 |
 | `http_call` / `retry` | the root | 0.00 |
 
-Roles work the same way on two axes. `utility` and `passthrough` are both high fan-in, so they score
-0.5; `leaf` and `orchestrator` share only the *absence* of an axis, which scores nothing. And a pair
-of methods on different receiver types now scores 0.5 rather than 0, while a value receiver and a
-pointer receiver on the same type finally score 1.0.
+Roles work the same way, on two independent axes rather than a tree. Fan-in counts resolved callers
+and fan-out counts **resolved internal** callees, so stdlib calls never inflate a role:
+
+```mermaid
+flowchart TB
+    subgraph few["few callers"]
+        leaf["leaf<br/>few callees"]
+        orch["orchestrator<br/>many callees"]
+    end
+    subgraph many["many callers"]
+        util["utility<br/>few callees"]
+        pass["passthrough<br/>many callees"]
+    end
+```
+
+On a call graph, that reads off the edges directly:
+
+```mermaid
+flowchart LR
+    hc["handleCreate<br/>orchestrator"] --> val["validate<br/>utility"]
+    hu["handleUpdate<br/>orchestrator"] --> val
+    hc --> store["store<br/>passthrough"]
+    hu --> store
+    store --> enc["encode<br/>leaf"]
+    store --> aud["audit<br/>leaf"]
+    val --> norm["normalize<br/>leaf"]
+```
+
+`utility` and `passthrough` are both high fan-in, so they score 0.5; `orchestrator` and `passthrough`
+are both high fan-out, likewise 0.5. `leaf` and `orchestrator` share only the *absence* of an axis,
+which scores nothing. And a pair of methods on different receiver types now scores 0.5 rather than 0,
+while a value receiver and a pointer receiver on the same type finally score 1.0.
 
 None of this can raise a pair above what an exact match would give, and every graded match that
 contributes to a score also produces an evidence line, so an elevated score always has a stated
@@ -87,7 +207,36 @@ tagger and the taxonomy from drifting apart.
 
 ## Two scores, kept separate
 
-A pair carries a **code similarity** score (step 6, gated by `--threshold`) and a **structural overlap** score (step 7, gated by `--struct-min`). They are deliberately not blended: a high code score with low structural overlap means two lookalike bodies sitting in unrelated parts of the system, which is a different finding from two functions that both look alike *and* share callers, callees and role. Tighten `--struct-min` when you only want the latter.
+A pair carries a **code-shape** score (the fingerprint blend, gated by `--threshold`) and a
+**structural overlap** score (the 12 signals, gated by `--struct-min`). They are deliberately never
+blended, because each combination is a different finding:
+
+```mermaid
+flowchart TB
+    subgraph lowShape["low code-shape"]
+        n1["nothing to see"]
+        n2["same context, different implementation<br/>divergence rather than duplication"]
+    end
+    subgraph highShape["high code-shape · --threshold"]
+        n3["lookalike bodies in unrelated subsystems<br/>coincidence, or a shared idiom"]
+        n4["merge candidate<br/>alike and sharing callers, callees, role"]
+    end
+    n1 -.->|"rising overlap · --struct-min"| n2
+    n3 -.->|"rising overlap · --struct-min"| n4
+```
+
+Collapsing the two into one number would average those cells into an unreadable middle. Tighten
+`--struct-min` when you only want the bottom-right one.
+
+**Ranking uses neither score on its own.** The report is ordered by *corroborated* evidence — the
+retrieval mass multiplied by the overlap score, the code-shape score, and the squared trophic
+similarity (the fraction of informative structure the pair actually shares). Raw evidence mass alone
+lets a verbose shared vocabulary outrank a genuine clone; the extra factors are what demote pairs
+that merely share a skeleton. When both sides live in `_test.go` files, one further factor discounts
+tests by what they exercise rather than by their driver code, so two table-driven harnesses over
+unrelated functions do not read as duplicates. `--max-per-func` (default 2) then caps how many pairs
+any single function may fill, so one heavily-cloned helper cannot own the whole report. All of that
+decides *order*; the two displayed scores stay unblended.
 
 ## Iterative Refactoring Loop
 
@@ -121,4 +270,15 @@ Then set up a recurring task (daily, post-merge, or pre-PR) that runs `doppel an
 The following directories are automatically skipped:
 `.git`, `.claude`, `vendor`, `testdata`, `build`, `.idea`, `.vscode`
 
-Note that `_test.go` files are **not** skipped. Test functions are repetitive by nature and will legitimately dominate the top of the report on a well-tested repo; point `doppel analyze` at a subdirectory if you want production code only.
+`_test.go` files are always parsed; `--tests` decides what to do with them. Tests are repetitive by
+design, so they form their own population rather than diluting production's:
+
+| `--tests` | Population | Use |
+| --- | --- | --- |
+| `exclude` (default) | production functions only | models production practice |
+| `only` | test functions only | test-suite hygiene |
+| `include` | both | cross test/production pairs are still never reported |
+
+Because the filter runs before any corpus statistic exists, each mode's document frequencies,
+information content and culture models describe exactly the population its report describes —
+filtering at report time instead would be the worst of both.
