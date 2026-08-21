@@ -1,0 +1,107 @@
+# GoReleaser builds the published binaries. Everything here is downstream of one
+# constraint: cmd.version is stamped into every snapshot, and
+# internal/snapshot/diff.go discards a session baseline when that string changes.
+# A release build that forgets to stamp, or stamps a value shared by two
+# different trees, makes a stale baseline pass the comparability check.
+#
+# Local dry run:  goreleaser release --snapshot --clean
+version: 2
+
+project_name: doppel
+
+before:
+  hooks:
+    # Deliberately `verify`, not `tidy`: a release must not mutate go.mod.
+    - go mod verify
+    - go vet ./...
+
+builds:
+  - id: doppel
+    main: .
+    binary: doppel
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      # Do NOT simplify to {{ .Tag }}. Under --snapshot that resolves to the
+      # *previous* tag, so every local build of every tree would claim the same
+      # identity — exactly the failure the comparability check exists to catch.
+      # .Version goes through snapshot.version_template and stays per-commit.
+      # The leading `v` matches what debug.ReadBuildInfo reports for a
+      # `go install` binary, so both builds of a tag are mutually comparable.
+      - -s -w -X github.com/LukasSelin/doppel/cmd.version=v{{ .Version }}
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: doppel
+    ids:
+      - doppel
+    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      # LICENSE is a redistribution obligation; README answers "what did I just
+      # download". Both are defaults, listed so nothing here is magic.
+      - README.md
+      - LICENSE
+
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+snapshot:
+  version_template: '{{ incpatch .Version }}-SNAPSHOT-{{ .ShortCommit }}'
+
+changelog:
+  sort: asc
+  use: git
+  filters:
+    exclude:
+      - '^docs:'
+      - '^chore:'
+      - '^test:'
+      - '^Merge pull request'
+      - '^Merge branch'
+  groups:
+    - title: Features
+      regexp: '^feat'
+      order: 0
+    - title: Fixes
+      regexp: '^fix'
+      order: 1
+    - title: Performance
+      regexp: '^perf'
+      order: 2
+    - title: Other
+      order: 99
+
+release:
+  github:
+    owner: LukasSelin
+    name: doppel
+  draft: false
+  prerelease: auto
+  footer: |
+    ## Install
+
+    Download the archive for your platform, extract it, and put `doppel` on your `PATH`.
+
+    Verify what you downloaded against `checksums.txt`:
+
+    ```bash
+    sha256sum -c checksums.txt --ignore-missing
+    ```
+
+    Confirm the build identity with `doppel version`.

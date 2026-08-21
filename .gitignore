@@ -4,6 +4,8 @@ doppel.exe
 *.exe
 *.test
 
+dist/
+
 # Generated output
 report.md
 doppel-report.md

@@ -32,7 +32,27 @@ against.
 
 ## Installation
 
-Build from source:
+Download a prebuilt binary from the [latest release](https://github.com/LukasSelin/doppel/releases/latest)
+— `linux`, `darwin` and `windows`, on `amd64` and `arm64`. Extract it and put `doppel` on your `PATH`:
+
+```bash
+tar -xzf doppel_*_linux_amd64.tar.gz
+sudo install doppel /usr/local/bin/
+```
+
+Every release also ships `checksums.txt`:
+
+```bash
+sha256sum -c checksums.txt --ignore-missing
+```
+
+Or install with Go:
+
+```bash
+go install github.com/LukasSelin/doppel@latest
+```
+
+Or build from source:
 
 ```bash
 git clone https://github.com/LukasSelin/doppel
@@ -40,11 +60,9 @@ cd doppel
 go build -o doppel .
 ```
 
-Or install directly:
-
-```bash
-go install github.com/LukasSelin/doppel@latest
-```
+`doppel version` prints the build identity. That string is recorded in every snapshot, and a
+session baseline is discarded when it changes — so upgrading mid-session correctly invalidates
+the baseline instead of comparing measurements across a scoring change.
 
 ## Usage
 
@@ -139,6 +157,9 @@ turn, so it is worth understanding before leaving it on the default.
 The same analysis can run automatically around a coding session, answering questions it is otherwise
 easy to skip: *does this codebase already have a concept for what I am about to write*, *does the
 file I am about to edit have twins*, and *what did I just do to its duplication surface*.
+
+The plugin shells out to the `doppel` binary and does not bundle one, so install it first —
+a [release download](https://github.com/LukasSelin/doppel/releases/latest) or:
 
 ```bash
 go install github.com/LukasSelin/doppel@latest

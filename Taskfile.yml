@@ -12,6 +12,24 @@ tasks:
     cmds:
       - go build -o doppel .
 
+  build-stamped:
+    desc: Build with a git-derived version, so a rebuild invalidates old baselines
+    vars:
+      VERSION:
+        sh: git describe --tags --always --dirty
+    cmds:
+      - go build -ldflags "-X github.com/LukasSelin/doppel/cmd.version={{.VERSION}}" -o doppel .
+
+  dist:
+    desc: Cross-compile the release archives into dist/ without publishing
+    cmds:
+      - goreleaser release --snapshot --clean
+
+  release-check:
+    desc: Validate .goreleaser.yaml against the installed goreleaser
+    cmds:
+      - goreleaser check
+
   test:
     desc: Run all tests
     cmds:
