@@ -1,0 +1,13 @@
+{
+  "name": "doppel",
+  "owner": {
+    "name": "Lukas Selin"
+  },
+  "plugins": [
+    {
+      "name": "doppel",
+      "source": "./plugin",
+      "description": "Surfaces a Go repo's existing concepts before you write code, and measures what your session did to its duplication surface afterwards."
+    }
+  ]
+}

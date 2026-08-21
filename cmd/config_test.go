@@ -7,7 +7,7 @@ import (
 )
 
 // analyzeFlagNames are every flag applyConfig can touch.
-var analyzeFlagNames = []string{"threshold", "top", "min-nodes", "struct-min", "output", "channel-k", "debug", "max-per-func", "tests"}
+var analyzeFlagNames = []string{"threshold", "top", "min-nodes", "struct-min", "output", "channel-k", "debug", "max-per-func", "tests", "format"}
 
 // resetAnalyzeFlags restores analyzeCmd to its registered defaults. The command
 // is a package-level singleton, so tests must not leak state into each other.
@@ -128,5 +128,83 @@ func TestApplyConfigIgnoresUnknownKeys(t *testing.T) {
 
 	if threshold != 0.75 {
 		t.Errorf("threshold = %v, want 0.75", threshold)
+	}
+}
+
+// The format key exists so a repo can pin machine-readable output in
+// .doppel.json, and it follows the same precedence rule as every other key.
+func TestApplyConfigFormat(t *testing.T) {
+	resetAnalyzeFlags(t)
+	path := writeConfig(t, `{"format":"json"}`)
+
+	cfg, err := loadConfig(path)
+	if err != nil {
+		t.Fatalf("loadConfig: %v", err)
+	}
+	applyConfig(analyzeCmd, cfg)
+
+	if got := analyzeCmd.Flags().Lookup("format").Value.String(); got != "json" {
+		t.Errorf("format = %q, want json", got)
+	}
+}
+
+func TestFormatFlagWinsOverConfig(t *testing.T) {
+	resetAnalyzeFlags(t)
+	if err := analyzeCmd.Flags().Set("format", "text"); err != nil {
+		t.Fatalf("set flag: %v", err)
+	}
+	path := writeConfig(t, `{"format":"json"}`)
+
+	cfg, err := loadConfig(path)
+	if err != nil {
+		t.Fatalf("loadConfig: %v", err)
+	}
+	applyConfig(analyzeCmd, cfg)
+
+	if got := analyzeCmd.Flags().Lookup("format").Value.String(); got != "text" {
+		t.Errorf("format = %q, want the explicit flag value text", got)
+	}
+}
+
+// hookParams reads the corpus-defining keys from .doppel.json but must ignore
+// the presentation keys: a pair that fell past rank 20 has not changed, and
+// reporting it as this session's impact would be a lie.
+func TestHookParamsHonorsCorpusKeysAndIgnoresPresentation(t *testing.T) {
+	dir := t.TempDir()
+	body := `{"threshold":0.8,"min-nodes":20,"channel-k":9,"tests":"include","top":5,"max-per-func":3,"struct-min":0.7}`
+	if err := os.WriteFile(filepath.Join(dir, ".doppel.json"), []byte(body), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	p, err := hookParams(dir)
+	if err != nil {
+		t.Fatalf("hookParams: %v", err)
+	}
+
+	if p.Threshold != 0.8 || p.MinNodes != 20 || p.ChannelK != 9 || p.TestsMode != "include" {
+		t.Errorf("corpus-defining keys not honored: %+v", p)
+	}
+	if p.TopN != 0 || p.MaxPerFunc != 0 || p.StructMin != 0 {
+		t.Errorf("presentation keys leaked into a hook run: %+v", p)
+	}
+}
+
+func TestHookParamsWithoutConfig(t *testing.T) {
+	p, err := hookParams(t.TempDir())
+	if err != nil {
+		t.Fatalf("hookParams with no config: %v", err)
+	}
+	if p.Threshold != 0.60 || p.MinNodes != 12 || p.ChannelK != 5 || p.TestsMode != "exclude" {
+		t.Errorf("defaults wrong: %+v", p)
+	}
+}
+
+func TestHookParamsRejectsBadTestsMode(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, ".doppel.json"), []byte(`{"tests":"sometimes"}`), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	if _, err := hookParams(dir); err == nil {
+		t.Error("hookParams accepted an invalid tests mode")
 	}
 }

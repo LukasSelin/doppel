@@ -18,7 +18,12 @@ sort), and `analyzer.SortByEvidence`).
 
 ## Pipeline
 
-Orchestrated end to end by `runAnalyze` in `cmd/analyze.go`. Stages in execution order:
+The pipeline lives in `analyze()` in `cmd/pipeline.go`; `runAnalyze` in `cmd/analyze.go` is the CLI
+wrapper that supplies flags and renders, and `cmd/hook.go` is the other caller. Stages 1-7 below are
+`analyze()`; stage 8 belongs to the caller, because ranking is a presentation choice and the two
+callers make it differently. `analyze()` takes a progress writer rather than using `os.Stderr`
+directly: a hook must stay silent, since stderr from a SessionStart hook surfaces to the user as a
+broken-tool notice. Stages in execution order:
 
 1. **Walk & parse** — `filepath.WalkDir` + `shouldSkipDir`, then `parser.Parse` per `.go` file → `[]CodeUnit`. Unreadable files and parse errors are warned and skipped, never fatal. `fingerprint.Build` and `extractSignals` (the tagger's AST evidence) both run here, while the AST is still in hand.
 2. **Tag** — `tagger.Tag(unit)` sets `unit.Patterns` (9 intent tags matched against the unit's AST signals — selectors, imports, string-literal contents, identifiers, node kinds — never against raw source text). Tag counts feed the corpus IC in the same loop.
@@ -41,7 +46,10 @@ main.go         Thin entry point → cmd.Execute()
 cmd/            CLI commands (Cobra).
   root.go       rootCmd, Execute()
   analyze.go    Pipeline orchestrator; all flag registration
-  config.go     .doppel.json loading (AnalysisConfig) and flag precedence
+  pipeline.go   analyze(): the pipeline itself, with progress routed to a writer; filterByOverlap; snapshotOf
+  config.go     .doppel.json loading (AnalysisConfig), flag precedence, hookParams
+  hook.go       doppel hook session-start / stop: Claude Code hook entry points, baseline file I/O
+  version.go    build identity, for deciding whether a baseline is still comparable
   ontology.go   doppel ontology: print the vocabulary, check its axioms
 internal/
   parser/       parser.go is a thin dispatcher; go_parser.go does the go/ast work; signals.go extracts the tagger's evidence channels → CodeUnit
@@ -54,7 +62,8 @@ internal/
   culture/      Corpus-culture model: ecology.go (PMI), prototype.go (prototypes + typicality), habitat.go (fit), convention.go
   analyzer/     SimilarPair + Retrieval types; FindSimilar (library API); SortByEvidence (final ranking)
   comparator/   Weighted structural overlap scoring (9 signals → 0.0–1.0 composite)
-  reporter/     Plain-text (stdout) and Markdown (--output) formatting
+  snapshot/     One analysis run as comparable plain data: schema + Build, and Diff over two of them
+  reporter/     Plain-text (stdout), Markdown (--output), JSON (--format json), and the two hook digests
   bench/        Measurement harness: golden-ranking scorer, the pinned public corpus ladder, per-stage benchmarks, example generator
 examples/       Committed real reports for each corpus rung, plus labels/ (committed golden reviews) — see examples/README.md
 ```
@@ -519,15 +528,84 @@ top-K; `--debug` adds retrieval provenance lines to the report; `--max-per-func`
 final-report pairs any one function may appear in (0 disables); `--tests` picks the population
 (`include`/`exclude`/`only`, default `exclude`) before any statistic is computed.
 
-Every functional flag except `--config` has a config key. Precedence: `applyConfig` only calls
+`format` (`text` or `json`) is a key like any other. Every functional flag except `--config` has a
+config key. Precedence: `applyConfig` only calls
 `Flags().Set` when `!Flags().Changed(name)`, so explicit CLI flags always win over the file.
 Unknown keys are ignored rather than rejected, so a stale config file does not break a run.
+
+## Impact measurement and the Claude Code plugin
+
+`internal/snapshot` gives the tool the one noun it lacked: a **run**. `comparator` compares two
+functions, `analyzer` compares two fingerprints, `reporter` renders one result — nothing could
+compare two *analyses*. A `Snapshot` is one run reduced to comparable plain data, `Diff` produces a
+`Delta` from two of them, and `doppel hook` wires both to Claude Code.
+
+Three rules hold the schema together, and each exists because breaking it produces a confidently
+wrong answer rather than a missing one:
+
+- **No maps, no wall-clock, no absolute paths.** Every map is flattened into a sorted slice before it
+  reaches JSON, and unit paths are stored relative to the analysis root and slash-separated. A
+  timestamp or an absolute root inside a `Snapshot` would break byte-identical reproducibility the
+  moment `--format json` exists, so both live in the baseline file wrapper in `cmd/hook.go`, where
+  nothing compares them. `TestSchemaHasNoMaps` enforces the first rule by reflection.
+  Path normalisation is what lets a hook run rooted at an absolute cwd be compared to
+  `doppel analyze .` at all.
+- **Identity, never position.** Units are keyed by `package.Name`, disambiguated with `@file` when
+  that collides (`init`, or two directories sharing a package clause). Pair sides are ordered by
+  name, *not* by the `AIdx`/`BIdx` order `FindSimilar` emits — those are file-walk positions and
+  shift the moment a file is added, which would reorder the whole pair list in a diff for no reason
+  anyone caused.
+- **Hooks diff the full candidate set.** `hookParams` honours the `.doppel.json` keys that define the
+  *corpus* (`threshold`, `min-nodes`, `channel-k`, `tests`) and overrides the ones that only decide
+  what gets *shown* (`top`, `max-per-func`, `struct-min`). A pair that fell past rank 20 has not
+  changed; reporting it as a session's impact would be a lie.
+
+**What a delta may and may not claim.** `UnitsAdded`, `UnitsRemoved` and `BodiesChanged` are solid:
+they come from names and from `Digest`, an FNV-1a hash of the unit's own fingerprint, so nothing
+outside a function can move them. Pair changes are one tier down and each carries an `Attributable`
+bit, because retrieval keeps a bounded top-K per function and a pair can enter or leave the candidate
+set without either side being touched. Everything else corpus-relative — role changes, caller/callee
+counts, overlap movement, tag totals — is deliberately **absent from `Delta`**: those move when code
+nobody touched moves, and reporting them would blame a session for something it did not do.
+
+Incomparability is a result, not an error. A mismatched schema, doppel build, ontology version or
+param set means the two runs measured different questions, so `Diff` sets `Comparable=false` with a
+reason rather than returning a partial delta.
+
+**The hook contract**, in `cmd/hook.go`:
+
+- Both subcommands read the hook payload on stdin and write a hook response on stdout. **Neither ever
+  exits non-zero or writes to stderr** — every failure path ends at `emitNothing`. A SessionStart
+  hook's stderr surfaces to the user as a broken-tool notice, and blocking a session over a
+  measurement would be indefensible.
+- `session-start` emits `additionalContext` (the corpus concept inventory) and writes the baseline
+  **only if one does not already exist**. SessionStart also fires on resume and after compaction;
+  re-recording then would silently move the origin mid-session.
+- `stop` emits **`systemMessage`, never `additionalContext`**. This is load-bearing, not stylistic:
+  `additionalContext` on a Stop hook keeps the conversation running, so a measurement would end every
+  turn by handing the agent its own report and telling it to carry on working. It is also cumulative
+  — every turn diffs against the same session-start baseline — and silent when the delta is empty.
+- The session id is **hashed, not validated**, to build the baseline path. Against a fixed-length hex
+  digest, traversal, absolute paths, drive letters and reserved device names are impossible by
+  construction rather than by a blocklist somebody has to keep correct.
+
+The plugin itself is `plugin/`, published through the one-entry marketplace at
+`.claude-plugin/marketplace.json`. Its hooks use **exec form** (`command` + `args`), which takes no
+shell and behaves identically on Windows and Unix, and which is also the only form where
+`${user_config.*}` is substituted.
 
 ## Conventions
 
 - Go-only. All parsing uses `go/ast` — no external parsers, no multi-language support.
-- No caches and no generated state files. If you find yourself adding one, that is a design change,
-  not an optimization.
+- **No caches.** No run ever reads persisted state to avoid recomputation: `doppel hook stop`
+  re-runs the whole pipeline from source every time, exactly as `analyze` does. The one persisted
+  artifact is the **session baseline** written by `doppel hook session-start` — a measurement
+  origin, not a cache. It is scoped to a single Claude Code session, lives in the OS temp
+  directory under a hash of the session id, is discarded whenever the schema, the doppel build,
+  the ontology version or the run params differ, and is swept after seven days. `analyze` must
+  never read it, and no code path may short-circuit a stage because a baseline exists. If you find
+  yourself adding a second state file, or reading this one to skip work, that is a design change,
+  not an optimization. (`--format json` and `--output` write reports, not state.)
 - Cobra is the only direct dependency. Keep it that way unless there is a strong reason.
 - Skipped directories: `.git`, `.claude`, `vendor`, `testdata`, `build`, `.idea`, `.vscode`.
   `_test.go` files are always parsed; **`--tests` decides the population** (default `exclude`).
@@ -539,8 +617,8 @@ Unknown keys are ignored rather than rejected, so a stale config file does not b
   time instead would be the worst of both. `_test.go` is a compiler-recognized suffix, not a
   naming heuristic.
 - Tested: `ontology`, `fingerprint`, `analyzer`, `comparator`, `tagger`, `parser`,
-  `concepter/role`, `retriever`, `culture`, `reporter`, `cmd` config precedence. Untested and
-  worth covering: `mapper`.
+  `concepter/role`, `retriever`, `culture`, `reporter`, `snapshot`, `cmd` config precedence and
+  hook baseline handling. Untested and worth covering: `mapper`.
 - **Measurement harness** (`internal/bench`), four jobs in one package:
   - `scoreLabels` ranks a corpus and scores a human-reviewed labels file against it: every
     labeled pair gets a rank or an absence reason, three assertions are hard (merges retrieved,
@@ -667,3 +745,18 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   corroboration). Both label sets pin the behavior; the historical semantic false positive
   (sibling table-driven tests of different calculations) is resolved by this factor, and both
   benchmarks' assertions are green.
+- **A pair change is not always attributable to an edit.** Retrieval keeps a bounded top-K per
+  function, so adding code anywhere can push a pair out of some other function's channel budget
+  without either of its bodies changing. `Delta` marks these with `Attributable=false` and the
+  digest counts rather than lists them, but the underlying imprecision is inherent to top-K
+  retrieval — the only fix would be scoring all pairs, which is the O(n²) cost retrieval exists to
+  avoid. `Digest`, by contrast, is exact: a changed digest always means that function changed.
+- **The Stop hook runs a full analysis on every turn.** Cumulative comparison against a fixed
+  baseline is what makes the report answer "what has this session done", but it means the whole
+  pipeline runs each time the agent finishes responding. At a few hundred functions this is
+  imperceptible; on a very large repo it is the first thing to feel. There is no incremental mode
+  and adding one would mean caching, which the conventions rule out.
+- **Two dev builds are indistinguishable to the comparability check.** `buildVersion` falls back to
+  `(devel)` for a plain `go build`, so rebuilding doppel mid-session with changed scoring constants
+  leaves a stale baseline looking comparable. Ldflags-stamped releases do not have this problem, and
+  the fallback deliberately does not invent a value that would make every baseline stale instead.

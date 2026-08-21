@@ -27,6 +27,11 @@ tasks:
     cmds:
       - gofmt -w .
 
+  snapshot:
+    desc: Print a deterministic JSON snapshot of this repo's analysis
+    cmds:
+      - go run . analyze . --format json
+
   corpora:
     desc: Fetch the pinned public reference corpora (a few hundred MB, network)
     cmds:

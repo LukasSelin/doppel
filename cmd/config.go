@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -23,6 +24,7 @@ type AnalysisConfig struct {
 	Debug      *bool    `json:"debug,omitempty"`
 	MaxPerFunc *int     `json:"max-per-func,omitempty"`
 	Tests      *string  `json:"tests,omitempty"`
+	Format     *string  `json:"format,omitempty"`
 }
 
 // loadConfig reads a JSON config file. Returns nil (no error) if the file does not exist.
@@ -75,4 +77,50 @@ func applyConfig(cmd *cobra.Command, cfg *AnalysisConfig) {
 	if cfg.Tests != nil {
 		set("tests", *cfg.Tests)
 	}
+	if cfg.Format != nil {
+		set("format", *cfg.Format)
+	}
+}
+
+// hookParams derives the run parameters for a hook run from the repo's config.
+//
+// A hook honours .doppel.json for everything that decides what the corpus is —
+// threshold, min-nodes, channel-k, and the test population — because a baseline
+// should describe the repo the way its owner has configured doppel to see it.
+//
+// It then overrides everything that only decides what gets *shown*. Top-N, the
+// per-function diversity cap and the struct-min filter drop pairs for
+// presentation reasons, and a pair that vanishes from a report because it fell
+// past rank 20 has not changed; reporting it as an impact would be a lie. The
+// hook therefore always diffs the full candidate set.
+func hookParams(root string) (Params, error) {
+	p := Params{
+		Threshold:  0.60,
+		MinNodes:   12,
+		ChannelK:   5,
+		TestsMode:  "exclude",
+		TopN:       0,
+		MaxPerFunc: 0,
+		StructMin:  0,
+	}
+	cfg, err := loadConfig(filepath.Join(root, ".doppel.json"))
+	if err != nil {
+		return p, err
+	}
+	if cfg == nil {
+		return p, nil
+	}
+	if cfg.Threshold != nil {
+		p.Threshold = *cfg.Threshold
+	}
+	if cfg.MinNodes != nil {
+		p.MinNodes = *cfg.MinNodes
+	}
+	if cfg.ChannelK != nil {
+		p.ChannelK = *cfg.ChannelK
+	}
+	if cfg.Tests != nil {
+		p.TestsMode = *cfg.Tests
+	}
+	return p, validateTestsMode(p.TestsMode)
 }
