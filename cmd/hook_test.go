@@ -301,3 +301,38 @@ func TestRelativeToRootRejectsOutsiders(t *testing.T) {
 		t.Error("file outside the analyzed tree was accepted")
 	}
 }
+
+// The digest prints a bounded head of the findings, and the ledger retires
+// whatever it is handed. Handing it the whole list therefore suppresses, for
+// the rest of the session, findings nobody was ever shown — so the ledger gets
+// what AgentDigest rendered, and the remainder leads the next turn.
+func TestLedgerRetiresOnlyTheFindingsShown(t *testing.T) {
+	var all []reporter.Finding
+	for _, n := range []string{"one", "two", "three", "four", "five"} {
+		all = append(all, reporter.Finding{Key: "new:" + n, Line: n + " <-> other"})
+	}
+	base := baselineFile{Root: "/repo", Snapshot: snapshot.Snapshot{Schema: snapshot.Schema}}
+
+	note, shown := reporter.AgentDigest(unreported(all, base.Reported))
+	if note == "" {
+		t.Fatal("no digest rendered for five findings")
+	}
+	base = withReported(base, shown)
+
+	left := unreported(all, base.Reported)
+	if len(left) != len(all)-len(shown) {
+		t.Fatalf("%d findings left for the next turn, want %d", len(left), len(all)-len(shown))
+	}
+	for _, f := range left {
+		if strings.Contains(note, f.Line) {
+			t.Errorf("finding %q was shown yet not retired", f.Line)
+		}
+	}
+
+	// The second turn surfaces the remainder, and then there is nothing left.
+	_, shown2 := reporter.AgentDigest(left)
+	base = withReported(base, shown2)
+	if rest := unreported(all, base.Reported); len(rest) != 0 {
+		t.Errorf("%d findings still unreported after two turns, want 0", len(rest))
+	}
+}

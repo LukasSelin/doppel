@@ -9,7 +9,7 @@ container engine; a decade of accretion across daemon, API, and plugin layers
 | Corpus | [moby](https://github.com/moby/moby) |
 | Pinned at | `v28.5.2` (`89c5e8fd66634b6128fc4c0e6f1236e2540e46e0`) |
 | Project since | 2013 |
-| doppel | `9e0e019` |
+| doppel | `b6eeaeb` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -30,6 +30,7 @@ Found 8003 functions. Retrieving candidates...
 Retrieval: shape 4710, concept 2410, call 12559 -> 18189 unique pairs
   concept-only 12.6%  call-only 61.1%  suppressed-shape functions: 204  large identity buckets: 4  surviving patterns: 46820
 Running structural comparison on 18189 pairs...
+Families: 675 over 721 components, 1735 functions in a family, 3526 edges completed
   4 pairs suppressed by max-per-func=2
 ```
 
@@ -433,4 +434,95 @@ Running structural comparison on 18189 pairs...
 - call into same packages: [ipbits]
 
 ---
+
+## Families
+
+675 families, 1735 functions in a family, largest 44 members; 3526 edges scored here that retrieval never proposed
+
+### Family 1 — 44 members, every pair `>= 0.61` code-shape  (741 edges scored here)
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `builder/builder-next/adapters/containerimage/pull.go:874` | `containerimage.*jobs.isResolved` | ` ` | concurrency |
+| `cmd/docker-proxy/udp_proxy_linux.go:69` | `main.*connTrackEntry.lastWrite` | ` ` | concurrency |
+| `container/state.go:242` | `container.*State.IsRunning` | ` ` | concurrency |
+| `container/state.go:249` | `container.*State.GetPID` | ` ` | concurrency |
+| `container/state.go:354` | `container.*State.IsPaused` | ` ` | concurrency |
+| `container/state.go:373` | `container.*State.IsRestarting` | ` ` | concurrency |
+| `container/state.go:400` | `container.*State.IsRemovalInProgress` | ` ` | concurrency |
+| `container/state.go:407` | `container.*State.IsDead` | ` ` | concurrency |
+| `libnetwork/controller.go:269` | `libnetwork.*Controller.getAgent` | ` ` | concurrency |
+| `libnetwork/diagnostic/server.go:125` | `diagnostic.*Server.Enabled` | ` ` | concurrency |
+
+_34 more members not listed._
+
+### Family 2 — 29 members, every pair `>= 1.00` code-shape  (276 edges scored here)
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `api/types/plugins/logdriver/entry.pb.go:66` | `logdriver.*LogEntry.GetSource` | ` ` | — |
+| `api/types/plugins/logdriver/entry.pb.go:147` | `logdriver.*PartialLogEntryMetadata.GetId` | ` ` | — |
+| `daemon/cluster/internal/runtime/plugin.pb.go:68` | `runtime.*PluginSpec.GetName` | ` ` | — |
+| `daemon/cluster/internal/runtime/plugin.pb.go:75` | `runtime.*PluginSpec.GetRemote` | ` ` | — |
+| `daemon/cluster/internal/runtime/plugin.pb.go:144` | `runtime.*PluginPrivilege.GetName` | ` ` | — |
+| `daemon/cluster/internal/runtime/plugin.pb.go:151` | `runtime.*PluginPrivilege.GetDescription` | ` ` | — |
+| `libnetwork/agent.pb.go:111` | `libnetwork.*EndpointRecord.GetName` | ` ` | — |
+| `libnetwork/agent.pb.go:118` | `libnetwork.*EndpointRecord.GetServiceName` | ` ` | — |
+| `libnetwork/agent.pb.go:125` | `libnetwork.*EndpointRecord.GetServiceID` | ` ` | — |
+| `libnetwork/agent.pb.go:132` | `libnetwork.*EndpointRecord.GetVirtualIP` | ` ` | — |
+
+_19 more members not listed._
+
+### Family 3 — 29 members, every pair `>= 0.62` code-shape  (277 edges scored here)
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `integration/internal/container/ops.go:23` | `container.WithHostname` | ` ` | — |
+| `integration/internal/container/ops.go:30` | `container.WithLinks` | ` ` | — |
+| `integration/internal/container/ops.go:37` | `container.WithImage` | ` ` | — |
+| `integration/internal/container/ops.go:44` | `container.WithCmd` | ` ` | — |
+| `integration/internal/container/ops.go:51` | `container.WithNetworkMode` | ` ` | — |
+| `integration/internal/container/ops.go:65` | `container.WithSysctls` | ` ` | — |
+| `integration/internal/container/ops.go:92` | `container.WithTty` | ` ` | — |
+| `integration/internal/container/ops.go:99` | `container.WithWorkingDir` | ` ` | — |
+| `integration/internal/container/ops.go:234` | `container.WithUser` | ` ` | — |
+| `integration/internal/container/ops.go:241` | `container.WithAdditionalGroups` | ` ` | — |
+
+_19 more members not listed._
+
+### Family 4 — 29 members, every pair `>= 0.61` code-shape  (277 edges scored here)
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `integration/internal/container/ops.go:23` | `container.WithHostname` | ` ` | — |
+| `integration/internal/container/ops.go:30` | `container.WithLinks` | ` ` | — |
+| `integration/internal/container/ops.go:37` | `container.WithImage` | ` ` | — |
+| `integration/internal/container/ops.go:44` | `container.WithCmd` | ` ` | — |
+| `integration/internal/container/ops.go:51` | `container.WithNetworkMode` | ` ` | — |
+| `integration/internal/container/ops.go:58` | `container.WithDNS` | ` ` | — |
+| `integration/internal/container/ops.go:65` | `container.WithSysctls` | ` ` | — |
+| `integration/internal/container/ops.go:92` | `container.WithTty` | ` ` | — |
+| `integration/internal/container/ops.go:99` | `container.WithWorkingDir` | ` ` | — |
+| `integration/internal/container/ops.go:234` | `container.WithUser` | ` ` | — |
+
+_19 more members not listed._
+
+### Family 5 — 17 members, every pair `>= 0.86` code-shape  (66 edges scored here)
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `api/types/plugins/logdriver/entry.pb.go:188` | `logdriver.*LogEntry.Marshal` | ` ` | — |
+| `api/types/plugins/logdriver/entry.pb.go:252` | `logdriver.*PartialLogEntryMetadata.Marshal` | ` ` | — |
+| `daemon/cluster/internal/runtime/plugin.pb.go:191` | `runtime.*PluginSpec.Marshal` | ` ` | — |
+| `daemon/cluster/internal/runtime/plugin.pb.go:261` | `runtime.*PluginPrivilege.Marshal` | ` ` | — |
+| `libnetwork/agent.pb.go:340` | `libnetwork.*EndpointRecord.Marshal` | ` ` | — |
+| `libnetwork/agent.pb.go:440` | `libnetwork.*PortConfig.Marshal` | ` ` | — |
+| `libnetwork/drivers/overlay/overlay.pb.go:141` | `overlay.*PeerRecord.Marshal` | ` ` | — |
+| `libnetwork/drivers/windows/overlay/overlay.pb.go:101` | `overlay.*PeerRecord.Marshal` | ` ` | — |
+| `libnetwork/networkdb/networkdb.pb.go:952` | `networkdb.*GossipMessage.Marshal` | ` ` | — |
+| `libnetwork/networkdb/networkdb.pb.go:987` | `networkdb.*NodeEvent.Marshal` | ` ` | — |
+
+_7 more members not listed._
+
+_670 more families not listed._
 

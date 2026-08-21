@@ -51,7 +51,7 @@ func sampleInputs() ([]parser.CodeUnit, []concepter.ConceptDoc, []analyzer.Simil
 		docFor("leaf", 0, 1),
 		docFor("orchestrator", 1, 4),
 	}
-	ev := comparator.StructuralEvidence{OverlapScore: 0.5, MergeWorthy: true, Reasons: []string{"both <read> & write"}}
+	ev := comparator.StructuralEvidence{OverlapScore: 0.5, ContextMergeWorthy: true, Reasons: []string{"both <read> & write"}}
 	pairs := []analyzer.SimilarPair{{
 		A: units[0], B: units[1], AIdx: 0, BIdx: 1, Score: 0.8,
 		Breakdown: fingerprint.Breakdown{AST: 0.7, Flow: 0.9, Signature: 1, SizeRatio: 0.66, Score: 0.8},
@@ -245,7 +245,7 @@ func TestDigestDetectsBodyChange(t *testing.T) {
 }
 
 // A nesting change is a body change: two fingerprints identical except for
-// the Depth histogram must digest differently (schema 3).
+// the Depth histogram must digest differently (schema 4).
 func TestDigestDetectsNestingChange(t *testing.T) {
 	flat := unit("p", "F", "p/a.go", 1, 20).Fingerprint
 	nested := flat
@@ -253,5 +253,23 @@ func TestDigestDetectsNestingChange(t *testing.T) {
 	nested.Depth = []int{1, 1} // the same two ifs, one inside the other
 	if Digest(flat) == Digest(nested) {
 		t.Error("digest did not change when only the nesting-depth histogram did")
+	}
+}
+
+// The comparator judges architectural context and has no fingerprint to judge
+// shape with, so Build is where the two halves of the verdict meet. A pair
+// whose context clears the gate but whose bodies barely resemble each other is
+// not a merge candidate, and the snapshot every hook digest reads must say so.
+func TestBuildFloorsMergeWorthyOnShape(t *testing.T) {
+	u, d, p, c := sampleInputs()
+	p[0].Score = comparator.MergeShapeFloor - 0.01
+
+	s := Build(u, d, p, c, "", "test", Params{Threshold: 0.6, MinNodes: 12, TestsMode: "exclude"})
+
+	if s.Pairs[0].MergeWorthy {
+		t.Errorf("pair at shape %.2f recorded merge-worthy on context alone", p[0].Score)
+	}
+	if s.MergeWorthy() != 0 {
+		t.Errorf("MergeWorthy() = %d, want 0", s.MergeWorthy())
 	}
 }

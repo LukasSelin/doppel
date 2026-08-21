@@ -127,9 +127,9 @@ func TestCompare(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ev := Compare(tt.a, tt.b)
-			if ev.MergeWorthy != tt.wantMerge {
-				t.Errorf("MergeWorthy = %v, want %v (score=%.3f, reasons=%v)",
-					ev.MergeWorthy, tt.wantMerge, ev.OverlapScore, ev.Reasons)
+			if ev.ContextMergeWorthy != tt.wantMerge {
+				t.Errorf("ContextMergeWorthy = %v, want %v (score=%.3f, reasons=%v)",
+					ev.ContextMergeWorthy, tt.wantMerge, ev.OverlapScore, ev.Reasons)
 			}
 			if ev.OverlapScore < tt.wantMinOver || ev.OverlapScore > tt.wantMaxOver {
 				t.Errorf("OverlapScore = %.3f, want [%.2f, %.2f]",
@@ -163,5 +163,32 @@ func TestIntersect(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// Measured on a real corpus: two same-package functions with essentially
+// unrelated bodies (code-shape 0.31) were labelled merge-worthy on context
+// alone. Siblings share callers and callees by construction, so context is the
+// half that comes cheap; the floor makes the verdict assert both halves.
+func TestMergeWorthyFloorsOnShape(t *testing.T) {
+	ev := StructuralEvidence{ContextMergeWorthy: true}
+	for _, tt := range []struct {
+		shape float64
+		want  bool
+	}{
+		{0.31, false},
+		{MergeShapeFloor - 0.001, false},
+		{MergeShapeFloor, true},
+		{0.95, true},
+	} {
+		if got := MergeWorthy(ev, tt.shape); got != tt.want {
+			t.Errorf("MergeWorthy(context ok, shape %.3f) = %v, want %v", tt.shape, got, tt.want)
+		}
+	}
+
+	// The context half remains necessary: shape alone is a lookalike, which is
+	// a different finding and not a merge candidate.
+	if MergeWorthy(StructuralEvidence{ContextMergeWorthy: false}, 1.0) {
+		t.Error("MergeWorthy true on shape alone, with no shared context")
 	}
 }

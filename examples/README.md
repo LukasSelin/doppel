@@ -28,6 +28,15 @@ corpus is a decade of accretion". Both ends are visible below.
 | [conc](conc.md) | 2023 | `v0.3.0` | 81 | 79 | 1 | 4 |
 
 Counts are for the production population (`--tests exclude`, the default).
+
+Each report ends with a **Families** section: the groups of three or more
+functions in which every member is alike to every other member, as opposed to
+the pair list above it. The ladder is where the shape of that is easiest to
+see — conc's largest family is five `WithMaxGoroutines` builder methods across
+its pool variants, while prometheus's is fifty-five OpenAPI schema builders and
+moby's top families are the generated protobuf methods that already own its
+pair list. `doppel families <path>` prints the whole census rather than the
+report's first few.
 "Concepts modeled" is how many of the fourteen tags reached the five-member floor
 culture needs to build a prototype: twelve on moby, one on conc. That column is
 the ladder in miniature — the culture, habitat and arena layers have real
@@ -72,15 +81,17 @@ which is what a vendored-and-diverged copy looks like. The three `tpl/*/init.go`
 repetition that nobody will consolidate.
 
 **[prometheus](prometheus.md) — layers.** Deep call graphs, 90 habitats, and
-597 coalition ecosystems against 1837 dominance — the highest coalition share
+782 coalition ecosystems against 1738 dominance — the highest coalition share
 on the ladder, because a scrape loop legitimately does storage *and* validation
 *and* remote I/O at once.
 
 **[moby](moby.md) — scale.** 8003 functions in about a second of analysis after
-parsing. 67% of compared pairs arrive through the call channel alone; 376
+parsing. 61% of compared pairs arrive through the call channel alone; 204
 functions are suppressed from the shape channel entirely and 4 identity buckets
 exceed the df cap — the common-idiom suppression the retrieval design exists
-for, visible in the numbers.
+for, visible in the numbers. (The suppressed count was 376 before the w5
+pattern windows: bodies whose every 3-gram was corpus idiom now retrieve
+through rarer 5-gram windows.)
 
 ## Generated code dominates a large old corpus
 
@@ -115,9 +126,9 @@ no `false_positive` reaches the top 20.
 At the pinned commit the separation is clean:
 
 ```
-mean rank merge: 5.5 over 6 present
-mean rank refactor: 16.8 over 9 present
-mean rank false_positive: 36.3 over 3 present
+mean rank merge: 5.2 over 6 present
+mean rank refactor: 16.1 over 9 present
+mean rank false_positive: 40.0 over 3 present
 ```
 
 Because the corpus is public and pinned, every one of those judgments is

@@ -9,7 +9,7 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `9e0e019` |
+| doppel | `b6eeaeb` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -30,6 +30,7 @@ Found 6245 functions. Retrieving candidates...
 Retrieval: shape 4512, concept 3885, call 8864 -> 15776 unique pairs
   concept-only 23.3%  call-only 47.2%  suppressed-shape functions: 199  large identity buckets: 5  surviving patterns: 38503
 Running structural comparison on 15776 pairs...
+Families: 509 over 630 components, 1703 functions in a family, 8283 edges completed
 ```
 
 # Code Similarity Report
@@ -408,4 +409,95 @@ Running structural comparison on 15776 pairs...
 - call into same packages: [discovery, record, rules, tsdb, wlog]
 
 ---
+
+## Families
+
+509 families, 1703 functions in a family, largest 55 members; 8283 edges scored here that retrieval never proposed
+
+### Family 1 — 55 members, every pair `>= 0.60` code-shape  (1287 edges scored here)
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `web/api/v1/openapi_helpers.go:172` | `v1.warningsSchema` | ` ` | — |
+| `web/api/v1/openapi_helpers.go:180` | `v1.infosSchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:138` | `v1.*OpenAPIBuilder.errorSchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:181` | `v1.*OpenAPIBuilder.simpleResponseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:200` | `v1.*OpenAPIBuilder.statusOnlyResponseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:215` | `v1.*OpenAPIBuilder.stringArrayResponseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:235` | `v1.*OpenAPIBuilder.labelsArrayResponseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:286` | `v1.*OpenAPIBuilder.notificationArrayResponseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:308` | `v1.*OpenAPIBuilder.floatSampleSchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:334` | `v1.*OpenAPIBuilder.histogramValueSchema` | ` ` | — |
+
+_45 more members not listed._
+
+### Family 2 — 54 members, every pair `>= 0.61` code-shape  (1230 edges scored here)
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `web/api/v1/openapi_schemas.go:138` | `v1.*OpenAPIBuilder.errorSchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:181` | `v1.*OpenAPIBuilder.simpleResponseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:200` | `v1.*OpenAPIBuilder.statusOnlyResponseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:215` | `v1.*OpenAPIBuilder.stringArrayResponseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:235` | `v1.*OpenAPIBuilder.labelsArrayResponseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:255` | `v1.*OpenAPIBuilder.metricMetadataArrayResponseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:286` | `v1.*OpenAPIBuilder.notificationArrayResponseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:308` | `v1.*OpenAPIBuilder.floatSampleSchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:334` | `v1.*OpenAPIBuilder.histogramValueSchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:361` | `v1.*OpenAPIBuilder.histogramSampleSchema` | ` ` | — |
+
+_44 more members not listed._
+
+### Family 3 — 54 members, every pair `>= 0.60` code-shape  (1246 edges scored here)
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `web/api/v1/openapi_helpers.go:172` | `v1.warningsSchema` | ` ` | — |
+| `web/api/v1/openapi_helpers.go:180` | `v1.infosSchema` | ` ` | — |
+| `web/api/v1/openapi_helpers.go:188` | `v1.timestampSchema` | ` ` | — |
+| `web/api/v1/openapi_helpers.go:206` | `v1.durationSchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:138` | `v1.*OpenAPIBuilder.errorSchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:181` | `v1.*OpenAPIBuilder.simpleResponseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:200` | `v1.*OpenAPIBuilder.statusOnlyResponseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:215` | `v1.*OpenAPIBuilder.stringArrayResponseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:308` | `v1.*OpenAPIBuilder.floatSampleSchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:334` | `v1.*OpenAPIBuilder.histogramValueSchema` | ` ` | — |
+
+_44 more members not listed._
+
+### Family 4 — 53 members, every pair `>= 0.64` code-shape  (1168 edges scored here)
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `web/api/v1/openapi_schemas.go:138` | `v1.*OpenAPIBuilder.errorSchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:181` | `v1.*OpenAPIBuilder.simpleResponseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:200` | `v1.*OpenAPIBuilder.statusOnlyResponseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:215` | `v1.*OpenAPIBuilder.stringArrayResponseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:235` | `v1.*OpenAPIBuilder.labelsArrayResponseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:255` | `v1.*OpenAPIBuilder.metricMetadataArrayResponseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:286` | `v1.*OpenAPIBuilder.notificationArrayResponseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:308` | `v1.*OpenAPIBuilder.floatSampleSchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:334` | `v1.*OpenAPIBuilder.histogramValueSchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:361` | `v1.*OpenAPIBuilder.histogramSampleSchema` | ` ` | — |
+
+_43 more members not listed._
+
+### Family 5 — 53 members, every pair `>= 0.62` code-shape  (1168 edges scored here)
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `web/api/v1/openapi_schemas.go:138` | `v1.*OpenAPIBuilder.errorSchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:161` | `v1.*OpenAPIBuilder.responseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:181` | `v1.*OpenAPIBuilder.simpleResponseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:200` | `v1.*OpenAPIBuilder.statusOnlyResponseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:215` | `v1.*OpenAPIBuilder.stringArrayResponseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:235` | `v1.*OpenAPIBuilder.labelsArrayResponseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:255` | `v1.*OpenAPIBuilder.metricMetadataArrayResponseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:286` | `v1.*OpenAPIBuilder.notificationArrayResponseBodySchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:308` | `v1.*OpenAPIBuilder.floatSampleSchema` | ` ` | — |
+| `web/api/v1/openapi_schemas.go:334` | `v1.*OpenAPIBuilder.histogramValueSchema` | ` ` | — |
+
+_43 more members not listed._
+
+_504 more families not listed._
 

@@ -9,7 +9,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `9e0e019` |
+| doppel | `b6eeaeb` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -30,6 +30,7 @@ Found 497 functions. Retrieving candidates...
 Retrieval: shape 156, concept 317, call 609 -> 1023 unique pairs
   concept-only 29.2%  call-only 54.4%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 3321
 Running structural comparison on 1023 pairs...
+Families: 25 over 48 components, 109 functions in a family, 119 edges completed
 ```
 
 # Code Similarity Report
@@ -381,4 +382,84 @@ Running structural comparison on 1023 pairs...
 - call into same packages: [binding]
 
 ---
+
+## Families
+
+25 families, 109 functions in a family, largest 14 members; 119 edges scored here that retrieval never proposed
+
+### Family 1 — 14 members, every pair `>= 1.00` code-shape  (55 edges scored here)
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `render/bson.go:32` | `render.BSON.WriteContentType` | `—` | — |
+| `render/html.go:99` | `render.HTML.WriteContentType` | `—` | — |
+| `render/json.go:62` | `render.JSON.WriteContentType` | `—` | — |
+| `render/json.go:89` | `render.IndentedJSON.WriteContentType` | `—` | — |
+| `render/json.go:112` | `render.SecureJSON.WriteContentType` | `—` | — |
+| `render/json.go:150` | `render.JsonpJSON.WriteContentType` | `—` | — |
+| `render/json.go:179` | `render.AsciiJSON.WriteContentType` | `—` | — |
+| `render/json.go:192` | `render.PureJSON.WriteContentType` | `—` | — |
+| `render/msgpack.go:29` | `render.MsgPack.WriteContentType` | `—` | — |
+| `render/protobuf.go:34` | `render.ProtoBuf.WriteContentType` | `—` | — |
+
+_4 more members not listed._
+
+### Family 2 — 13 members, every pair `>= 0.74` code-shape  (31 edges scored here)
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `context.go:1180` | `gin.*Context.IndentedJSON` | `—` | — |
+| `context.go:1187` | `gin.*Context.SecureJSON` | `—` | — |
+| `context.go:1205` | `gin.*Context.JSON` | `—` | — |
+| `context.go:1211` | `gin.*Context.AsciiJSON` | `—` | — |
+| `context.go:1217` | `gin.*Context.PureJSON` | `—` | — |
+| `context.go:1223` | `gin.*Context.XML` | `—` | — |
+| `context.go:1228` | `gin.*Context.YAML` | `—` | — |
+| `context.go:1233` | `gin.*Context.TOML` | `—` | — |
+| `context.go:1238` | `gin.*Context.ProtoBuf` | `—` | — |
+| `context.go:1243` | `gin.*Context.BSON` | `—` | — |
+
+_3 more members not listed._
+
+### Family 3 — 10 members, every pair `>= 0.60` code-shape  (15 edges scored here)
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `context.go:1180` | `gin.*Context.IndentedJSON` | `—` | — |
+| `context.go:1205` | `gin.*Context.JSON` | `—` | — |
+| `context.go:1211` | `gin.*Context.AsciiJSON` | `—` | — |
+| `context.go:1217` | `gin.*Context.PureJSON` | `—` | — |
+| `context.go:1223` | `gin.*Context.XML` | `—` | — |
+| `context.go:1228` | `gin.*Context.YAML` | `—` | — |
+| `context.go:1233` | `gin.*Context.TOML` | `—` | — |
+| `context.go:1238` | `gin.*Context.ProtoBuf` | `—` | — |
+| `context.go:1243` | `gin.*Context.BSON` | `—` | — |
+| `context.go:1313` | `gin.*Context.SSEvent` | `—` | — |
+
+### Family 4 — 8 members, every pair `>= 0.60` code-shape  (7 edges scored here)
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `context.go:763` | `gin.*Context.BindJSON` | ` ` | — |
+| `context.go:768` | `gin.*Context.BindXML` | ` ` | — |
+| `context.go:773` | `gin.*Context.BindQuery` | ` ` | — |
+| `context.go:778` | `gin.*Context.BindYAML` | ` ` | — |
+| `context.go:783` | `gin.*Context.BindTOML` | ` ` | — |
+| `context.go:788` | `gin.*Context.BindPlain` | ` ` | — |
+| `context.go:793` | `gin.*Context.BindHeader` | ` ` | — |
+| `deprecated.go:17` | `gin.*Context.BindWith` | ` ` | logging |
+
+### Family 5 — 7 members, every pair `>= 1.00` code-shape  (6 edges scored here)
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `context.go:867` | `gin.*Context.ShouldBindJSON` | ` ` | — |
+| `context.go:873` | `gin.*Context.ShouldBindXML` | ` ` | — |
+| `context.go:879` | `gin.*Context.ShouldBindQuery` | ` ` | — |
+| `context.go:885` | `gin.*Context.ShouldBindYAML` | ` ` | — |
+| `context.go:891` | `gin.*Context.ShouldBindTOML` | ` ` | — |
+| `context.go:897` | `gin.*Context.ShouldBindPlain` | ` ` | — |
+| `context.go:903` | `gin.*Context.ShouldBindHeader` | ` ` | — |
+
+_20 more families not listed._
 

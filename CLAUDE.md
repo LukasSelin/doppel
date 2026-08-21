@@ -65,6 +65,7 @@ main.go         Thin entry point → cmd.Execute()
 cmd/            CLI commands (Cobra).
   root.go       rootCmd, Execute()
   analyze.go    Pipeline orchestrator; all flag registration
+  families.go   doppel families: the census view, plus analyze's family stage
   pipeline.go   index() + finishAnalyze(): the pipeline split into corpus-building prefix and reporting tail; filterByOverlap; snapshotOf
   query.go      doppel query: check a proposed function (a snippet on stdin) against the corpus, locality-weighted
   config.go     .doppel.json loading (AnalysisConfig), flag precedence, hookParams
@@ -82,6 +83,7 @@ internal/
   culture/      Corpus-culture model: ecology.go (PMI), prototype.go (prototypes + typicality), habitat.go (fit), convention.go
   analyzer/     SimilarPair + Retrieval types; FindSimilar (library API); SortByEvidence (final ranking)
   comparator/   Weighted structural overlap scoring (9 signals → 0.0–1.0 composite)
+  family/       Near-duplicate families: components + edge completion + maximal cliques over the pair graph
   snapshot/     One analysis run as comparable plain data: schema + Build, and Diff over two of them
   reporter/     Plain-text (stdout), Markdown (--output), JSON (--format json), and the two hook digests
   bench/        Measurement harness: golden-ranking scorer, the pinned public corpus ladder, per-stage benchmarks, example generator
@@ -95,7 +97,8 @@ module and must stay that way: `tagger`, `concepter` and `comparator` all depend
 imports `parser`, `fingerprint`, `concepter`, `ontology` and must never import `analyzer` or
 `comparator` — `cmd` bridges retriever candidates into `analyzer.SimilarPair`. `culture` imports
 `parser`, `concepter`, `fingerprint` only (not even `ontology` — it is a leaf-tag count model) and
-nothing imports it except `cmd`, which bridges its findings into `analyzer.CultureNote`.
+nothing imports it except `cmd`, which bridges its findings into `analyzer.CultureNote`. `family`
+imports `parser`, `fingerprint`, `analyzer` and nothing else; `cmd` and `reporter` import it.
 
 ## Two scores, deliberately unblended — and a third quantity that ranks
 
@@ -178,6 +181,14 @@ doppel ontology --defs                                # print the vocabulary and
   claim one identity, which is the stale-baseline-passes-comparability failure the check exists to
   catch. `task dist` runs the whole release locally into `dist/`; `task release-check` validates
   the config.
+- `.github/workflows/wiki.yml` mirrors `.github/wiki/` to the repo's GitHub wiki on a push to
+  `master`, path-filtered so it does not start for unrelated commits. **`.github/wiki/` is the
+  source of truth and the wiki is a generated view** — a page edited in the wiki UI is overwritten
+  by the next sync, and deleting a file here deletes the page, because the job clears the wiki's
+  markdown before copying. Page name is the filename with its first letter upper-cased
+  (`how-it-works.md` → `How-it-works`, which GitHub titles "How it works"), so the directory must
+  stay **flat**: wiki page names cannot nest, and the job fails loudly rather than silently
+  collapsing `a/page.md` and `b/page.md` onto one page. It pushes only when something changed.
 - `.gitattributes` forces LF for Go/shell/markdown/config so the bash hook works under Git Bash on Windows.
 
 ## Key types
@@ -440,7 +451,16 @@ landed); then `shares_neighborhood` took its `0.030` entirely from `calls` and `
 a depth-2 neighborhood generalizes exactly what those two edges measure. That second carve is the
 first change to relative order — `called_by` now sits below `has_role`, deliberately.
 
-`MergeWorthy = OverlapScore >= 0.4 && countSignals >= 2`. **`countSignals` counts only 5 of the 12**
+`ContextMergeWorthy = OverlapScore >= 0.4 && countSignals >= 2` — the **architectural half only**.
+The verdict itself is `comparator.MergeWorthy(ev, shape) = ev.ContextMergeWorthy && shape >=
+MergeShapeFloor` (0.4, mirroring the overlap gate), surfaced as `analyzer.SimilarPair.MergeWorthy()`,
+which is the one type holding both halves. The split is forced: the comparator sees two ConceptDocs
+and no fingerprint, so it cannot floor on shape itself. It is also the point — shared architectural
+context structurally favours same-package siblings, which share callers and callees by construction,
+so context alone reached 0.4 on pairs whose bodies had almost nothing in common (measured: a
+merge-worthy label at code-shape 0.31). The field rename is deliberate: every reader of the old
+`Evidence.MergeWorthy` is a compile error, so no surface can silently keep half a verdict.
+**`countSignals` counts only 5 of the 12**
 — callees, callers, concepts, role, package. Visibility, receiver, the two package-overlap signals
 and the two concept-context signals raise the score but never the signal count: context is not by
 itself a reason to merge two functions.
@@ -563,11 +583,61 @@ Two invariants worth knowing:
   taxonomy-only Wu–Palmer best match. Under Lin, sibling/cousin similarities move with tag
   frequencies elsewhere in the tree; a pair's `MergeWorthy` must not flip because unrelated code
   shifted the statistics. (The `OverlapScore >= 0.4` half of the verdict does include the weighted
-  score, so `MergeWorthy` is not fully corpus-independent — the signal count is.)
+  score, so `MergeWorthy` is not fully corpus-independent — the signal count and the shape floor
+  are.)
 - **Singleton sets cannot be discounted.** `{error_wrapping}` vs `{error_wrapping}` is still 1.0 —
   the shared information and the total information are the same quantity. The discount only
   manifests in sets of ≥ 2 tags. Fixing it would mean IC-scaling the `exhibits` relation weight,
   which breaks axiom 7; documented instead.
+
+## Families
+
+`internal/family` answers the census question the pair list cannot: how many near-duplicate
+*groups* this corpus has. It generalizes nothing. Almost everything upstream of the report is
+already n-ary — tag frequencies, IC, culture, role thresholds, and the retrieval channels, whose
+posting lists are sets of arbitrary size — and the two stages that are genuinely pairwise (the
+12-signal comparison, the report) are pairwise because Jaccard, cosine and nearest-shared-ancestor
+have no canonical k-ary extension, not for a representational reason. So families keep pairwise
+scoring, whose quadratic cost is already paid, and cluster afterward on the surviving pair graph.
+
+Two constraints shape the whole design:
+
+- **Non-transitivity.** A≈B at 0.7 and B≈C at 0.7 says nothing about A≈C. Single-linkage or
+  connected-component clustering chains through those links until a "family" spans functions with
+  nothing in common — the classic staircase failure in clone detection. A family here is a
+  **maximal clique**, so every member is similar to every other member and the report can state a
+  guarantee (`every pair >= 0.72 code-shape`) that a reader falsifies by opening two files.
+- **Retrieval gaps.** Each function keeps a bounded top-K per channel, so an edge may be missing
+  because it fell out of a budget rather than because the two functions are unalike. Enumerating on
+  the retrieved graph alone would split real families. `completeComponent` therefore scores every
+  unpaired member of a component directly with `fingerprint.Similarity` before enumeration —
+  fingerprints are built during parsing, so this is arithmetic over sorted slices, not re-parsing.
+  It is not cosmetic: on this repo it supplies 3 of the 21 edges in the 7-member `sorted*Keys`
+  family, and on prometheus 6.5k edges overall.
+
+Stages, in `Build`: adjacency over unit indices from pairs with `Score >= Min` → connected
+components → per-component edge completion → Bron–Kerbosch with pivoting over a degeneracy
+ordering → keep cliques of `>= MinSize` (3; a 2-clique is a pair) → order by size desc, `MinEdge`
+desc, `MeanEdge` desc, members asc. Determinism is by construction: candidate sets are
+ascending-index slices, the degeneracy order and the pivot both tie-break on lowest index, and no
+map iteration decides anything.
+
+Two guards, both reported and never silent: `MaxComponent` (128 — measured, the value at which
+neither moby nor prometheus skips anything, for ~0.5s) and `MaxSearch` (200k recursive calls, for a
+component small enough to complete but pathologically dense). A tripped guard records the component
+size in `Stats.Skipped` and emits **no** families for it, rather than presenting a partial
+enumeration as the answer.
+
+**Where it runs is load-bearing.** The family stage lives in the `cmd` command functions, never in
+`finishAnalyze`: `cmd/hook.go` calls `analyze()` directly and snapshots `res.Pairs`, so a stage
+inside the pipeline would change every baseline and delta. It reads `res.Pairs` — the full
+comparator-scored, struct-min-filtered set — never the ranked slice, because `--max-per-func` is a
+report-time device applied *after* scoring and a family of seven rests on 21 edges the pair list
+would never show. `analyze` renders `--families N` (default 5) of them after the pair report;
+`doppel families` is the census, with no presentation cutoff and its own `--format json` payload.
+
+Families are deliberately **not** in `snapshot`: only what a consumer reads is stored, and the Stop
+hook rewrites that file every turn. `analyze --format json` remains the snapshot exactly as before.
 
 ## Configuration
 
@@ -585,6 +655,8 @@ Two invariants worth knowing:
   "debug": false,
   "max-per-func": 2,
   "tests": "exclude",
+  "families": 5,
+  "family-min": 0.60,
   "hook-notify": "agent"
 }
 ```
@@ -594,7 +666,9 @@ Flag semantics after the retrieval redesign: `--threshold` floors code-shape for
 **final report** after comparison, filtering and evidence ranking — not the candidate set;
 `--min-nodes` gates the structural channel only; `--channel-k` is the per-function per-channel
 top-K; `--debug` adds retrieval provenance lines to the report; `--max-per-func` caps how many
-final-report pairs any one function may appear in (0 disables); `--tests` picks the population
+final-report pairs any one function may appear in (0 disables); `--families` bounds the report's
+family section (0 removes it) and `--family-min` is the code-shape every two members of a family
+must reach — both presentation, so neither is in `Params` and neither can invalidate a baseline; `--tests` picks the population
 (`include`/`exclude`/`only`, default `exclude`) before any statistic is computed.
 
 `hook-notify` (`agent` | `user` | `off`) is read only by `doppel hook stop` and has no flag — there
@@ -640,6 +714,9 @@ to rewrite on every turn:
   deliberate exception: no internal consumer reads it either, but the `--format` row in `README.md`
   documents it as part of the `--format json` payload, so it stays until that promise changes.
   Anything added back needs a reader, or it is weight in a file the Stop hook rewrites every turn.
+  `Schema` 3 added no field: it changed what `Pair.MergeWorthy` asserts (the shape floor). A
+  meaning change with no shape change is exactly what the version exists for — the two files would
+  otherwise compare cleanly and report a merge-worthy drop nobody caused.
 
 **What a delta may and may not claim.** `UnitsAdded`, `UnitsRemoved` and `BodiesChanged` are solid:
 they come from names and from `Digest`, an FNV-1a hash of the unit's own fingerprint, so nothing
@@ -679,6 +756,13 @@ reason rather than returning a partial delta.
   `permissionDecision` never is — a blocking dedupe hook misfiring on a genuine near-duplicate
   (exactly what it fires on) would be worse than none. An `Advised` ledger in the baseline
   wrapper (same mechanism as `Reported`) makes each file's advisory fire once per session.
+- Both digests rank the pairs they have room to print by **corroborated evidence**,
+  `shape x overlap` (`impactKey` in `reporter`), then shape, then names. Not by overlap, and not by
+  the merge-worthy flag: shared context favours same-package siblings by construction, so overlap
+  alone promotes intentional variants over cross-package copy-paste, and the flag is a boolean over
+  a continuum that cannot separate a pair three signals past the gate from one barely over it. The
+  flag stays on the rendered line. This is presentation only — `snapshot.Diff`'s own total order
+  (attributable, merge-worthy, score) is untouched, and nothing here feeds a score.
 - `stop` emits `systemMessage` to the user and, under `hook-notify: agent` (the default),
   `additionalContext` to the model. **`additionalContext` on a Stop hook continues the turn** —
   verified against the shipped Claude Code binary, because the public docs do not document Stop's
@@ -700,7 +784,9 @@ reason rather than returning a partial delta.
   3. **The `Reported` ledger** in the baseline wrapper. A delta is cumulative against the
      session-start origin, so an unremembered finding is re-reported — and re-continues the turn —
      every turn thereafter. The ledger rides in the baseline file rather than a second one, and
-     never touches its `Snapshot`.
+     never touches its `Snapshot`. It records **only what the digest printed**, which is why
+     `AgentDigest` returns the findings it rendered: the note prints a bounded head, and ledgering
+     the rest would retire findings nobody was ever shown. They lead the next turn's list instead.
 
   `hook-notify` (`agent` | `user` | `off`) is the escape hatch; `user` is the pre-existing
   behaviour exactly. It is deliberately **not** in `Params`, because who gets told has no bearing
@@ -866,6 +952,13 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   reports are the eyeball half. The measured numbers in `examples/README.md` are hand-copied
   from a `task bench` run on one machine and go stale the same way.
 
+- **Families overlap, and that is reported rather than resolved.** A function can belong to
+  several maximal cliques, so the family list can show it twice; the counts report *distinct*
+  functions. Picking one clique per function would be a judgement the tool cannot justify, and a
+  partition would have to break a tie no evidence decides. Family membership is also corpus-relative
+  in the same way roles and typicality are — the pair graph moves when unrelated code moves — and it
+  is bounded by the same retrieval recall the pair list is, except inside a component, where edge
+  completion repairs it.
 - **SUT-aware test discounting is only as good as call resolution.** A test pair with zero
   informative call tokens keys to zero even when genuinely duplicated (mock-heavy tests whose
   every call is variable-receiver read CallSim 0 — harsh but honest: no call evidence, no SUT

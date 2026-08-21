@@ -20,6 +20,24 @@ const (
 	relatedEnough = 0.5
 )
 
+// MergeShapeFloor is the code-shape score below which no amount of shared
+// context makes two functions merge candidates. It mirrors mergeThreshold
+// deliberately: the verdict asserts both halves, so both are gated at 0.4.
+//
+// The comparator cannot apply this itself — it sees two ConceptDocs and no
+// fingerprint — so the caller supplies the shape score. That is the whole
+// reason the verdict is split across two functions rather than computed in
+// Compare: shared architectural context structurally favours same-package
+// siblings, which share callers and callees by construction, so context alone
+// reaches 0.4 on pairs whose bodies have almost nothing in common.
+const MergeShapeFloor = 0.4
+
+// MergeWorthy is the whole verdict: enough shared context, and enough shared
+// shape to act on it.
+func MergeWorthy(ev StructuralEvidence, shape float64) bool {
+	return ev.ContextMergeWorthy && shape >= MergeShapeFloor
+}
+
 // The weight of each signal lives on its relation term in the ontology rather
 // than as a constant here, so the scoring table and the vocabulary cannot drift
 // apart and an axiom can assert the weights sum to 1.0. Compare reads them
@@ -91,9 +109,17 @@ type StructuralEvidence struct {
 	SharedNeighborhood       []string // depth-2 call-graph names both sit near
 	NeighborhoodOverlap      float64  // ratio behind the shares_neighborhood signal
 
-	OverlapScore float64  // 0.0–1.0 weighted composite
-	MergeWorthy  bool     // heuristic: high overlap + multiple signals
-	Reasons      []string // human-readable evidence bullets
+	OverlapScore float64 // 0.0–1.0 weighted composite
+
+	// ContextMergeWorthy is the architectural half of the merge verdict, and
+	// only that half: high overlap plus multiple signals. It says the two
+	// functions sit in the same part of the system, never that their bodies
+	// resemble each other — the comparator has no fingerprint to say so with.
+	// Use comparator.MergeWorthy, or analyzer.SimilarPair.MergeWorthy, for the
+	// verdict itself.
+	ContextMergeWorthy bool
+
+	Reasons []string // human-readable evidence bullets
 }
 
 // Compare computes the structural overlap between two ConceptDocs.
@@ -107,7 +133,7 @@ type StructuralEvidence struct {
 // The merge-signal gate deliberately does not follow the scorer: it reads a
 // taxonomy-only (Wu-Palmer) best match, recorded in PatternSignalBest. Under
 // corpus weighting, sibling and cousin similarities move with tag frequencies
-// elsewhere in the tree, and a pair's MergeWorthy verdict must not flip
+// elsewhere in the tree, and a pair's merge verdict must not flip
 // because unrelated code shifted the statistics. IC bends the score; the
 // signal count stays corpus-independent.
 func (c *Comparator) Compare(a, b concepter.ConceptDoc) StructuralEvidence {
@@ -183,7 +209,7 @@ func (c *Comparator) Compare(a, b concepter.ConceptDoc) StructuralEvidence {
 	// Build reasons and determine merge-worthiness.
 	ev.Reasons = buildReasons(ev)
 	signals := countSignals(ev)
-	ev.MergeWorthy = ev.OverlapScore >= mergeThreshold && signals >= minMergeSignals
+	ev.ContextMergeWorthy = ev.OverlapScore >= mergeThreshold && signals >= minMergeSignals
 
 	return ev
 }
@@ -209,7 +235,7 @@ func boolFloat(v bool) float64 {
 
 // countSignals counts how many distinct merge-supporting signals are present.
 //
-// Five of the eleven scored signals can count. Visibility, receiver binding,
+// Five of the twelve scored signals can count. Visibility, receiver binding,
 // the two package-overlap signals and the two caller/callee concept signals
 // raise the score but never the count: they are context, and context alone is
 // not a reason to merge two functions.
