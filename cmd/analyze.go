@@ -26,6 +26,8 @@ var (
 	debugFlag  bool
 	maxPerFunc int
 	testsMode  string
+	familiesN  int
+	familyMin  float64
 
 	outputFormat string
 )
@@ -76,6 +78,8 @@ func init() {
 	analyzeCmd.Flags().IntVar(&maxPerFunc, "max-per-func", 2, "Maximum pairs any one function may appear in in the final report (0 = no cap)")
 	analyzeCmd.Flags().StringVar(&testsMode, "tests", "exclude", "Test-function population: include, exclude, or only. Tests are conventionally similar, so the default models production code; cross test/prod pairs are never reported.")
 	analyzeCmd.Flags().StringVar(&outputFormat, "format", formatText, "Stdout format: text or json")
+	analyzeCmd.Flags().IntVar(&familiesN, "families", 5, "Near-duplicate families to show in the report (0 = no families section)")
+	analyzeCmd.Flags().Float64Var(&familyMin, "family-min", 0.60, "Minimum code-shape between every two members of a family (0.0–1.0)")
 	rootCmd.AddCommand(analyzeCmd)
 }
 
@@ -101,6 +105,13 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	// Families are built from the full filtered pair set, never the ranked
+	// one: --max-per-func is a report-time device applied after scoring, so
+	// the pair list may show two of a function's edges while a family
+	// legitimately rests on eight. Built before SortForReport, which sorts
+	// res.Pairs in place, so the census cannot depend on ranking order.
+	fams, famStats := buildFamilies(res, cmd.ErrOrStderr())
+
 	// Final ranking: corroborated evidence — retrieval mass discounted by
 	// architectural corroboration and structural similarity — with a
 	// per-function diversity cap. The displayed scores stay unblended.
@@ -119,6 +130,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	} else {
 		meta := reporter.Meta{Threshold: threshold, TotalFuncs: len(res.Units), Debug: debugFlag}
 		reporter.Print(cmd.OutOrStdout(), pairs, meta)
+		reporter.PrintFamilies(cmd.OutOrStdout(), fams, famStats, res.Units, familiesN)
 	}
 
 	if outputFile != "" {
@@ -128,6 +140,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		}
 		defer f.Close()
 		reporter.PrintMarkdown(f, pairs, reporter.Meta{Threshold: threshold, TotalFuncs: len(res.Units), Debug: debugFlag})
+		reporter.PrintMarkdownFamilies(f, fams, famStats, res.Units, familiesN)
 		fmt.Fprintf(cmd.ErrOrStderr(), "Markdown report written to %s\n", outputFile)
 	}
 

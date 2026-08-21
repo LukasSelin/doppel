@@ -76,6 +76,54 @@ func TestImpactDigestCapsTheList(t *testing.T) {
 	}
 }
 
+// Measured on a real corpus: a merge added a third byte-identical copy of a
+// four-line helper across three sibling packages, and the digest ranked it
+// below four intentional per-parcel variants because overlap decided the order.
+// Shared architectural context structurally favours same-package siblings, so
+// overlap alone systematically buries exactly the finding this tool exists for.
+// These are the numbers from that report.
+func TestImpactDigestRanksByCorroboratedEvidence(t *testing.T) {
+	d := snapshot.Delta{Comparable: true, UnitsAdded: []snapshot.Unit{{Key: "dhl.book"}}}
+	for _, p := range []snapshot.PairChange{
+		pc("dhl.book", "dhl.bookPerParcel", 0.61, 0.45, false, true),
+		pc("dhl.Transport", "dhl.perParcelSteps", 0.57, 0.44, false, true),
+		pc("dhl.compensationContext", "dsv.compensationContext", 1.00, 0.43, false, true),
+		pc("dhl.Book", "dhl.perParcelSteps", 0.56, 0.43, false, true),
+		pc("dhl.CancelPickup", "dhl.notifyCancellationRequired", 0.52, 0.42, false, true),
+	} {
+		d.PairsAdded = append(d.PairsAdded, p)
+	}
+	got := ImpactDigest(d, "")
+
+	lines := strings.Split(strings.TrimSpace(got), "\n")
+	var first string
+	for _, l := range lines {
+		if strings.HasPrefix(l, "  NEW  ") {
+			first = l
+			break
+		}
+	}
+	if !strings.Contains(first, "compensationContext") {
+		t.Errorf("the cross-package clone did not lead the digest, got %q:\n%s", first, got)
+	}
+}
+
+// The flag is a boolean over a continuum, and it cannot separate a pair three
+// signals past the gate from one barely over it. The product can, so a
+// merge-worthy pair with weak corroboration sorts below a strong one without
+// the flag.
+func TestImpactDigestDoesNotRankOnTheMergeWorthyFlagAlone(t *testing.T) {
+	d := snapshot.Delta{Comparable: true, UnitsAdded: []snapshot.Unit{{Key: "a.One"}}}
+	d.PairsAdded = []snapshot.PairChange{
+		pc("a.One", "b.Weak", 0.45, 0.41, true, true),
+		pc("a.One", "c.Strong", 0.95, 0.80, false, true),
+	}
+	got := ImpactDigest(d, "")
+	if strings.Index(got, "c.Strong") > strings.Index(got, "b.Weak") {
+		t.Errorf("the merge-worthy flag outranked stronger corroborated evidence:\n%s", got)
+	}
+}
+
 func TestConceptDigestNamesPresentAndAbsentConcepts(t *testing.T) {
 	s := snapshot.Snapshot{
 		Functions: 3,
@@ -213,8 +261,12 @@ func TestNotableIgnoresIncomparableDelta(t *testing.T) {
 }
 
 func TestAgentDigestEmptyFindingsRenderNothing(t *testing.T) {
-	if got := AgentDigest(nil); got != "" {
+	got, shown := AgentDigest(nil)
+	if got != "" {
 		t.Errorf("AgentDigest(nil) = %q, want the empty string", got)
+	}
+	if shown != nil {
+		t.Errorf("AgentDigest(nil) reported %d findings shown, want none", len(shown))
 	}
 }
 
@@ -225,7 +277,12 @@ func TestAgentDigestStatesFactsAndCapsTheList(t *testing.T) {
 	for _, n := range []string{"one", "two", "three", "four", "five"} {
 		f = append(f, Finding{Key: "new:" + n, Line: n + " <-> other"})
 	}
-	got := AgentDigest(f)
+	got, shown := AgentDigest(f)
+	// Only what was printed may be remembered: the ledger retires findings,
+	// and retiring one that was merely counted suppresses it for the session.
+	if len(shown) != maxAgentListed {
+		t.Errorf("reported %d findings shown, want %d", len(shown), maxAgentListed)
+	}
 	if strings.Count(got, "<->") != maxAgentListed {
 		t.Errorf("listed %d findings, want %d:\n%s", strings.Count(got, "<->"), maxAgentListed, got)
 	}

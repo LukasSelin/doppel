@@ -9,7 +9,7 @@ HTTP router; a narrow core with a middleware package beside it
 | Corpus | [chi](https://github.com/go-chi/chi) |
 | Pinned at | `v5.3.2` (`38939062c5df4d3e8814aad1a488983112627ced`) |
 | Project since | 2015 |
-| doppel | `acebce0` |
+| doppel | `706150c` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -30,6 +30,7 @@ Found 254 functions. Retrieving candidates...
 Retrieval: shape 88, concept 31, call 542 -> 614 unique pairs
   concept-only 4.4%  call-only 80.9%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 1166
 Running structural comparison on 614 pairs...
+Families: 17 over 24 components, 50 functions in a family, 22 edges completed
 ```
 
 # Code Similarity Report
@@ -359,4 +360,63 @@ Running structural comparison on 614 pairs...
 - call into same packages: [chi, main]
 
 ---
+
+## Families
+
+17 families, 50 functions in a family, largest 10 members; 22 edges scored here that retrieval never proposed
+
+### Family 1 — 10 members, every pair `>= 1.00` code-shape  (21 edges scored here)
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `mux.go:143` | `chi.*Mux.Connect` | `—` | — |
+| `mux.go:149` | `chi.*Mux.Delete` | `—` | — |
+| `mux.go:155` | `chi.*Mux.Get` | `—` | — |
+| `mux.go:161` | `chi.*Mux.Head` | `—` | — |
+| `mux.go:167` | `chi.*Mux.Options` | `—` | — |
+| `mux.go:173` | `chi.*Mux.Patch` | `—` | — |
+| `mux.go:179` | `chi.*Mux.Post` | `—` | — |
+| `mux.go:185` | `chi.*Mux.Put` | `—` | — |
+| `mux.go:191` | `chi.*Mux.Query` | `—` | — |
+| `mux.go:197` | `chi.*Mux.Trace` | `—` | — |
+
+### Family 2 — 5 members, every pair `>= 0.61` code-shape
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `middleware/clean_path.go:12` | `middleware.CleanPath` | ` ` | — |
+| `middleware/get_head.go:10` | `middleware.GetHead` | ` ` | — |
+| `middleware/strip.go:14` | `middleware.StripSlashes` | ` ` | — |
+| `middleware/strip.go:41` | `middleware.RedirectSlashes` | ` ` | — |
+| `middleware/url_format.go:46` | `middleware.URLFormat` | ` ` | — |
+
+### Family 3 — 5 members, every pair `>= 0.60` code-shape
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `_examples/custom-method/main.go:16` | `main.main` | `—` | — |
+| `_examples/fileserver/main.go:28` | `main.main` | `—` | — |
+| `_examples/hello-world/main.go:10` | `main.main` | `—` | — |
+| `_examples/todos-resource/main.go:14` | `main.main` | `—` | — |
+| `_examples/versions/main.go:22` | `main.main` | `—` | — |
+
+### Family 4 — 4 members, every pair `>= 1.00` code-shape
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `middleware/wrap_writer.go:147` | `middleware.*flushWriter.Flush` | `—` | — |
+| `middleware/wrap_writer.go:172` | `middleware.*flushHijackWriter.Flush` | `—` | — |
+| `middleware/wrap_writer.go:194` | `middleware.*httpFancyWriter.Flush` | `—` | — |
+| `middleware/wrap_writer.go:239` | `middleware.*http2FancyWriter.Flush` | `—` | — |
+
+### Family 5 — 4 members, every pair `>= 0.75` code-shape
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `_examples/rest/main.go:475` | `main.dbGetArticle` | ` ` | — |
+| `_examples/rest/main.go:484` | `main.dbGetArticleBySlug` | ` ` | — |
+| `_examples/rest/main.go:493` | `main.dbUpdateArticle` | ` ` | — |
+| `_examples/rest/main.go:513` | `main.dbGetUser` | ` ` | — |
+
+_12 more families not listed._
 

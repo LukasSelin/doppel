@@ -228,6 +228,37 @@ flowchart TB
 Collapsing the two into one number would average those cells into an unreadable middle. Tighten
 `--struct-min` when you only want the bottom-right one.
 
+The **merge-worthy** label names that bottom-right cell, and it asserts both axes: overlap at least
+0.4 with at least two counting signals, *and* code-shape at least 0.4. The shape half is not
+redundant. Two functions in the same package share callers and callees by construction, so overlap
+reaches 0.4 on siblings whose bodies have almost nothing in common — the label was observed on a
+pair at code-shape 0.31, which is the top-left cell wearing the bottom-right cell's name.
+
+## Families: pairs are not the only shape
+
+A pair is the unit of evidence, not the unit of duplication. The same helper copied into five
+packages is one fact, and reporting it as ten pairs describes it badly.
+
+Grouping pairs is easy to get wrong in one specific way. If A resembles B and B resembles C, it
+does not follow that A resembles C — similarity is not transitive — so clustering by following
+links produces groups whose two ends have nothing in common. That is the classic failure of clone
+detection, and its symptom is a "family" nobody can verify: you can check a pair by reading two
+functions, but a chained group makes a claim about members that were never compared.
+
+So a family here is a **clique**: every member is at least `--family-min` alike to *every* other
+member, and the report prints the weakest of those numbers. That is the whole claim, and any two
+members you open must satisfy it.
+
+One wrinkle is worth knowing about, because the output mentions it. Retrieval keeps a bounded
+number of neighbours per function, so inside a genuine family of six the two weakest members may
+never have been compared — each filled the other's budget with someone else. Left alone that gap
+splits one family into two overlapping ones. doppel closes it by scoring the missing pairs directly
+before grouping, and reports how many it added (`3 edges scored here`), so a family is never
+resting on evidence you cannot trace.
+
+A function may belong to more than one family, and doppel reports both rather than choosing;
+counts are of distinct functions. `doppel families` is the census view, with no truncation.
+
 **Ranking uses neither score on its own.** The report is ordered by *corroborated* evidence — the
 retrieval mass multiplied by the overlap score, the code-shape score, and the squared trophic
 similarity (the fraction of informative structure the pair actually shares). Raw evidence mass alone

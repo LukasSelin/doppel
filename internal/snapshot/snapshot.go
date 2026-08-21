@@ -49,7 +49,13 @@ import (
 // 2 dropped every field no consumer read. A snapshot is diffed and rendered,
 // never browsed, so a field nothing reads is pure weight in a file the Stop
 // hook rewrites and re-parses on every turn.
-const Schema = 2
+//
+// 3 changed what MergeWorthy asserts: the verdict now floors on code shape as
+// well as architectural overlap, so a baseline written by an older build counts
+// merge-worthy pairs a newer one would not. No field moved, which is exactly
+// why the bump matters — the two files would otherwise compare cleanly and
+// report a drop nobody caused.
+const Schema = 3
 
 // Snapshot is one full analysis run.
 //
@@ -135,8 +141,8 @@ type Unit struct {
 //
 // Score is corpus-independent: fingerprint.Similarity reads two fingerprints
 // and nothing else. Overlap is corpus-weighted through the information content
-// of this run's tag counts, and MergeWorthy is half so — the signal count is
-// corpus-independent but the 0.4 overlap gate is not.
+// of this run's tag counts, and MergeWorthy is half so — the signal count and
+// the shape floor are corpus-independent but the 0.4 overlap gate is not.
 //
 // Earlier schemas also carried the four fingerprint.Breakdown components and
 // the evidence Reasons strings. Neither was ever read back: the text report
@@ -203,7 +209,7 @@ func Build(units []parser.CodeUnit, docs []concepter.ConceptDoc, pairs []analyze
 		rec := Pair{A: a, B: b, Score: pr.Score}
 		if pr.Evidence != nil {
 			rec.Overlap = pr.Evidence.OverlapScore
-			rec.MergeWorthy = pr.Evidence.MergeWorthy
+			rec.MergeWorthy = pr.MergeWorthy()
 		}
 		s.Pairs = append(s.Pairs, rec)
 	}

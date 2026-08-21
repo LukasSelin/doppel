@@ -239,11 +239,15 @@ func runHookStop(cmd *cobra.Command, args []string) error {
 
 	if mode == NotifyAgent {
 		if fresh := unreported(reporter.Notable(delta), base.Reported); len(fresh) > 0 {
-			if note := reporter.AgentDigest(fresh); note != "" {
+			// Only the findings the digest actually printed go in the ledger.
+			// The rest were counted, not said, and retiring them here would
+			// suppress them for the whole session without anyone having seen
+			// them; they lead the next turn's list instead.
+			if note, shown := reporter.AgentDigest(fresh); note != "" {
 				// Record before emitting. If the write fails we would rather
 				// stay silent than repeat this finding on every future turn,
 				// each time continuing the turn to do it.
-				if err := writeJSONAtomic(path, withReported(base, fresh)); err == nil {
+				if err := writeJSONAtomic(path, withReported(base, shown)); err == nil {
 					out["hookSpecificOutput"] = map[string]any{
 						"hookEventName":     "Stop",
 						"additionalContext": note,

@@ -52,6 +52,8 @@ It is **advisory-only, permanently**. `PreToolUse` can deny a tool call with a r
 
 **Stop — measurement, not prevention.** It re-runs the analysis and diffs against the baseline taken at session start, so it is cumulative: every turn answers "what has this session done so far", not "what happened in the last thirty seconds". It prints nothing when nothing changed, because a "no changes" line after every turn trains you to stop reading the place real findings appear.
 
+A digest that lists six of a hundred pair changes is its ranking key, so the key is `shape x overlap` — how alike the two bodies are, weighted by how much shared architectural context corroborates it. Ranking on overlap alone looks reasonable and is not: two functions in the same package share callers and callees by construction, so context is the half that comes cheap, and sorting on it promotes intentional sibling variants over exactly the cross-package copy-paste worth catching. Measured on a real monorepo, a third byte-identical copy of a helper (shape 1.00) sat at rank three behind four variants nobody should merge. The merge-worthy flag is not the key either — it is a boolean over a continuum — but it still labels the line.
+
 ## Three constraints from the harness
 
 These were established by reading the shipped Claude Code binary, not the published documentation, which truncates before the tables that would answer them. They are the reason several design decisions look strange from outside.
@@ -68,7 +70,7 @@ flowchart TD
     F --> G{"finding worth<br/>a turn, not yet<br/>reported?"}
     G -- "no" --> H["systemMessage to the user only"]
     H --> E
-    G -- "yes" --> I["record in Reported ledger"]
+    G -- "yes" --> I["record the listed findings<br/>in the Reported ledger"]
     I --> J["emit additionalContext"]
     J --> K["harness appends to blockingErrors"]
     K --> L["turn continues"]
