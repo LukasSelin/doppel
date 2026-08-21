@@ -64,14 +64,31 @@ type PairChange struct {
 	Attributable bool `json:"attributable"`
 }
 
-// Drift is a pair present in both runs whose score moved.
+// Drift is a pair present in both runs whose standing moved.
+//
+// "Standing" is deliberately wider than "score". Merge-worthiness is gated on
+// overlap, not on shape score, so a pair can cross into or out of merge-worthy
+// with its score untouched. Admitting only score movement would make exactly
+// the most consequential drift — the kind that changes what you should do
+// about a pair — the kind that never gets recorded.
 type Drift struct {
-	A            string  `json:"a"`
-	B            string  `json:"b"`
-	ScoreBefore  float64 `json:"scoreBefore"`
-	ScoreAfter   float64 `json:"scoreAfter"`
-	Attributable bool    `json:"attributable"` // at least one side's body changed
+	A                 string  `json:"a"`
+	B                 string  `json:"b"`
+	ScoreBefore       float64 `json:"scoreBefore"`
+	ScoreAfter        float64 `json:"scoreAfter"`
+	OverlapBefore     float64 `json:"overlapBefore"`
+	OverlapAfter      float64 `json:"overlapAfter"`
+	MergeWorthyBefore bool    `json:"mergeWorthyBefore"`
+	MergeWorthyAfter  bool    `json:"mergeWorthyAfter"`
+	Attributable      bool    `json:"attributable"` // at least one side's body changed
 }
+
+// CrossedGate reports whether this pair changed merge-worthiness. It is the
+// only drift that changes a decision, so it is what a short report leads with.
+func (d Drift) CrossedGate() bool { return d.MergeWorthyBefore != d.MergeWorthyAfter }
+
+// ScoreMoved is the absolute shape-score movement.
+func (d Drift) ScoreMoved() float64 { return math.Abs(d.ScoreAfter - d.ScoreBefore) }
 
 // AttributablePairs returns the added and removed pairs this session's edits
 // actually caused, which is what a report should lead with.
@@ -154,13 +171,17 @@ func Diff(base, head Snapshot) Delta {
 			d.PairsAdded = append(d.PairsAdded, PairChange{Pair: p, Attributable: touched[p.A] || touched[p.B]})
 			continue
 		}
-		if math.Abs(p.Score-prev.Score) >= driftFloor {
+		if math.Abs(p.Score-prev.Score) >= driftFloor || prev.MergeWorthy != p.MergeWorthy {
 			d.Drift = append(d.Drift, Drift{
-				A:            p.A,
-				B:            p.B,
-				ScoreBefore:  prev.Score,
-				ScoreAfter:   p.Score,
-				Attributable: touched[p.A] || touched[p.B],
+				A:                 p.A,
+				B:                 p.B,
+				ScoreBefore:       prev.Score,
+				ScoreAfter:        p.Score,
+				OverlapBefore:     prev.Overlap,
+				OverlapAfter:      p.Overlap,
+				MergeWorthyBefore: prev.MergeWorthy,
+				MergeWorthyAfter:  p.MergeWorthy,
+				Attributable:      touched[p.A] || touched[p.B],
 			})
 		}
 	}
@@ -176,7 +197,13 @@ func Diff(base, head Snapshot) Delta {
 	sortPairChanges(d.PairsAdded)
 	sortPairChanges(d.PairsRemoved)
 	sort.Slice(d.Drift, func(i, j int) bool {
-		di, dj := math.Abs(d.Drift[i].ScoreAfter-d.Drift[i].ScoreBefore), math.Abs(d.Drift[j].ScoreAfter-d.Drift[j].ScoreBefore)
+		// Gate crossings first: they are the only drift that changes a decision,
+		// and a crossing can carry zero score movement, which would otherwise
+		// sort it last.
+		if ci, cj := d.Drift[i].CrossedGate(), d.Drift[j].CrossedGate(); ci != cj {
+			return ci
+		}
+		di, dj := d.Drift[i].ScoreMoved(), d.Drift[j].ScoreMoved()
 		if di != dj {
 			return di > dj
 		}

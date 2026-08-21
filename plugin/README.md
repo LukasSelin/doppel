@@ -70,9 +70,35 @@ It is **cumulative**, not per-turn: every turn compares against the same session
 the report answers "what has this session done so far". When nothing changed it prints nothing at
 all — a "no changes" line after every turn would only train you to stop reading.
 
-The digest goes to you, not to the agent. A `Stop` hook that injects agent-visible context keeps the
-conversation running, which would mean ending every turn by handing the agent its own report and
-telling it to carry on working.
+Two things come out of it, and they are not the same report.
+
+**You** get the digest above: the counts, the pair changes, the re-ranking line, the path to the
+full delta.
+
+**The agent** gets a much shorter note, and only when the session produced something worth
+interrupting for:
+
+```
+doppel measured this session's effect on the repository's duplication surface and found 1 new near-duplicate finding:
+  billing.ValidateReceiverRef <-> billing.ValidateSenderRef  shape 1.00  overlap 0.71
+This is a measurement, not a request. No change is required.
+```
+
+**This costs one extra turn.** A Stop hook cannot put text in the model's context without the
+conversation continuing — that is how the harness works, not a choice doppel makes. So the bar for
+saying anything to the agent is deliberately high: a *new* near-duplicate that is merge-worthy and
+traceable to a function edited this session, or a pair that crossed the merge-worthy line because
+you edited one of its sides. Count movements, look-alikes below the line, and pairs that shifted
+because the corpus shifted never reach it. Each finding is reported **once** per session, so a
+duplicate you leave in place does not interrupt you again on every later turn.
+
+Set `hook-notify` in `.doppel.json` to change this:
+
+| Value | Behaviour |
+| --- | --- |
+| `agent` (default) | the note above, plus your digest; costs a turn when there is a finding |
+| `user` | your digest only, never continues a turn |
+| `off` | silence |
 
 ## Reading the output honestly
 

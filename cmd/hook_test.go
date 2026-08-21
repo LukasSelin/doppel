@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/LukasSelin/doppel/internal/reporter"
 	"github.com/LukasSelin/doppel/internal/snapshot"
 )
 
@@ -177,4 +178,102 @@ func short(s string) string {
 		return s[:40] + "..."
 	}
 	return s
+}
+
+// The Stop hook's output reaches the model only by continuing the turn, so the
+// harness re-enters this hook on the very turn it just continued. Speaking
+// again would continue it again; the loop ends only when Claude Code overrides
+// it with a warning. stop_hook_active is the guard, so it has to be parsed.
+func TestReadHookInputParsesStopHookActive(t *testing.T) {
+	in, err := readHookInput(strings.NewReader(`{"session_id":"s","stop_hook_active":true}`))
+	if err != nil {
+		t.Fatalf("readHookInput: %v", err)
+	}
+	if !in.StopHookActive {
+		t.Error("StopHookActive = false, want true")
+	}
+	// Absent must read as false, or the very first Stop of a turn would be
+	// treated as a re-entry and the hook would never say anything at all.
+	in, err = readHookInput(strings.NewReader(`{"session_id":"s"}`))
+	if err != nil {
+		t.Fatalf("readHookInput: %v", err)
+	}
+	if in.StopHookActive {
+		t.Error("StopHookActive = true for an absent field, want false")
+	}
+}
+
+func TestUnreportedDropsAlreadySurfacedFindings(t *testing.T) {
+	findings := []reporter.Finding{
+		{Key: "new:a|b", Line: "a <-> b"},
+		{Key: "gate:c|d", Line: "c <-> d"},
+	}
+	got := unreported(findings, []string{"new:a|b"})
+	if len(got) != 1 || got[0].Key != "gate:c|d" {
+		t.Fatalf("unreported = %+v, want only gate:c|d", got)
+	}
+	if got := unreported(findings, []string{"new:a|b", "gate:c|d"}); len(got) != 0 {
+		t.Fatalf("want nothing left once both are reported, got %+v", got)
+	}
+}
+
+// A delta is cumulative against the session-start origin, so a finding that is
+// not remembered is re-reported every turn — and in agent mode continues every
+// turn. The ledger is what makes the feature bearable.
+func TestWithReportedAccumulatesWithoutMovingTheOrigin(t *testing.T) {
+	base := baselineFile{
+		Root:      "/repo",
+		CreatedAt: "2026-01-01T00:00:00Z",
+		Snapshot:  snapshot.Snapshot{Schema: snapshot.Schema, Functions: 7},
+		Reported:  []string{"new:a|b"},
+	}
+	got := withReported(base, []reporter.Finding{
+		{Key: "gate:c|d"},
+		{Key: "new:a|b"}, // already there; must not duplicate
+	})
+
+	want := []string{"gate:c|d", "new:a|b"} // sorted
+	if len(got.Reported) != len(want) {
+		t.Fatalf("Reported = %v, want %v", got.Reported, want)
+	}
+	for i := range want {
+		if got.Reported[i] != want[i] {
+			t.Fatalf("Reported = %v, want %v (sorted, deduped)", got.Reported, want)
+		}
+	}
+	if got.Snapshot.Functions != base.Snapshot.Functions || got.CreatedAt != base.CreatedAt {
+		t.Error("withReported moved the measurement origin; it must only add to the ledger")
+	}
+}
+
+func TestHookNotifyDefaultsAndValidates(t *testing.T) {
+	tests := []struct {
+		name    string
+		body    string
+		want    string
+		wantErr bool
+	}{
+		{"no config file", "", NotifyAgent, false},
+		{"absent key", `{"threshold":0.7}`, NotifyAgent, false},
+		{"explicit user", `{"hook-notify":"user"}`, NotifyUser, false},
+		{"explicit off", `{"hook-notify":"off"}`, NotifyOff, false},
+		{"invalid", `{"hook-notify":"shout"}`, NotifyAgent, true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			if tc.body != "" {
+				if err := os.WriteFile(filepath.Join(dir, ".doppel.json"), []byte(tc.body), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			got, err := hookNotify(dir)
+			if gotErr := err != nil; gotErr != tc.wantErr {
+				t.Fatalf("err = %v, wantErr %v", err, tc.wantErr)
+			}
+			if got != tc.want {
+				t.Errorf("hookNotify = %q, want %q", got, tc.want)
+			}
+		})
+	}
 }

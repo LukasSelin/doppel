@@ -104,6 +104,10 @@ Any flag above except `--config` can be set in a `.doppel.json` at the repo root
 
 A missing config file is not an error; malformed JSON is.
 
+One key has no flag behind it: `hook-notify` (`agent` | `user` | `off`) decides who the plugin's
+Stop hook reports to. See [plugin/README.md](plugin/README.md) — reaching the agent costs an extra
+turn, so it is worth understanding before leaving it on the default.
+
 ## Use as a Claude Code plugin
 
 The same analysis can run automatically around a coding session, answering two questions it is
