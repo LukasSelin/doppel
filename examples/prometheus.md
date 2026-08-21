@@ -9,7 +9,7 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `0fe7542` |
+| doppel | `e61ea20` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -27,9 +27,9 @@ Habitats: 90 modeled, 566 misfits; most uniform tracing (norm 0.97), most divers
 Conventions: strongest error_wrapping (0.63), loosest retry (0.34)
 Ecosystems: 2520 profiled (1738 dominance, 782 coalition, 0 conflict, 0 weak)
 Found 6245 functions. Retrieving candidates...
-Retrieval: shape 4351, concept 3885, call 8864 -> 15577 unique pairs
-  concept-only 23.6%  call-only 47.6%  suppressed-shape functions: 272  large identity buckets: 5  surviving patterns: 15278
-Running structural comparison on 15577 pairs...
+Retrieval: shape 4499, concept 3885, call 8864 -> 15764 unique pairs
+  concept-only 23.3%  call-only 47.3%  suppressed-shape functions: 201  large identity buckets: 5  surviving patterns: 36313
+Running structural comparison on 15764 pairs...
 ```
 
 # Code Similarity Report
@@ -51,7 +51,7 @@ Running structural comparison on 15577 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 0.97`
 
-**Evidence:** `3190.07` (shape 3182.87, concept 2.23, call 4.98)
+**Evidence:** `9868.83` (shape 9861.63, concept 2.23, call 4.98)
 
 **Trophic:** `0.99`
 
@@ -78,37 +78,7 @@ Running structural comparison on 15577 pairs...
 
 ---
 
-## Match #2 — Code-shape: `0.9153`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `model/textparse/openmetricslex.l.go:25` | `textparse.*openMetricsLexer.Lex` | ` ` | — |
-| **B** | `model/textparse/promlex.l.go:39` | `textparse.*promlexer.Lex` | ` ` | — |
-
-**Code similarity:** `ast 0.86  flow 1.00  nesting 1.00  sig 1.00  size 0.69`
-
-**Evidence:** `7537.35` (shape 7537.35, concept 0.00, call 0.00)
-
-**Trophic:** `0.78`
-
-**Shared structure:**
-
-- `306.00` — `assign=(call:next)`
-- `77.16` — `if(false)`
-- `73.69` — `seq[ assign=(id) ; return(id) ]`
-
-**Structural overlap:** `0.37` (not merge-worthy)
-
-- share 4 callees: [fmt.Errorf, l.next, len, panic]
-- overlapping call-graph neighborhoods (1.00): 1168 shared
-- same package
-- same visibility
-- both are methods, on *openMetricsLexer and *promlexer
-- call into same packages: [tsdb]
-
----
-
-## Match #3 — Code-shape: `0.9571`
+## Match #2 — Code-shape: `0.9571`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -121,7 +91,7 @@ Running structural comparison on 15577 pairs...
 
 **Code similarity:** `ast 0.93  flow 1.00  nesting 0.98  sig 1.00  size 1.00`
 
-**Evidence:** `2799.49` (shape 2792.29, concept 2.23, call 4.98)
+**Evidence:** `8766.68` (shape 8759.48, concept 2.23, call 4.98)
 
 **Trophic:** `0.91`
 
@@ -148,7 +118,7 @@ Running structural comparison on 15577 pairs...
 
 ---
 
-## Match #4 — Code-shape: `0.9573`
+## Match #3 — Code-shape: `0.9573`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -161,7 +131,7 @@ Running structural comparison on 15577 pairs...
 
 **Code similarity:** `ast 0.93  flow 1.00  nesting 0.99  sig 1.00  size 0.98`
 
-**Evidence:** `2799.49` (shape 2792.29, concept 2.23, call 4.98)
+**Evidence:** `8780.53` (shape 8773.33, concept 2.23, call 4.98)
 
 **Trophic:** `0.90`
 
@@ -188,6 +158,36 @@ Running structural comparison on 15577 pairs...
 
 ---
 
+## Match #4 — Code-shape: `0.9153`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `model/textparse/openmetricslex.l.go:25` | `textparse.*openMetricsLexer.Lex` | ` ` | — |
+| **B** | `model/textparse/promlex.l.go:39` | `textparse.*promlexer.Lex` | ` ` | — |
+
+**Code similarity:** `ast 0.86  flow 1.00  nesting 1.00  sig 1.00  size 0.69`
+
+**Evidence:** `15356.42` (shape 15356.42, concept 0.00, call 0.00)
+
+**Trophic:** `0.77`
+
+**Shared structure:**
+
+- `306.00` — `assign=(call:next)`
+- `77.16` — `if(false)`
+- `73.69` — `seq[ assign=(id) ; return(id) ]`
+
+**Structural overlap:** `0.37` (not merge-worthy)
+
+- share 4 callees: [fmt.Errorf, l.next, len, panic]
+- overlapping call-graph neighborhoods (1.00): 1168 shared
+- same package
+- same visibility
+- both are methods, on *openMetricsLexer and *promlexer
+- call into same packages: [tsdb]
+
+---
+
 ## Match #5 — Code-shape: `0.9961`
 
 | | Location | Function | Signature | Patterns |
@@ -197,7 +197,7 @@ Running structural comparison on 15577 pairs...
 
 **Code similarity:** `ast 0.99  flow 1.00  nesting 1.00  sig 1.00  size 0.96`
 
-**Evidence:** `1751.24` (shape 1746.24, concept 0.00, call 5.00)
+**Evidence:** `4627.83` (shape 4622.83, concept 0.00, call 5.00)
 
 **Trophic:** `0.99`
 
@@ -222,7 +222,47 @@ Running structural comparison on 15577 pairs...
 
 ---
 
-## Match #6 — Code-shape: `0.8253`
+## Match #6 — Code-shape: `0.8980`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `prompb/io/prometheus/client/decoder.go:314` | `io_prometheus_client.*Metric.unmarshalWithoutLabels` | ` ` | validation |
+| **B** | `prompb/io/prometheus/client/metrics.pb.go:3733` | `io_prometheus_client.*Metric.Unmarshal` | ` ` | validation |
+
+**Profile A:** `validation` 1.00 (dominance)
+
+**Profile B:** `validation` 1.00 (dominance)
+
+**Code similarity:** `ast 0.91  flow 1.00  nesting 1.00  sig 0.67  size 0.98`
+
+**Evidence:** `3015.31` (shape 3007.06, concept 2.23, call 6.03)
+
+**Trophic:** `0.98`
+
+**Shared structure:**
+
+- `37.00` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
+- `37.00` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
+- `37.00` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
+
+**Habitat:** A fits poorly in `io_prometheus_client` (fit 0.03, package norm 0.75)
+
+**Habitat:** B fits poorly in `io_prometheus_client` (fit 0.04, package norm 0.75)
+
+**Structural overlap:** `0.74` (merge-worthy)
+
+- share 10 callees: [Unmarshal, append, fmt.Errorf, int, int32, int64, len, skipMetrics, uint, uint64]
+- overlapping call-graph neighborhoods (1.00): 1168 shared
+- share patterns: [validation]
+- both are orchestrator functions
+- same package
+- callees do related work (1.00): [validation]
+- same receiver type: Metric
+- call into same packages: [io_prometheus_client, tsdb]
+
+---
+
+## Match #7 — Code-shape: `0.8253`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -235,9 +275,9 @@ Running structural comparison on 15577 pairs...
 
 **Code similarity:** `ast 0.71  flow 1.00  nesting 0.99  sig 1.00  size 0.91`
 
-**Evidence:** `1793.62` (shape 1673.12, concept 8.24, call 112.27)
+**Evidence:** `4327.97` (shape 4207.47, concept 8.24, call 112.27)
 
-**Trophic:** `0.83`
+**Trophic:** `0.80`
 
 **Shared structure:**
 
@@ -259,7 +299,7 @@ Running structural comparison on 15577 pairs...
 
 ---
 
-## Match #7 — Code-shape: `0.8224`
+## Match #8 — Code-shape: `0.8224`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -272,9 +312,9 @@ Running structural comparison on 15577 pairs...
 
 **Code similarity:** `ast 0.78  flow 0.99  nesting 1.00  sig 0.71  size 0.84`
 
-**Evidence:** `1166.27` (shape 1130.23, concept 7.99, call 28.04)
+**Evidence:** `2787.80` (shape 2751.76, concept 7.99, call 28.04)
 
-**Trophic:** `0.90`
+**Trophic:** `0.89`
 
 **Shared structure:**
 
@@ -299,42 +339,6 @@ Running structural comparison on 15577 pairs...
 
 ---
 
-## Match #8 — Code-shape: `0.7631`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `discovery/kubernetes/endpoints.go:347` | `kubernetes.*Endpoints.buildEndpoints` | ` ` | logging |
-| **B** | `discovery/kubernetes/endpointslice.go:308` | `kubernetes.*EndpointSlice.buildEndpointSlice` | ` ` | — |
-
-**Profile A:** `logging` 1.00 (dominance)
-
-**Code similarity:** `ast 0.78  flow 0.98  nesting 0.92  sig 0.33  size 0.84`
-
-**Evidence:** `1720.40` (shape 1657.09, concept 0.00, call 63.31)
-
-**Trophic:** `0.84`
-
-**Shared structure:**
-
-- `59.24` — `assign=(call:lv)`
-- `43.86` — `seq[ assign=(call:lv) ; assign=(call:lv) ]`
-- `19.85` — `range{ call:add }`
-
-**Structural overlap:** `0.62` (merge-worthy)
-
-- share 19 callees: [add, addNamespaceLabels, addNodeLabels, addObjectMetaLabels, append, e.addServiceLabels, e.resolvePodRef, hasSeenPort, len, lv, model.LabelName, namespacedName, net.JoinHostPort, podLabels, strconv.FormatBool, strconv.FormatUint, string, target.Merge, uint64]
-- overlapping call-graph neighborhoods (0.99): 1196 shared
-- both are orchestrator functions
-- same package
-- callers do related work (0.63): [caching, logging, concurrency]
-- callees do related work (1.00): [logging]
-- same visibility
-- both are methods, on *Endpoints and *EndpointSlice
-- called from same packages: [kubernetes]
-- call into same packages: [kubernetes, tsdb]
-
----
-
 ## Match #9 — Code-shape: `0.9000`
 
 | | Location | Function | Signature | Patterns |
@@ -344,7 +348,7 @@ Running structural comparison on 15577 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
 
-**Evidence:** `839.26` (shape 839.26, concept 0.00, call 0.00)
+**Evidence:** `1938.64` (shape 1938.64, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -368,32 +372,40 @@ Running structural comparison on 15577 pairs...
 
 ---
 
-## Match #10 — Code-shape: `1.0000`
+## Match #10 — Code-shape: `0.7407`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `util/runtime/statfs_linux_386.go:24` | `runtime.FsType` | ` ` | — |
-| **B** | `util/runtime/statfs_uint32.go:23` | `runtime.FsType` | ` ` | — |
+| **A** | `tsdb/head_wal.go:81` | `tsdb.*Head.loadWAL` | ` ` | concurrency, error_wrapping, logging |
+| **B** | `tsdb/head_wal.go:871` | `tsdb.*Head.loadWBL` | ` ` | concurrency, error_wrapping, logging |
 
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+**Profile A:** `logging` 1.00 (dominance)
 
-**Evidence:** `1012.76` (shape 1000.90, concept 0.00, call 11.86)
+**Profile B:** `logging` 1.00 (dominance)
 
-**Trophic:** `1.00`
+**Code similarity:** `ast 0.66  flow 0.99  nesting 0.99  sig 0.67  size 0.54`
+
+**Evidence:** `5774.61` (shape 5725.55, concept 5.06, call 44.00)
+
+**Trophic:** `0.65`
 
 **Shared structure:**
 
-- `15.43` — `return(call:Itoa)`
-- `7.72` — `seq[ if(id) ; return(call:Itoa) ]`
-- `6.80` — `seq[ assign:=(call:Statfs) ; if(bin:!=(id,nil)) ]`
+- `30.86` — `seq[ assign=(unary) ; return() ]`
+- `30.86` — `do(call:counterAddNonZero)`
+- `23.15` — `seq[ do(call:counterAddNonZero) ; do(call:counterAddNonZero) ]`
 
-**Structural overlap:** `0.52` (merge-worthy)
+**Structural overlap:** `0.68` (merge-worthy)
 
-- share 3 callees: [int, strconv.Itoa, syscall.Statfs]
-- both are leaf functions
+- share 38 callees: [Get, Put, Warn, append, clear, close, closeAndDrain, counterAddNonZero, dec.FloatHistogramSamples, dec.HistogramSamples, dec.Samples, dec.Type, float64, fmt.Errorf, getByID, len, make, min, panic, r.Err, r.Next, r.Offset, r.Record, r.Segment, record.NewDecoder, reuseBuf, reuseHistogramBuf, setup, uint64, unknownHistogramRefs.Add, unknownHistogramRefs.Load, unknownSampleRefs.Add, unknownSampleRefs.Load, unknownSeriesRefs.count, unknownSeriesRefs.merge, wg.Add, wg.Done, wg.Wait]
+- overlapping call-graph neighborhoods (0.99): 1310 shared
+- share patterns: [concurrency, error_wrapping, logging]
+- both are orchestrator functions
 - same package
+- callees do related work (0.39): [concurrency]
 - same visibility
-- same receiver type: plain functions
+- same receiver type: Head
+- call into same packages: [discovery, record, rules, tsdb, wlog]
 
 ---
 

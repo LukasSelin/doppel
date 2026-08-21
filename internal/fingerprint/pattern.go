@@ -12,11 +12,34 @@ import (
 // levels carry more behavioral meaning; corpus IC (computed downstream)
 // decides how much evidence any one pattern is worth.
 const (
-	LevelToken  uint8 = iota // L0: token 3-gram windows
+	LevelToken  uint8 = iota // L0: token n-gram windows (widths in l0Widths)
 	LevelExpr                // L1: call / binary-operator shapes
 	LevelAction              // L2: statement-with-salient-structure
 	LevelMotif               // L3: loop-body call summaries, statement bigrams
 )
+
+// l0ExtraWidths are the additional L0 window widths beside shingleK: 5-grams
+// are fine matches that certify longer shared runs. One index carries every
+// resolution and the retriever's presence-df cap discards whichever width
+// turns out idiomatic. Width 2 was built, measured on the cobra golden
+// labels, and left out: merge ranks were identical with and without it
+// (4.8), but the surviving 2-gram mass pulled the false-positive mean rank
+// from 41.3 up to 38.7 — on a small corpus too many 2-grams sit under the df
+// cap and feed exactly the vocabulary-heavy pairs the ranking's thin margins
+// already worry about. On large corpora the cap kills them anyway. Re-adding
+// 2 here is one edit, worth re-measuring once more corpora are labeled.
+// Two deliberate asymmetries against the legacy k=3 windows:
+//
+//   - Extra widths never clamp. shingleK's short-stream fallback would make
+//     a 2-token body emit the same hash under k=3 and k=5, silently
+//     collapsing in the accumulator — exactly the bodies the widths exist to
+//     discriminate. A stream shorter than the width simply emits nothing for
+//     it.
+//   - Extra-width hashes carry a leading "w<k>" part, so a window can never
+//     collide with a k=3 window over the same tokens. k=3 keeps its untagged
+//     hash input byte-identical, so every pre-existing pattern df is
+//     unchanged by the widening.
+var l0ExtraWidths = [...]int{5}
 
 // Pattern is one structural feature of a function body, at one level of the
 // hierarchy. For levels 1-3 the Render string IS the canonical serialization
@@ -43,6 +66,27 @@ func patternHash(level uint8, parts ...string) uint64 {
 	return h.Sum64()
 }
 
+// patternHashL0 hashes one token window, optionally width-tagged. An empty
+// tag is byte-identical to patternHash(LevelToken, window...) — the legacy
+// k=3 hash — and avoids the per-window slice allocation the variadic form
+// would cost on this hot path.
+func patternHashL0(tag string, window []string) uint64 {
+	h := fnv.New64a()
+	_, _ = h.Write([]byte{'L', '0' + LevelToken, '|'})
+	if tag != "" {
+		_, _ = h.Write([]byte(tag))
+		_, _ = h.Write([]byte{0})
+	}
+	for _, p := range window {
+		_, _ = h.Write([]byte(p))
+		_, _ = h.Write([]byte{0})
+	}
+	return h.Sum64()
+}
+
+// widthTag names an extra L0 width in the hash input: "w2", "w5".
+func widthTag(w int) string { return "w" + string(rune('0'+w)) }
+
 // extractPatterns walks the body once and accumulates the multi-level pattern
 // multiset. tokens is the walk() token stream, reused for the L0 windows.
 // Output is sorted by (Hash, Level, Render) — a total order, so the
@@ -66,15 +110,27 @@ func extractPatterns(body *ast.BlockStmt, tokens []string) []Pattern {
 		add(patternHash(level, render), level, keep)
 	}
 
-	// L0: counted sliding windows over the token stream, same short-stream
-	// fallback as shingle(). Counts matter here, unlike the deduped Shingles.
+	// L0: counted sliding windows over the token stream at every width in
+	// {shingleK} ∪ l0ExtraWidths. The k=3 pass keeps shingle()'s short-stream
+	// fallback and untagged hash input; the extra widths are width-tagged and
+	// never clamp — see l0ExtraWidths. Counts matter here, unlike the deduped
+	// Shingles.
 	if len(tokens) > 0 {
 		k := shingleK
 		if len(tokens) < k {
 			k = len(tokens)
 		}
 		for i := 0; i+k <= len(tokens); i++ {
-			add(patternHash(LevelToken, tokens[i:i+k]...), LevelToken, "")
+			add(patternHashL0("", tokens[i:i+k]), LevelToken, "")
+		}
+		for _, w := range l0ExtraWidths {
+			if len(tokens) < w {
+				continue
+			}
+			tag := widthTag(w)
+			for i := 0; i+w <= len(tokens); i++ {
+				add(patternHashL0(tag, tokens[i:i+w]), LevelToken, "")
+			}
 		}
 	}
 

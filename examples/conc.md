@@ -9,7 +9,7 @@ structured concurrency library; generics-heavy, one idea, written recently and a
 | Corpus | [conc](https://github.com/sourcegraph/conc) |
 | Pinned at | `v0.3.0` (`7b8c8f2875cb861bb61844c9bcaa1aed070adbd4`) |
 | Project since | 2023 |
-| doppel | `0fe7542` |
+| doppel | `e61ea20` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -28,7 +28,7 @@ Conventions: strongest concurrency (0.37), loosest concurrency (0.37)
 Ecosystems: 8 profiled (8 dominance, 0 coalition, 0 conflict, 0 weak)
 Found 81 functions. Retrieving candidates...
 Retrieval: shape 43, concept 25, call 15 -> 79 unique pairs
-  concept-only 29.1%  call-only 15.2%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 237
+  concept-only 29.1%  call-only 15.2%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 434
 Running structural comparison on 79 pairs...
 ```
 
@@ -47,9 +47,9 @@ Running structural comparison on 79 pairs...
 
 **Code similarity:** `ast 0.79  flow 1.00  nesting 1.00  sig 0.00  size 0.87`
 
-**Evidence:** `80.90` (shape 77.61, concept 0.00, call 3.30)
+**Evidence:** `137.33` (shape 134.03, concept 0.00, call 3.30)
 
-**Trophic:** `0.95`
+**Trophic:** `0.93`
 
 **Shared structure:**
 
@@ -74,7 +74,36 @@ Running structural comparison on 79 pairs...
 
 ---
 
-## Match #2 — Code-shape: `0.8889`
+## Match #2 — Code-shape: `1.0000`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `pool/result_error_pool.go:55` | `pool.*ResultErrorPool[T].WithContext` | ` ` | — |
+| **B** | `pool/result_pool.go:63` | `pool.*ResultPool[T].WithContext` | ` ` | — |
+
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Evidence:** `90.71` (shape 90.71, concept 0.00, call 0.00)
+
+**Trophic:** `1.00`
+
+**Shared structure:**
+
+- `2.72` — `seq[ do(call:panicIfInitialized) ; return(unary) ]`
+- `1.91` — `return(unary)`
+- `1.07` — `do(call:panicIfInitialized)`
+
+**Structural overlap:** `0.50` (merge-worthy)
+
+- share 2 callees: [WithContext, p.panicIfInitialized]
+- both are leaf functions
+- same package
+- same visibility
+- both are methods, on *ResultErrorPool[T] and *ResultPool[T]
+
+---
+
+## Match #3 — Code-shape: `0.8889`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -83,9 +112,9 @@ Running structural comparison on 79 pairs...
 
 **Code similarity:** `ast 0.81  flow 1.00  nesting 1.00  sig 1.00  size 0.91`
 
-**Evidence:** `75.87` (shape 72.17, concept 0.00, call 3.70)
+**Evidence:** `141.91` (shape 138.21, concept 0.00, call 3.70)
 
-**Trophic:** `0.93`
+**Trophic:** `0.92`
 
 **Shared structure:**
 
@@ -107,35 +136,6 @@ Running structural comparison on 79 pairs...
 
 ---
 
-## Match #3 — Code-shape: `1.0000`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `pool/result_error_pool.go:55` | `pool.*ResultErrorPool[T].WithContext` | ` ` | — |
-| **B** | `pool/result_pool.go:63` | `pool.*ResultPool[T].WithContext` | ` ` | — |
-
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
-
-**Evidence:** `44.07` (shape 44.07, concept 0.00, call 0.00)
-
-**Trophic:** `1.00`
-
-**Shared structure:**
-
-- `2.72` — `seq[ do(call:panicIfInitialized) ; return(unary) ]`
-- `1.91` — `return(unary)`
-- `1.07` — `do(call:panicIfInitialized)`
-
-**Structural overlap:** `0.50` (merge-worthy)
-
-- share 2 callees: [WithContext, p.panicIfInitialized]
-- both are leaf functions
-- same package
-- same visibility
-- both are methods, on *ResultErrorPool[T] and *ResultPool[T]
-
----
-
 ## Match #4 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Patterns |
@@ -145,7 +145,7 @@ Running structural comparison on 79 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `27.52` (shape 27.52, concept 0.00, call 0.00)
+**Evidence:** `52.86` (shape 52.86, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -176,7 +176,7 @@ Running structural comparison on 79 pairs...
 
 **Code similarity:** `ast 0.53  flow 0.82  nesting 0.89  sig 0.40  size 0.50`
 
-**Evidence:** `90.28` (shape 86.58, concept 0.00, call 3.70)
+**Evidence:** `158.79` (shape 155.09, concept 0.00, call 3.70)
 
 **Trophic:** `0.71`
 
@@ -206,7 +206,7 @@ Running structural comparison on 79 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.00  size 1.00`
 
-**Evidence:** `29.19` (shape 29.19, concept 0.00, call 0.00)
+**Evidence:** `50.32` (shape 50.32, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -235,7 +235,7 @@ Running structural comparison on 79 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.00  size 1.00`
 
-**Evidence:** `29.19` (shape 29.19, concept 0.00, call 0.00)
+**Evidence:** `50.32` (shape 50.32, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -264,7 +264,7 @@ Running structural comparison on 79 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.00  size 1.00`
 
-**Evidence:** `29.19` (shape 29.19, concept 0.00, call 0.00)
+**Evidence:** `50.32` (shape 50.32, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -293,7 +293,7 @@ Running structural comparison on 79 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
 
-**Evidence:** `25.62` (shape 25.62, concept 0.00, call 0.00)
+**Evidence:** `46.22` (shape 46.22, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -322,7 +322,7 @@ Running structural comparison on 79 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
 
-**Evidence:** `25.62` (shape 25.62, concept 0.00, call 0.00)
+**Evidence:** `46.22` (shape 46.22, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 

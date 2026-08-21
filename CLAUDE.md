@@ -245,8 +245,12 @@ Consequences worth knowing:
 ### Trophic structural energy
 
 The shape channel's features are the **multi-level pattern multiset** extracted by
-`fingerprint.extractPatterns` during `Build` (the AST exists only during parse): L0 token 3-gram
-windows, L1 call/binary-operator shapes, L2 statements with salient structure
+`fingerprint.extractPatterns` during `Build` (the AST exists only during parse): L0 token n-gram
+windows at widths 3 and 5 (k=3 keeps its legacy untagged hash so pre-widening dfs are unchanged;
+w5 windows are width-tagged, never clamp on short streams, and certify longer shared runs — width
+2 was built, measured on the cobra labels, and left out because its surviving mass fed
+vocabulary-heavy false positives; see `l0ExtraWidths`), L1 call/binary-operator shapes, L2
+statements with salient structure
 (`return(call:Sprintf)`, `defer(call:Close)`, `if(bin:!=(id,nil))` — nil/true/false keep their
 names so the err-check idiom falls out with no special case), and L3 motifs — loop call summaries
 covering header *and* body (`for{ call:Scan call:TrimSpace call:Atoi call:append }`, ≤ 8 callees)

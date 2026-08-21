@@ -9,7 +9,7 @@ container engine; a decade of accretion across daemon, API, and plugin layers
 | Corpus | [moby](https://github.com/moby/moby) |
 | Pinned at | `v28.5.2` (`89c5e8fd66634b6128fc4c0e6f1236e2540e46e0`) |
 | Project since | 2013 |
-| doppel | `0fe7542` |
+| doppel | `e61ea20` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -27,9 +27,9 @@ Habitats: 168 modeled, 371 misfits; most uniform checker (norm 0.98), most diver
 Conventions: strongest error_wrapping (0.62), loosest db_access (0.37)
 Ecosystems: 4050 profiled (3750 dominance, 300 coalition, 0 conflict, 0 weak)
 Found 8003 functions. Retrieving candidates...
-Retrieval: shape 4126, concept 2410, call 12559 -> 17584 unique pairs
-  concept-only 13.0%  call-only 63.1%  suppressed-shape functions: 376  large identity buckets: 4  surviving patterns: 19542
-Running structural comparison on 17584 pairs...
+Retrieval: shape 4629, concept 2410, call 12559 -> 18106 unique pairs
+  concept-only 12.6%  call-only 61.4%  suppressed-shape functions: 218  large identity buckets: 4  surviving patterns: 43206
+Running structural comparison on 18106 pairs...
   6 pairs suppressed by max-per-func=2
 ```
 
@@ -52,7 +52,7 @@ Running structural comparison on 17584 pairs...
 
 **Code similarity:** `ast 0.92  flow 1.00  nesting 1.00  sig 1.00  size 0.99`
 
-**Evidence:** `1246.32` (shape 1230.35, concept 1.98, call 13.99)
+**Evidence:** `3222.04` (shape 3206.08, concept 1.98, call 13.99)
 
 **Trophic:** `0.95`
 
@@ -93,9 +93,9 @@ Running structural comparison on 17584 pairs...
 
 **Code similarity:** `ast 0.87  flow 1.00  nesting 1.00  sig 1.00  size 0.80`
 
-**Evidence:** `1322.97` (shape 1307.00, concept 1.98, call 13.99)
+**Evidence:** `3430.41` (shape 3414.44, concept 1.98, call 13.99)
 
-**Trophic:** `0.92`
+**Trophic:** `0.90`
 
 **Shared structure:**
 
@@ -134,7 +134,7 @@ Running structural comparison on 17584 pairs...
 
 **Code similarity:** `ast 0.85  flow 1.00  nesting 1.00  sig 1.00  size 0.98`
 
-**Evidence:** `1398.11` (shape 1396.13, concept 1.98, call 0.00)
+**Evidence:** `3780.67` (shape 3778.69, concept 1.98, call 0.00)
 
 **Trophic:** `0.93`
 
@@ -174,9 +174,9 @@ Running structural comparison on 17584 pairs...
 
 **Code similarity:** `ast 0.68  flow 1.00  nesting 1.00  sig 1.00  size 0.81`
 
-**Evidence:** `1880.91` (shape 1878.93, concept 1.98, call 0.00)
+**Evidence:** `5138.50` (shape 5136.52, concept 1.98, call 0.00)
 
-**Trophic:** `0.83`
+**Trophic:** `0.81`
 
 **Shared structure:**
 
@@ -212,9 +212,9 @@ Running structural comparison on 17584 pairs...
 
 **Code similarity:** `ast 0.96  flow 1.00  nesting 1.00  sig 1.00  size 0.79`
 
-**Evidence:** `1068.42` (shape 1052.45, concept 1.98, call 13.99)
+**Evidence:** `2692.88` (shape 2676.92, concept 1.98, call 13.99)
 
-**Trophic:** `0.91`
+**Trophic:** `0.89`
 
 **Shared structure:**
 
@@ -240,44 +240,43 @@ Running structural comparison on 17584 pairs...
 
 ---
 
-## Match #6 — Code-shape: `0.8944`
+## Match #6 — Code-shape: `0.8702`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `libnetwork/networkdb/networkdb.pb.go:1824` | `networkdb.*NodeEvent.Unmarshal` | ` ` | validation |
-| **B** | `libnetwork/networkdb/networkdb.pb.go:2249` | `networkdb.*NetworkPushPull.Unmarshal` | ` ` | validation |
+| **A** | `api/types/plugins/logdriver/entry.pb.go:360` | `logdriver.*LogEntry.Unmarshal` | ` ` | validation |
+| **B** | `daemon/cluster/internal/runtime/plugin.pb.go:379` | `runtime.*PluginSpec.Unmarshal` | ` ` | validation |
 
 **Profile A:** `validation` 1.00 (dominance)
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.82  flow 1.00  nesting 1.00  sig 1.00  size 0.86`
+**Code similarity:** `ast 0.78  flow 1.00  nesting 1.00  sig 1.00  size 0.94`
 
-**Evidence:** `1031.79` (shape 1015.83, concept 1.98, call 13.99)
+**Evidence:** `3580.40` (shape 3578.43, concept 1.98, call 0.00)
 
-**Trophic:** `0.95`
+**Trophic:** `0.86`
 
 **Shared structure:**
 
-- `22.32` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
-- `22.32` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
-- `22.32` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
+- `33.48` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
+- `33.48` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
+- `33.48` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
 
-**Habitat:** A fits poorly in `networkdb` (fit 0.21, package norm 0.68)
+**Habitat:** A fits poorly in `logdriver` (fit 0.05, package norm 0.71)
 
-**Habitat:** B fits poorly in `networkdb` (fit 0.21, package norm 0.68)
+**Habitat:** B fits poorly in `runtime` (fit 0.06, package norm 0.70)
 
-**Structural overlap:** `0.75` (merge-worthy)
+**Structural overlap:** `0.65` (merge-worthy)
 
-- share 9 callees: [fmt.Errorf, github_com_hashicorp_serf_serf.LamportTime, int, int32, len, skipNetworkdb, string, uint, uint64]
+- share 10 callees: [Unmarshal, append, bool, fmt.Errorf, int, int32, len, string, uint, uint64]
 - overlapping call-graph neighborhoods (1.00): 106 shared
 - share patterns: [validation]
 - both are orchestrator functions
-- same package
 - callees do related work (1.00): [validation]
 - same visibility
-- both are methods, on *NodeEvent and *NetworkPushPull
-- call into same packages: [ipbits, networkdb]
+- both are methods, on *LogEntry and *PluginSpec
+- call into same packages: [ipbits]
 
 ---
 
@@ -294,7 +293,7 @@ Running structural comparison on 17584 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `846.54` (shape 844.57, concept 1.98, call 0.00)
+**Evidence:** `2089.79` (shape 2087.81, concept 1.98, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -334,7 +333,7 @@ Running structural comparison on 17584 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `846.54` (shape 844.57, concept 1.98, call 0.00)
+**Evidence:** `2089.79` (shape 2087.81, concept 1.98, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -372,7 +371,7 @@ Running structural comparison on 17584 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `846.54` (shape 844.57, concept 1.98, call 0.00)
+**Evidence:** `2089.79` (shape 2087.81, concept 1.98, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -397,22 +396,22 @@ Running structural comparison on 17584 pairs...
 
 ---
 
-## Match #10 — Code-shape: `0.8702`
+## Match #10 — Code-shape: `0.9631`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `api/types/plugins/logdriver/entry.pb.go:360` | `logdriver.*LogEntry.Unmarshal` | ` ` | validation |
-| **B** | `daemon/cluster/internal/runtime/plugin.pb.go:379` | `runtime.*PluginSpec.Unmarshal` | ` ` | validation |
+| **A** | `daemon/cluster/internal/runtime/plugin.pb.go:379` | `runtime.*PluginSpec.Unmarshal` | ` ` | validation |
+| **B** | `libnetwork/agent.pb.go:618` | `libnetwork.*EndpointRecord.Unmarshal` | ` ` | validation |
 
 **Profile A:** `validation` 1.00 (dominance)
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.78  flow 1.00  nesting 1.00  sig 1.00  size 0.94`
+**Code similarity:** `ast 0.94  flow 1.00  nesting 1.00  sig 1.00  size 0.61`
 
-**Evidence:** `1338.28` (shape 1336.30, concept 1.98, call 0.00)
+**Evidence:** `4158.49` (shape 4156.51, concept 1.98, call 0.00)
 
-**Trophic:** `0.89`
+**Trophic:** `0.75`
 
 **Shared structure:**
 
@@ -420,11 +419,9 @@ Running structural comparison on 17584 pairs...
 - `33.48` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
 - `33.48` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
 
-**Habitat:** A fits poorly in `logdriver` (fit 0.05, package norm 0.71)
+**Habitat:** A fits poorly in `runtime` (fit 0.06, package norm 0.70)
 
-**Habitat:** B fits poorly in `runtime` (fit 0.06, package norm 0.70)
-
-**Structural overlap:** `0.65` (merge-worthy)
+**Structural overlap:** `0.66` (merge-worthy)
 
 - share 10 callees: [Unmarshal, append, bool, fmt.Errorf, int, int32, len, string, uint, uint64]
 - overlapping call-graph neighborhoods (1.00): 106 shared
@@ -432,7 +429,7 @@ Running structural comparison on 17584 pairs...
 - both are orchestrator functions
 - callees do related work (1.00): [validation]
 - same visibility
-- both are methods, on *LogEntry and *PluginSpec
+- both are methods, on *PluginSpec and *EndpointRecord
 - call into same packages: [ipbits]
 
 ---

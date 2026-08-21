@@ -47,6 +47,108 @@ func hasRender(fp Fingerprint, level uint8, render string) bool {
 	return false
 }
 
+// The multi-width L0 index: the k=3 windows keep their legacy untagged hash
+// (every pre-existing df is unchanged by the widening), the extra widths are
+// tagged so cross-width windows can never collide, and a stream shorter than
+// an extra width emits nothing for it rather than clamping.
+func TestPatternsMultiWidthL0(t *testing.T) {
+	fp := buildFrom(t, `
+func widths(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}`)
+	tokens, _, _, _ := walkFixture(t, `
+func widths(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}`)
+	if len(tokens) < 5 {
+		t.Fatalf("fixture stream too short: %v", tokens)
+	}
+	hashes := map[uint64]bool{}
+	for _, p := range fp.Patterns {
+		if p.Level == LevelToken {
+			hashes[p.Hash] = true
+		}
+	}
+	// Legacy k=3 hash input is byte-identical to the variadic form.
+	legacy := patternHash(LevelToken, tokens[0:3]...)
+	if legacy != patternHashL0("", tokens[0:3]) {
+		t.Fatal("patternHashL0 with empty tag must equal the legacy k=3 hash")
+	}
+	if !hashes[legacy] {
+		t.Errorf("legacy k=3 window missing from the multiset")
+	}
+	// Every extra width present, and tagged so it cannot collide with an
+	// untagged window over the same tokens. (Width 2 was measured out — see
+	// l0ExtraWidths — so only w5 exists today.)
+	for _, w := range l0ExtraWidths {
+		h := patternHashL0(widthTag(w), tokens[0:w])
+		if !hashes[h] {
+			t.Errorf("w%d window missing from the multiset", w)
+		}
+		if h == patternHashL0("", tokens[0:w]) {
+			t.Errorf("w%d hash collides with an untagged window over the same tokens", w)
+		}
+	}
+	// A stream shorter than an extra width emits nothing for it — never a
+	// clamped window: every L0 hash in the short multiset must be
+	// reproducible from the stream's own (possibly clamped) k=3 windows.
+	short := buildFrom(t, `
+func tiny() {
+	println()
+}`)
+	stokens, _, _, _ := walkFixture(t, `
+func tiny() {
+	println()
+}`)
+	if len(stokens) >= 5 {
+		t.Fatalf("short fixture is not short: %v", stokens)
+	}
+	want := map[uint64]bool{}
+	k := shingleK
+	if len(stokens) < k {
+		k = len(stokens)
+	}
+	for i := 0; i+k <= len(stokens); i++ {
+		want[patternHashL0("", stokens[i:i+k])] = true
+	}
+	for _, w := range l0ExtraWidths {
+		if len(stokens) < w {
+			continue
+		}
+		for i := 0; i+w <= len(stokens); i++ {
+			want[patternHashL0(widthTag(w), stokens[i:i+w])] = true
+		}
+	}
+	for _, p := range short.Patterns {
+		if p.Level == LevelToken && !want[p.Hash] {
+			t.Errorf("short stream emitted an unexpected L0 window (hash %x) — a clamped extra width?", p.Hash)
+		}
+	}
+}
+
+// walkFixture exposes the walk() token stream for a fixture.
+func walkFixture(t *testing.T, src string) ([]string, []int, []int, int) {
+	t.Helper()
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "fix.go", "package fix\n"+src, 0)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	for _, decl := range file.Decls {
+		if fd, ok := decl.(*ast.FuncDecl); ok {
+			return walk(fd.Body)
+		}
+	}
+	t.Fatal("no function in fixture")
+	return nil, nil, nil, 0
+}
+
 // A trivial Sprintf method: L1 call pattern, L2 return-of-call, and no motif
 // patterns at all — there is no chain to summarize.
 func TestPatternsTrivialSprintfMethod(t *testing.T) {

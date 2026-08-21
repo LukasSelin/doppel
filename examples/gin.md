@@ -9,7 +9,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `0fe7542` |
+| doppel | `e61ea20` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -27,9 +27,9 @@ Habitats: 5 modeled, 17 misfits; most uniform binding (norm 0.91), most diverse 
 Conventions: strongest serialization (0.72), loosest caching (0.37)
 Ecosystems: 128 profiled (128 dominance, 0 coalition, 0 conflict, 0 weak)
 Found 497 functions. Retrieving candidates...
-Retrieval: shape 154, concept 317, call 609 -> 1021 unique pairs
-  concept-only 29.3%  call-only 54.6%  suppressed-shape functions: 1  large identity buckets: 0  surviving patterns: 1491
-Running structural comparison on 1021 pairs...
+Retrieval: shape 157, concept 317, call 609 -> 1023 unique pairs
+  concept-only 29.2%  call-only 54.3%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 3202
+Running structural comparison on 1023 pairs...
 ```
 
 # Code Similarity Report
@@ -47,7 +47,7 @@ Running structural comparison on 1021 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `305.26` (shape 272.00, concept 0.00, call 33.26)
+**Evidence:** `567.17` (shape 533.91, concept 0.00, call 33.26)
 
 **Trophic:** `1.00`
 
@@ -83,9 +83,9 @@ Running structural comparison on 1021 pairs...
 
 **Code similarity:** `ast 0.87  flow 1.00  nesting 1.00  sig 0.50  size 0.87`
 
-**Evidence:** `203.54` (shape 178.51, concept 1.32, call 23.71)
+**Evidence:** `402.35` (shape 377.32, concept 1.32, call 23.71)
 
-**Trophic:** `0.86`
+**Trophic:** `0.85`
 
 **Shared structure:**
 
@@ -120,7 +120,7 @@ Running structural comparison on 1021 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `74.47` (shape 73.14, concept 1.32, call 0.00)
+**Evidence:** `149.11` (shape 147.79, concept 1.32, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -142,7 +142,146 @@ Running structural comparison on 1021 pairs...
 
 ---
 
-## Match #4 — Code-shape: `0.6573`
+## Match #4 — Code-shape: `1.0000`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `binding/toml.go:29` | `binding.decodeToml` | ` ` | validation |
+| **B** | `binding/xml.go:28` | `binding.decodeXML` | ` ` | validation, serialization |
+
+**Profile A:** `validation` 1.00 (dominance)
+
+**Profile B:** `validation` 1.00 (dominance)
+
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Evidence:** `149.11` (shape 147.79, concept 1.32, call 0.00)
+
+**Trophic:** `1.00`
+
+**Shared structure:**
+
+- `4.53` — `seq[ assign:=(call:NewDecoder) ; if(bin:!=(id,nil)) ]`
+- `4.24` — `assign:=(call:NewDecoder)`
+- `4.01` — `assign:=(call:Decode)`
+
+**Structural overlap:** `0.57` (merge-worthy)
+
+- share 2 callees: [decoder.Decode, validate]
+- share patterns: [validation]
+- both are utility functions
+- same package
+- same visibility
+- same receiver type: plain functions
+- called from same packages: [binding]
+
+---
+
+## Match #5 — Code-shape: `1.0000`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `binding/xml.go:28` | `binding.decodeXML` | ` ` | validation, serialization |
+| **B** | `binding/yaml.go:29` | `binding.decodeYAML` | ` ` | validation |
+
+**Profile A:** `validation` 1.00 (dominance)
+
+**Profile B:** `validation` 1.00 (dominance)
+
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Evidence:** `149.11` (shape 147.79, concept 1.32, call 0.00)
+
+**Trophic:** `1.00`
+
+**Shared structure:**
+
+- `4.53` — `seq[ assign:=(call:NewDecoder) ; if(bin:!=(id,nil)) ]`
+- `4.24` — `assign:=(call:NewDecoder)`
+- `4.01` — `assign:=(call:Decode)`
+
+**Structural overlap:** `0.57` (merge-worthy)
+
+- share 2 callees: [decoder.Decode, validate]
+- share patterns: [validation]
+- both are utility functions
+- same package
+- same visibility
+- same receiver type: plain functions
+- called from same packages: [binding]
+
+---
+
+## Match #6 — Code-shape: `0.9357`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `render/protobuf.go:21` | `render.ProtoBuf.Render` | ` ` | serialization |
+| **B** | `render/yaml.go:21` | `render.YAML.Render` | ` ` | serialization |
+
+**Profile A:** `serialization` 1.00 (dominance)
+
+**Profile B:** `serialization` 1.00 (dominance)
+
+**Code similarity:** `ast 0.89  flow 1.00  nesting 1.00  sig 1.00  size 0.89`
+
+**Evidence:** `150.19` (shape 145.29, concept 1.18, call 3.72)
+
+**Trophic:** `0.91`
+
+**Shared structure:**
+
+- `4.01` — `seq[ if(bin:!=(id,nil)) ; assign=(call:Write) ]`
+- `3.68` — `seq[ assign:=(call:Marshal) ; if(bin:!=(id,nil)) ]`
+- `3.68` — `seq[ do(call:WriteContentType) ; assign:=(call:Marshal) ]`
+
+**Structural overlap:** `0.66` (merge-worthy)
+
+- share 2 callees: [r.WriteContentType, w.Write]
+- overlapping call-graph neighborhoods (1.00): 12 shared
+- share patterns: [serialization]
+- both are leaf functions
+- same package
+- same visibility
+- both are methods, on ProtoBuf and YAML
+- call into same packages: [gin]
+
+---
+
+## Match #7 — Code-shape: `1.0000`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `render/toml.go:21` | `render.TOML.Render` | ` ` | — |
+| **B** | `render/yaml.go:21` | `render.YAML.Render` | ` ` | serialization |
+
+**Profile B:** `serialization` 1.00 (dominance)
+
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Evidence:** `153.94` (shape 150.22, concept 0.00, call 3.72)
+
+**Trophic:** `1.00`
+
+**Shared structure:**
+
+- `4.01` — `seq[ if(bin:!=(id,nil)) ; assign=(call:Write) ]`
+- `3.68` — `seq[ assign:=(call:Marshal) ; if(bin:!=(id,nil)) ]`
+- `3.68` — `seq[ do(call:WriteContentType) ; assign:=(call:Marshal) ]`
+
+**Structural overlap:** `0.49` (merge-worthy)
+
+- share 2 callees: [r.WriteContentType, w.Write]
+- overlapping call-graph neighborhoods (1.00): 12 shared
+- both are leaf functions
+- same package
+- same visibility
+- both are methods, on TOML and YAML
+- call into same packages: [gin]
+
+---
+
+## Match #8 — Code-shape: `0.6573`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -153,9 +292,9 @@ Running structural comparison on 1021 pairs...
 
 **Code similarity:** `ast 0.62  flow 0.94  nesting 0.99  sig 0.33  size 0.69`
 
-**Evidence:** `205.26` (shape 192.99, concept 0.00, call 12.27)
+**Evidence:** `347.75` (shape 335.48, concept 0.00, call 12.27)
 
-**Trophic:** `0.84`
+**Trophic:** `0.80`
 
 **Shared structure:**
 
@@ -175,44 +314,7 @@ Running structural comparison on 1021 pairs...
 
 ---
 
-## Match #5 — Code-shape: `0.6100`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `gin.go:272` | `gin.*Engine.LoadHTMLGlob` | `—` | validation |
-| **B** | `gin.go:288` | `gin.*Engine.LoadHTMLFiles` | `—` | validation |
-
-**Profile A:** `validation` 1.00 (dominance)
-
-**Profile B:** `validation` 1.00 (dominance)
-
-**Code similarity:** `ast 0.60  flow 1.00  nesting 1.00  sig 0.00  size 0.87`
-
-**Evidence:** `171.77` (shape 146.74, concept 1.32, call 23.71)
-
-**Trophic:** `0.75`
-
-**Shared structure:**
-
-- `4.53` — `assign:=(call:Must)`
-- `4.53` — `do(call:SetHTMLTemplate)`
-- `4.24` — `seq[ assign=(composite) ; return() ]`
-
-**Structural overlap:** `0.75` (merge-worthy)
-
-- share 6 callees: [Delims, Funcs, IsDebugging, engine.SetHTMLTemplate, template.Must, template.New]
-- overlapping call-graph neighborhoods (0.92): 11 shared
-- share patterns: [validation]
-- both are orchestrator functions
-- same package
-- callees do related work (1.00): [concurrency]
-- same visibility
-- same receiver type: Engine
-- call into same packages: [gin]
-
----
-
-## Match #6 — Code-shape: `0.7320`
+## Match #9 — Code-shape: `0.7320`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -221,9 +323,9 @@ Running structural comparison on 1021 pairs...
 
 **Code similarity:** `ast 0.72  flow 1.00  nesting 1.00  sig 0.33  size 0.98`
 
-**Evidence:** `171.66` (shape 159.39, concept 0.00, call 12.27)
+**Evidence:** `294.42` (shape 282.16, concept 0.00, call 12.27)
 
-**Trophic:** `0.83`
+**Trophic:** `0.81`
 
 **Shared structure:**
 
@@ -243,7 +345,7 @@ Running structural comparison on 1021 pairs...
 
 ---
 
-## Match #7 — Code-shape: `0.7364`
+## Match #10 — Code-shape: `0.7364`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -252,9 +354,9 @@ Running structural comparison on 1021 pairs...
 
 **Code similarity:** `ast 0.69  flow 1.00  nesting 1.00  sig 0.50  size 0.71`
 
-**Evidence:** `170.37` (shape 150.10, concept 0.00, call 20.27)
+**Evidence:** `304.45` (shape 284.18, concept 0.00, call 20.27)
 
-**Trophic:** `0.92`
+**Trophic:** `0.88`
 
 **Shared structure:**
 
@@ -270,107 +372,6 @@ Running structural comparison on 1021 pairs...
 - same package
 - same receiver type: RouterGroup
 - called from same packages: [gin]
-- call into same packages: [gin]
-
----
-
-## Match #8 — Code-shape: `1.0000`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `binding/toml.go:29` | `binding.decodeToml` | ` ` | validation |
-| **B** | `binding/xml.go:28` | `binding.decodeXML` | ` ` | validation, serialization |
-
-**Profile A:** `validation` 1.00 (dominance)
-
-**Profile B:** `validation` 1.00 (dominance)
-
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
-
-**Evidence:** `74.47` (shape 73.14, concept 1.32, call 0.00)
-
-**Trophic:** `1.00`
-
-**Shared structure:**
-
-- `4.53` — `seq[ assign:=(call:NewDecoder) ; if(bin:!=(id,nil)) ]`
-- `4.24` — `assign:=(call:NewDecoder)`
-- `4.01` — `assign:=(call:Decode)`
-
-**Structural overlap:** `0.57` (merge-worthy)
-
-- share 2 callees: [decoder.Decode, validate]
-- share patterns: [validation]
-- both are utility functions
-- same package
-- same visibility
-- same receiver type: plain functions
-- called from same packages: [binding]
-
----
-
-## Match #9 — Code-shape: `1.0000`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `binding/xml.go:28` | `binding.decodeXML` | ` ` | validation, serialization |
-| **B** | `binding/yaml.go:29` | `binding.decodeYAML` | ` ` | validation |
-
-**Profile A:** `validation` 1.00 (dominance)
-
-**Profile B:** `validation` 1.00 (dominance)
-
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
-
-**Evidence:** `74.47` (shape 73.14, concept 1.32, call 0.00)
-
-**Trophic:** `1.00`
-
-**Shared structure:**
-
-- `4.53` — `seq[ assign:=(call:NewDecoder) ; if(bin:!=(id,nil)) ]`
-- `4.24` — `assign:=(call:NewDecoder)`
-- `4.01` — `assign:=(call:Decode)`
-
-**Structural overlap:** `0.57` (merge-worthy)
-
-- share 2 callees: [decoder.Decode, validate]
-- share patterns: [validation]
-- both are utility functions
-- same package
-- same visibility
-- same receiver type: plain functions
-- called from same packages: [binding]
-
----
-
-## Match #10 — Code-shape: `0.7447`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `gin.go:561` | `gin.*Engine.RunTLS` | ` ` | — |
-| **B** | `gin.go:630` | `gin.*Engine.RunQUIC` | ` ` | — |
-
-**Code similarity:** `ast 0.57  flow 1.00  nesting 1.00  sig 1.00  size 0.79`
-
-**Evidence:** `144.09` (shape 131.82, concept 0.00, call 12.27)
-
-**Trophic:** `0.85`
-
-**Shared structure:**
-
-- `5.97` — `do(call:debugPrint)`
-- `4.01` — `seq[ do(call:debugPrint) ; defer(funclit) ]`
-- `3.83` — `seq[ defer(funclit) ; if(call:isUnsafeTrustedProxies) ]`
-
-**Structural overlap:** `0.54` (merge-worthy)
-
-- share 4 callees: [debugPrint, debugPrintError, engine.Handler, engine.isUnsafeTrustedProxies]
-- overlapping call-graph neighborhoods (1.00): 19 shared
-- both are orchestrator functions
-- same package
-- same visibility
-- same receiver type: Engine
 - call into same packages: [gin]
 
 ---
