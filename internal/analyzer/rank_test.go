@@ -38,9 +38,13 @@ func TestSortByEvidenceOrdersByTotalThenScoreThenIndex(t *testing.T) {
 }
 
 func corroborated(aIdx, bIdx int, total, overlap, score float64) SimilarPair {
+	return corroboratedT(aIdx, bIdx, total, overlap, score, 1.0)
+}
+
+func corroboratedT(aIdx, bIdx int, total, overlap, score, trophic float64) SimilarPair {
 	return SimilarPair{
 		AIdx: aIdx, BIdx: bIdx, Score: score,
-		Retrieval: &Retrieval{Total: total},
+		Retrieval: &Retrieval{Total: total, TrophicSim: trophic},
 		Evidence:  &comparator.StructuralEvidence{OverlapScore: overlap},
 	}
 }
@@ -49,14 +53,13 @@ func corroborated(aIdx, bIdx int, total, overlap, score float64) SimilarPair {
 // corpus report: the production clone (moderate evidence, high overlap, high
 // shape) must outrank the verbose-vocabulary false positives (huge evidence,
 // low overlap, low shape), and the cross-package true clone must stay above
-// them too — that last margin is only ~9%, which is exactly what the golden
-// benchmark watches.
+// them too.
 func TestSortForReportCorroboratedOrdering(t *testing.T) {
 	pairs := []SimilarPair{
-		corroborated(0, 1, 1936.00, 0.18, 0.41), // vocabulary FP (key ≈ 143)
-		corroborated(2, 3, 546.35, 0.59, 0.92),  // production clone (key ≈ 297)
-		corroborated(4, 5, 1810.83, 0.26, 0.39), // vocabulary FP (key ≈ 184)
-		corroborated(6, 7, 755.00, 0.37, 0.72),  // cross-package clone (key ≈ 201)
+		corroboratedT(0, 1, 1936.00, 0.18, 0.41, 0.55), // vocabulary FP
+		corroboratedT(2, 3, 546.35, 0.59, 0.92, 0.93),  // production clone
+		corroboratedT(4, 5, 1810.83, 0.26, 0.39, 0.55), // vocabulary FP
+		corroboratedT(6, 7, 755.00, 0.37, 0.72, 0.91),  // cross-package clone
 	}
 	kept, suppressed := SortForReport(pairs, 0, 0)
 	var order []int
@@ -71,8 +74,31 @@ func TestSortForReportCorroboratedOrdering(t *testing.T) {
 	}
 }
 
+// The family-skeleton pin, with the real numbers that motivated the squared
+// trophic factor: a compose-send skeleton sibling (big evidence, decent
+// overlap, but trophic 0.77 because each side carries a large unshared body)
+// must rank BELOW every genuine family clone (trophic 0.97-1.0). Under a
+// linear trophic factor the skeleton sibling beats the weakest clone by a
+// fraction of a percent; squared, the margin is ~22%.
+func TestSortForReportFamilySkeletonBelowFamilyClones(t *testing.T) {
+	pairs := []SimilarPair{
+		corroboratedT(0, 1, 939.84, 0.72, 0.6859, 0.77), // skeleton FP (BookFreight~InsuranceClaim shape)
+		corroboratedT(2, 3, 456.72, 0.83, 0.9400, 1.00), // weakest family clone (ClaimUPS~DPDClaim shape)
+		corroboratedT(4, 5, 456.72, 0.83, 0.9397, 0.97), // family clone
+		corroboratedT(6, 7, 485.42, 0.83, 0.9400, 1.00), // family clone
+	}
+	kept, _ := SortForReport(pairs, 0, 0)
+	if kept[len(kept)-1].AIdx != 0 {
+		var order []int
+		for _, p := range kept {
+			order = append(order, p.AIdx)
+		}
+		t.Errorf("order = %v; the skeleton sibling must rank last", order)
+	}
+}
+
 func TestSortForReportNilFallbacks(t *testing.T) {
-	noEvidence := SimilarPair{AIdx: 0, BIdx: 1, Score: 0.5, Retrieval: &Retrieval{Total: 100}}
+	noEvidence := SimilarPair{AIdx: 0, BIdx: 1, Score: 0.5, Retrieval: &Retrieval{Total: 100, TrophicSim: 1}}
 	noRetrieval := SimilarPair{AIdx: 2, BIdx: 3, Score: 0.99}
 	small := corroborated(4, 5, 100, 0.4, 0.5) // key 20 < nil-Evidence key 50
 	kept, _ := SortForReport([]SimilarPair{noRetrieval, small, noEvidence}, 0, 0)

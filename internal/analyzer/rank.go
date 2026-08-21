@@ -34,11 +34,19 @@ func SortByEvidence(pairs []SimilarPair, topN int) []SimilarPair {
 }
 
 // SortForReport is the pipeline's final ranking: corroborated evidence.
-// The rank key is Retrieval.Total × Evidence.OverlapScore × Score — evidence
-// mass discounted by architectural corroboration and structural similarity —
-// which demotes pairs whose mass comes from a verbose shared vocabulary with
-// no other agreement (the drawing-API failure mode) without touching any
-// displayed quantity. A nil Evidence contributes factor 1 (evidence×score);
+// The rank key is Retrieval.Total × Evidence.OverlapScore × Score ×
+// TrophicSim² — evidence mass discounted by architectural corroboration,
+// structural similarity, and squared trophic similarity. The first two
+// factors demote pairs whose mass comes from a verbose shared vocabulary
+// with no other agreement (the drawing-API failure mode); the squared
+// trophic factor separates genuine clone families from family-skeleton
+// siblings that share a large common prologue but carry substantial unshared
+// bodies. Squared, not linear: the Dice 2S/(E_A+E_B) approximates, when
+// squared, the product of the two per-side shared fractions S/E_A · S/E_B —
+// the pair is discounted once per side that does its own thing. (A linear
+// factor verifiably leaves a skeleton sibling within a fraction of a percent
+// of a true family clone; the golden benchmark pins the separation.)
+// No displayed quantity changes. A nil Evidence contributes factor 1;
 // a nil Retrieval ranks 0, matching SortByEvidence. Ties break on Score
 // desc, then AIdx, BIdx.
 //
@@ -54,7 +62,8 @@ func SortForReport(pairs []SimilarPair, topN, maxPerFunc int) ([]SimilarPair, in
 		if p.Retrieval == nil {
 			return 0
 		}
-		k := p.Retrieval.Total * p.Score
+		t := p.Retrieval.TrophicSim
+		k := p.Retrieval.Total * p.Score * t * t
 		if p.Evidence != nil {
 			k *= p.Evidence.OverlapScore
 		}

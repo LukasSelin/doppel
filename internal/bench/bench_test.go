@@ -206,6 +206,7 @@ func TestGoldenRanking(t *testing.T) {
 			Score: c.Breakdown.Score, Breakdown: c.Breakdown,
 			Retrieval: &analyzer.Retrieval{
 				Shape: c.Shape, Concept: c.Concept, Call: c.Call, Total: c.Total,
+				TrophicSim: c.TrophicSim,
 			},
 		})
 	}
@@ -230,7 +231,8 @@ func TestGoldenRanking(t *testing.T) {
 		k := pairKey(qualifiedName(p.A), qualifiedName(p.B))
 		if _, ok := rankOf[k]; !ok {
 			rankOf[k] = i + 1
-			keyOf[k] = p.Retrieval.Total * p.Evidence.OverlapScore * p.Score
+			t := p.Retrieval.TrophicSim
+			keyOf[k] = p.Retrieval.Total * p.Evidence.OverlapScore * p.Score * t * t
 		}
 	}
 

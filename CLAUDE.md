@@ -27,7 +27,7 @@ Orchestrated end to end by `runAnalyze` in `cmd/analyze.go`. Stages in execution
 5. **Candidate retrieval** — `retriever.Retrieve` runs three per-function top-K channels (structural shingle-IDF, concept IC, resolved-call IDF — see *Candidate retrieval* below), unions and dedupes them, and computes definitive per-pair evidence masses plus the exact `fingerprint.Breakdown` for every union pair. Retrieval stats go to stderr. `cmd` materializes the candidates into `analyzer.SimilarPair`s (with `Retrieval` set). `analyzer.FindSimilar` still exists as the simple library API but the pipeline no longer calls it.
 6. **Structural comparison** — a `comparator.Comparator` built over a corpus-weighted `ontology.Scorer` scores **every** candidate pair → `pair.Evidence`. Concept and role signals go through the ontology hierarchy, not string equality, and concept matching is weighted by information content computed from this run's tag counts — sharing a near-universal tag is weak evidence, sharing a rare one is strong.
 7. **Structural filter** — when `--struct-min > 0`, pairs below that overlap score are **dropped**. This is a selection stage, not just annotation.
-8. **Rank + report** — `analyzer.SortForReport` orders by corroborated evidence (`Total × OverlapScore × Score`, then code-shape, then `AIdx`/`BIdx`), applies the `--max-per-func` diversity cap greedily with backfill, and truncates to `--top`. `reporter.Print` to stdout always; `reporter.PrintMarkdown` to `--output` additionally. Both take a `reporter.Meta`; `--debug` adds per-pair retrieval provenance.
+8. **Rank + report** — `analyzer.SortForReport` orders by corroborated evidence (`Total × OverlapScore × Score × TrophicSim²`, then code-shape, then `AIdx`/`BIdx`), applies the `--max-per-func` diversity cap greedily with backfill, and truncates to `--top`. `reporter.Print` to stdout always; `reporter.PrintMarkdown` to `--output` additionally. Both take a `reporter.Meta`; `--debug` adds per-pair retrieval provenance.
 
 `docs[i]` describes `units[i]`, and `SimilarPair` carries `AIdx`/`BIdx` into that slice. Evidence
 attachment is a positional lookup, deliberately — an earlier version keyed it on
@@ -80,12 +80,16 @@ bodies in unrelated subsystems) from high on both (a real merge candidate), and 
 destroys that distinction.
 
 The report is **ranked by neither alone**: `analyzer.SortForReport` orders by **corroborated
-evidence** — `Retrieval.Total × Evidence.OverlapScore × Score` — evidence mass discounted by
-architectural corroboration and structural similarity. Raw mass alone let verbose shared
-vocabularies (PDF drawing APIs) outrank a self-documented production clone; the human-reviewed
-ground truth showed every true finding is high on at least one quality axis while mechanical
-false positives are low on both. This is a *ranking key only* — the displayed quantities stay
-unblended. A per-function diversity cap (`--max-per-func`, default 2) then bounds how many pairs
+evidence** — `Retrieval.Total × Evidence.OverlapScore × Score × TrophicSim²` — evidence mass
+discounted by architectural corroboration, structural similarity, and squared trophic
+similarity. Raw mass alone let verbose shared vocabularies (PDF drawing APIs) outrank a
+self-documented production clone; adding overlap and code-shape fixed that but left
+family-skeleton siblings (a shared compose-send prologue with large unshared bodies) beating
+genuine family clones. Trophic² separates them: squared because the Dice, squared, approximates
+the product of the two per-side shared fractions — one discount per side that does its own
+thing. A linear trophic factor verifiably leaves a skeleton sibling within a fraction of a
+percent of a true clone; the golden benchmark pins the separation. This is a *ranking key only*
+— the displayed quantities stay unblended. A per-function diversity cap (`--max-per-func`, default 2) then bounds how many pairs
 any one function fills, greedily in rank order with backfill; a suppression count goes to stderr.
 `SortByEvidence` (plain `Retrieval.Total` ordering) remains the simple library API. The report
 label was deliberately renamed from `score:` to `code-shape:` so nobody reads 1.0000 as a verdict.
@@ -601,9 +605,12 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   which only engages once the idiom bucket exceeds `MaxPatternDF`. Between df=2 and the cap, exact
   twins read trophic 1.0 with *small* energy — the energy is what ranks, so this is display-level
   nuance, not a scoring bug.
-- **Corroborated ranking has thin margins on vocabulary-heavy pairs.** The rank key demotes
-  verbose-API shape mass only through the overlap and code-shape factors; a cross-package true
-  clone and a vocabulary false positive can sit ~10% apart in key. The golden benchmark exists
-  to watch exactly this; a labeled semantic false positive with genuinely high corroboration
-  (sibling table-driven tests of different functions) keeps the benchmark's assertions
-  deliberately red until a mechanism can express it.
+- **Corroborated ranking has thin margins on vocabulary-heavy pairs.** A cross-package true
+  clone and a vocabulary false positive can sit ~10-20% apart in key. The golden benchmark
+  exists to watch exactly this; one labeled semantic false positive with genuinely high
+  corroboration AND high trophic (sibling table-driven tests of different functions — the
+  drivers really are near-clones; only the tested function differs) keeps the full-population
+  benchmark's assertions deliberately red until a mechanism can express it (SUT-aware test
+  discounting via the call graph is the named candidate). Trophic² also discounts non-identical
+  true clones somewhat (the production clone sits mid-top-50, not top-20, in the full-population
+  view) — the price of demoting skeleton siblings, watched by the same benchmark.
