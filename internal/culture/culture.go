@@ -8,6 +8,7 @@
 package culture
 
 import (
+	"math"
 	"sort"
 
 	"github.com/lukse/doppel/internal/concepter"
@@ -25,6 +26,9 @@ type Options struct {
 	AtypicalFactor    float64 // atypical when typicality < factor × the concept's median
 	MinHabitatMembers int     // packages with fewer functions get no habitat model
 	MisfitFactor      float64 // misfit when strain > factor × the habitat temperature (median strain)
+	SurvivorMass      float64 // equilibrium mass floor for an arena survivor
+	DominanceMass     float64 // top-survivor mass at or above which the state is dominance
+	MinArenaEvidence  float64 // weak floor on an arena's total evidence, nats
 }
 
 // DefaultOptions returns the production defaults.
@@ -37,6 +41,9 @@ func DefaultOptions() Options {
 		AtypicalFactor:    0.5,
 		MinHabitatMembers: 5,
 		MisfitFactor:      2.0,
+		SurvivorMass:      0.05,
+		DominanceMass:     0.6,
+		MinArenaEvidence:  math.Ln2,
 	}
 }
 
@@ -64,6 +71,12 @@ type Stats struct {
 	StrongestConventionStrength float64
 	LoosestConvention           string // prototyped tag with the lowest convention strength
 	LoosestConventionStrength   float64
+
+	ArenaProfiled  int // units with a concept-arena profile (sum of the four states)
+	ArenaDominance int
+	ArenaCoalition int
+	ArenaConflict  int
+	ArenaWeak      int
 }
 
 // Model is the built culture model. Query it by unit index (into the units
@@ -74,6 +87,7 @@ type Model struct {
 	concepts      map[string]*conceptModel // keyed by tag; only prototyped concepts
 	habitats      map[string]*habitatModel // keyed by package; only modeled habitats
 	habitatByUnit map[int]*habitatModel    // modeled members only
+	arenas        map[int]ArenaProfile     // units with a non-empty candidate set only
 	stats         Stats
 }
 
@@ -116,11 +130,13 @@ func Build(units []parser.CodeUnit, docs []concepter.ConceptDoc,
 		concepts:      make(map[string]*conceptModel),
 		habitats:      make(map[string]*habitatModel),
 		habitatByUnit: make(map[int]*habitatModel),
+		arenas:        make(map[int]ArenaProfile),
 	}
 	m.associations = buildAssociations(units, docs, uf.tokens, opt)
 	m.stats.AssociationCount = len(m.associations)
 	buildPrototypes(m, units, docs, uf, opt)
 	buildHabitats(m, units, docs, uf, opt)
+	buildArenas(m, units, docs, uf, opt)
 	return m
 }
 
