@@ -8,7 +8,14 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Release archives ship linux, darwin and windows binaries, so the test
+    # suite has to have run on all three before a tag is cut.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
@@ -29,13 +36,17 @@ jobs:
 
       # The JSON snapshot is what the hooks diff, so a schema panic or a
       # nondeterministic field has to fail here rather than in a session.
+      # Determinism is platform-independent, and /tmp, printf and diff are
+      # Git Bash assumptions, so this and the hook check stay on Linux.
       - name: Snapshot is deterministic
+        if: matrix.os == 'ubuntu-latest'
         run: |
           go run . analyze . --format json > /tmp/a.json
           go run . analyze . --format json > /tmp/b.json
           diff /tmp/a.json /tmp/b.json
 
       - name: Hook entry points respond
+        if: matrix.os == 'ubuntu-latest'
         run: |
           printf '{"session_id":"ci","cwd":"%s","source":"startup"}' "$PWD" > /tmp/hook.json
           go run . hook session-start < /tmp/hook.json > /tmp/ss.json

@@ -1,6 +1,11 @@
 package cmd
 
-import "runtime/debug"
+import (
+	"fmt"
+	"runtime/debug"
+
+	"github.com/spf13/cobra"
+)
 
 // version identifies the doppel build. It exists because a baseline snapshot
 // must be discarded when the binary that wrote it differs from the one reading
@@ -25,4 +30,23 @@ func buildVersion() string {
 		return info.Main.Version
 	}
 	return "(devel)"
+}
+
+// versionCmd exists because a downloaded binary that cannot say what it is
+// makes the comparability story unusable — without it the build identity is
+// visible only inside a `--format json` snapshot's `doppel` field.
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print the doppel build identity",
+	Long: "Print the build identity recorded in every snapshot. A session baseline\n" +
+		"written by a different build is discarded, so this is the string that\n" +
+		"decides whether two runs are comparable at all.",
+	Args: cobra.NoArgs,
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Fprintln(cmd.OutOrStdout(), buildVersion())
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(versionCmd)
 }

@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  # ci.yml triggers on `push: branches: [master]` and `pull_request`, neither of
+  # which a tag push matches — so `needs:` cannot reach it and `workflow_run`
+  # never fires. The gate has to be re-declared here rather than reused.
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./...
+
+      # The JSON snapshot is what the hooks diff, so a nondeterministic field
+      # must not reach a published binary.
+      - name: Snapshot is deterministic
+        run: |
+          go run . analyze . --format json > /tmp/a.json
+          go run . analyze . --format json > /tmp/b.json
+          diff /tmp/a.json /tmp/b.json
+
+  release:
+    needs: verify
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # GoReleaser needs full history and all tags to resolve the previous
+          # tag and build a changelog.
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          # Pinned exactly, not floated: a moved toolchain version can silently
+          # change every published artifact, the same reason the bench corpora
+          # are pinned to peeled commits.
+          version: 'v2.17.1'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

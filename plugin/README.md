@@ -13,7 +13,10 @@ Four hooks around a Go repo, ordered by when they fire:
 
 ## Install
 
-`doppel` must be on your `PATH`:
+The plugin shells out to the `doppel` binary. It does not bundle one and never downloads one, so
+install the binary first — either a prebuilt archive from the
+[latest release](https://github.com/LukasSelin/doppel/releases/latest) (linux, darwin and windows,
+amd64 and arm64), or:
 
 ```bash
 go install github.com/LukasSelin/doppel@latest
@@ -29,8 +32,16 @@ claude plugin marketplace add LukasSelin/doppel
 claude plugin install doppel@doppel
 ```
 
-If the binary is not on your `PATH`, set the `doppel_binary` option to an absolute path when the
-plugin asks, or in the plugin's configuration afterwards.
+The plugin's `doppel_binary` option defaults to the bare name `doppel`, resolved through your
+`PATH` — so extracting an archive is not by itself enough. Either put the extracted binary on your
+`PATH`, or set `doppel_binary` to its absolute path (`~/tools/doppel`, `C:\tools\doppel.exe` —
+include the `.exe` on Windows) when the plugin asks, or in the plugin's configuration afterwards.
+
+Check that the binary the plugin will run works:
+
+```bash
+doppel version
+```
 
 ## What each hook does
 

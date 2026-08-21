@@ -141,6 +141,10 @@ task test     # go test ./...
 task vet      # go vet ./...
 task fmt      # gofmt -w .
 
+task dist          # goreleaser release --snapshot --clean  — the six release archives, unpublished
+task release-check # goreleaser check                       — validate .goreleaser.yaml
+task build-stamped # go build with -X cmd.version=$(git describe --tags --always --dirty)
+
 task corpora  # fetch the pinned public corpus ladder (network, a few hundred MB)
 task bench    # per-stage pipeline benchmarks over whatever is fetched
 task golden   # score examples/labels/*.labels.json against the fetched corpora
@@ -159,9 +163,21 @@ doppel ontology --defs                                # print the vocabulary and
 
 - `.githooks/pre-commit` checks `gofmt` on **staged** `.go` files, then runs `go vet ./...` across
   the whole module. It is only active after `task setup` — `core.hooksPath` is documented nowhere else.
-- `.github/workflows/ci.yml` runs `go build/vet/test` on pushes and PRs to **`master`** (not `main`).
-  Go version comes from `go-version-file: go.mod` (currently `1.25.0`).
+- `.github/workflows/ci.yml` runs `go build/vet/test` on pushes and PRs to **`master`** (not `main`),
+  across a three-OS matrix (`ubuntu`/`windows`/`macos`) because releases ship binaries for all three.
+  The determinism and hook-entry-point steps are guarded `if: matrix.os == 'ubuntu-latest'` — they
+  assume `/tmp`, `printf` and `diff`, and determinism is platform-independent, so proving it once
+  is enough. Go version comes from `go-version-file: go.mod` (currently `1.25.0`).
 - **CI does not check gofmt** — only the local hook does. This is why formatting drift is possible.
+- `.github/workflows/release.yml` fires on a `v*` tag push and runs GoReleaser (pinned `v2.17.1`)
+  over `.goreleaser.yaml`. It **re-declares** vet/test/determinism in a `verify` job rather than
+  reusing `ci.yml`: a tag push matches neither of `ci.yml`'s triggers, so `needs:` cannot reach it
+  and `workflow_run` never fires. `contents: write` is scoped to the release job alone.
+- The release build stamps `-X …/cmd.version=v{{ .Version }}`, **not** `{{ .Tag }}` — under
+  `--snapshot` the latter resolves to the *previous* tag, so every local build of every tree would
+  claim one identity, which is the stale-baseline-passes-comparability failure the check exists to
+  catch. `task dist` runs the whole release locally into `dist/`; `task release-check` validates
+  the config.
 - `.gitattributes` forces LF for Go/shell/markdown/config so the bash hook works under Git Bash on Windows.
 
 ## Key types
@@ -832,14 +848,21 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   `(devel)` for a plain `go build`, so rebuilding doppel mid-session with changed scoring constants
   leaves a stale baseline looking comparable. Ldflags-stamped releases do not have this problem, and
   the fallback deliberately does not invent a value that would make every baseline stale instead.
+  `task build-stamped` is the mitigation when you are mid-session and changing scoring code; plain
+  `task build` deliberately stays unstamped, because `git describe --dirty` collapses every dirty
+  tree to one string and would hide the failure rather than fix it.
 
-- **`go install github.com/LukasSelin/doppel@latest` does not work.** The only version tag,
-  `v0.0.1-alpha`, is a lightweight tag on `9c221eb` — the *initial* commit, whose `go.mod` still
-  reads `module github.com/lukse/doppel`. `@latest` resolves to it and fails on the module-path
-  mismatch, and even if it resolved it predates the `hook` subcommands the plugin invokes. The
-  README documents the command in three places regardless. The fix is to cut a fresh tag on
-  `master` (`v0.1.0`, matching the plugin manifest version) rather than move the existing one —
-  the bench manifest already learned the hard way that moved tags fail loudly for a reason.
+- **`v0.1.0` exists but carries no binaries.** `go install github.com/LukasSelin/doppel@latest`
+  works again — `v0.1.0` on `a268368` has the correct module path and the `hook` subcommands, so it
+  supersedes `v0.0.1-alpha` (a lightweight tag on the *initial* commit `9c221eb`, whose `go.mod`
+  still reads `module github.com/lukse/doppel`; kept rather than moved, because the bench manifest
+  already learned that moved tags fail loudly for a reason). But `v0.1.0` predates
+  `.github/workflows/release.yml`, so **no archives were ever built for it** — and both READMEs now
+  point users at the releases page first. The next tag cut after this change is the first one that
+  actually publishes binaries; until it exists, the download instructions describe a release that
+  has no assets. Two things to get right when cutting it: use an **annotated** tag, and keep
+  `plugin/.claude-plugin/plugin.json`'s `version` in lockstep with it, since the plugin is coupled
+  to the binary's `hook <name>` contract.
 
 - **`http_call` never fires on a wrapper-client codebase.** The rule matches one channel,
   `selectors`, by exact string against `http.Get`/`http.Post`/`http.Do`/`http.NewRequest`. Three
