@@ -9,7 +9,7 @@ static site generator; a large monolith with heavy template and resource subsyst
 | Corpus | [hugo](https://github.com/gohugoio/hugo) |
 | Pinned at | `v0.165.0` (`76a5e1880ab46688155b02e99bab9be2a6134492`) |
 | Project since | 2013 |
-| doppel | `d9e6c71` |
+| doppel | `7aa1f08` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -45,6 +45,8 @@ Families: 306 over 480 components, 939 functions in a family, 623 edges complete
 |---|---|---|---|---|
 | **A** | `tpl/internal/go_templates/texttemplate/exec.go:772` | `template.*state.evalCallOld` | `(reflect.Value, reflect.Value, bool, parse.Node, string, []parse.Node, reflect.Value) (reflect.Value)` | validation, error_wrapping |
 | **B** | `tpl/internal/go_templates/texttemplate/hugo_template.go:294` | `template.*state.evalCall` | `(reflect.Value, reflect.Value, bool, parse.Node, string, []parse.Node, reflect.Value, ...reflect.Value) (reflect.Value)` | validation, error_wrapping |
+
+**Kind:** diverged copy — `*state.evalCallOld` and `*state.evalCall` share the stem `evalCall` in package `template`
 
 **Profile A:** `validation` 1.00 (dominance)
 
@@ -86,6 +88,8 @@ Families: 306 over 480 components, 939 functions in a family, 623 edges complete
 |---|---|---|---|---|
 | **A** | `tpl/internal/go_templates/texttemplate/exec.go:682` | `template.*state.evalFieldOld` | `(reflect.Value, string, parse.Node, []parse.Node, reflect.Value, reflect.Value) (reflect.Value)` | validation |
 | **B** | `tpl/internal/go_templates/texttemplate/hugo_template.go:156` | `template.*state.evalField` | `(reflect.Value, string, parse.Node, []parse.Node, reflect.Value, reflect.Value) (reflect.Value)` | validation |
+
+**Kind:** diverged copy — `*state.evalFieldOld` and `*state.evalField` share the stem `evalField` in package `template`
 
 **Profile A:** `validation` 1.00 (dominance)
 
@@ -234,6 +238,8 @@ Families: 306 over 480 components, 939 functions in a family, 623 edges complete
 | **A** | `tpl/internal/go_templates/texttemplate/exec.go:892` | `template.*state._validateType` | `(reflect.Value, reflect.Type) (reflect.Value)` | validation |
 | **B** | `tpl/internal/go_templates/texttemplate/hugo_template.go:435` | `template.*state.validateType` | `(reflect.Value, reflect.Type) (reflect.Value)` | validation, mapping |
 
+**Kind:** diverged copy — `*state._validateType` and `*state.validateType` share the stem `validateType` in package `template`
+
 **Profile A:** `validation` 1.00 (dominance)
 
 **Profile B:** `validation` 1.00 (dominance)
@@ -268,6 +274,8 @@ Families: 306 over 480 components, 939 functions in a family, 623 edges complete
 |---|---|---|---|---|
 | **A** | `resources/resource_transformers/babel/babel.go:115` | `babel.*babelTransformation.Transform` | `(*resources.ResourceTransformationCtx) (error)` | mapping, concurrency, error_wrapping, file_io |
 | **B** | `resources/resource_transformers/cssjs/postcss.go:146` | `cssjs.*postcssTransformation.Transform` | `(*resources.ResourceTransformationCtx) (error)` | mapping, concurrency, file_io |
+
+**Kind:** interface implementations — both implement `Transform(*resources.ResourceTransformationCtx) (error)` on `*babelTransformation` and `*postcssTransformation`, sibling packages `babel` and `cssjs`
 
 **Profile A:** `file_io` 1.00 (dominance)
 
@@ -352,6 +360,8 @@ Families: 306 over 480 components, 939 functions in a family, 623 edges complete
 |---|---|---|---|---|
 | **A** | `resources/resource_transformers/cssjs/postcss.go:146` | `cssjs.*postcssTransformation.Transform` | `(*resources.ResourceTransformationCtx) (error)` | mapping, concurrency, file_io |
 | **B** | `resources/resource_transformers/cssjs/tailwindcss.go:80` | `cssjs.*tailwindcssTransformation.Transform` | `(*resources.ResourceTransformationCtx) (error)` | mapping, concurrency, file_io |
+
+**Kind:** interface implementations — both implement `Transform(*resources.ResourceTransformationCtx) (error)` on `*postcssTransformation` and `*tailwindcssTransformation`, in package `cssjs`
 
 **Profile A:** `file_io` 1.00 (dominance)
 

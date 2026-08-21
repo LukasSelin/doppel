@@ -90,6 +90,12 @@ type Family struct {
 	// between them and concludes the family is invented.
 	Completed int
 
+	// Kind labels a family every member pair of which satisfies one of the
+	// pair kinds — interface implementations of one method, or diverged
+	// copies sharing one stem — so the census can say why a family exists.
+	// Nil when unlabeled. See analyzer.ClassifyFamily.
+	Kind *analyzer.KindNote
+
 	// Evidence is the family's total retrieval evidence mass in nats —
 	// Σ Retrieval.Total over the clique edges retrieval proposed (completed
 	// edges contribute zero). It is what ranks the census: a 44-member family
@@ -165,6 +171,9 @@ func Build(units []parser.CodeUnit, pairs []analyzer.SimilarPair, o Options) ([]
 	}
 
 	sortFamilies(out)
+	for i := range out {
+		out[i].Kind = analyzer.ClassifyFamily(units, out[i].Members, out[i].MinEdge)
+	}
 	stats.Families = len(out)
 	stats.Members = len(seen)
 	sort.Ints(stats.Skipped)

@@ -124,6 +124,11 @@ Every reported pair carries two independent numbers:
 
 A high code score with low structural overlap means two lookalike bodies in unrelated parts of the system. High on both is the real merge candidate.
 
+When a naming rule can say what a pair *is*, a `kind:` line says it — `interface implementations`
+(same method, same signature, different types: a `Validate` per provider) or `diverged copy` (alike
+bodies whose names agree once version markers are stripped: `evalCall` beside `evalCallOld`). Both
+are labels only; neither filters a pair or moves it in the ranking.
+
 ### Families
 
 A pair is two functions. `doppel families` reports the *groups*: every set of three or more
@@ -143,9 +148,10 @@ neighbours per function, some edges inside a real family are never proposed — 
 directly before grouping, and says how many it added, so a family never rests on an edge you cannot
 find in the pair list without being told.
 
-A function can belong to more than one family; the counts report distinct functions. `analyze`
-shows the largest few inline; `doppel families` is the whole census, with `--format json` for a
-machine.
+A function can belong to more than one family; the counts report distinct functions. A family
+whose every member pair satisfies one of the pair kinds says so on its line (`kind: interface
+implementations of Flush()`), and in the JSON as `kind`. `analyze` shows the most informative few
+inline; `doppel families` is the whole census, with `--format json` for a machine.
 
 ### Flags
 

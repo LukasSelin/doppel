@@ -9,7 +9,7 @@ container engine; a decade of accretion across daemon, API, and plugin layers
 | Corpus | [moby](https://github.com/moby/moby) |
 | Pinned at | `v28.5.2` (`89c5e8fd66634b6128fc4c0e6f1236e2540e46e0`) |
 | Project since | 2013 |
-| doppel | `d9e6c71` |
+| doppel | `7aa1f08` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -277,6 +277,8 @@ Families: 656 over 702 components, 1522 functions in a family, 2814 edges comple
 | **A** | `libnetwork/drivers/ipvlan/ipvlan_joinleave.go:33` | `ipvlan.*driver.Join` | `(context.Context, string, string, string, driverapi.JoinInfo, map[string]interface{}, map[string]interface{}) (error)` | — |
 | **B** | `libnetwork/drivers/macvlan/macvlan_joinleave.go:21` | `macvlan.*driver.Join` | `(context.Context, string, string, string, driverapi.JoinInfo, map[string]interface{}, map[string]interface{}) (error)` | — |
 
+**Kind:** interface implementations — both implement `Join(context.Context, string, string, string, driverapi.JoinInfo, map[string]interface{}, map[string]interface{}) (error)` on `*driver` and `*driver`, sibling packages `ipvlan` and `macvlan`
+
 **Code similarity:** `ast 0.86  flow 1.00  nesting 0.85  sig 1.00  size 0.76`
 
 **Evidence:** `1977.00` (shape 1919.05, concept 0.00, call 57.94)
@@ -383,6 +385,8 @@ Families: 656 over 702 components, 1522 functions in a family, 2814 edges comple
 | **A** | `daemon/graphdriver/fuse-overlayfs/fuseoverlayfs.go:172` | `fuseoverlayfs.*Driver.create` | `(string, string, *graphdriver.CreateOpts) (error)` | file_io |
 | **B** | `daemon/graphdriver/overlay2/overlay.go:345` | `overlay2.*Driver.create` | `(string, string, *graphdriver.CreateOpts) (error)` | file_io |
 
+**Kind:** interface implementations — both implement `create(string, string, *graphdriver.CreateOpts) (error)` on `*Driver` and `*Driver`, sibling packages `fuseoverlayfs` and `overlay2`
+
 **Profile A:** `file_io` 1.00 (dominance)
 
 **Profile B:** `file_io` 1.00 (dominance)
@@ -444,7 +448,7 @@ Families: 656 over 702 components, 1522 functions in a family, 2814 edges comple
 | `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:677` | `dbclient.doWriteWaitLeave` | `([]string, []string)` | concurrency |
 | `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:713` | `dbclient.doWriteWaitLeaveJoin` | `([]string, []string)` | concurrency |
 
-### Family 3 — 11 members, every pair `>= 0.62` code-shape, evidence `16144`  (22 edges scored here)
+### Family 3 — 11 members, every pair `>= 0.62` code-shape, evidence `16144`  (22 edges scored here), interface implementations of `UnmarshalJSON([]byte) (error)`, packages `driverapi`, `bridge`, `ipvlan`, `macvlan`, `windows` and `libnetwork`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|

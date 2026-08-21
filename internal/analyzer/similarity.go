@@ -19,6 +19,7 @@ type SimilarPair struct {
 	Culture    []CultureNote                  // unusual concept realizations; nil when none — set by the pipeline
 	Habitat    []HabitatNote                  // habitat misfits; nil when neither side misfits — set by the pipeline
 	Profile    []ProfileNote                  // equilibrium concept profiles; nil when neither side qualifies
+	Kind       *KindNote                      // what the pair is — interface implementations, a diverged copy; nil when unlabeled
 }
 
 // MergeWorthy is the whole merge verdict, and SimilarPair is the only type

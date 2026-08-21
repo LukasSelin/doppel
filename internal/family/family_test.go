@@ -303,3 +303,32 @@ func TestFamiliesOrderBySizeThenTightness(t *testing.T) {
 		t.Errorf("the tighter but smaller family led: %+v", fams)
 	}
 }
+
+// The fork kind's shape floor and the family edge cut are one number: a
+// family of diverged copies must be exactly as alike as a fork pair.
+func TestForkFloorMatchesFamilyMin(t *testing.T) {
+	if analyzer.ForkShapeFloor != DefaultOptions().Min {
+		t.Errorf("analyzer.ForkShapeFloor = %v, family Min = %v; they must agree", analyzer.ForkShapeFloor, DefaultOptions().Min)
+	}
+}
+
+// Build labels a family whose members all implement one method.
+func TestBuildLabelsInterfaceFamily(t *testing.T) {
+	u := units(3)
+	for i, recv := range []string{"*AWS", "*GCP", "*Azure"} {
+		u[i].Fingerprint = shape(7)
+		u[i].ReceiverType = recv
+		u[i].Name = recv + ".Validate"
+		u[i].Signature = "(context.Context) (error)"
+		u[i].Package = []string{"aws", "gcp", "azure"}[i]
+		u[i].File = "carrier/" + u[i].Package + "/x.go"
+	}
+	pairs := []analyzer.SimilarPair{pair(0, 1, 1.0), pair(1, 2, 1.0), pair(0, 2, 1.0)}
+	fams, _ := Build(u, pairs, DefaultOptions())
+	if len(fams) != 1 || fams[0].Kind == nil || fams[0].Kind.Kind != analyzer.KindInterfaceImpl {
+		t.Fatalf("families = %+v, want one interface-implementation family", fams)
+	}
+	if fams[0].Kind.Relation != analyzer.RelationSiblings || len(fams[0].Kind.Receivers) != 3 {
+		t.Errorf("kind = %+v", fams[0].Kind)
+	}
+}

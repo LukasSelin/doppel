@@ -64,7 +64,7 @@ func newResolver(units []parser.CodeUnit) *resolver {
 	for _, u := range units {
 		qn := QualifiedName(u)
 		if u.ReceiverType != "" {
-			method := u.Name[strings.LastIndexByte(u.Name, '.')+1:]
+			method := parser.MethodName(u)
 			r.methods[method] = append(r.methods[method], qn)
 			continue
 		}

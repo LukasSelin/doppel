@@ -277,6 +277,17 @@ unrelated functions do not read as duplicates. `--max-per-func` (default 2) then
 any single function may fill, so one heavily-cloned helper cannot own the whole report. All of that
 decides *order*; the two displayed scores stay unblended.
 
+## Pair kinds: saying what a finding is
+
+Two classes of true-but-unactionable finding used to crowd wide corpora with nothing to explain
+them. A `kind:` line now names them when a naming rule can: **interface implementations** — both
+sides are methods with the same name and signature on different types (a `Validate` per provider,
+moby's `ipvlan` and `macvlan` drivers each implementing `Join`) — and **diverged copy** — alike
+bodies whose names agree once version markers are stripped (`evalCallOld` beside `evalCall`,
+`scrapeLoopAppenderV2.append` beside `scrapeLoopAppender.append`), in the same or a sibling
+package. Families get the same label when every member pair satisfies one rule. Kinds annotate
+only: they never filter a pair, never enter the ranking, and never reach the hook digests.
+
 ## Iterative Refactoring Loop
 
 A single `doppel` run gives you a snapshot. Running it repeatedly after each refactoring session creates a compounding effect: merging two functions often unmasks a third pair that was previously hidden behind the noise. Over successive passes you can progressively tighten the threshold and reach a leaner, more consistent codebase.

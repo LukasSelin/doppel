@@ -265,6 +265,7 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 			pairs[i].A.Patterns, pairs[i].B.Patterns)
 		pairs[i].Habitat = habitatNotes(cult, pairs[i].AIdx, pairs[i].BIdx,
 			pairs[i].A.Package, pairs[i].B.Package)
+		pairs[i].Kind = analyzer.ClassifyPair(pairs[i].A, pairs[i].B, pairs[i].Score)
 		pairs[i].Profile = profileNotes(cult, pairs[i].AIdx, pairs[i].BIdx,
 			pairs[i].A.Patterns, pairs[i].B.Patterns)
 	}

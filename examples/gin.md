@@ -9,7 +9,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `d9e6c71` |
+| doppel | `7aa1f08` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -220,6 +220,8 @@ Families: 25 over 48 components, 109 functions in a family, 119 edges completed
 | **A** | `render/protobuf.go:21` | `render.ProtoBuf.Render` | `(http.ResponseWriter) (error)` | serialization |
 | **B** | `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | serialization |
 
+**Kind:** interface implementations — both implement `Render(http.ResponseWriter) (error)` on `ProtoBuf` and `YAML`, in package `render`
+
 **Profile A:** `serialization` 1.00 (dominance)
 
 **Profile B:** `serialization` 1.00 (dominance)
@@ -255,6 +257,8 @@ Families: 25 over 48 components, 109 functions in a family, 119 edges completed
 |---|---|---|---|---|
 | **A** | `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | — |
 | **B** | `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | serialization |
+
+**Kind:** interface implementations — both implement `Render(http.ResponseWriter) (error)` on `TOML` and `YAML`, in package `render`
 
 **Profile B:** `serialization` 1.00 (dominance)
 
@@ -404,7 +408,7 @@ Families: 25 over 48 components, 109 functions in a family, 119 edges completed
 
 _3 more members not listed._
 
-### Family 2 — 6 members, every pair `>= 0.61` code-shape, evidence `2206`
+### Family 2 — 6 members, every pair `>= 0.61` code-shape, evidence `2206`, interface implementations of `Render(http.ResponseWriter) (error)`, in package `render`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|

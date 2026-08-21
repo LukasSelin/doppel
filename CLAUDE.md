@@ -81,7 +81,7 @@ internal/
   mapper/       Where enrichment actually happens: callers, role classification, aggregated patterns/packages
   retriever/    Multi-channel candidate retrieval: shape.go / concept.go / calls.go inverted indexes, retriever.go union + evidence
   culture/      Corpus-culture model: ecology.go (PMI), prototype.go (prototypes + typicality), habitat.go (fit), convention.go
-  analyzer/     SimilarPair + Retrieval types; FindSimilar (library API); SortByEvidence (final ranking)
+  analyzer/     SimilarPair + Retrieval types; FindSimilar (library API); SortByEvidence (final ranking); kind.go + stem.go (pair kinds)
   comparator/   Weighted structural overlap scoring (9 signals → 0.0–1.0 composite)
   family/       Near-duplicate families: components + edge completion + maximal cliques over the pair graph
   snapshot/     One analysis run as comparable plain data: schema + Build, and Diff over two of them
@@ -651,6 +651,41 @@ would never show. `analyze` renders `--families N` (default 5) of them after the
 Families are deliberately **not** in `snapshot`: only what a consumer reads is stored, and the Stop
 hook rewrites that file every turn. `analyze --format json` remains the snapshot exactly as before.
 
+## Pair kinds
+
+`internal/analyzer/kind.go` labels what a pair *is* when a naming rule can say so, because two
+classes of finding crowded every wide corpus without the report being able to explain them. A
+kind annotates: it never filters, never enters ranking, and is not in the snapshot (hook digests
+never see it) — the same contract as culture, habitat and profile notes. No kind, no line.
+
+- **`interface implementations`** — both sides are methods with the same bare method name
+  (`parser.MethodName`), the same `Signature` text, on different types (receiver names differ, or
+  the same receiver name in different packages — moby's `ipvlan` and `macvlan` each implement
+  `Join` on their own `*driver`; pointer and value receivers normalize to one name and never pass).
+  Proving interface satisfaction needs `go/types`; this is the honest middle ground, and the label
+  states the package relation (`in package x`, `sibling packages x and y`, `packages x and y`)
+  because the same method across unrelated packages is the weaker claim.
+- **`diverged copy`** — code-shape `>= ForkShapeFloor` (0.60, pinned equal to the family edge
+  cut), same or sibling package, and names that agree once version markers are stripped:
+  `evalCallOld`/`evalCall`, `scrapeLoopAppenderV2.append`/`scrapeLoopAppender.append`. Methods
+  fork on either axis — same method on stem-sharing receivers, or stem-sharing methods on one
+  receiver. The stem rule (`stem.go`) strips, to a fixed point, a trailing `_`, a trailing bare
+  digit run, a trailing `v2`/`V3`, and the markers `Original Deprecated Legacy Orig Copy Old New`
+  as suffix or prefix — with three guards that keep the near-misses apart: both names ending in
+  *differing* bare digit runs are a numbered series, never a fork (`sha256`/`sha512`); a marker
+  strips only at a token boundary (`evalCallOld` and `foo_old` yes, `Threshold` and `Newton` no);
+  every strip must leave `>= 3` characters (`GoOld`/`Go` is nothing). `decodeToml`/`decodeYAML` and
+  `loadWAL`/`loadWBL` have no marker and stay merge candidates.
+
+Precedence: fork first. The v1/v2 appenders satisfy both rules, and the fork is the claim a reader
+acts on. `ClassifyFamily` applies the same rules to every member pair of a family — one shared stem,
+or one method and signature on pairwise-distinct types — and the census renders it as a suffix on
+the F-line, in the markdown heading, and as `kind`/`kindLabel` in `doppel families --format json`
+(families are not in the snapshot, so the JSON is their machine-readable home). On the ladder the
+rules land where intended: hugo's `evalCall`/`evalField` pairs read `diverged copy`, conc's pool
+`WithContext`/`Wait`, gin's `Render`, chi's `Flush` and moby's 11-member `UnmarshalJSON` family read
+`interface implementations`.
+
 ## Configuration
 
 `.doppel.json` at repo root, or `--config <path>`. A missing file is not an error; malformed JSON is.
@@ -1025,10 +1060,16 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   one level (`a.b.c.Do` records `c.Do`, never `b.c`), and the tag remains deliberately not
   import-based (servers import `net/http` too).
 
-- **Interface implementations dominate merge-worthy output.** Methods satisfying a shared interface
-  across sibling packages — a `Validate` per provider, say — are near-identical by construction and
-  completely unactionable, and on a wide corpus they crowd the top of the list the same way
-  generated code does. Recognising one needs `go/types`, which is out of proportion here, and a
-  name-or-signature heuristic is exactly the kind of rule the tagger and retriever avoid
-  everywhere else. The digest orders what it *shows* by merge-worthiness and overlap, which helps
-  a six-line hook report and does nothing for a full `analyze` run.
+- **Interface implementations are labeled, not filtered.** Methods satisfying a shared interface
+  across sibling packages — a `Validate` per provider — are near-identical by construction and
+  unactionable, and on a wide corpus they still crowd the list. The `interface implementations`
+  kind names them by a naming rule (same method, same signature, different types), which is
+  acceptable as an *annotation* precisely because it cannot be wrong about what it claims (both
+  sides do implement that method) while it can be wrong about whether an interface exists — that
+  needs `go/types`. Filtering or demoting on the same rule would be the name heuristic the tagger
+  and retriever refuse everywhere else, and is deliberately not done.
+- **Fork stems are lexical.** `diverged copy` reads version markers in names, nothing else: a fork
+  that kept the same name in two packages, or renamed freely, is invisible; `NewClient`/`newClient`
+  at high shape is labeled (the rule strips `New`, case falls out); numbered series (`sha256`/
+  `sha512`) are excluded by design; lower-case markers inside a word (`Threshold`) are not markers.
+  The 0.60 shape floor and the same/sibling-package locality bound the damage.

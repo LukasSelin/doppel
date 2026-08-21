@@ -36,6 +36,9 @@ func Print(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 		fmt.Fprintf(w, "#%-3d  code-shape: %.4f\n", i+1, p.Score)
 		printUnit(w, "  A", p.A)
 		printUnit(w, "  B", p.B)
+		if p.Kind != nil {
+			fmt.Fprintf(w, "  kind: %s\n", kindClause(p.Kind, false, false))
+		}
 		for _, note := range p.Profile {
 			fmt.Fprintf(w, "  profile %s: %s (%s)\n", note.Side, profileMassLine(note.Concepts, "  "), note.State)
 			if meta.Debug {
@@ -106,6 +109,9 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 		mdTableRow(w, "B", p.B)
 		fmt.Fprintln(w)
 
+		if p.Kind != nil {
+			fmt.Fprintf(w, "**Kind:** %s\n\n", kindClause(p.Kind, false, true))
+		}
 		for _, note := range p.Profile {
 			fmt.Fprintf(w, "**Profile %s:** %s (%s)\n\n", note.Side, mdProfileMassLine(note.Concepts), note.State)
 			if meta.Debug {

@@ -9,7 +9,7 @@ HTTP router; a narrow core with a middleware package beside it
 | Corpus | [chi](https://github.com/go-chi/chi) |
 | Pinned at | `v5.3.2` (`38939062c5df4d3e8814aad1a488983112627ced`) |
 | Project since | 2015 |
-| doppel | `d9e6c71` |
+| doppel | `7aa1f08` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -259,6 +259,8 @@ Families: 9 over 18 components, 32 functions in a family, 21 edges completed
 | **A** | `middleware/wrap_writer.go:147` | `middleware.*flushWriter.Flush` | `()` | — |
 | **B** | `middleware/wrap_writer.go:172` | `middleware.*flushHijackWriter.Flush` | `()` | — |
 
+**Kind:** interface implementations — both implement `Flush()` on `*flushWriter` and `*flushHijackWriter`, in package `middleware`
+
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Evidence:** `81.38` (shape 81.38, concept 0.00, call 0.00)
@@ -288,6 +290,8 @@ Families: 9 over 18 components, 32 functions in a family, 21 edges completed
 | **A** | `middleware/wrap_writer.go:147` | `middleware.*flushWriter.Flush` | `()` | — |
 | **B** | `middleware/wrap_writer.go:194` | `middleware.*httpFancyWriter.Flush` | `()` | — |
 
+**Kind:** interface implementations — both implement `Flush()` on `*flushWriter` and `*httpFancyWriter`, in package `middleware`
+
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Evidence:** `81.38` (shape 81.38, concept 0.00, call 0.00)
@@ -316,6 +320,8 @@ Families: 9 over 18 components, 32 functions in a family, 21 edges completed
 |---|---|---|---|---|
 | **A** | `middleware/wrap_writer.go:172` | `middleware.*flushHijackWriter.Flush` | `()` | — |
 | **B** | `middleware/wrap_writer.go:194` | `middleware.*httpFancyWriter.Flush` | `()` | — |
+
+**Kind:** interface implementations — both implement `Flush()` on `*flushHijackWriter` and `*httpFancyWriter`, in package `middleware`
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
@@ -353,7 +359,7 @@ Families: 9 over 18 components, 32 functions in a family, 21 edges completed
 | `middleware/strip.go:41` | `middleware.RedirectSlashes` | `(http.Handler) (http.Handler)` | — |
 | `middleware/url_format.go:46` | `middleware.URLFormat` | `(http.Handler) (http.Handler)` | — |
 
-### Family 2 — 4 members, every pair `>= 1.00` code-shape, evidence `488`
+### Family 2 — 4 members, every pair `>= 1.00` code-shape, evidence `488`, interface implementations of `Flush()`, in package `middleware`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
