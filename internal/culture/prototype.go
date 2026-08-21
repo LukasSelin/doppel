@@ -155,6 +155,8 @@ func buildPrototypes(m *Model, units []parser.CodeUnit, docs []concepter.Concept
 			cm.median = (typs[mm/2-1] + typs[mm/2]) / 2
 		}
 
+		cm.convention = conventionOf(cm.prototype)
+
 		m.concepts[tag] = cm
 		m.stats.ConceptsModeled++
 		if cm.median > 0 {
@@ -165,6 +167,35 @@ func buildPrototypes(m *Model, units []parser.CodeUnit, docs []concepter.Concept
 			}
 		}
 	}
+
+	// Convention superlatives for the stderr summary: strict comparisons over
+	// name-sorted prototyped tags, so ties resolve to the lexicographically
+	// smaller name.
+	first := true
+	for _, tag := range sortedConceptKeys(m.concepts) {
+		strength := m.concepts[tag].convention
+		if first {
+			m.stats.StrongestConvention, m.stats.StrongestConventionStrength = tag, strength
+			m.stats.LoosestConvention, m.stats.LoosestConventionStrength = tag, strength
+			first = false
+			continue
+		}
+		if strength > m.stats.StrongestConventionStrength {
+			m.stats.StrongestConvention, m.stats.StrongestConventionStrength = tag, strength
+		}
+		if strength < m.stats.LoosestConventionStrength {
+			m.stats.LoosestConvention, m.stats.LoosestConventionStrength = tag, strength
+		}
+	}
+}
+
+func sortedConceptKeys(m map[string]*conceptModel) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func sortedCountKeysInt(m map[string][]int) []string {
