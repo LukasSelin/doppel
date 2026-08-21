@@ -24,6 +24,7 @@ type callIndex struct {
 	surviving [][]string         // per unit: tokens that survived the df cap, ascending
 	idf       map[string]float64 // ln(nUnits / df) for surviving tokens
 	postings  map[string][]int   // surviving token → unit indices, ascending
+	energy    []float64          // per unit: Σ idf over surviving tokens (informative call energy)
 }
 
 func buildCallIndex(units []parser.CodeUnit, g *concepter.Graph, opt Options) *callIndex {
@@ -59,7 +60,29 @@ func buildCallIndex(units []parser.CodeUnit, g *concepter.Graph, opt Options) *c
 			x.idf[t] = math.Log(float64(len(units)) / float64(n))
 		}
 	}
+	// Informative call energy per unit, mirroring the shape index: the Dice
+	// over these energies (callSim) says how much of two functions' call
+	// behavior is mutual — for a pair of tests, whether they exercise the
+	// same machinery or merely share a driver skeleton.
+	x.energy = make([]float64, len(units))
+	for i := range units {
+		var e float64
+		for _, t := range x.surviving[i] { // ascending: fixed float order
+			e += x.idf[t]
+		}
+		x.energy[i] = e
+	}
 	return x
+}
+
+// callSim is the call-channel Dice: 2·sharedMass/(E_A+E_B) over informative
+// call energy, 0 on a zero denominator.
+func (x *callIndex) callSim(a, b int, sharedMass float64) float64 {
+	denom := x.energy[a] + x.energy[b]
+	if denom <= 0 {
+		return 0
+	}
+	return 2 * sharedMass / denom
 }
 
 // admitPairs runs per-function retrieval over shared surviving tokens:

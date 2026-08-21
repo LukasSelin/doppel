@@ -219,5 +219,94 @@ func RareB(cfg string) error {
 	}
 }
 
+// CallSim is the call-channel Dice: 1.0 when two functions' informative call
+// energy is fully mutual, a proper fraction when each side also calls its own
+// machinery, and exactly 0 when nothing informative is shared (the SUT-aware
+// discount's decisive case) or when neither side has informative calls.
+func TestCallSim(t *testing.T) {
+	// sharedA/sharedB both call sql.Open; sharedB additionally calls its own
+	// helper (df=2 via helperTwin, so the token survives with idf > 0).
+	src := `package fix
+
+import "database/sql"
+
+func ownHelper(x int) int {
+	if x > 2 {
+		return x * 3
+	}
+	return x
+}
+
+func SharedA(dsn string) error {
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	return nil
+}
+
+func SharedB(dsn string, n int) error {
+	m := ownHelper(n)
+	db, err := sql.Open("mysql", dsn)
+	if err != nil || m < 0 {
+		return err
+	}
+	defer db.Close()
+	return nil
+}
+
+func HelperTwin(n int) int {
+	v := ownHelper(n)
+	for i := 0; i < 3; i++ {
+		v += i
+	}
+	return v
+}
+
+func NoCallsA(x int) int {
+	y := x * 2
+	if y > 10 {
+		y = y - x
+	}
+	return y
+}
+
+func NoCallsB(z int) int {
+	w := z * 2
+	if w > 10 {
+		w = w - z
+	}
+	return w
+}
+`
+	units := parseUnits(t, "fix.go", src)
+	opt := DefaultOptions()
+	opt.MinNodes = 8
+	opt.Threshold = 0.0 // let the shape channel admit everything comparable
+
+	cands, _ := retrieveAll(t, units, opt)
+
+	a := unitIndex(t, units, "SharedA")
+	b := unitIndex(t, units, "SharedB")
+	pair, ok := findCandidate(cands, a, b)
+	if !ok {
+		t.Fatal("SharedA/SharedB not retrieved")
+	}
+	// Shared: database/sql.Open (df 2). B's fix.ownHelper token (df 2) is
+	// unshared, so the Dice is 2·idf/(idf + 2·idf) = 2/3.
+	if math.Abs(pair.CallSim-2.0/3.0) > 1e-9 {
+		t.Errorf("CallSim = %v, want exactly 2/3", pair.CallSim)
+	}
+
+	nc, ok := findCandidate(cands, unitIndex(t, units, "NoCallsA"), unitIndex(t, units, "NoCallsB"))
+	if !ok {
+		t.Fatal("NoCalls pair not retrieved (structural twins)")
+	}
+	if nc.CallSim != 0 {
+		t.Errorf("no-calls pair CallSim = %v, want exactly 0 (0/0 case)", nc.CallSim)
+	}
+}
+
 // Token-extraction semantics (double-count guard, unresolved-call exclusion)
 // are pinned in internal/concepter/calltokens_test.go, where CallTokens lives.

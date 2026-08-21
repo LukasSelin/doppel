@@ -67,6 +67,7 @@ type Candidate struct {
 	Call       float64               // shared rare-call IDF mass
 	Total      float64               // Shape + Concept + Call, summed in that order
 	TrophicSim float64               // 2·SharedEnergy/(E_A+E_B): weighted Dice over pattern energy
+	CallSim    float64               // call-channel Dice: mutual fraction of informative call energy
 	Channels   []string              // admission provenance, subset of {shape, concept, call}
 	Chains     []SharedPattern       // highest-energy shared structures, the explanation
 }
@@ -161,14 +162,16 @@ func Retrieve(units []parser.CodeUnit, g *concepter.Graph,
 	for _, k := range keys {
 		a := admitted[k]
 		shapeMass, trophic, chains := shapes.pairEvidence(k[0], k[1], opt.ChainTopN)
+		callMass := calls.sharedMass(k[0], k[1])
 		c := Candidate{
 			AIdx:       k[0],
 			BIdx:       k[1],
 			Breakdown:  sim.get(k[0], k[1]),
 			Shape:      shapeMass,
 			Concept:    concepts.sharedMass(k[0], k[1]),
-			Call:       calls.sharedMass(k[0], k[1]),
+			Call:       callMass,
 			TrophicSim: trophic,
+			CallSim:    calls.callSim(k[0], k[1], callMass),
 			Chains:     chains,
 		}
 		c.Total = c.Shape + c.Concept + c.Call
