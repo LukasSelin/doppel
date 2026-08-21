@@ -36,6 +36,12 @@ func Print(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 		fmt.Fprintf(w, "#%-3d  code-shape: %.4f\n", i+1, p.Score)
 		printUnit(w, "  A", p.A)
 		printUnit(w, "  B", p.B)
+		for _, note := range p.Profile {
+			fmt.Fprintf(w, "  profile %s: %s (%s)\n", note.Side, profileMassLine(note.Concepts, "  "), note.State)
+			if meta.Debug {
+				fmt.Fprintf(w, "    arena %s: %s\n", note.Side, arenaDebugLine(note))
+			}
+		}
 		fmt.Fprintf(w, "  %s\n", breakdownLine(p.Breakdown))
 		if p.Retrieval != nil {
 			fmt.Fprintf(w, "  evidence: %.2f  (shape %.2f  concept %.2f  call %.2f)\n",
@@ -99,6 +105,13 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 		mdTableRow(w, "A", p.A)
 		mdTableRow(w, "B", p.B)
 		fmt.Fprintln(w)
+
+		for _, note := range p.Profile {
+			fmt.Fprintf(w, "**Profile %s:** %s (%s)\n\n", note.Side, mdProfileMassLine(note.Concepts), note.State)
+			if meta.Debug {
+				fmt.Fprintf(w, "**Arena %s:** %s\n\n", note.Side, mdArenaDebugLine(note))
+			}
+		}
 
 		fmt.Fprintf(w, "**Code similarity:** `%s`\n\n", breakdownLine(p.Breakdown))
 
@@ -164,6 +177,57 @@ func cultureChannelLine(channels []analyzer.CultureChannel) string {
 		parts = append(parts, fmt.Sprintf("%s %.2f", ch.Name, ch.Typicality))
 	}
 	return strings.Join(parts, "  ")
+}
+
+// profileMassLine renders survivor masses as "tag 0.39" entries.
+func profileMassLine(concepts []analyzer.ProfileMass, sep string) string {
+	parts := make([]string, 0, len(concepts))
+	for _, c := range concepts {
+		parts = append(parts, fmt.Sprintf("%s %.2f", c.Tag, c.Mass))
+	}
+	return strings.Join(parts, sep)
+}
+
+func mdProfileMassLine(concepts []analyzer.ProfileMass) string {
+	parts := make([]string, 0, len(concepts))
+	for _, c := range concepts {
+		parts = append(parts, fmt.Sprintf("`%s` %.2f", mdEscape(c.Tag), c.Mass))
+	}
+	return strings.Join(parts, ", ")
+}
+
+// arenaDebugLine renders the dynamics detail: rounds, convergence verb, and
+// the extinct candidates at %.4f so near-extinction stays visible.
+func arenaDebugLine(note analyzer.ProfileNote) string {
+	verb := "capped"
+	if note.Converged {
+		verb = "converged"
+	}
+	out := fmt.Sprintf("%d rounds, %s", note.Rounds, verb)
+	if len(note.Extinct) > 0 {
+		parts := make([]string, 0, len(note.Extinct))
+		for _, c := range note.Extinct {
+			parts = append(parts, fmt.Sprintf("%s %.4f", c.Tag, c.Mass))
+		}
+		out += "; extinct: " + strings.Join(parts, "  ")
+	}
+	return out
+}
+
+func mdArenaDebugLine(note analyzer.ProfileNote) string {
+	verb := "capped"
+	if note.Converged {
+		verb = "converged"
+	}
+	out := fmt.Sprintf("%d rounds, %s", note.Rounds, verb)
+	if len(note.Extinct) > 0 {
+		parts := make([]string, 0, len(note.Extinct))
+		for _, c := range note.Extinct {
+			parts = append(parts, fmt.Sprintf("`%s` %.4f", mdEscape(c.Tag), c.Mass))
+		}
+		out += "; extinct: " + strings.Join(parts, "  ")
+	}
+	return out
 }
 
 // habitatChannelLine renders a habitat note's per-channel surprises in their

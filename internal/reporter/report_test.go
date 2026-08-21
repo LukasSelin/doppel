@@ -191,6 +191,68 @@ func TestPrintNilHabitatRendersNothing(t *testing.T) {
 	}
 }
 
+func profileNote() analyzer.ProfileNote {
+	return analyzer.ProfileNote{
+		Side: "A", State: "coalition", Rounds: 17, Converged: true,
+		Concepts: []analyzer.ProfileMass{
+			{Tag: "transaction", Mass: 0.39}, {Tag: "db_access", Mass: 0.34},
+			{Tag: "error_wrapping", Mass: 0.27},
+		},
+		Extinct: []analyzer.ProfileMass{{Tag: "validation", Mass: 0.0008}},
+	}
+}
+
+func TestPrintProfileNotes(t *testing.T) {
+	pair := samplePair(nil)
+	pair.Profile = []analyzer.ProfileNote{profileNote()}
+
+	var plain strings.Builder
+	Print(&plain, []analyzer.SimilarPair{pair}, Meta{})
+	out := plain.String()
+	if !strings.Contains(out,
+		"  profile A: transaction 0.39  db_access 0.34  error_wrapping 0.27 (coalition)") {
+		t.Errorf("plain report missing profile line:\n%s", out)
+	}
+	if strings.Contains(out, "arena A:") {
+		t.Errorf("arena detail shown without Debug:\n%s", out)
+	}
+	// Placement: profile precedes the breakdown line.
+	if strings.Index(out, "profile A:") > strings.Index(out, "ast ") {
+		t.Errorf("profile line rendered after the breakdown:\n%s", out)
+	}
+
+	var debug strings.Builder
+	Print(&debug, []analyzer.SimilarPair{pair}, Meta{Debug: true})
+	if !strings.Contains(debug.String(),
+		"    arena A: 17 rounds, converged; extinct: validation 0.0008") {
+		t.Errorf("debug report missing arena line:\n%s", debug.String())
+	}
+}
+
+func TestPrintMarkdownProfileNotes(t *testing.T) {
+	pair := samplePair(nil)
+	pair.Profile = []analyzer.ProfileNote{profileNote()}
+
+	var b strings.Builder
+	PrintMarkdown(&b, []analyzer.SimilarPair{pair}, Meta{Debug: true})
+	out := b.String()
+	if !strings.Contains(out,
+		"**Profile A:** `transaction` 0.39, `db_access` 0.34, `error_wrapping` 0.27 (coalition)") {
+		t.Errorf("markdown missing profile line:\n%s", out)
+	}
+	if !strings.Contains(out, "**Arena A:** 17 rounds, converged; extinct: `validation` 0.0008") {
+		t.Errorf("markdown debug missing arena line:\n%s", out)
+	}
+}
+
+func TestPrintNilProfileRendersNothing(t *testing.T) {
+	var b strings.Builder
+	Print(&b, []analyzer.SimilarPair{samplePair(nil)}, Meta{Debug: true})
+	if strings.Contains(b.String(), "profile") {
+		t.Errorf("nil-Profile pair rendered a profile line:\n%s", b.String())
+	}
+}
+
 func TestPrintCultureNotes(t *testing.T) {
 	pair := samplePair(nil)
 	pair.Culture = []analyzer.CultureNote{cultureNote()}

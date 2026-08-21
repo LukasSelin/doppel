@@ -18,6 +18,25 @@ type SimilarPair struct {
 	Retrieval  *Retrieval                     // multi-channel retrieval evidence; nil for FindSimilar-produced pairs
 	Culture    []CultureNote                  // unusual concept realizations; nil when none — set by the pipeline
 	Habitat    []HabitatNote                  // habitat misfits; nil when neither side misfits — set by the pipeline
+	Profile    []ProfileNote                  // equilibrium concept profiles; nil when neither side qualifies
+}
+
+// ProfileNote is one side's concept-arena equilibrium: which concepts
+// survived the competition for the function's evidence, and what kind of
+// ecosystem they form. Profiles annotate; they never affect ranking.
+type ProfileNote struct {
+	Side      string        // "A" or "B"
+	State     string        // dominance | coalition | conflict | weak
+	Concepts  []ProfileMass // survivors, (Mass desc, Tag asc)
+	Extinct   []ProfileMass // candidates that died; rendered only under --debug
+	Rounds    int
+	Converged bool
+}
+
+// ProfileMass is one concept's equilibrium mass.
+type ProfileMass struct {
+	Tag  string
+	Mass float64
 }
 
 // HabitatNote flags one side of a pair as notably out of place in its own

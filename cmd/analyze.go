@@ -127,6 +127,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	fmt.Fprintf(os.Stderr, "Culture: %d concepts modeled, %d associations, %d unusual realizations\n",
 		cs.ConceptsModeled, cs.AssociationCount, cs.UnusualRealizations)
 	printHabitatSummary(os.Stderr, cs)
+	printArenaSummary(os.Stderr, cs)
 
 	// Multi-channel candidate retrieval: structural shape, shared concepts,
 	// and shared resolved calls each retrieve per-function top-K neighbors
@@ -191,6 +192,8 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 			pairs[i].A.Patterns, pairs[i].B.Patterns)
 		pairs[i].Habitat = habitatNotes(cult, pairs[i].AIdx, pairs[i].BIdx,
 			pairs[i].A.Package, pairs[i].B.Package)
+		pairs[i].Profile = profileNotes(cult, pairs[i].AIdx, pairs[i].BIdx,
+			pairs[i].A.Patterns, pairs[i].B.Patterns)
 	}
 
 	// Final ranking: retrieval evidence mass decides the report order; the
@@ -322,6 +325,51 @@ func habitatNotes(cult *culture.Model, aIdx, bIdx int, aPkg, bPkg string) []anal
 		notes = append(notes, note)
 	}
 	return notes
+}
+
+// profileNotes attaches each side's arena equilibrium — positional lookup,
+// A before B. A side qualifies when it carries at least one tag and has a
+// profile, which is exactly when a tags: line already renders, so profiles
+// add no lines to previously silent units.
+func profileNotes(cult *culture.Model, aIdx, bIdx int, aTags, bTags []string) []analyzer.ProfileNote {
+	var notes []analyzer.ProfileNote
+	for _, side := range []struct {
+		label string
+		idx   int
+		tags  []string
+	}{{"A", aIdx, aTags}, {"B", bIdx, bTags}} {
+		if len(side.tags) == 0 {
+			continue
+		}
+		p, ok := cult.ArenaProfile(side.idx)
+		if !ok {
+			continue
+		}
+		note := analyzer.ProfileNote{
+			Side:      side.label,
+			State:     p.State,
+			Rounds:    p.Rounds,
+			Converged: p.Converged,
+		}
+		for _, cm := range p.Survivors {
+			note.Concepts = append(note.Concepts, analyzer.ProfileMass{Tag: cm.Tag, Mass: cm.Mass})
+		}
+		for _, cm := range p.Extinct {
+			note.Extinct = append(note.Extinct, analyzer.ProfileMass{Tag: cm.Tag, Mass: cm.Mass})
+		}
+		notes = append(notes, note)
+	}
+	return notes
+}
+
+// printArenaSummary emits the ecosystem stderr line.
+func printArenaSummary(w io.Writer, s culture.Stats) {
+	if s.ArenaProfiled == 0 {
+		fmt.Fprintf(w, "Ecosystems: 0 profiled\n")
+		return
+	}
+	fmt.Fprintf(w, "Ecosystems: %d profiled (%d dominance, %d coalition, %d conflict, %d weak)\n",
+		s.ArenaProfiled, s.ArenaDominance, s.ArenaCoalition, s.ArenaConflict, s.ArenaWeak)
 }
 
 // printHabitatSummary emits the habitat and convention stderr lines in human

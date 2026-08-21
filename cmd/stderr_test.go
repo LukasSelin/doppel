@@ -39,3 +39,19 @@ func TestPrintHabitatSummaryEmpty(t *testing.T) {
 		t.Errorf("empty summary = %q, want only the zero-habitats line", got)
 	}
 }
+
+func TestPrintArenaSummary(t *testing.T) {
+	var b strings.Builder
+	printArenaSummary(&b, culture.Stats{
+		ArenaProfiled: 412, ArenaDominance: 118, ArenaCoalition: 231,
+		ArenaConflict: 12, ArenaWeak: 51,
+	})
+	if got := b.String(); got != "Ecosystems: 412 profiled (118 dominance, 231 coalition, 12 conflict, 51 weak)\n" {
+		t.Errorf("summary = %q", got)
+	}
+	b.Reset()
+	printArenaSummary(&b, culture.Stats{})
+	if got := b.String(); got != "Ecosystems: 0 profiled\n" {
+		t.Errorf("empty summary = %q", got)
+	}
+}
