@@ -1,0 +1,17 @@
+{
+  "name": "doppel",
+  "description": "Surfaces a Go repo's existing concepts before you write code, and measures what your session did to its duplication surface afterwards.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Lukas Selin"
+  },
+  "homepage": "https://github.com/LukasSelin/doppel",
+  "keywords": ["go", "duplication", "refactoring", "static-analysis"],
+  "user_config": {
+    "doppel_binary": {
+      "type": "string",
+      "description": "Path to the doppel binary. Leave as \"doppel\" if it is on your PATH; otherwise give an absolute path.",
+      "default": "doppel"
+    }
+  }
+}

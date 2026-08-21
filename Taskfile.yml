@@ -26,3 +26,8 @@ tasks:
     desc: Format all Go files
     cmds:
       - gofmt -w .
+
+  snapshot:
+    desc: Print a deterministic JSON snapshot of this repo's analysis
+    cmds:
+      - go run . analyze . --format json

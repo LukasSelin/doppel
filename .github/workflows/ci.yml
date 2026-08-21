@@ -26,3 +26,19 @@ jobs:
 
       - name: Test
         run: go test ./...
+
+      # The JSON snapshot is what the hooks diff, so a schema panic or a
+      # nondeterministic field has to fail here rather than in a session.
+      - name: Snapshot is deterministic
+        run: |
+          go run . analyze . --format json > /tmp/a.json
+          go run . analyze . --format json > /tmp/b.json
+          diff /tmp/a.json /tmp/b.json
+
+      - name: Hook entry points respond
+        run: |
+          printf '{"session_id":"ci","cwd":"%s","source":"startup"}' "$PWD" > /tmp/hook.json
+          go run . hook session-start < /tmp/hook.json > /tmp/ss.json
+          grep -q additionalContext /tmp/ss.json
+          go run . hook stop < /tmp/hook.json > /tmp/stop.json
+          test ! -s /tmp/stop.json

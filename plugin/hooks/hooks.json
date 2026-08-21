@@ -1,0 +1,31 @@
+{
+  "description": "doppel: corpus concept inventory at session start, duplication impact at end of turn",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${user_config.doppel_binary}",
+            "args": ["hook", "session-start"],
+            "timeout": 120,
+            "statusMessage": "doppel: taking corpus snapshot"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${user_config.doppel_binary}",
+            "args": ["hook", "stop"],
+            "timeout": 120,
+            "statusMessage": "doppel: measuring duplication impact"
+          }
+        ]
+      }
+    ]
+  }
+}

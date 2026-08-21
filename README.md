@@ -72,6 +72,7 @@ A high code score with low structural overlap means two lookalike bodies in unre
 | `--struct-min`      | `0.0`   | Minimum structural overlap score (0.0–1.0) to keep a pair                   |
 | `--min-nodes`       | `12`    | Skip functions whose body has fewer than this many AST nodes. Guards against one-line accessors, which match each other perfectly and would otherwise flood the report |
 | `-o`, `--output`    | *(disabled)* | Write report as Markdown to this file. The stdout report is still printed |
+| `--format`          | `text`  | Stdout format: `text` or `json`. The JSON form is a deterministic snapshot of the whole run — every function, its concept tags and role, and every reported pair |
 | `--config`          | `.doppel.json` if present | Path to a JSON config file                                |
 
 ### Configuration
@@ -88,3 +89,33 @@ Any flag above except `--config` can be set in a `.doppel.json` at the repo root
 ```
 
 A missing config file is not an error; malformed JSON is.
+
+## Use as a Claude Code plugin
+
+The same analysis can run automatically around a coding session, answering two questions it is
+otherwise easy to skip: *does this codebase already have a concept for what I am about to write*,
+and *what did I just do to its duplication surface*.
+
+```bash
+go install github.com/LukasSelin/doppel@latest
+```
+
+```bash
+claude plugin marketplace add LukasSelin/doppel
+```
+
+```bash
+claude plugin install doppel@doppel
+```
+
+A **SessionStart** hook adds a corpus inventory to the conversation — which concept tags the repo
+carries and which it has none of, the role distribution, the concepts each package works in, and the
+existing merge candidates. A **Stop** hook re-runs the analysis at the end of each turn and reports
+the difference against the baseline taken at session start, leading with the pairs it can trace to a
+function you actually edited. It prints nothing on turns that changed nothing.
+
+Both are driven by `doppel hook session-start` and `doppel hook stop`, which read a Claude Code hook
+payload on stdin and write a hook response on stdout. Neither ever exits non-zero: a measurement must
+not be able to break a session.
+
+See [plugin/README.md](plugin/README.md) for what the output means and how to read it honestly.
