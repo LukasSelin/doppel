@@ -16,6 +16,12 @@ type Meta struct {
 	Threshold  float64 // the structural-channel floor, echoed in the header
 	TotalFuncs int
 	Debug      bool // when set, show per-pair retrieval provenance
+
+	// Overview is what doppel understands about the corpus, rendered above the
+	// matches in the markdown report only. Nil — which is what the text report
+	// always passes — renders nothing, so a report without one is byte-identical
+	// to one written before this field existed.
+	Overview *Overview
 }
 
 // Print writes the similarity report to w. The headline number per pair is
@@ -93,6 +99,10 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 	fmt.Fprintf(w, "# Code Similarity Report\n\n")
 	fmt.Fprintf(w, "**Functions analyzed:** %d | **Threshold:** %.2f | **Pairs found:** %d\n\n", meta.TotalFuncs, meta.Threshold, len(pairs))
 	fmt.Fprintf(w, "---\n\n")
+
+	// The corpus before the findings: a reader weighing a list of pairs needs to
+	// know what kind of codebase produced it.
+	PrintMarkdownOverview(w, meta.Overview)
 
 	if len(pairs) == 0 {
 		fmt.Fprintf(w, "_No similar function pairs found._\n")

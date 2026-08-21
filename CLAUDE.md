@@ -66,6 +66,7 @@ cmd/            CLI commands (Cobra).
   root.go       rootCmd, Execute()
   analyze.go    Pipeline orchestrator; all flag registration
   families.go   doppel families: the census view, plus analyze's family stage
+  overview.go   Queries the corpus model (culture, ontology, call graph) into reporter.Overview
   pipeline.go   index() + finishAnalyze(): the pipeline split into corpus-building prefix and reporting tail; filterByOverlap; snapshotOf
   query.go      doppel query: check a proposed function (a snippet on stdin) against the corpus, locality-weighted
   config.go     .doppel.json loading (AnalysisConfig), flag precedence, hookParams
@@ -86,6 +87,7 @@ internal/
   family/       Near-duplicate families: components + edge completion + maximal cliques over the pair graph
   snapshot/     One analysis run as comparable plain data: schema + Build, and Diff over two of them
   reporter/     Plain-text (stdout), Markdown (--output), JSON (--format json), and the two hook digests
+                overview.go + mermaid.go render the corpus model into the markdown report only
   bench/        Measurement harness: golden-ranking scorer, the pinned public corpus ladder, per-stage benchmarks, example generator
 examples/       Committed real reports for each corpus rung, plus labels/ (committed golden reviews) — see examples/README.md
 ```
@@ -714,6 +716,47 @@ the F-line, in the markdown heading, and as `kind`/`kindLabel` in `doppel famili
 rules land where intended: hugo's `evalCall`/`evalField` pairs read `diverged copy`, conc's pool
 `WithContext`/`Wait`, gin's `Render`, chi's `Flush` and moby's 11-member `UnmarshalJSON` family read
 `interface implementations`.
+## The report overview
+
+The markdown report (`--output`) opens with a **What doppel sees** section: the concept vocabulary
+and which concepts are *absent*, a package duplication map, per-package habitat norms, the arena
+ecosystem split, and the retrieval channel mix. Four mermaid diagrams carry it.
+
+The point is that all of this was already computed and then discarded. `culture.Stats`,
+`retriever.Stats` and `family.Stats` went to stderr and died there; `Model.HabitatNorm`,
+`HabitatTemperature` and `ConventionStrength` had no non-test caller at all outside the per-pair
+notes. `internal/bench/examples_test.go` had been pasting the stderr block into every committed
+example under `## Run diagnostics` to compensate, which is the clearest evidence the information
+belonged in the document.
+
+Rules that hold it together:
+
+- **Markdown only.** `Meta.Overview` is nil for the text report and for `--format json`, and a nil
+  overview renders **nothing** — a report without one is byte-identical to one written before the
+  section existed. Mermaid is meaningless in a terminal, and the JSON payload is a snapshot with a
+  documented shape.
+- **`reporter` never learns about `culture`.** `cmd/overview.go` queries the model and fills a
+  struct of plain presorted rows. `Overview` carries no maps that decide an order.
+- **What crosses over.** A fact belongs in the report if it changes how a reader weighs the
+  findings, and on stderr if it only helps someone tuning doppel. The channel mix crosses;
+  `Suppressed`, `LargeBuckets`, `SurvivingPatterns` and parse warnings do not. Both surfaces keep
+  their lines — stderr is unchanged, because the hook and the examples wrapper read it.
+- **`retriever.Stats` now rides on `Result`.** It was created, printed and dropped; the report
+  explains its own pair list with it.
+- **Escaping is not `mdEscape`.** That helper turns `|` into `\|`, and `|` is mermaid's edge-label
+  delimiter. `mermaidLabel` emits HTML entities (`#quot;`, `#35;`) because a quoted mermaid label
+  has no escape character, and `mermaidID` is positional rather than a mangled name — `a.b` and
+  `a_b` would otherwise collide. Escape the identifier, *then* compose with `<br/>`: escaping a
+  finished label renders the line break as a visible `#lt;br/#gt;`.
+- **Diagrams departing from the wiki's unstyled house style is deliberate**, and only on `classDef`.
+  A hand-authored diagram explains a mechanism; these encode a measured value, and colour is the
+  only channel mermaid offers for one.
+- **Every diagram is bounded and says so.** Package diagrams cap at `maxOverviewNodes` (12 — moby
+  has 168 habitats); family diagrams cap at 8 members, because the picture must draw every edge to
+  show the clique property and 55 members is 1485 edges.
+
+PMI associations, per-concept prototypes and the derived `RoleThresholds` stay unsurfaced — see the
+rough edges.
 
 ## Configuration
 
@@ -1139,6 +1182,12 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   in the same way roles and typicality are — the pair graph moves when unrelated code moves — and it
   is bounded by the same retrieval recall the pair list is, except inside a component, where edge
   completion repairs it.
+- **The report overview is bounded by node count, not by importance.** The package diagrams show
+  the twelve least uniform habitats and the twelve heaviest duplication links, and count the rest.
+  On a wide corpus that is a sample, not a summary — the thirteenth link may matter more than the
+  first if it crosses a subsystem boundary the tool cannot see. Family diagrams stop at 8 members
+  for the same arithmetic reason, so the largest families — exactly the ones a census exists to
+  surface — are the ones shown only as prose.
 - **SUT-aware test discounting is only as good as call resolution.** A test pair with zero
   informative call tokens keys to zero even when genuinely duplicated (mock-heavy tests whose
   every call is variable-receiver read CallSim 0 — harsh but honest: no call evidence, no SUT
