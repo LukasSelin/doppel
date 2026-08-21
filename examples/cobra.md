@@ -9,7 +9,7 @@ CLI framework; one dominant type with a long method set, plus shell-completion g
 | Corpus | [cobra](https://github.com/spf13/cobra) |
 | Pinned at | `v1.10.2` (`88b30ab89da2d0d0abb153818746c5a2d30eccec`) |
 | Project since | 2015 |
-| doppel | `fc06f91` |
+| doppel | `eeb5608` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -399,7 +399,7 @@ Families: 18 over 43 components, 63 functions in a family, 3 edges completed
 
 18 families, 63 functions in a family, largest 9 members; 3 edges scored here that retrieval never proposed
 
-### Family 1 — 9 members, every pair `>= 0.63` code-shape
+### Family 1 — 9 members, every pair `>= 0.63` code-shape, evidence `2579`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
@@ -413,7 +413,24 @@ Families: 18 over 43 components, 63 functions in a family, 3 edges completed
 | `command.go:618` | `cobra.*Command.VersionTemplate` | ` ` | — |
 | `command.go:631` | `cobra.*Command.getVersionTemplateFunc` | ` ` | — |
 
-### Family 2 — 5 members, every pair `>= 0.81` code-shape
+### Family 2 — 3 members, every pair `>= 0.84` code-shape, evidence `1891`
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `doc/md_docs.go:133` | `doc.GenMarkdownTreeCustom` | ` ` | file_io |
+| `doc/rest_docs.go:145` | `doc.GenReSTTreeCustom` | ` ` | file_io |
+| `doc/yaml_docs.go:60` | `doc.GenYamlTreeCustom` | ` ` | file_io |
+
+### Family 3 — 4 members, every pair `>= 0.64` code-shape, evidence `1702`
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `command.go:1688` | `cobra.*Command.Flags` | ` ` | — |
+| `command.go:1716` | `cobra.*Command.LocalFlags` | ` ` | — |
+| `command.go:1744` | `cobra.*Command.InheritedFlags` | ` ` | — |
+| `command.go:1775` | `cobra.*Command.PersistentFlags` | ` ` | — |
+
+### Family 4 — 5 members, every pair `>= 0.81` code-shape, evidence `1244`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
@@ -423,32 +440,13 @@ Families: 18 over 43 components, 63 functions in a family, 3 edges completed
 | `powershell_completions.go:320` | `cobra.*Command.genPowerShellCompletionFile` | ` ` | file_io |
 | `zsh_completions.go:70` | `cobra.*Command.genZshCompletionFile` | ` ` | file_io |
 
-### Family 3 — 4 members, every pair `>= 0.86` code-shape
+### Family 5 — 3 members, every pair `>= 1.00` code-shape, evidence `1228`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `bash_completionsV2.go:24` | `cobra.*Command.genBashCompletion` | ` ` | — |
-| `fish_completions.go:276` | `cobra.*Command.GenFishCompletion` | ` ` | — |
-| `powershell_completions.go:313` | `cobra.*Command.genPowerShellCompletion` | ` ` | — |
-| `zsh_completions.go:80` | `cobra.*Command.genZshCompletion` | ` ` | — |
-
-### Family 4 — 4 members, every pair `>= 0.75` code-shape
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `args.go:74` | `cobra.MinimumNArgs` | ` ` | — |
-| `args.go:84` | `cobra.MaximumNArgs` | ` ` | — |
-| `args.go:94` | `cobra.ExactArgs` | ` ` | — |
-| `args.go:104` | `cobra.RangeArgs` | ` ` | — |
-
-### Family 5 — 4 members, every pair `>= 0.68` code-shape
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `command.go:592` | `cobra.*Command.UsageTemplate` | ` ` | — |
-| `command.go:605` | `cobra.*Command.HelpTemplate` | ` ` | — |
-| `command.go:618` | `cobra.*Command.VersionTemplate` | ` ` | — |
-| `command.go:643` | `cobra.*Command.ErrPrefix` | ` ` | — |
+| `flag_groups.go:33` | `cobra.*Command.MarkFlagsRequiredTogether` | `—` | validation |
+| `flag_groups.go:49` | `cobra.*Command.MarkFlagsOneRequired` | `—` | validation |
+| `flag_groups.go:65` | `cobra.*Command.MarkFlagsMutuallyExclusive` | `—` | — |
 
 _13 more families not listed._
 

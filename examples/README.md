@@ -36,12 +36,15 @@ generated functions and chi loses its whole `_examples/` demo tree.
 
 Each report ends with a **Families** section: the groups of three or more
 functions in which every member is alike to every other member, as opposed to
-the pair list above it. The ladder is where the shape of that is easiest to
-see — conc's largest family is five `WithMaxGoroutines` builder methods across
-its pool variants, while prometheus's is fifty-five OpenAPI schema builders and
-moby's top families are the generated protobuf methods that already own its
-pair list. `doppel families <path>` prints the whole census rather than the
-report's first few.
+the pair list above it. Families rank by total retrieval evidence mass — the
+same currency as the pair list — not by member count: ranked by size, every
+large corpus led with its biggest *idiom* family (moby's was 44 mutex-guarded
+getters, factually alike and unactionable). Under evidence the ladder reads
+right — conc's top family is five `WithMaxGoroutines` builder methods across
+its pool variants, prometheus's is the hand-written `OpenAPIBuilder` path
+family, and moby's is the same networkdb diagnostic-handler group its pair
+list leads with. `doppel families <path>` prints the whole census rather than
+the report's first few.
 "Concepts modeled" is how many of the fourteen tags reached the five-member floor
 culture needs to build a prototype: twelve on moby, one on conc. That column is
 the ladder in miniature — the culture, habitat and arena layers have real

@@ -9,7 +9,7 @@ static site generator; a large monolith with heavy template and resource subsyst
 | Corpus | [hugo](https://github.com/gohugoio/hugo) |
 | Pinned at | `v0.165.0` (`76a5e1880ab46688155b02e99bab9be2a6134492`) |
 | Project since | 2013 |
-| doppel | `fc06f91` |
+| doppel | `eeb5608` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -432,58 +432,7 @@ Families: 306 over 480 components, 939 functions in a family, 623 edges complete
 
 306 families, 939 functions in a family, largest 27 members; 623 edges scored here that retrieval never proposed
 
-### Family 1 — 27 members, every pair `>= 0.61` code-shape  (197 edges scored here)
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `tpl/cast/init.go:25` | `cast.init` | `—` | — |
-| `tpl/collections/init.go:25` | `collections.init` | `—` | — |
-| `tpl/compare/init.go:26` | `compare.init` | `—` | — |
-| `tpl/crypto/init.go:25` | `crypto.init` | `—` | — |
-| `tpl/debug/init.go:25` | `debug.init` | `—` | — |
-| `tpl/diagrams/init.go:26` | `diagrams.init` | `—` | — |
-| `tpl/encoding/init.go:25` | `encoding.init` | `—` | — |
-| `tpl/fmt/init.go:25` | `fmt.init` | `—` | — |
-| `tpl/hash/hash.go:58` | `hash.init` | `—` | — |
-| `tpl/hugo/init.go:26` | `hugo.init` | `—` | — |
-
-_17 more members not listed._
-
-### Family 2 — 27 members, every pair `>= 0.61` code-shape  (202 edges scored here)
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `tpl/cast/init.go:25` | `cast.init` | `—` | — |
-| `tpl/collections/init.go:25` | `collections.init` | `—` | — |
-| `tpl/compare/init.go:26` | `compare.init` | `—` | — |
-| `tpl/crypto/init.go:25` | `crypto.init` | `—` | — |
-| `tpl/debug/init.go:25` | `debug.init` | `—` | — |
-| `tpl/diagrams/init.go:26` | `diagrams.init` | `—` | — |
-| `tpl/encoding/init.go:25` | `encoding.init` | `—` | — |
-| `tpl/fmt/init.go:25` | `fmt.init` | `—` | — |
-| `tpl/hash/hash.go:58` | `hash.init` | `—` | — |
-| `tpl/hugo/init.go:26` | `hugo.init` | `—` | — |
-
-_17 more members not listed._
-
-### Family 3 — 27 members, every pair `>= 0.61` code-shape  (204 edges scored here)
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `tpl/cast/init.go:25` | `cast.init` | `—` | — |
-| `tpl/collections/init.go:25` | `collections.init` | `—` | — |
-| `tpl/compare/init.go:26` | `compare.init` | `—` | — |
-| `tpl/crypto/init.go:25` | `crypto.init` | `—` | — |
-| `tpl/debug/init.go:25` | `debug.init` | `—` | — |
-| `tpl/diagrams/init.go:26` | `diagrams.init` | `—` | — |
-| `tpl/encoding/init.go:25` | `encoding.init` | `—` | — |
-| `tpl/fmt/init.go:25` | `fmt.init` | `—` | — |
-| `tpl/hash/hash.go:58` | `hash.init` | `—` | — |
-| `tpl/hugo/init.go:26` | `hugo.init` | `—` | — |
-
-_17 more members not listed._
-
-### Family 4 — 27 members, every pair `>= 0.61` code-shape  (195 edges scored here)
+### Family 1 — 27 members, every pair `>= 0.61` code-shape, evidence `102861`  (195 edges scored here)
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
@@ -500,7 +449,7 @@ _17 more members not listed._
 
 _17 more members not listed._
 
-### Family 5 — 24 members, every pair `>= 0.61` code-shape  (139 edges scored here)
+### Family 2 — 24 members, every pair `>= 0.61` code-shape, evidence `99661`  (139 edges scored here)
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
@@ -516,6 +465,57 @@ _17 more members not listed._
 | `tpl/inflect/init.go:25` | `inflect.init` | `—` | — |
 
 _14 more members not listed._
+
+### Family 3 — 27 members, every pair `>= 0.61` code-shape, evidence `98543`  (197 edges scored here)
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `tpl/cast/init.go:25` | `cast.init` | `—` | — |
+| `tpl/collections/init.go:25` | `collections.init` | `—` | — |
+| `tpl/compare/init.go:26` | `compare.init` | `—` | — |
+| `tpl/crypto/init.go:25` | `crypto.init` | `—` | — |
+| `tpl/debug/init.go:25` | `debug.init` | `—` | — |
+| `tpl/diagrams/init.go:26` | `diagrams.init` | `—` | — |
+| `tpl/encoding/init.go:25` | `encoding.init` | `—` | — |
+| `tpl/fmt/init.go:25` | `fmt.init` | `—` | — |
+| `tpl/hash/hash.go:58` | `hash.init` | `—` | — |
+| `tpl/hugo/init.go:26` | `hugo.init` | `—` | — |
+
+_17 more members not listed._
+
+### Family 4 — 27 members, every pair `>= 0.61` code-shape, evidence `92704`  (202 edges scored here)
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `tpl/cast/init.go:25` | `cast.init` | `—` | — |
+| `tpl/collections/init.go:25` | `collections.init` | `—` | — |
+| `tpl/compare/init.go:26` | `compare.init` | `—` | — |
+| `tpl/crypto/init.go:25` | `crypto.init` | `—` | — |
+| `tpl/debug/init.go:25` | `debug.init` | `—` | — |
+| `tpl/diagrams/init.go:26` | `diagrams.init` | `—` | — |
+| `tpl/encoding/init.go:25` | `encoding.init` | `—` | — |
+| `tpl/fmt/init.go:25` | `fmt.init` | `—` | — |
+| `tpl/hash/hash.go:58` | `hash.init` | `—` | — |
+| `tpl/hugo/init.go:26` | `hugo.init` | `—` | — |
+
+_17 more members not listed._
+
+### Family 5 — 27 members, every pair `>= 0.61` code-shape, evidence `88027`  (204 edges scored here)
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `tpl/cast/init.go:25` | `cast.init` | `—` | — |
+| `tpl/collections/init.go:25` | `collections.init` | `—` | — |
+| `tpl/compare/init.go:26` | `compare.init` | `—` | — |
+| `tpl/crypto/init.go:25` | `crypto.init` | `—` | — |
+| `tpl/debug/init.go:25` | `debug.init` | `—` | — |
+| `tpl/diagrams/init.go:26` | `diagrams.init` | `—` | — |
+| `tpl/encoding/init.go:25` | `encoding.init` | `—` | — |
+| `tpl/fmt/init.go:25` | `fmt.init` | `—` | — |
+| `tpl/hash/hash.go:58` | `hash.init` | `—` | — |
+| `tpl/hugo/init.go:26` | `hugo.init` | `—` | — |
+
+_17 more members not listed._
 
 _301 more families not listed._
 

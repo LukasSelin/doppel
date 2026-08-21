@@ -9,7 +9,7 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `fc06f91` |
+| doppel | `eeb5608` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -401,92 +401,92 @@ Families: 477 over 611 components, 1366 functions in a family, 4359 edges comple
 
 ## Families
 
-477 families, 1366 functions in a family, largest 55 members; 4359 edges scored here that retrieval never proposed
+477 families, 1366 functions in a family, largest 15 members; 4359 edges scored here that retrieval never proposed
 
-### Family 1 — 55 members, every pair `>= 0.60` code-shape  (1287 edges scored here)
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `web/api/v1/openapi_helpers.go:172` | `v1.warningsSchema` | ` ` | — |
-| `web/api/v1/openapi_helpers.go:180` | `v1.infosSchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:138` | `v1.*OpenAPIBuilder.errorSchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:181` | `v1.*OpenAPIBuilder.simpleResponseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:200` | `v1.*OpenAPIBuilder.statusOnlyResponseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:215` | `v1.*OpenAPIBuilder.stringArrayResponseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:235` | `v1.*OpenAPIBuilder.labelsArrayResponseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:286` | `v1.*OpenAPIBuilder.notificationArrayResponseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:308` | `v1.*OpenAPIBuilder.floatSampleSchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:334` | `v1.*OpenAPIBuilder.histogramValueSchema` | ` ` | — |
-
-_45 more members not listed._
-
-### Family 2 — 54 members, every pair `>= 0.61` code-shape  (1230 edges scored here)
+### Family 1 — 15 members, every pair `>= 0.60` code-shape, evidence `46062`  (32 edges scored here)
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `web/api/v1/openapi_schemas.go:138` | `v1.*OpenAPIBuilder.errorSchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:181` | `v1.*OpenAPIBuilder.simpleResponseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:200` | `v1.*OpenAPIBuilder.statusOnlyResponseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:215` | `v1.*OpenAPIBuilder.stringArrayResponseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:235` | `v1.*OpenAPIBuilder.labelsArrayResponseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:255` | `v1.*OpenAPIBuilder.metricMetadataArrayResponseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:286` | `v1.*OpenAPIBuilder.notificationArrayResponseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:308` | `v1.*OpenAPIBuilder.floatSampleSchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:334` | `v1.*OpenAPIBuilder.histogramValueSchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:361` | `v1.*OpenAPIBuilder.histogramSampleSchema` | ` ` | — |
+| `web/api/v1/openapi_paths.go:28` | `v1.*OpenAPIBuilder.queryPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:55` | `v1.*OpenAPIBuilder.queryRangePath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:84` | `v1.*OpenAPIBuilder.queryExemplarsPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:108` | `v1.*OpenAPIBuilder.formatQueryPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:130` | `v1.*OpenAPIBuilder.parseQueryPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:152` | `v1.*OpenAPIBuilder.labelsPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:180` | `v1.*OpenAPIBuilder.labelValuesPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:214` | `v1.*OpenAPIBuilder.searchMetricNamesPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:250` | `v1.*OpenAPIBuilder.searchLabelNamesPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:285` | `v1.*OpenAPIBuilder.searchLabelValuesPath` | ` ` | — |
 
-_44 more members not listed._
+_5 more members not listed._
 
-### Family 3 — 54 members, every pair `>= 0.60` code-shape  (1246 edges scored here)
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `web/api/v1/openapi_helpers.go:172` | `v1.warningsSchema` | ` ` | — |
-| `web/api/v1/openapi_helpers.go:180` | `v1.infosSchema` | ` ` | — |
-| `web/api/v1/openapi_helpers.go:188` | `v1.timestampSchema` | ` ` | — |
-| `web/api/v1/openapi_helpers.go:206` | `v1.durationSchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:138` | `v1.*OpenAPIBuilder.errorSchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:181` | `v1.*OpenAPIBuilder.simpleResponseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:200` | `v1.*OpenAPIBuilder.statusOnlyResponseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:215` | `v1.*OpenAPIBuilder.stringArrayResponseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:308` | `v1.*OpenAPIBuilder.floatSampleSchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:334` | `v1.*OpenAPIBuilder.histogramValueSchema` | ` ` | — |
-
-_44 more members not listed._
-
-### Family 4 — 53 members, every pair `>= 0.64` code-shape  (1168 edges scored here)
+### Family 2 — 17 members, every pair `>= 0.60` code-shape, evidence `44210`  (53 edges scored here)
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `web/api/v1/openapi_schemas.go:138` | `v1.*OpenAPIBuilder.errorSchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:181` | `v1.*OpenAPIBuilder.simpleResponseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:200` | `v1.*OpenAPIBuilder.statusOnlyResponseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:215` | `v1.*OpenAPIBuilder.stringArrayResponseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:235` | `v1.*OpenAPIBuilder.labelsArrayResponseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:255` | `v1.*OpenAPIBuilder.metricMetadataArrayResponseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:286` | `v1.*OpenAPIBuilder.notificationArrayResponseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:308` | `v1.*OpenAPIBuilder.floatSampleSchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:334` | `v1.*OpenAPIBuilder.histogramValueSchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:361` | `v1.*OpenAPIBuilder.histogramSampleSchema` | ` ` | — |
+| `web/api/v1/openapi_paths.go:28` | `v1.*OpenAPIBuilder.queryPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:55` | `v1.*OpenAPIBuilder.queryRangePath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:84` | `v1.*OpenAPIBuilder.queryExemplarsPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:108` | `v1.*OpenAPIBuilder.formatQueryPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:130` | `v1.*OpenAPIBuilder.parseQueryPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:152` | `v1.*OpenAPIBuilder.labelsPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:180` | `v1.*OpenAPIBuilder.labelValuesPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:250` | `v1.*OpenAPIBuilder.searchLabelNamesPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:285` | `v1.*OpenAPIBuilder.searchLabelValuesPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:321` | `v1.*OpenAPIBuilder.seriesPath` | ` ` | — |
 
-_43 more members not listed._
+_7 more members not listed._
 
-### Family 5 — 53 members, every pair `>= 0.62` code-shape  (1168 edges scored here)
+### Family 3 — 17 members, every pair `>= 0.60` code-shape, evidence `39215`  (56 edges scored here)
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `web/api/v1/openapi_schemas.go:138` | `v1.*OpenAPIBuilder.errorSchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:161` | `v1.*OpenAPIBuilder.responseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:181` | `v1.*OpenAPIBuilder.simpleResponseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:200` | `v1.*OpenAPIBuilder.statusOnlyResponseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:215` | `v1.*OpenAPIBuilder.stringArrayResponseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:235` | `v1.*OpenAPIBuilder.labelsArrayResponseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:255` | `v1.*OpenAPIBuilder.metricMetadataArrayResponseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:286` | `v1.*OpenAPIBuilder.notificationArrayResponseBodySchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:308` | `v1.*OpenAPIBuilder.floatSampleSchema` | ` ` | — |
-| `web/api/v1/openapi_schemas.go:334` | `v1.*OpenAPIBuilder.histogramValueSchema` | ` ` | — |
+| `web/api/v1/openapi_paths.go:28` | `v1.*OpenAPIBuilder.queryPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:55` | `v1.*OpenAPIBuilder.queryRangePath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:84` | `v1.*OpenAPIBuilder.queryExemplarsPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:108` | `v1.*OpenAPIBuilder.formatQueryPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:130` | `v1.*OpenAPIBuilder.parseQueryPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:152` | `v1.*OpenAPIBuilder.labelsPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:180` | `v1.*OpenAPIBuilder.labelValuesPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:285` | `v1.*OpenAPIBuilder.searchLabelValuesPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:321` | `v1.*OpenAPIBuilder.seriesPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:349` | `v1.*OpenAPIBuilder.metadataPath` | ` ` | — |
 
-_43 more members not listed._
+_7 more members not listed._
+
+### Family 4 — 17 members, every pair `>= 0.65` code-shape, evidence `35639`  (57 edges scored here)
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `web/api/v1/openapi_paths.go:28` | `v1.*OpenAPIBuilder.queryPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:55` | `v1.*OpenAPIBuilder.queryRangePath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:84` | `v1.*OpenAPIBuilder.queryExemplarsPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:108` | `v1.*OpenAPIBuilder.formatQueryPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:130` | `v1.*OpenAPIBuilder.parseQueryPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:152` | `v1.*OpenAPIBuilder.labelsPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:180` | `v1.*OpenAPIBuilder.labelValuesPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:321` | `v1.*OpenAPIBuilder.seriesPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:349` | `v1.*OpenAPIBuilder.metadataPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:377` | `v1.*OpenAPIBuilder.targetsPath` | ` ` | — |
+
+_7 more members not listed._
+
+### Family 5 — 43 members, every pair `>= 0.61` code-shape, evidence `33714`  (731 edges scored here)
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `web/api/v1/openapi_examples.go:28` | `v1.queryPostExamples` | ` ` | — |
+| `web/api/v1/openapi_examples.go:57` | `v1.queryRangePostExamples` | ` ` | — |
+| `web/api/v1/openapi_examples.go:85` | `v1.queryExemplarsPostExamples` | ` ` | — |
+| `web/api/v1/openapi_examples.go:106` | `v1.formatQueryPostExamples` | ` ` | — |
+| `web/api/v1/openapi_examples.go:123` | `v1.parseQueryPostExamples` | ` ` | — |
+| `web/api/v1/openapi_examples.go:140` | `v1.labelsPostExamples` | ` ` | — |
+| `web/api/v1/openapi_examples.go:167` | `v1.searchMetricNamesPostExamples` | ` ` | — |
+| `web/api/v1/openapi_examples.go:184` | `v1.searchLabelNamesPostExamples` | ` ` | — |
+| `web/api/v1/openapi_examples.go:201` | `v1.searchLabelValuesPostExamples` | ` ` | — |
+| `web/api/v1/openapi_examples.go:219` | `v1.seriesPostExamples` | ` ` | — |
+
+_33 more members not listed._
 
 _472 more families not listed._
 

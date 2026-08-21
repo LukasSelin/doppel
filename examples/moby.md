@@ -9,7 +9,7 @@ container engine; a decade of accretion across daemon, API, and plugin layers
 | Corpus | [moby](https://github.com/moby/moby) |
 | Pinned at | `v28.5.2` (`89c5e8fd66634b6128fc4c0e6f1236e2540e46e0`) |
 | Project since | 2013 |
-| doppel | `fc06f91` |
+| doppel | `eeb5608` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -414,92 +414,78 @@ Families: 656 over 702 components, 1522 functions in a family, 2814 edges comple
 
 ## Families
 
-656 families, 1522 functions in a family, largest 44 members; 2814 edges scored here that retrieval never proposed
+656 families, 1522 functions in a family, largest 10 members; 2814 edges scored here that retrieval never proposed
 
-### Family 1 — 44 members, every pair `>= 0.61` code-shape  (741 edges scored here)
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `builder/builder-next/adapters/containerimage/pull.go:874` | `containerimage.*jobs.isResolved` | ` ` | concurrency |
-| `cmd/docker-proxy/udp_proxy_linux.go:69` | `main.*connTrackEntry.lastWrite` | ` ` | concurrency |
-| `container/state.go:242` | `container.*State.IsRunning` | ` ` | concurrency |
-| `container/state.go:249` | `container.*State.GetPID` | ` ` | concurrency |
-| `container/state.go:354` | `container.*State.IsPaused` | ` ` | concurrency |
-| `container/state.go:373` | `container.*State.IsRestarting` | ` ` | concurrency |
-| `container/state.go:400` | `container.*State.IsRemovalInProgress` | ` ` | concurrency |
-| `container/state.go:407` | `container.*State.IsDead` | ` ` | concurrency |
-| `libnetwork/controller.go:269` | `libnetwork.*Controller.getAgent` | ` ` | concurrency |
-| `libnetwork/diagnostic/server.go:125` | `diagnostic.*Server.Enabled` | ` ` | concurrency |
-
-_34 more members not listed._
-
-### Family 2 — 29 members, every pair `>= 0.62` code-shape  (277 edges scored here)
+### Family 1 — 10 members, every pair `>= 0.68` code-shape, evidence `41964`  (4 edges scored here)
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `integration/internal/container/ops.go:23` | `container.WithHostname` | ` ` | — |
-| `integration/internal/container/ops.go:30` | `container.WithLinks` | ` ` | — |
-| `integration/internal/container/ops.go:37` | `container.WithImage` | ` ` | — |
-| `integration/internal/container/ops.go:44` | `container.WithCmd` | ` ` | — |
-| `integration/internal/container/ops.go:51` | `container.WithNetworkMode` | ` ` | — |
-| `integration/internal/container/ops.go:65` | `container.WithSysctls` | ` ` | — |
-| `integration/internal/container/ops.go:92` | `container.WithTty` | ` ` | — |
-| `integration/internal/container/ops.go:99` | `container.WithWorkingDir` | ` ` | — |
-| `integration/internal/container/ops.go:234` | `container.WithUser` | ` ` | — |
-| `integration/internal/container/ops.go:241` | `container.WithAdditionalGroups` | ` ` | — |
+| `libnetwork/networkdb/networkdbdiagnostic.go:38` | `networkdb.*NetworkDB.dbJoin` | `—` | logging |
+| `libnetwork/networkdb/networkdbdiagnostic.go:71` | `networkdb.*NetworkDB.dbPeers` | `—` | logging |
+| `libnetwork/networkdb/networkdbdiagnostic.go:128` | `networkdb.*NetworkDB.dbCreateEntry` | `—` | logging |
+| `libnetwork/networkdb/networkdbdiagnostic.go:177` | `networkdb.*NetworkDB.dbUpdateEntry` | `—` | logging |
+| `libnetwork/networkdb/networkdbdiagnostic.go:225` | `networkdb.*NetworkDB.dbDeleteEntry` | `—` | logging |
+| `libnetwork/networkdb/networkdbdiagnostic.go:262` | `networkdb.*NetworkDB.dbGetEntry` | `—` | logging |
+| `libnetwork/networkdb/networkdbdiagnostic.go:308` | `networkdb.*NetworkDB.dbJoinNetwork` | `—` | logging |
+| `libnetwork/networkdb/networkdbdiagnostic.go:340` | `networkdb.*NetworkDB.dbLeaveNetwork` | `—` | logging |
+| `libnetwork/networkdb/networkdbdiagnostic.go:372` | `networkdb.*NetworkDB.dbGetTable` | `—` | logging |
+| `libnetwork/networkdb/networkdbdiagnostic.go:420` | `networkdb.*NetworkDB.dbNetworkStats` | `—` | logging |
 
-_19 more members not listed._
-
-### Family 3 — 29 members, every pair `>= 0.61` code-shape  (277 edges scored here)
+### Family 2 — 8 members, every pair `>= 0.81` code-shape, evidence `26374`  (2 edges scored here)
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `integration/internal/container/ops.go:23` | `container.WithHostname` | ` ` | — |
-| `integration/internal/container/ops.go:30` | `container.WithLinks` | ` ` | — |
-| `integration/internal/container/ops.go:37` | `container.WithImage` | ` ` | — |
-| `integration/internal/container/ops.go:44` | `container.WithCmd` | ` ` | — |
-| `integration/internal/container/ops.go:51` | `container.WithNetworkMode` | ` ` | — |
-| `integration/internal/container/ops.go:58` | `container.WithDNS` | ` ` | — |
-| `integration/internal/container/ops.go:65` | `container.WithSysctls` | ` ` | — |
-| `integration/internal/container/ops.go:92` | `container.WithTty` | ` ` | — |
-| `integration/internal/container/ops.go:99` | `container.WithWorkingDir` | ` ` | — |
-| `integration/internal/container/ops.go:234` | `container.WithUser` | ` ` | — |
+| `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:464` | `dbclient.doWriteKeys` | `—` | concurrency |
+| `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:497` | `dbclient.doDeleteKeys` | `—` | concurrency |
+| `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:530` | `dbclient.doWriteDeleteUniqueKeys` | `—` | concurrency |
+| `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:567` | `dbclient.doWriteUniqueKeys` | `—` | concurrency |
+| `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:602` | `dbclient.doWriteDeleteLeaveJoin` | `—` | concurrency |
+| `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:631` | `dbclient.doWriteDeleteWaitLeaveJoin` | `—` | concurrency |
+| `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:677` | `dbclient.doWriteWaitLeave` | `—` | concurrency |
+| `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:713` | `dbclient.doWriteWaitLeaveJoin` | `—` | concurrency |
 
-_19 more members not listed._
-
-### Family 4 — 17 members, every pair `>= 0.60` code-shape  (84 edges scored here)
+### Family 3 — 11 members, every pair `>= 0.62` code-shape, evidence `16144`  (22 edges scored here)
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `client/checkpoint_list.go:12` | `client.*Client.CheckpointList` | ` ` | serialization |
-| `client/config_inspect.go:13` | `client.*Client.ConfigInspectWithRaw` | ` ` | serialization, file_io |
-| `client/container_diff.go:12` | `client.*Client.ContainerDiff` | ` ` | serialization |
-| `client/container_inspect.go:14` | `client.*Client.ContainerInspect` | ` ` | serialization |
-| `client/container_inspect.go:32` | `client.*Client.ContainerInspectWithRaw` | ` ` | serialization, file_io |
-| `client/container_top.go:13` | `client.*Client.ContainerTop` | ` ` | serialization |
-| `client/container_update.go:11` | `client.*Client.ContainerUpdate` | ` ` | serialization |
-| `client/network_inspect.go:20` | `client.*Client.NetworkInspectWithRaw` | ` ` | serialization, file_io |
-| `client/node_inspect.go:13` | `client.*Client.NodeInspectWithRaw` | ` ` | serialization, file_io |
-| `client/plugin_inspect.go:13` | `client.*Client.PluginInspectWithRaw` | ` ` | serialization, file_io |
+| `libnetwork/driverapi/ipamdata.go:32` | `driverapi.*IPAMData.UnmarshalJSON` | ` ` | serialization |
+| `libnetwork/drivers/bridge/bridge_store.go:167` | `bridge.*networkConfiguration.UnmarshalJSON` | ` ` | serialization |
+| `libnetwork/drivers/bridge/bridge_store.go:307` | `bridge.*bridgeEndpoint.UnmarshalJSON` | ` ` | serialization |
+| `libnetwork/drivers/ipvlan/ipvlan_store.go:155` | `ipvlan.*configuration.UnmarshalJSON` | ` ` | serialization |
+| `libnetwork/drivers/ipvlan/ipvlan_store.go:254` | `ipvlan.*endpoint.UnmarshalJSON` | ` ` | serialization |
+| `libnetwork/drivers/macvlan/macvlan_store.go:153` | `macvlan.*configuration.UnmarshalJSON` | ` ` | serialization |
+| `libnetwork/drivers/macvlan/macvlan_store.go:248` | `macvlan.*endpoint.UnmarshalJSON` | ` ` | serialization |
+| `libnetwork/drivers/windows/windows_store.go:218` | `windows.*hnsEndpoint.UnmarshalJSON` | ` ` | serialization |
+| `libnetwork/endpoint_info.go:86` | `libnetwork.*EndpointInterface.UnmarshalJSON` | ` ` | serialization |
+| `libnetwork/endpoint_info.go:471` | `libnetwork.*endpointJoinInfo.UnmarshalJSON` | ` ` | serialization |
 
-_7 more members not listed._
+_1 more members not listed._
 
-### Family 5 — 17 members, every pair `>= 0.60` code-shape  (88 edges scored here)
+### Family 4 — 7 members, every pair `>= 0.65` code-shape, evidence `15087`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `client/checkpoint_list.go:12` | `client.*Client.CheckpointList` | ` ` | serialization |
-| `client/config_inspect.go:13` | `client.*Client.ConfigInspectWithRaw` | ` ` | serialization, file_io |
-| `client/container_diff.go:12` | `client.*Client.ContainerDiff` | ` ` | serialization |
-| `client/container_exec.go:71` | `client.*Client.ContainerExecInspect` | ` ` | serialization |
-| `client/container_inspect.go:14` | `client.*Client.ContainerInspect` | ` ` | serialization |
-| `client/container_inspect.go:32` | `client.*Client.ContainerInspectWithRaw` | ` ` | serialization, file_io |
-| `client/container_top.go:13` | `client.*Client.ContainerTop` | ` ` | serialization |
-| `client/container_update.go:11` | `client.*Client.ContainerUpdate` | ` ` | serialization |
-| `client/node_inspect.go:13` | `client.*Client.NodeInspectWithRaw` | ` ` | serialization, file_io |
-| `client/plugin_inspect.go:13` | `client.*Client.PluginInspectWithRaw` | ` ` | serialization, file_io |
+| `daemon/graphdriver/graphtest/graphbench_unix.go:16` | `graphtest.DriverBenchExists` | `—` | — |
+| `daemon/graphdriver/graphtest/graphbench_unix.go:35` | `graphtest.DriverBenchGetEmpty` | `—` | — |
+| `daemon/graphdriver/graphtest/graphbench_unix.go:60` | `graphtest.DriverBenchDiffBase` | `—` | file_io |
+| `daemon/graphdriver/graphtest/graphbench_unix.go:89` | `graphtest.DriverBenchDiffN` | `—` | file_io |
+| `daemon/graphdriver/graphtest/graphbench_unix.go:124` | `graphtest.DriverBenchDiffApplyN` | `—` | — |
+| `daemon/graphdriver/graphtest/graphbench_unix.go:190` | `graphtest.DriverBenchDeepLayerDiff` | `—` | file_io |
+| `daemon/graphdriver/graphtest/graphbench_unix.go:223` | `graphtest.DriverBenchDeepLayerRead` | `—` | validation, file_io |
 
-_7 more members not listed._
+### Family 5 — 9 members, every pair `>= 0.62` code-shape, evidence `14078`  (5 edges scored here)
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `daemon/graphdriver/btrfs/btrfs.go:199` | `btrfs.subvolCreate` | ` ` | — |
+| `daemon/graphdriver/btrfs/btrfs.go:219` | `btrfs.subvolSnapshot` | ` ` | — |
+| `daemon/graphdriver/btrfs/btrfs.go:337` | `btrfs.*Driver.enableQuota` | ` ` | — |
+| `daemon/graphdriver/btrfs/btrfs.go:363` | `btrfs.*Driver.subvolRescanQuota` | ` ` | — |
+| `daemon/graphdriver/btrfs/btrfs.go:386` | `btrfs.subvolLimitQgroup` | ` ` | — |
+| `daemon/graphdriver/btrfs/btrfs.go:409` | `btrfs.qgroupStatus` | ` ` | — |
+| `daemon/graphdriver/btrfs/btrfs.go:437` | `btrfs.subvolLookupQgroup` | ` ` | — |
+| `quota/projectquota.go:280` | `quota.getProjectID` | ` ` | error_wrapping |
+| `quota/projectquota.go:298` | `quota.setProjectID` | ` ` | error_wrapping |
 
 _651 more families not listed._
 

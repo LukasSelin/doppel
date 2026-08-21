@@ -9,7 +9,7 @@ HTTP router; a narrow core with a middleware package beside it
 | Corpus | [chi](https://github.com/go-chi/chi) |
 | Pinned at | `v5.3.2` (`38939062c5df4d3e8814aad1a488983112627ced`) |
 | Project since | 2015 |
-| doppel | `fc06f91` |
+| doppel | `eeb5608` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -341,24 +341,9 @@ Families: 9 over 18 components, 32 functions in a family, 21 edges completed
 
 ## Families
 
-9 families, 32 functions in a family, largest 10 members; 21 edges scored here that retrieval never proposed
+9 families, 32 functions in a family, largest 5 members; 21 edges scored here that retrieval never proposed
 
-### Family 1 — 10 members, every pair `>= 1.00` code-shape  (21 edges scored here)
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `mux.go:143` | `chi.*Mux.Connect` | `—` | — |
-| `mux.go:149` | `chi.*Mux.Delete` | `—` | — |
-| `mux.go:155` | `chi.*Mux.Get` | `—` | — |
-| `mux.go:161` | `chi.*Mux.Head` | `—` | — |
-| `mux.go:167` | `chi.*Mux.Options` | `—` | — |
-| `mux.go:173` | `chi.*Mux.Patch` | `—` | — |
-| `mux.go:179` | `chi.*Mux.Post` | `—` | — |
-| `mux.go:185` | `chi.*Mux.Put` | `—` | — |
-| `mux.go:191` | `chi.*Mux.Query` | `—` | — |
-| `mux.go:197` | `chi.*Mux.Trace` | `—` | — |
-
-### Family 2 — 5 members, every pair `>= 0.60` code-shape
+### Family 1 — 5 members, every pair `>= 0.60` code-shape, evidence `2060`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
@@ -368,7 +353,7 @@ Families: 9 over 18 components, 32 functions in a family, 21 edges completed
 | `middleware/strip.go:41` | `middleware.RedirectSlashes` | ` ` | — |
 | `middleware/url_format.go:46` | `middleware.URLFormat` | ` ` | — |
 
-### Family 3 — 4 members, every pair `>= 1.00` code-shape
+### Family 2 — 4 members, every pair `>= 1.00` code-shape, evidence `488`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
@@ -377,7 +362,15 @@ Families: 9 over 18 components, 32 functions in a family, 21 edges completed
 | `middleware/wrap_writer.go:194` | `middleware.*httpFancyWriter.Flush` | `—` | — |
 | `middleware/wrap_writer.go:239` | `middleware.*http2FancyWriter.Flush` | `—` | — |
 
-### Family 4 — 4 members, every pair `>= 0.62` code-shape
+### Family 3 — 3 members, every pair `>= 0.60` code-shape, evidence `437`
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `middleware/clean_path.go:12` | `middleware.CleanPath` | ` ` | — |
+| `middleware/get_head.go:10` | `middleware.GetHead` | ` ` | — |
+| `middleware/request_id.go:67` | `middleware.RequestID` | ` ` | — |
+
+### Family 4 — 4 members, every pair `>= 0.62` code-shape, evidence `418`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
@@ -386,13 +379,13 @@ Families: 9 over 18 components, 32 functions in a family, 21 edges completed
 | `middleware/page_route.go:10` | `middleware.PageRoute` | ` ` | — |
 | `middleware/path_rewrite.go:9` | `middleware.PathRewrite` | ` ` | — |
 
-### Family 5 — 3 members, every pair `>= 1.00` code-shape
+### Family 5 — 3 members, every pair `>= 0.62` code-shape, evidence `322`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `middleware/wrap_writer.go:160` | `middleware.*hijackWriter.Hijack` | ` ` | — |
-| `middleware/wrap_writer.go:178` | `middleware.*flushHijackWriter.Hijack` | ` ` | — |
-| `middleware/wrap_writer.go:200` | `middleware.*httpFancyWriter.Hijack` | ` ` | — |
+| `middleware/content_type.go:9` | `middleware.SetHeader` | ` ` | — |
+| `middleware/heartbeat.go:12` | `middleware.Heartbeat` | ` ` | — |
+| `middleware/page_route.go:10` | `middleware.PageRoute` | ` ` | — |
 
 _4 more families not listed._
 

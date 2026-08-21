@@ -89,6 +89,16 @@ type Family struct {
 	// checking a family against the pair list finds members with no pair
 	// between them and concludes the family is invented.
 	Completed int
+
+	// Evidence is the family's total retrieval evidence mass in nats —
+	// Σ Retrieval.Total over the clique edges retrieval proposed (completed
+	// edges contribute zero). It is what ranks the census: a 44-member family
+	// of mutex-guarded getters is factually a family, but its members share
+	// corpus idiom, its edges carry little informative mass, and most of them
+	// exist only because completion stitched them; a doc-generator family's
+	// few edges each carry hundreds of nats. Ranking by size instead put the
+	// idiom families first on every large corpus.
+	Evidence float64
 }
 
 // Stats is the run's family accounting, for the stderr summary.
@@ -116,7 +126,11 @@ func Build(units []parser.CodeUnit, pairs []analyzer.SimilarPair, o Options) ([]
 	g := newGraph(len(units))
 	for _, p := range pairs {
 		if p.Score >= o.Min {
-			g.add(p.AIdx, p.BIdx, p.Score)
+			ev := 0.0
+			if p.Retrieval != nil {
+				ev = p.Retrieval.Total
+			}
+			g.add(p.AIdx, p.BIdx, p.Score, ev)
 		}
 	}
 
@@ -180,7 +194,7 @@ func completeComponent(units []parser.CodeUnit, g *graph, comp []int, min float6
 			}
 			s := fingerprint.Similarity(units[a].Fingerprint, units[b].Fingerprint).Score
 			if s >= min {
-				g.add(a, b, s)
+				g.add(a, b, s, 0) // completion carries no retrieval evidence
 				g.markCompleted(a, b)
 				added++
 			}
@@ -189,7 +203,11 @@ func completeComponent(units []parser.CodeUnit, g *graph, comp []int, min float6
 	return added
 }
 
-// sortFamilies puts the census in reading order: biggest first, then tightest.
+// sortFamilies puts the census in reading order: most informative first —
+// total retrieval evidence mass, the same currency the pair list ranks by —
+// then biggest, then tightest. Size ordering alone put the corpus's idiom
+// families (44 mutex-guarded getters) above its genuine clone families on
+// every large corpus; see Family.Evidence.
 //
 // The trailing member comparison makes the order total, which the repo's
 // byte-identical-output invariant requires — two families of equal size and
@@ -197,6 +215,9 @@ func completeComponent(units []parser.CodeUnit, g *graph, comp []int, min float6
 func sortFamilies(f []Family) {
 	sort.SliceStable(f, func(i, j int) bool {
 		a, b := f[i], f[j]
+		if a.Evidence != b.Evidence {
+			return a.Evidence > b.Evidence
+		}
 		if len(a.Members) != len(b.Members) {
 			return len(a.Members) > len(b.Members)
 		}

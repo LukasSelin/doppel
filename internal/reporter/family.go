@@ -41,8 +41,8 @@ func PrintFamilies(w io.Writer, fams []family.Family, stats family.Stats, units 
 		shown = shown[:show]
 	}
 	for i, f := range shown {
-		fmt.Fprintf(w, "F%-3d  %d members   every pair >= %.2f code-shape%s\n",
-			i+1, len(f.Members), f.MinEdge, completedNote(f.Completed))
+		fmt.Fprintf(w, "F%-3d  %d members   every pair >= %.2f code-shape   evidence %.0f%s\n",
+			i+1, len(f.Members), f.MinEdge, f.Evidence, completedNote(f.Completed))
 		listed := memberLimit(f, show)
 		for _, m := range f.Members[:listed] {
 			if m < 0 || m >= len(units) {
@@ -76,8 +76,8 @@ func PrintMarkdownFamilies(w io.Writer, fams []family.Family, stats family.Stats
 		shown = shown[:show]
 	}
 	for i, f := range shown {
-		fmt.Fprintf(w, "### Family %d — %d members, every pair `>= %.2f` code-shape%s\n\n",
-			i+1, len(f.Members), f.MinEdge, completedNote(f.Completed))
+		fmt.Fprintf(w, "### Family %d — %d members, every pair `>= %.2f` code-shape, evidence `%.0f`%s\n\n",
+			i+1, len(f.Members), f.MinEdge, f.Evidence, completedNote(f.Completed))
 		fmt.Fprintf(w, "| Location | Function | Signature | Patterns |\n")
 		fmt.Fprintf(w, "|---|---|---|---|\n")
 		listed := memberLimit(f, show)
@@ -202,6 +202,7 @@ type FamilyJSON struct {
 	Size      int          `json:"size"`
 	MinEdge   float64      `json:"minEdge"`
 	MeanEdge  float64      `json:"meanEdge"`
+	Evidence  float64      `json:"evidence"` // Σ retrieval evidence mass over retrieved edges; the census's rank key
 	Completed int          `json:"completed"`
 	Members   []MemberJSON `json:"members"` // sorted by key
 }
@@ -227,6 +228,7 @@ func PrintFamiliesJSON(w io.Writer, fams []family.Family, stats family.Stats, un
 			Size:      len(f.Members),
 			MinEdge:   f.MinEdge,
 			MeanEdge:  f.MeanEdge,
+			Evidence:  f.Evidence,
 			Completed: f.Completed,
 			Members:   make([]MemberJSON, 0, len(f.Members)),
 		}

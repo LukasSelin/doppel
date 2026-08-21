@@ -9,7 +9,7 @@ structured concurrency library; generics-heavy, one idea, written recently and a
 | Corpus | [conc](https://github.com/sourcegraph/conc) |
 | Pinned at | `v0.3.0` (`7b8c8f2875cb861bb61844c9bcaa1aed070adbd4`) |
 | Project since | 2023 |
-| doppel | `fc06f91` |
+| doppel | `eeb5608` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -349,7 +349,7 @@ Families: 7 over 8 components, 20 functions in a family
 
 7 families, 20 functions in a family, largest 5 members
 
-### Family 1 — 5 members, every pair `>= 0.90` code-shape
+### Family 1 — 5 members, every pair `>= 0.90` code-shape, evidence `487`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
@@ -359,7 +359,7 @@ Families: 7 over 8 components, 20 functions in a family
 | `pool/result_error_pool.go:72` | `pool.*ResultErrorPool[T].WithMaxGoroutines` | ` ` | — |
 | `pool/result_pool.go:72` | `pool.*ResultPool[T].WithMaxGoroutines` | ` ` | — |
 
-### Family 2 — 4 members, every pair `>= 0.85` code-shape
+### Family 2 — 4 members, every pair `>= 0.85` code-shape, evidence `222`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
@@ -368,7 +368,15 @@ Families: 7 over 8 components, 20 functions in a family
 | `pool/result_context_pool.go:42` | `pool.*ResultContextPool[T].WithCollectErrored` | ` ` | — |
 | `pool/result_error_pool.go:45` | `pool.*ResultErrorPool[T].WithCollectErrored` | ` ` | — |
 
-### Family 3 — 4 members, every pair `>= 0.71` code-shape
+### Family 3 — 3 members, every pair `>= 0.68` code-shape, evidence `211`
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `pool/result_error_pool.go:55` | `pool.*ResultErrorPool[T].WithContext` | ` ` | — |
+| `pool/result_pool.go:52` | `pool.*ResultPool[T].WithErrors` | ` ` | — |
+| `pool/result_pool.go:63` | `pool.*ResultPool[T].WithContext` | ` ` | — |
+
+### Family 4 — 4 members, every pair `>= 0.71` code-shape, evidence `180`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
@@ -377,21 +385,13 @@ Families: 7 over 8 components, 20 functions in a family
 | `pool/result_error_pool.go:37` | `pool.*ResultErrorPool[T].Wait` | ` ` | — |
 | `pool/result_pool.go:40` | `pool.*ResultPool[T].Wait` | ` ` | — |
 
-### Family 4 — 3 members, every pair `>= 0.85` code-shape
+### Family 5 — 3 members, every pair `>= 0.85` code-shape, evidence `151`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
 | `pool/context_pool.go:64` | `pool.*ContextPool.WithFirstError` | ` ` | — |
 | `pool/result_context_pool.go:50` | `pool.*ResultContextPool[T].WithFirstError` | ` ` | — |
 | `pool/result_error_pool.go:64` | `pool.*ResultErrorPool[T].WithFirstError` | ` ` | — |
-
-### Family 5 — 3 members, every pair `>= 0.68` code-shape
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `pool/result_error_pool.go:55` | `pool.*ResultErrorPool[T].WithContext` | ` ` | — |
-| `pool/result_pool.go:52` | `pool.*ResultPool[T].WithErrors` | ` ` | — |
-| `pool/result_pool.go:63` | `pool.*ResultPool[T].WithContext` | ` ` | — |
 
 _2 more families not listed._
 
