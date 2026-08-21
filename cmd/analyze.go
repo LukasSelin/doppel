@@ -126,6 +126,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	cs := cult.Stats()
 	fmt.Fprintf(os.Stderr, "Culture: %d concepts modeled, %d associations, %d unusual realizations\n",
 		cs.ConceptsModeled, cs.AssociationCount, cs.UnusualRealizations)
+	printHabitatSummary(os.Stderr, cs)
 
 	// Multi-channel candidate retrieval: structural shape, shared concepts,
 	// and shared resolved calls each retrieve per-function top-K neighbors
@@ -183,11 +184,13 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Annotate surviving pairs with unusual concept realizations — positional
-	// lookup, like Evidence attachment; never name-keyed.
+	// Annotate surviving pairs with unusual concept realizations and habitat
+	// misfits — positional lookup, like Evidence attachment; never name-keyed.
 	for i := range pairs {
 		pairs[i].Culture = cultureNotes(cult, pairs[i].AIdx, pairs[i].BIdx,
 			pairs[i].A.Patterns, pairs[i].B.Patterns)
+		pairs[i].Habitat = habitatNotes(cult, pairs[i].AIdx, pairs[i].BIdx,
+			pairs[i].A.Package, pairs[i].B.Package)
 	}
 
 	// Final ranking: retrieval evidence mass decides the report order; the
@@ -271,11 +274,13 @@ func cultureNotes(cult *culture.Model, aIdx, bIdx int, aTags, bTags []string) []
 			}
 			typ, _ := cult.Typicality(side.idx, tag)
 			median, _ := cult.Median(tag)
+			convention, _ := cult.ConventionStrength(tag)
 			note := analyzer.CultureNote{
 				Tag:           tag,
 				Side:          side.label,
 				Typicality:    typ,
 				ConceptMedian: median,
+				Convention:    convention,
 			}
 			for _, ch := range cult.ChannelTypicality(side.idx, tag) {
 				note.Channels = append(note.Channels, analyzer.CultureChannel{
@@ -286,6 +291,55 @@ func cultureNotes(cult *culture.Model, aIdx, bIdx int, aTags, bTags []string) []
 		}
 	}
 	return notes
+}
+
+// habitatNotes flags pair sides that are notably out of place in their own
+// package. Positional lookup, A before B; only misfits carry notes, so the
+// default report stays lean.
+func habitatNotes(cult *culture.Model, aIdx, bIdx int, aPkg, bPkg string) []analyzer.HabitatNote {
+	var notes []analyzer.HabitatNote
+	for _, side := range []struct {
+		label string
+		idx   int
+		pkg   string
+	}{{"A", aIdx, aPkg}, {"B", bIdx, bPkg}} {
+		if !cult.Misfit(side.idx) {
+			continue
+		}
+		fit, _ := cult.HabitatFit(side.idx)
+		norm, _ := cult.HabitatNorm(side.pkg)
+		note := analyzer.HabitatNote{
+			Side:        side.label,
+			Package:     side.pkg,
+			Fit:         fit,
+			PackageNorm: norm,
+		}
+		for _, ch := range cult.ChannelSurprise(side.idx) {
+			note.Channels = append(note.Channels, analyzer.HabitatChannel{
+				Name: ch.Name, Surprise: ch.Surprise,
+			})
+		}
+		notes = append(notes, note)
+	}
+	return notes
+}
+
+// printHabitatSummary emits the habitat and convention stderr lines in human
+// vocabulary. Superlatives are omitted entirely when nothing is modeled.
+func printHabitatSummary(w io.Writer, s culture.Stats) {
+	if s.HabitatsModeled == 0 {
+		fmt.Fprintf(w, "Habitats: 0 modeled\n")
+	} else {
+		fmt.Fprintf(w, "Habitats: %d modeled, %d misfits; most uniform %s (norm %.2f), most diverse %s (norm %.2f)\n",
+			s.HabitatsModeled, s.HabitatMisfits,
+			s.MostUniformHabitat, s.MostUniformNorm,
+			s.MostDiverseHabitat, s.MostDiverseNorm)
+	}
+	if s.ConceptsModeled >= 1 {
+		fmt.Fprintf(w, "Conventions: strongest %s (%.2f), loosest %s (%.2f)\n",
+			s.StrongestConvention, s.StrongestConventionStrength,
+			s.LoosestConvention, s.LoosestConventionStrength)
+	}
 }
 
 func shouldSkipDir(name string) bool {

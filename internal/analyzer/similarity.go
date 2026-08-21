@@ -17,6 +17,24 @@ type SimilarPair struct {
 	Evidence   *comparator.StructuralEvidence // populated by structural comparison stage; nil until then
 	Retrieval  *Retrieval                     // multi-channel retrieval evidence; nil for FindSimilar-produced pairs
 	Culture    []CultureNote                  // unusual concept realizations; nil when none — set by the pipeline
+	Habitat    []HabitatNote                  // habitat misfits; nil when neither side misfits — set by the pipeline
+}
+
+// HabitatNote flags one side of a pair as notably out of place in its own
+// package: its features are far more surprising there than the package's
+// norm tolerates. Habitat annotates; it never affects ranking.
+type HabitatNote struct {
+	Side        string           // "A" or "B"
+	Package     string           // the unit's habitat
+	Fit         float64          // 0-1, excess-strain Boltzmann factor
+	PackageNorm float64          // the habitat's mean member fit, for contrast
+	Channels    []HabitatChannel // per-channel surprise; rendered only under --debug
+}
+
+// HabitatChannel is one channel's contribution to a HabitatNote's strain.
+type HabitatChannel struct {
+	Name     string
+	Surprise float64
 }
 
 // CultureNote flags one side of a pair as an unusual realization of a shared
@@ -27,6 +45,7 @@ type CultureNote struct {
 	Side          string // "A" or "B"
 	Typicality    float64
 	ConceptMedian float64
+	Convention    float64          // the concept's convention strength, for context
 	Channels      []CultureChannel // per-channel typicality; rendered only under --debug
 }
 

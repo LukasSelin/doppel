@@ -52,10 +52,17 @@ func Print(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 			}
 		}
 		for _, note := range p.Culture {
-			fmt.Fprintf(w, "  culture: %s realizes %s atypically (typicality %.2f, concept median %.2f)\n",
-				note.Side, note.Tag, note.Typicality, note.ConceptMedian)
+			fmt.Fprintf(w, "  culture: %s realizes %s atypically (typicality %.2f, concept median %.2f, convention %.2f)\n",
+				note.Side, note.Tag, note.Typicality, note.ConceptMedian, note.Convention)
 			if meta.Debug {
 				fmt.Fprintf(w, "    channels: %s\n", cultureChannelLine(note.Channels))
+			}
+		}
+		for _, note := range p.Habitat {
+			fmt.Fprintf(w, "  habitat: %s fits poorly in %s (fit %.2f, package norm %.2f)\n",
+				note.Side, note.Package, note.Fit, note.PackageNorm)
+			if meta.Debug {
+				fmt.Fprintf(w, "    surprise: %s\n", habitatChannelLine(note.Channels))
 			}
 		}
 		if p.Evidence != nil {
@@ -112,11 +119,20 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 		}
 
 		for _, note := range p.Culture {
-			fmt.Fprintf(w, "**Culture:** %s realizes `%s` atypically (typicality %.2f, concept median %.2f)\n\n",
-				note.Side, mdEscape(note.Tag), note.Typicality, note.ConceptMedian)
+			fmt.Fprintf(w, "**Culture:** %s realizes `%s` atypically (typicality %.2f, concept median %.2f, convention %.2f)\n\n",
+				note.Side, mdEscape(note.Tag), note.Typicality, note.ConceptMedian, note.Convention)
 			if meta.Debug {
 				fmt.Fprintf(w, "**Channels (%s/%s):** %s\n\n",
 					note.Side, mdEscape(note.Tag), cultureChannelLine(note.Channels))
+			}
+		}
+
+		for _, note := range p.Habitat {
+			fmt.Fprintf(w, "**Habitat:** %s fits poorly in `%s` (fit %.2f, package norm %.2f)\n\n",
+				note.Side, mdEscape(note.Package), note.Fit, note.PackageNorm)
+			if meta.Debug {
+				fmt.Fprintf(w, "**Surprise (%s/%s):** %s\n\n",
+					note.Side, mdEscape(note.Package), habitatChannelLine(note.Channels))
 			}
 		}
 
@@ -146,6 +162,16 @@ func cultureChannelLine(channels []analyzer.CultureChannel) string {
 	parts := make([]string, 0, len(channels))
 	for _, ch := range channels {
 		parts = append(parts, fmt.Sprintf("%s %.2f", ch.Name, ch.Typicality))
+	}
+	return strings.Join(parts, "  ")
+}
+
+// habitatChannelLine renders a habitat note's per-channel surprises in their
+// fixed channel order.
+func habitatChannelLine(channels []analyzer.HabitatChannel) string {
+	parts := make([]string, 0, len(channels))
+	for _, ch := range channels {
+		parts = append(parts, fmt.Sprintf("%s %.2f", ch.Name, ch.Surprise))
 	}
 	return strings.Join(parts, "  ")
 }

@@ -127,12 +127,67 @@ func TestPrintMarkdownTrophic(t *testing.T) {
 
 func cultureNote() analyzer.CultureNote {
 	return analyzer.CultureNote{
-		Tag: "transaction", Side: "B", Typicality: 0.21, ConceptMedian: 0.68,
+		Tag: "transaction", Side: "B", Typicality: 0.21, ConceptMedian: 0.68, Convention: 0.85,
 		Channels: []analyzer.CultureChannel{
 			{Name: "calls", Typicality: 0.10}, {Name: "flow", Typicality: 0.45},
 			{Name: "cotags", Typicality: 0.20}, {Name: "role", Typicality: 0.00},
 			{Name: "package", Typicality: 0.30},
 		},
+	}
+}
+
+func habitatNote() analyzer.HabitatNote {
+	return analyzer.HabitatNote{
+		Side: "B", Package: "queue", Fit: 0.21, PackageNorm: 0.84,
+		Channels: []analyzer.HabitatChannel{
+			{Name: "calls", Surprise: 3.20}, {Name: "flow", Surprise: 0.45},
+			{Name: "tags", Surprise: 1.10}, {Name: "role", Surprise: 0.00},
+		},
+	}
+}
+
+func TestPrintHabitatNotes(t *testing.T) {
+	pair := samplePair(nil)
+	pair.Habitat = []analyzer.HabitatNote{habitatNote()}
+
+	var plain strings.Builder
+	Print(&plain, []analyzer.SimilarPair{pair}, Meta{})
+	if !strings.Contains(plain.String(),
+		"  habitat: B fits poorly in queue (fit 0.21, package norm 0.84)") {
+		t.Errorf("plain report missing habitat line:\n%s", plain.String())
+	}
+	if strings.Contains(plain.String(), "surprise:") {
+		t.Errorf("surprise detail shown without Debug:\n%s", plain.String())
+	}
+
+	var debug strings.Builder
+	Print(&debug, []analyzer.SimilarPair{pair}, Meta{Debug: true})
+	if !strings.Contains(debug.String(),
+		"    surprise: calls 3.20  flow 0.45  tags 1.10  role 0.00") {
+		t.Errorf("debug report missing surprise line:\n%s", debug.String())
+	}
+}
+
+func TestPrintMarkdownHabitatNotes(t *testing.T) {
+	pair := samplePair(nil)
+	pair.Habitat = []analyzer.HabitatNote{habitatNote()}
+
+	var b strings.Builder
+	PrintMarkdown(&b, []analyzer.SimilarPair{pair}, Meta{Debug: true})
+	out := b.String()
+	if !strings.Contains(out, "**Habitat:** B fits poorly in `queue` (fit 0.21, package norm 0.84)") {
+		t.Errorf("markdown missing habitat line:\n%s", out)
+	}
+	if !strings.Contains(out, "**Surprise (B/queue):** calls 3.20  flow 0.45  tags 1.10  role 0.00") {
+		t.Errorf("markdown debug missing surprise line:\n%s", out)
+	}
+}
+
+func TestPrintNilHabitatRendersNothing(t *testing.T) {
+	var b strings.Builder
+	Print(&b, []analyzer.SimilarPair{samplePair(nil)}, Meta{Debug: true})
+	if strings.Contains(b.String(), "habitat:") {
+		t.Errorf("nil-Habitat pair rendered a habitat line:\n%s", b.String())
 	}
 }
 
@@ -143,7 +198,7 @@ func TestPrintCultureNotes(t *testing.T) {
 	var plain strings.Builder
 	Print(&plain, []analyzer.SimilarPair{pair}, Meta{})
 	if !strings.Contains(plain.String(),
-		"culture: B realizes transaction atypically (typicality 0.21, concept median 0.68)") {
+		"culture: B realizes transaction atypically (typicality 0.21, concept median 0.68, convention 0.85)") {
 		t.Errorf("plain report missing culture line:\n%s", plain.String())
 	}
 	if strings.Contains(plain.String(), "channels:") {
@@ -166,7 +221,7 @@ func TestPrintMarkdownCultureNotes(t *testing.T) {
 	PrintMarkdown(&b, []analyzer.SimilarPair{pair}, Meta{Debug: true})
 	out := b.String()
 	if !strings.Contains(out,
-		"**Culture:** B realizes `transaction` atypically (typicality 0.21, concept median 0.68)") {
+		"**Culture:** B realizes `transaction` atypically (typicality 0.21, concept median 0.68, convention 0.85)") {
 		t.Errorf("markdown missing culture line:\n%s", out)
 	}
 	if !strings.Contains(out, "**Channels (B/transaction):** calls 0.10  flow 0.45") {
