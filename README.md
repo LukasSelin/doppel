@@ -69,6 +69,9 @@ doppel ontology --defs
 
 # Before writing a function, ask whether the repo already has one like it
 doppel query --near billing . < draft.go
+
+# Census: every group of 3+ mutually similar functions, not just pairs
+doppel families .
 ```
 
 ### Querying before you write
@@ -103,6 +106,29 @@ Every reported pair carries two independent numbers:
 
 A high code score with low structural overlap means two lookalike bodies in unrelated parts of the system. High on both is the real merge candidate.
 
+### Families
+
+A pair is two functions. `doppel families` reports the *groups*: every set of three or more
+functions in which **every member** is at least `--family-min` alike to every other member.
+
+```
+F1    7 members   every pair >= 0.75 code-shape  (3 edges scored here)
+      culture.sortedStrings                           internal/culture/culture.go:214
+      culture.sortedCountKeys                         internal/culture/ecology.go:175
+      ...
+```
+
+Two things make that claim checkable. Families are **cliques**, not chains: A being similar to B
+and B to C says nothing about A and C, and clustering that follows such links produces "families"
+whose two ends have nothing in common. And because candidate retrieval keeps a bounded number of
+neighbours per function, some edges inside a real family are never proposed — doppel scores those
+directly before grouping, and says how many it added, so a family never rests on an edge you cannot
+find in the pair list without being told.
+
+A function can belong to more than one family; the counts report distinct functions. `analyze`
+shows the largest few inline; `doppel families` is the whole census, with `--format json` for a
+machine.
+
 ### Flags
 
 | Flag                | Default | Description                                                                 |
@@ -113,6 +139,8 @@ A high code score with low structural overlap means two lookalike bodies in unre
 | `--min-nodes`       | `12`    | Skip functions whose body has fewer than this many AST nodes. Guards against one-line accessors, which match each other perfectly and would otherwise flood the report |
 | `-o`, `--output`    | *(disabled)* | Write report as Markdown to this file. The stdout report is still printed |
 | `--format`          | `text`  | Stdout format: `text` or `json`. The JSON form is a deterministic snapshot of the whole run — every function, its concept tags and role, and every reported pair |
+| `--families`        | `5`     | Near-duplicate families to show after the pair list (`0` removes the section) |
+| `--family-min`      | `0.60`  | Code similarity every two members of a family must reach                    |
 | `--config`          | `.doppel.json` if present | Path to a JSON config file                                |
 
 ### Configuration
@@ -123,6 +151,7 @@ Any flag above except `--config` can be set in a `.doppel.json` at the repo root
 {
   "threshold": 0.65,
   "top": 10,
+  "families": 5,
   "struct-min": 0.4,
   "output": "doppel-report.md"
 }

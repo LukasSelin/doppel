@@ -25,6 +25,8 @@ type AnalysisConfig struct {
 	MaxPerFunc *int     `json:"max-per-func,omitempty"`
 	Tests      *string  `json:"tests,omitempty"`
 	Format     *string  `json:"format,omitempty"`
+	Families   *int     `json:"families,omitempty"`
+	FamilyMin  *float64 `json:"family-min,omitempty"`
 	HookNotify *string  `json:"hook-notify,omitempty"`
 }
 
@@ -113,6 +115,12 @@ func applyConfig(cmd *cobra.Command, cfg *AnalysisConfig) {
 	}
 	if cfg.Format != nil {
 		set("format", *cfg.Format)
+	}
+	if cfg.Families != nil {
+		set("families", strconv.Itoa(*cfg.Families))
+	}
+	if cfg.FamilyMin != nil {
+		set("family-min", strconv.FormatFloat(*cfg.FamilyMin, 'f', -1, 64))
 	}
 }
 

@@ -28,6 +28,15 @@ corpus is a decade of accretion". Both ends are visible below.
 | [conc](conc.md) | 2023 | `v0.3.0` | 81 | 79 | 1 | 4 |
 
 Counts are for the production population (`--tests exclude`, the default).
+
+Each report ends with a **Families** section: the groups of three or more
+functions in which every member is alike to every other member, as opposed to
+the pair list above it. The ladder is where the shape of that is easiest to
+see — conc's largest family is five `WithMaxGoroutines` builder methods across
+its pool variants, while prometheus's is fifty-five OpenAPI schema builders and
+moby's top families are the generated protobuf methods that already own its
+pair list. `doppel families <path>` prints the whole census rather than the
+report's first few.
 "Concepts modeled" is how many of the nine tags reached the five-member floor
 culture needs to build a prototype: nine on moby, one on conc. That column is
 the ladder in miniature — the culture, habitat and arena layers have real

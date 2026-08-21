@@ -9,7 +9,7 @@ CLI framework; one dominant type with a long method set, plus shell-completion g
 | Corpus | [cobra](https://github.com/spf13/cobra) |
 | Pinned at | `v1.10.2` (`88b30ab89da2d0d0abb153818746c5a2d30eccec`) |
 | Project since | 2015 |
-| doppel | `acebce0` |
+| doppel | `706150c` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -30,6 +30,7 @@ Found 269 functions. Retrieving candidates...
 Retrieval: shape 117, concept 45, call 712 -> 810 unique pairs
   concept-only 5.1%  call-only 80.0%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 1257
 Running structural comparison on 810 pairs...
+Families: 18 over 43 components, 63 functions in a family, 3 edges completed
 ```
 
 # Code Similarity Report
@@ -370,4 +371,61 @@ Running structural comparison on 810 pairs...
 - call into same packages: [cobra]
 
 ---
+
+## Families
+
+18 families, 63 functions in a family, largest 9 members; 3 edges scored here that retrieval never proposed
+
+### Family 1 — 9 members, every pair `>= 0.63` code-shape
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `command.go:412` | `cobra.*Command.getOut` | ` ` | — |
+| `command.go:422` | `cobra.*Command.getErr` | ` ` | — |
+| `command.go:432` | `cobra.*Command.getIn` | ` ` | — |
+| `command.go:464` | `cobra.*Command.getUsageTemplateFunc` | ` ` | — |
+| `command.go:505` | `cobra.*Command.getHelpTemplateFunc` | ` ` | — |
+| `command.go:592` | `cobra.*Command.UsageTemplate` | ` ` | — |
+| `command.go:605` | `cobra.*Command.HelpTemplate` | ` ` | — |
+| `command.go:618` | `cobra.*Command.VersionTemplate` | ` ` | — |
+| `command.go:631` | `cobra.*Command.getVersionTemplateFunc` | ` ` | — |
+
+### Family 2 — 5 members, every pair `>= 0.81` code-shape
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `bash_completions.go:701` | `cobra.*Command.GenBashCompletionFile` | ` ` | — |
+| `bash_completionsV2.go:470` | `cobra.*Command.GenBashCompletionFileV2` | ` ` | — |
+| `fish_completions.go:284` | `cobra.*Command.GenFishCompletionFile` | ` ` | — |
+| `powershell_completions.go:320` | `cobra.*Command.genPowerShellCompletionFile` | ` ` | — |
+| `zsh_completions.go:70` | `cobra.*Command.genZshCompletionFile` | ` ` | — |
+
+### Family 3 — 4 members, every pair `>= 0.86` code-shape
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `bash_completionsV2.go:24` | `cobra.*Command.genBashCompletion` | ` ` | — |
+| `fish_completions.go:276` | `cobra.*Command.GenFishCompletion` | ` ` | — |
+| `powershell_completions.go:313` | `cobra.*Command.genPowerShellCompletion` | ` ` | — |
+| `zsh_completions.go:80` | `cobra.*Command.genZshCompletion` | ` ` | — |
+
+### Family 4 — 4 members, every pair `>= 0.75` code-shape
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `args.go:74` | `cobra.MinimumNArgs` | ` ` | — |
+| `args.go:84` | `cobra.MaximumNArgs` | ` ` | — |
+| `args.go:94` | `cobra.ExactArgs` | ` ` | — |
+| `args.go:104` | `cobra.RangeArgs` | ` ` | — |
+
+### Family 5 — 4 members, every pair `>= 0.68` code-shape
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `command.go:592` | `cobra.*Command.UsageTemplate` | ` ` | — |
+| `command.go:605` | `cobra.*Command.HelpTemplate` | ` ` | — |
+| `command.go:618` | `cobra.*Command.VersionTemplate` | ` ` | — |
+| `command.go:643` | `cobra.*Command.ErrPrefix` | ` ` | — |
+
+_13 more families not listed._
 
