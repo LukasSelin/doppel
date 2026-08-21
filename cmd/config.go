@@ -21,6 +21,7 @@ type AnalysisConfig struct {
 	OutputFile *string  `json:"output,omitempty"`
 	ChannelK   *int     `json:"channel-k,omitempty"`
 	Debug      *bool    `json:"debug,omitempty"`
+	MaxPerFunc *int     `json:"max-per-func,omitempty"`
 }
 
 // loadConfig reads a JSON config file. Returns nil (no error) if the file does not exist.
@@ -66,5 +67,8 @@ func applyConfig(cmd *cobra.Command, cfg *AnalysisConfig) {
 	}
 	if cfg.Debug != nil {
 		set("debug", strconv.FormatBool(*cfg.Debug))
+	}
+	if cfg.MaxPerFunc != nil {
+		set("max-per-func", strconv.Itoa(*cfg.MaxPerFunc))
 	}
 }

@@ -30,6 +30,7 @@ var (
 	structMin  float64
 	channelK   int
 	debugFlag  bool
+	maxPerFunc int
 )
 
 var analyzeCmd = &cobra.Command{
@@ -62,6 +63,7 @@ func init() {
 	analyzeCmd.Flags().Float64Var(&structMin, "struct-min", 0.0, "Minimum structural overlap score (0.0–1.0) to keep a pair")
 	analyzeCmd.Flags().IntVar(&channelK, "channel-k", 5, "Candidates each function keeps per retrieval channel")
 	analyzeCmd.Flags().BoolVar(&debugFlag, "debug", false, "Show per-pair retrieval provenance in the report")
+	analyzeCmd.Flags().IntVar(&maxPerFunc, "max-per-func", 2, "Maximum pairs any one function may appear in in the final report (0 = no cap)")
 	rootCmd.AddCommand(analyzeCmd)
 }
 
@@ -196,9 +198,13 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 			pairs[i].A.Patterns, pairs[i].B.Patterns)
 	}
 
-	// Final ranking: retrieval evidence mass decides the report order; the
-	// code-shape and overlap scores stay unblended, displayed per pair.
-	pairs = analyzer.SortByEvidence(pairs, topN)
+	// Final ranking: corroborated evidence — retrieval mass discounted by
+	// architectural corroboration and structural similarity — with a
+	// per-function diversity cap. The displayed scores stay unblended.
+	pairs, suppressed := analyzer.SortForReport(pairs, topN, maxPerFunc)
+	if suppressed > 0 {
+		fmt.Fprintf(os.Stderr, "  %d pairs suppressed by max-per-func=%d\n", suppressed, maxPerFunc)
+	}
 
 	meta := reporter.Meta{Threshold: threshold, TotalFuncs: len(units), Debug: debugFlag}
 	reporter.Print(os.Stdout, pairs, meta)
