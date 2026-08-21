@@ -178,6 +178,14 @@ doppel ontology --defs                                # print the vocabulary and
   claim one identity, which is the stale-baseline-passes-comparability failure the check exists to
   catch. `task dist` runs the whole release locally into `dist/`; `task release-check` validates
   the config.
+- `.github/workflows/wiki.yml` mirrors `.github/wiki/` to the repo's GitHub wiki on a push to
+  `master`, path-filtered so it does not start for unrelated commits. **`.github/wiki/` is the
+  source of truth and the wiki is a generated view** — a page edited in the wiki UI is overwritten
+  by the next sync, and deleting a file here deletes the page, because the job clears the wiki's
+  markdown before copying. Page name is the filename with its first letter upper-cased
+  (`how-it-works.md` → `How-it-works`, which GitHub titles "How it works"), so the directory must
+  stay **flat**: wiki page names cannot nest, and the job fails loudly rather than silently
+  collapsing `a/page.md` and `b/page.md` onto one page. It pushes only when something changed.
 - `.gitattributes` forces LF for Go/shell/markdown/config so the bash hook works under Git Bash on Windows.
 
 ## Key types
