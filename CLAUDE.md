@@ -655,6 +655,7 @@ hook rewrites that file every turn. `analyze --format json` remains the snapshot
   "debug": false,
   "max-per-func": 2,
   "tests": "exclude",
+  "generated": "exclude",
   "families": 5,
   "family-min": 0.60,
   "hook-notify": "agent"
@@ -668,8 +669,11 @@ Flag semantics after the retrieval redesign: `--threshold` floors code-shape for
 top-K; `--debug` adds retrieval provenance lines to the report; `--max-per-func` caps how many
 final-report pairs any one function may appear in (0 disables); `--families` bounds the report's
 family section (0 removes it) and `--family-min` is the code-shape every two members of a family
-must reach — both presentation, so neither is in `Params` and neither can invalidate a baseline; `--tests` picks the population
-(`include`/`exclude`/`only`, default `exclude`) before any statistic is computed.
+must reach — both presentation, so neither is in `Params` and neither can invalidate a baseline; `--tests` and `--generated`
+pick the population (`include`/`exclude`/`only` each, both defaulting `exclude`) before any
+statistic is computed — tests because they are conventionally similar by design, generated files
+(Go's "Code generated ... DO NOT EDIT." marker, detected via `ast.IsGenerated` at parse time)
+because they are near-identical by construction and unactionable.
 
 `hook-notify` (`agent` | `user` | `off`) is read only by `doppel hook stop` and has no flag — there
 is no CLI surface a hook setting would belong to. `format` (`text` or `json`) is a key like any
@@ -702,7 +706,7 @@ to rewrite on every turn:
   shift the moment a file is added, which would reorder the whole pair list in a diff for no reason
   anyone caused.
 - **Hooks diff the full candidate set.** `hookParams` honours the `.doppel.json` keys that define the
-  *corpus* (`threshold`, `min-nodes`, `channel-k`, `tests`) and overrides the ones that only decide
+  *corpus* (`threshold`, `min-nodes`, `channel-k`, `tests`, `generated`) and overrides the ones that only decide
   what gets *shown* (`top`, `max-per-func`, `struct-min`). A pair that fell past rank 20 has not
   changed; reporting it as a session's impact would be a lie.
 - **Only what a consumer reads is stored.** `Schema` 2 dropped every field nothing read back:
@@ -813,7 +817,10 @@ shell and behaves identically on Windows and Unix, and which is also the only fo
   yourself adding a second state file, or reading this one to skip work, that is a design change,
   not an optimization. (`--format json` and `--output` write reports, not state.)
 - Cobra is the only direct dependency. Keep it that way unless there is a strong reason.
-- Skipped directories: `.git`, `.claude`, `vendor`, `testdata`, `build`, `.idea`, `.vscode`.
+- Skipped directories: anything dot- or underscore-prefixed (the go tool's own ignore rule, so
+  `_examples/` demo trees never join the population), plus `vendor`, `testdata`, `build`. The
+  walk root itself is exempt — `doppel analyze .` hands the walker a directory named `.`, and a
+  user pointing doppel at `_examples/` directly has already made the call.
   `_test.go` files are always parsed; **`--tests` decides the population** (default `exclude`).
   Tests are conventionally similar by design, so they form their own population: `exclude`
   models production practice, `only` is test-suite hygiene mode, `include` mixes both but
@@ -937,13 +944,15 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   watches exactly this. Trophic² also discounts non-identical true clones somewhat (the
   production clone sits mid-top-50, not top-20, in the full-population view) — the price of
   demoting skeleton siblings.
-- **Generated code owns the top of a large old corpus.** moby's entire top ten is `.pb.go`
-  protobuf `Unmarshal`/`skipX` methods, and half of prometheus's is; the pairs are factually
-  near-identical and completely unactionable. doppel has no exclusion flag and no notion of
-  "this directory is not the library" (chi's `_examples/` demo `main`s are the small-corpus
-  version of the same problem), so the only answer today is pointing it at a hand-written
-  subtree — `prometheus/tsdb` reports the real float/int histogram duplication instead. A
-  generated-file or path-exclusion filter is the obvious fix and is deliberately not built.
+- **Generated-code and demo-tree suppression is convention-deep only.** The two historical
+  dominators are fixed by the ecosystem's own declarations — `--generated exclude` (default)
+  filters files carrying Go's "Code generated ... DO NOT EDIT." marker, and the walker skips
+  dot-/underscore-prefixed directories exactly as the go tool does, which is what removed moby's
+  all-`.pb.go` top ten and chi's `_examples/` `main`s. But a generator that omits the marker, or
+  a demo tree named `examples/` without the underscore, is invisible to both rules, and that is
+  deliberate: the alternative is path/name heuristics, which the tagger and retriever refuse
+  everywhere else. Narrowing to a subtree remains the answer for focus (`prometheus/tsdb`
+  reports the float/int histogram duplication by itself).
 - **Committed examples drift silently.** `examples/*.md` is real output from a pinned tree, but
   nothing verifies it: any ranking change makes every file stale until somebody runs
   `task examples`. Regenerating is cheap (~10s for all seven) — do it in the same change that

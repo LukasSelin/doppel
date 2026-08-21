@@ -32,6 +32,7 @@ type Params struct {
 	ChannelK   int
 	MaxPerFunc int
 	TestsMode  string
+	Generated  string // generated-file population: include, exclude, or only
 	Debug      bool
 }
 
@@ -98,6 +99,9 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 	if err := validateTestsMode(p.TestsMode); err != nil {
 		return res, err
 	}
+	if err := validateGeneratedMode(p.Generated); err != nil {
+		return res, err
+	}
 
 	fmt.Fprintf(progress, "Scanning %s ...\n", root)
 	var units []parser.CodeUnit
@@ -105,7 +109,10 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 		if err != nil {
 			return nil // skip unreadable entries
 		}
-		if d.IsDir() && shouldSkipDir(d.Name()) {
+		// The root itself is exempt from the skip rules: `doppel analyze .`
+		// hands the walker a directory literally named ".", and a user who
+		// points doppel at _examples/ or .config/ has already made the call.
+		if d.IsDir() && path != root && shouldSkipDir(d.Name()) {
 			return filepath.SkipDir
 		}
 		if d.IsDir() {
@@ -123,11 +130,14 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 		return res, fmt.Errorf("walk %s: %w", root, err)
 	}
 
-	// Population filter, applied before any corpus statistic exists: IC,
+	// Population filters, applied before any corpus statistic exists: IC,
 	// dfs, culture, habitats, and arenas all model exactly the population
 	// the report describes. Tests are conventionally similar by design, so
-	// they form their own population rather than diluting production's.
+	// they form their own population rather than diluting production's;
+	// generated files are near-identical by construction and, by default,
+	// not part of the code anyone maintains by hand.
 	units = filterTestUnits(units, p.TestsMode)
+	units = filterGeneratedUnits(units, p.Generated)
 	// Extras join after the population filter: a probe is part of whatever
 	// population was chosen, not a reason to change it.
 	units = append(units, extra...)
@@ -271,6 +281,14 @@ func validateTestsMode(mode string) error {
 	return fmt.Errorf("invalid --tests value %q: want include, exclude, or only", mode)
 }
 
+func validateGeneratedMode(mode string) error {
+	switch mode {
+	case "include", "exclude", "only":
+		return nil
+	}
+	return fmt.Errorf("invalid --generated value %q: want include, exclude, or only", mode)
+}
+
 // filterByOverlap drops pairs below the structural overlap threshold. A
 // non-positive minimum keeps everything.
 //
@@ -301,5 +319,6 @@ func snapshotOf(res Result, pairs []analyzer.SimilarPair) snapshot.Snapshot {
 			ChannelK:   res.Params.ChannelK,
 			MaxPerFunc: res.Params.MaxPerFunc,
 			TestsMode:  res.Params.TestsMode,
+			Generated:  res.Params.Generated,
 		})
 }

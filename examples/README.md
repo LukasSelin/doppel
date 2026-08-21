@@ -19,15 +19,20 @@ corpus is a decade of accretion". Both ends are visible below.
 
 | Corpus | Since | Pinned | Functions | Pairs compared | Concepts modeled | Habitats |
 | --- | --- | --- | --- | --- | --- | --- |
-| [moby](moby.md) | 2013 | `v28.5.2` | 8003 | 18189 | 12 | 168 |
-| [prometheus](prometheus.md) | 2012 | `v3.14.0` | 6245 | 15776 | 12 | 90 |
-| [hugo](hugo.md) | 2013 | `v0.165.0` | 5460 | 13856 | 8 | 126 |
+| [moby](moby.md) | 2013 | `v28.5.2` | 7644 | 17471 | 12 | 166 |
+| [prometheus](prometheus.md) | 2012 | `v3.14.0` | 5469 | 13847 | 12 | 90 |
+| [hugo](hugo.md) | 2013 | `v0.165.0` | 5438 | 13753 | 8 | 126 |
 | [gin](gin.md) | 2014 | `v1.12.0` | 497 | 1023 | 5 | 5 |
 | [cobra](cobra.md) | 2015 | `v1.10.2` | 269 | 826 | 2 | 2 |
-| [chi](chi.md) | 2015 | `v5.3.2` | 254 | 617 | 1 | 3 |
+| [chi](chi.md) | 2015 | `v5.3.2` | 183 | 397 | 0 | 2 |
 | [conc](conc.md) | 2023 | `v0.3.0` | 81 | 79 | 1 | 4 |
 
-Counts are for the production population (`--tests exclude`, the default).
+Counts are for the production population (`--tests exclude --generated exclude`,
+the defaults): hand-written non-test code, with files carrying Go's
+"Code generated ... DO NOT EDIT." marker filtered before any corpus statistic
+and dot-/underscore-prefixed directories skipped the way the go tool skips
+them. That population choice is most visible at the two ends — moby loses 359
+generated functions and chi loses its whole `_examples/` demo tree.
 
 Each report ends with a **Families** section: the groups of three or more
 functions in which every member is alike to every other member, as opposed to
@@ -54,11 +59,13 @@ This is the case where evidence mass is small — top pairs score tens of nats,
 not hundreds — because there is barely a corpus to be rare *in*.
 
 **[chi](chi.md) — small enough to check by hand.** Every reported pair can be
-opened and judged in a minute. It is also the rung that shows a rough edge: chi
-ships an `_examples/` tree, and demo `main` functions setting up a router are
-structurally identical to each other. doppel has no notion of "this directory
-is not the library"; pointing it at the package root instead of the repo root
-is the answer.
+opened and judged in a minute. It used to be the rung that showed a rough
+edge — chi ships an `_examples/` tree whose demo `main` functions are
+structurally identical to each other — but underscore-prefixed directories
+are now skipped exactly as the go tool skips them, so the report is the
+library itself: `findEdge` duplicated across `*node` and `nodes`, the
+recoverer's two stack-decorating helpers, `NotFound` beside
+`MethodNotAllowed`.
 
 **[cobra](cobra.md) — families.** The per-format documentation generators
 (`GenMarkdownTreeCustom` / `GenReSTTreeCustom` / `GenYamlTreeCustom`) and the
@@ -85,24 +92,29 @@ repetition that nobody will consolidate.
 on the ladder, because a scrape loop legitimately does storage *and* validation
 *and* remote I/O at once.
 
-**[moby](moby.md) — scale.** 8003 functions in about a second of analysis after
-parsing. 61% of compared pairs arrive through the call channel alone; 204
-functions are suppressed from the shape channel entirely and 4 identity buckets
+**[moby](moby.md) — scale.** 7644 functions in about a second of analysis after
+parsing. 64% of compared pairs arrive through the call channel alone; 179
+functions are suppressed from the shape channel entirely and 3 identity buckets
 exceed the df cap — the common-idiom suppression the retrieval design exists
 for, visible in the numbers. (The suppressed count was 376 before the w5
 pattern windows: bodies whose every 3-gram was corpus idiom now retrieve
 through rarer 5-gram windows.)
 
-## Generated code dominates a large old corpus
+## Generated code is its own population
 
-The moby report's top ten is entirely `.pb.go`: protobuf `Unmarshal` methods and
-`skipX` helpers that are, factually, near-identical across message types. Half
-of prometheus's top ten is the same. The finding is true and useless — nobody
-consolidates generated code — and doppel has no exclusion flag, so it cannot
-know.
+Before `--generated`, the moby report's top ten was entirely `.pb.go`:
+protobuf `Unmarshal` methods and `skipX` helpers that are, factually,
+near-identical across message types, with half of prometheus's top ten the
+same — true and useless, since nobody consolidates generated code. Files
+carrying Go's "Code generated ... DO NOT EDIT." marker are now excluded by
+default (the convention the ecosystem already declares, not a path
+heuristic), and both reports lead with hand-written duplication: moby's
+`networkdbdiagnostic.go` handler family, prometheus's v1/v2 scrape-appender
+fork and its `endpoints`/`endpointslice` constructors. `--generated include`
+restores the old view; `--generated only` audits what a generator emits.
 
-The practical answer is to point doppel at a hand-written subtree. On
-`prometheus/tsdb` the report is immediately about real engineering decisions:
+Narrowing to a subtree remains useful for focus. On `prometheus/tsdb` the
+report is immediately about one engineering decision:
 
 ```
 #1  tsdb.*Head.loadWAL                        / tsdb.*Head.loadWBL

@@ -9,7 +9,7 @@ static site generator; a large monolith with heavy template and resource subsyst
 | Corpus | [hugo](https://github.com/gohugoio/hugo) |
 | Pinned at | `v0.165.0` (`76a5e1880ab46688155b02e99bab9be2a6134492`) |
 | Project since | 2013 |
-| doppel | `b6eeaeb` |
+| doppel | `fc06f91` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -23,19 +23,19 @@ The corpus-level models doppel builds before ranking anything, as printed to std
 Scanning . ...
 Generating concept documents...
 Culture: 8 concepts modeled, 350 associations, 57 unusual realizations
-Habitats: 126 modeled, 665 misfits; most uniform partials (norm 0.98), most diverse page (norm 0.61)
+Habitats: 126 modeled, 659 misfits; most uniform partials (norm 0.98), most diverse page (norm 0.61)
 Conventions: strongest error_wrapping (0.64), loosest serialization (0.52)
-Ecosystems: 1999 profiled (1410 dominance, 589 coalition, 0 conflict, 0 weak)
-Found 5460 functions. Retrieving candidates...
-Retrieval: shape 2265, concept 4068, call 8309 -> 13856 unique pairs
-  concept-only 28.1%  call-only 54.5%  suppressed-shape functions: 70  large identity buckets: 0  surviving patterns: 31559
-Running structural comparison on 13856 pairs...
-Families: 308 over 482 components, 961 functions in a family, 647 edges completed
+Ecosystems: 1997 profiled (1408 dominance, 589 coalition, 0 conflict, 0 weak)
+Found 5438 functions. Retrieving candidates...
+Retrieval: shape 2195, concept 4057, call 8265 -> 13753 unique pairs
+  concept-only 28.2%  call-only 54.7%  suppressed-shape functions: 70  large identity buckets: 0  surviving patterns: 31542
+Running structural comparison on 13753 pairs...
+Families: 306 over 480 components, 939 functions in a family, 623 edges completed
 ```
 
 # Code Similarity Report
 
-**Functions analyzed:** 5460 | **Threshold:** 0.60 | **Pairs found:** 10
+**Functions analyzed:** 5438 | **Threshold:** 0.60 | **Pairs found:** 10
 
 ---
 
@@ -52,15 +52,15 @@ Families: 308 over 482 components, 961 functions in a family, 647 edges complete
 
 **Code similarity:** `ast 0.78  flow 1.00  nesting 1.00  sig 0.86  size 0.75`
 
-**Evidence:** `3736.59` (shape 3681.96, concept 4.61, call 50.02)
+**Evidence:** `3741.11` (shape 3686.51, concept 4.60, call 50.00)
 
 **Trophic:** `0.88`
 
 **Shared structure:**
 
-- `41.36` — `flow:call:Type→call:NumIn`
-- `34.46` — `flow:call:Type→call:In`
-- `22.76` — `flow:call:Interface→return`
+- `41.32` — `flow:call:Type→call:NumIn`
+- `34.44` — `flow:call:Type→call:In`
+- `22.74` — `flow:call:Interface→return`
 
 **Culture:** B realizes `error_wrapping` atypically (typicality 0.16, concept median 0.36, convention 0.64)
 
@@ -93,15 +93,15 @@ Families: 308 over 482 components, 961 functions in a family, 647 edges complete
 
 **Code similarity:** `ast 0.88  flow 1.00  nesting 1.00  sig 1.00  size 0.75`
 
-**Evidence:** `2232.59` (shape 2216.68, concept 2.49, call 13.43)
+**Evidence:** `2230.52` (shape 2214.61, concept 2.49, call 13.42)
 
 **Trophic:** `0.89`
 
 **Shared structure:**
 
-- `40.45` — `do(call:errorf)`
-- `35.26` — `flow:param→call:errorf`
-- `34.46` — `flow:param→call:evalCall`
+- `40.40` — `do(call:errorf)`
+- `35.22` — `flow:param→call:errorf`
+- `34.44` — `flow:param→call:evalCall`
 
 **Structural overlap:** `0.77` (merge-worthy)
 
@@ -126,15 +126,15 @@ Families: 308 over 482 components, 961 functions in a family, 647 edges complete
 
 **Code similarity:** `ast 0.77  flow 0.94  nesting 0.95  sig 1.00  size 0.92`
 
-**Evidence:** `3176.08` (shape 3165.80, concept 0.00, call 10.29)
+**Evidence:** `3172.59` (shape 3162.31, concept 0.00, call 10.28)
 
 **Trophic:** `0.81`
 
 **Shared structure:**
 
-- `149.49` — `do(call:AddMethodMapping)`
-- `146.74` — `seq[ do(call:AddMethodMapping) ; do(call:AddMethodMapping) ]`
-- `5.06` — `seq[ assign:=(call:New) ; assign:=(unary) ]`
+- `149.32` — `do(call:AddMethodMapping)`
+- `146.58` — `seq[ do(call:AddMethodMapping) ; do(call:AddMethodMapping) ]`
+- `5.05` — `seq[ assign:=(call:New) ; assign:=(unary) ]`
 
 **Habitat:** A fits poorly in `math` (fit 0.24, package norm 0.87)
 
@@ -160,15 +160,15 @@ Families: 308 over 482 components, 961 functions in a family, 647 edges complete
 
 **Code similarity:** `ast 0.93  flow 1.00  nesting 1.00  sig 1.00  size 0.86`
 
-**Evidence:** `2852.11` (shape 2841.82, concept 0.00, call 10.29)
+**Evidence:** `2848.97` (shape 2838.69, concept 0.00, call 10.28)
 
 **Trophic:** `0.75`
 
 **Shared structure:**
 
-- `134.54` — `do(call:AddMethodMapping)`
-- `131.56` — `seq[ do(call:AddMethodMapping) ; do(call:AddMethodMapping) ]`
-- `5.06` — `seq[ assign:=(call:New) ; assign:=(unary) ]`
+- `134.39` — `do(call:AddMethodMapping)`
+- `131.42` — `seq[ do(call:AddMethodMapping) ; do(call:AddMethodMapping) ]`
+- `5.05` — `seq[ assign:=(call:New) ; assign:=(unary) ]`
 
 **Habitat:** B fits poorly in `strings` (fit 0.17, package norm 0.84)
 
@@ -197,15 +197,15 @@ Families: 308 over 482 components, 961 functions in a family, 647 edges complete
 
 **Code similarity:** `ast 0.82  flow 1.00  nesting 1.00  sig 0.00  size 0.96`
 
-**Evidence:** `1231.80` (shape 1171.01, concept 7.07, call 53.72)
+**Evidence:** `1230.71` (shape 1169.95, concept 7.07, call 53.69)
 
 **Trophic:** `0.97`
 
 **Shared structure:**
 
-- `17.64` — `flow:call:ReadAll→cond`
-- `17.64` — `flow:call:ReadAll→return`
-- `7.59` — `seq[ assign:=(call:NewEncoder) ; return(call:Encode) ]`
+- `17.63` — `flow:call:ReadAll→cond`
+- `17.63` — `flow:call:ReadAll→return`
+- `7.58` — `seq[ assign:=(call:NewEncoder) ; return(call:Encode) ]`
 
 **Habitat:** A fits poorly in `resources` (fit 0.27, package norm 0.75)
 
@@ -240,15 +240,15 @@ Families: 308 over 482 components, 961 functions in a family, 647 edges complete
 
 **Code similarity:** `ast 0.92  flow 1.00  nesting 0.99  sig 1.00  size 0.92`
 
-**Evidence:** `1458.77` (shape 1435.64, concept 2.49, call 20.65)
+**Evidence:** `1457.44` (shape 1434.32, concept 2.49, call 20.63)
 
 **Trophic:** `0.96`
 
 **Shared structure:**
 
-- `27.11` — `flow:param→call:Type`
-- `25.95` — `flow:param→call:AssignableTo`
-- `13.48` — `do(call:errorf)`
+- `27.07` — `flow:param→call:Type`
+- `25.93` — `flow:param→call:AssignableTo`
+- `13.47` — `do(call:errorf)`
 
 **Structural overlap:** `0.49` (merge-worthy)
 
@@ -275,15 +275,15 @@ Families: 308 over 482 components, 961 functions in a family, 647 edges complete
 
 **Code similarity:** `ast 0.69  flow 1.00  nesting 1.00  sig 1.00  size 0.91`
 
-**Evidence:** `2166.91` (shape 2054.10, concept 5.81, call 106.99)
+**Evidence:** `2165.06` (shape 2052.31, concept 5.82, call 106.93)
 
 **Trophic:** `0.77`
 
 **Shared structure:**
 
-- `30.34` — `flow:call:ResolveJSConfigFile→cond`
-- `14.73` — `seq[ assign=(call:append) ; assign=(call:append) ]`
-- `14.36` — `assign=(call:ResolveJSConfigFile)`
+- `30.32` — `flow:call:ResolveJSConfigFile→cond`
+- `14.72` — `seq[ assign=(call:append) ; assign=(call:append) ]`
+- `14.35` — `assign=(call:ResolveJSConfigFile)`
 
 **Culture:** A realizes `concurrency` atypically (typicality 0.13, concept median 0.35, convention 0.60)
 
@@ -321,15 +321,15 @@ Families: 308 over 482 components, 961 functions in a family, 647 edges complete
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 0.99`
 
-**Evidence:** `634.14` (shape 597.18, concept 1.65, call 35.31)
+**Evidence:** `633.62` (shape 596.69, concept 1.64, call 35.29)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `7.59` — `seq[ assign:=(call:FileAndExt) ; assign:=(call:hash) ]`
-- `7.59` — `seq[ assign:=(call:HashStringHex) ; assign=(call:Sprintf) ]`
-- `7.59` — `seq[ assign:=(call:getResourcePaths) ; assign:=(call:FileAndExt) ]`
+- `7.58` — `seq[ assign:=(call:FileAndExt) ; assign:=(call:hash) ]`
+- `7.58` — `seq[ assign:=(call:HashStringHex) ; assign=(call:Sprintf) ]`
+- `7.58` — `seq[ assign:=(call:getResourcePaths) ; assign:=(call:FileAndExt) ]`
 
 **Structural overlap:** `0.83` (merge-worthy)
 
@@ -359,15 +359,15 @@ Families: 308 over 482 components, 961 functions in a family, 647 edges complete
 
 **Code similarity:** `ast 0.61  flow 0.98  nesting 0.99  sig 1.00  size 0.75`
 
-**Evidence:** `1662.98` (shape 1546.11, concept 5.81, call 111.05)
+**Evidence:** `1661.62` (shape 1544.81, concept 5.82, call 110.99)
 
 **Trophic:** `0.73`
 
 **Shared structure:**
 
-- `14.73` — `seq[ assign=(call:append) ; assign=(call:append) ]`
-- `14.36` — `if(call:IsNotFound)`
-- `7.59` — `seq[ assign:=(call:LevelLoggerToWriter) ; assign:=(sel) ]`
+- `14.72` — `seq[ assign=(call:append) ; assign=(call:append) ]`
+- `14.35` — `if(call:IsNotFound)`
+- `7.58` — `seq[ assign:=(call:LevelLoggerToWriter) ; assign:=(sel) ]`
 
 **Culture:** A realizes `concurrency` atypically (typicality 0.13, concept median 0.35, convention 0.60)
 
@@ -391,48 +391,46 @@ Families: 308 over 482 components, 961 functions in a family, 647 edges complete
 
 ---
 
-## Match #10 — Code-shape: `0.8171`
+## Match #10 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `common/hreflect/convert.go:128` | `hreflect.convertToUintIfPossible` | ` ` | mapping |
-| **B** | `common/hreflect/convert.go:190` | `hreflect.convertToIntIfPossible` | ` ` | mapping |
+| **A** | `internal/js/esbuild/batch.go:1021` | `esbuild.*scriptGroup.Runner` | ` ` | validation, concurrency |
+| **B** | `internal/js/esbuild/batch.go:1050` | `esbuild.*scriptGroup.Script` | ` ` | validation, concurrency |
 
-**Profile A:** `mapping` 1.00 (dominance)
+**Profile A:** `validation` 1.00 (dominance)
 
-**Profile B:** `mapping` 1.00 (dominance)
+**Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.70  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `1027.08` (shape 996.90, concept 1.83, call 28.35)
+**Evidence:** `562.20` (shape 551.22, concept 3.99, call 6.99)
 
-**Trophic:** `0.76`
+**Trophic:** `1.00`
 
 **Shared structure:**
 
-- `40.56` — `return(composite,false)`
-- `25.95` — `flow:param→call:Convert`
-- `21.54` — `flow:call:Float→cond`
+- `13.33` — `return(call:Get)`
+- `7.58` — `seq[ assign:=(call:scriptID) ; if(id) ]`
+- `7.58` — `seq[ defer(call:Unlock) ; assign:=(call:scriptID) ]`
 
-**Structural overlap:** `0.92` (merge-worthy)
+**Structural overlap:** `0.81` (merge-worthy)
 
-- share 13 callees: [Convert, IsFloat, IsInt, IsUint, float64, math.Trunc, reflect.ValueOf, uint64, val.Convert, val.Float, val.Int, val.Kind, val.Uint]
-- share 1 callers: [hreflect.ConvertIfPossible]
-- overlapping call-graph neighborhoods (1.00): 15 shared
-- share patterns: [mapping]
-- both are orchestrator functions
+- share 8 callees: [Get, Lock, Unlock, ValidateBatchID, panic, s.key, scriptID, v.Get]
+- overlapping call-graph neighborhoods (1.00): 4 shared
+- share patterns: [concurrency, validation]
+- both are leaf functions
 - same package
-- callers do related work (1.00): [mapping]
+- callees do related work (1.00): [validation]
 - same visibility
-- same receiver type: plain functions
-- called from same packages: [hreflect]
-- call into same packages: [hreflect]
+- same receiver type: scriptGroup
+- call into same packages: [esbuild]
 
 ---
 
 ## Families
 
-308 families, 961 functions in a family, largest 27 members; 647 edges scored here that retrieval never proposed
+306 families, 939 functions in a family, largest 27 members; 623 edges scored here that retrieval never proposed
 
 ### Family 1 — 27 members, every pair `>= 0.61` code-shape  (197 edges scored here)
 
@@ -519,5 +517,5 @@ _17 more members not listed._
 
 _14 more members not listed._
 
-_303 more families not listed._
+_301 more families not listed._
 

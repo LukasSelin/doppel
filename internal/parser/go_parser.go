@@ -30,6 +30,12 @@ func parseGoSource(path string, src []byte) ([]CodeUnit, error) {
 	}
 
 	pkg := f.Name.Name
+	// Go's own convention (https://go.dev/s/generatedcode), checked by the
+	// stdlib: a "// Code generated ... DO NOT EDIT." line before the first
+	// non-comment text. Recorded per unit so --generated can pick the
+	// population the same way --tests does — a convention the ecosystem
+	// already declares, not a path or name heuristic.
+	generated := ast.IsGenerated(f)
 	var units []CodeUnit
 	for _, decl := range f.Decls {
 		fd, ok := decl.(*ast.FuncDecl)
@@ -61,6 +67,7 @@ func parseGoSource(path string, src []byte) ([]CodeUnit, error) {
 			Callees:      extractCallees(fd),
 			Fingerprint:  fingerprint.Build(fd),
 			Signals:      extractSignals(fd, f),
+			Generated:    generated,
 		})
 	}
 	return units, nil

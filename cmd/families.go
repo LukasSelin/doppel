@@ -14,6 +14,7 @@ var (
 	familiesMinNodes  int
 	familiesChannelK  int
 	familiesTests     string
+	familiesGenerated string
 	familiesMin       float64
 	familiesConfig    string
 	familiesFormat    string
@@ -57,7 +58,10 @@ functions.`,
 		default:
 			return fmt.Errorf("invalid --format %q: want %q or %q", familiesFormat, formatText, formatJSON)
 		}
-		return validateTestsMode(familiesTests)
+		if err := validateTestsMode(familiesTests); err != nil {
+			return err
+		}
+		return validateGeneratedMode(familiesGenerated)
 	},
 	RunE: runFamilies,
 }
@@ -67,6 +71,7 @@ func init() {
 	familiesCmd.Flags().IntVar(&familiesMinNodes, "min-nodes", 12, "Exclude functions with fewer body AST nodes from structural retrieval")
 	familiesCmd.Flags().IntVar(&familiesChannelK, "channel-k", 5, "Candidates each function keeps per retrieval channel")
 	familiesCmd.Flags().StringVar(&familiesTests, "tests", "exclude", "Test-function population: include, exclude, or only")
+	familiesCmd.Flags().StringVar(&familiesGenerated, "generated", "exclude", "Generated-file population: include, exclude, or only")
 	familiesCmd.Flags().Float64Var(&familiesMin, "family-min", 0.60, "Minimum code-shape between every two members of a family (0.0–1.0)")
 	familiesCmd.Flags().StringVar(&familiesConfig, "config", "", "Path to JSON config file (default: .doppel.json if present)")
 	familiesCmd.Flags().StringVar(&familiesFormat, "format", formatText, "Stdout format: text or json")
@@ -82,6 +87,7 @@ func runFamilies(cmd *cobra.Command, args []string) error {
 		MinNodes:  familiesMinNodes,
 		ChannelK:  familiesChannelK,
 		TestsMode: familiesTests,
+		Generated: familiesGenerated,
 	}
 
 	res, err := analyze(args[0], p, cmd.ErrOrStderr())

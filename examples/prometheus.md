@@ -9,7 +9,7 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `b6eeaeb` |
+| doppel | `fc06f91` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -22,274 +22,54 @@ The corpus-level models doppel builds before ranking anything, as printed to std
 ```
 Scanning . ...
 Generating concept documents...
-Culture: 12 concepts modeled, 659 associations, 30 unusual realizations
-Habitats: 90 modeled, 566 misfits; most uniform tracing (norm 0.97), most diverse testhelpers (norm 0.55)
+Culture: 12 concepts modeled, 649 associations, 29 unusual realizations
+Habitats: 90 modeled, 340 misfits; most uniform tracing (norm 0.97), most diverse testhelpers (norm 0.55)
 Conventions: strongest error_wrapping (0.63), loosest retry (0.34)
-Ecosystems: 2520 profiled (1738 dominance, 782 coalition, 0 conflict, 0 weak)
-Found 6245 functions. Retrieving candidates...
-Retrieval: shape 4512, concept 3885, call 8864 -> 15776 unique pairs
-  concept-only 23.3%  call-only 47.2%  suppressed-shape functions: 199  large identity buckets: 5  surviving patterns: 38503
-Running structural comparison on 15776 pairs...
-Families: 509 over 630 components, 1703 functions in a family, 8283 edges completed
+Ecosystems: 2400 profiled (1707 dominance, 693 coalition, 0 conflict, 0 weak)
+Found 5469 functions. Retrieving candidates...
+Retrieval: shape 3319, concept 3669, call 8141 -> 13847 unique pairs
+  concept-only 25.0%  call-only 50.1%  suppressed-shape functions: 67  large identity buckets: 0  surviving patterns: 37732
+Running structural comparison on 13847 pairs...
+Families: 477 over 611 components, 1366 functions in a family, 4359 edges completed
 ```
 
 # Code Similarity Report
 
-**Functions analyzed:** 6245 | **Threshold:** 0.60 | **Pairs found:** 10
+**Functions analyzed:** 5469 | **Threshold:** 0.60 | **Pairs found:** 10
 
 ---
 
-## Match #1 — Code-shape: `1.0000`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `prompb/io/prometheus/write/v2/types.pb.go:2522` | `writev2.*Histogram.Unmarshal` | ` ` | validation |
-| **B** | `prompb/types.pb.go:2784` | `prompb.*Histogram.Unmarshal` | ` ` | validation |
-
-**Profile A:** `validation` 1.00 (dominance)
-
-**Profile B:** `validation` 1.00 (dominance)
-
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 0.97`
-
-**Evidence:** `10150.99` (shape 10143.78, concept 2.23, call 4.98)
-
-**Trophic:** `0.99`
-
-**Shared structure:**
-
-- `78.63` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
-- `78.63` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
-- `78.63` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
-
-**Habitat:** A fits poorly in `writev2` (fit 0.00, package norm 0.59)
-
-**Habitat:** B fits poorly in `prompb` (fit 0.00, package norm 0.61)
-
-**Structural overlap:** `0.71` (merge-worthy)
-
-- share 16 callees: [Histogram_ResetHint, Uint64, Unmarshal, append, float64, fmt.Errorf, int, int32, int64, len, make, math.Float64frombits, skipTypes, uint, uint32, uint64]
-- overlapping call-graph neighborhoods (1.00): 1168 shared
-- share patterns: [validation]
-- both are orchestrator functions
-- callees do related work (1.00): [validation]
-- same visibility
-- same receiver type: Histogram
-- call into same packages: [tsdb]
-
----
-
-## Match #2 — Code-shape: `0.9571`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `prompb/io/prometheus/client/metrics.pb.go:2792` | `io_prometheus_client.*Histogram.Unmarshal` | ` ` | validation |
-| **B** | `prompb/types.pb.go:2784` | `prompb.*Histogram.Unmarshal` | ` ` | validation |
-
-**Profile A:** `validation` 1.00 (dominance)
-
-**Profile B:** `validation` 1.00 (dominance)
-
-**Code similarity:** `ast 0.93  flow 1.00  nesting 0.98  sig 1.00  size 1.00`
-
-**Evidence:** `9006.13` (shape 8998.92, concept 2.23, call 4.98)
-
-**Trophic:** `0.91`
-
-**Shared structure:**
-
-- `78.63` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
-- `78.63` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
-- `78.63` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
-
-**Habitat:** A fits poorly in `io_prometheus_client` (fit 0.03, package norm 0.75)
-
-**Habitat:** B fits poorly in `prompb` (fit 0.00, package norm 0.61)
-
-**Structural overlap:** `0.68` (merge-worthy)
-
-- share 14 callees: [Uint64, Unmarshal, append, float64, fmt.Errorf, int, int32, int64, len, make, math.Float64frombits, uint, uint32, uint64]
-- overlapping call-graph neighborhoods (1.00): 1168 shared
-- share patterns: [validation]
-- both are orchestrator functions
-- callees do related work (1.00): [validation]
-- same visibility
-- same receiver type: Histogram
-- call into same packages: [tsdb]
-
----
-
-## Match #3 — Code-shape: `0.9573`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `prompb/io/prometheus/client/metrics.pb.go:2792` | `io_prometheus_client.*Histogram.Unmarshal` | ` ` | validation |
-| **B** | `prompb/io/prometheus/write/v2/types.pb.go:2522` | `writev2.*Histogram.Unmarshal` | ` ` | validation |
-
-**Profile A:** `validation` 1.00 (dominance)
-
-**Profile B:** `validation` 1.00 (dominance)
-
-**Code similarity:** `ast 0.93  flow 1.00  nesting 0.99  sig 1.00  size 0.98`
-
-**Evidence:** `9019.98` (shape 9012.78, concept 2.23, call 4.98)
-
-**Trophic:** `0.90`
-
-**Shared structure:**
-
-- `78.63` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
-- `78.63` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
-- `78.63` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
-
-**Habitat:** A fits poorly in `io_prometheus_client` (fit 0.03, package norm 0.75)
-
-**Habitat:** B fits poorly in `writev2` (fit 0.00, package norm 0.59)
-
-**Structural overlap:** `0.68` (merge-worthy)
-
-- share 14 callees: [Uint64, Unmarshal, append, float64, fmt.Errorf, int, int32, int64, len, make, math.Float64frombits, uint, uint32, uint64]
-- overlapping call-graph neighborhoods (1.00): 1168 shared
-- share patterns: [validation]
-- both are orchestrator functions
-- callees do related work (1.00): [validation]
-- same visibility
-- same receiver type: Histogram
-- call into same packages: [tsdb]
-
----
-
-## Match #4 — Code-shape: `0.9153`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `model/textparse/openmetricslex.l.go:25` | `textparse.*openMetricsLexer.Lex` | ` ` | — |
-| **B** | `model/textparse/promlex.l.go:39` | `textparse.*promlexer.Lex` | ` ` | — |
-
-**Code similarity:** `ast 0.86  flow 1.00  nesting 1.00  sig 1.00  size 0.69`
-
-**Evidence:** `15458.42` (shape 15458.42, concept 0.00, call 0.00)
-
-**Trophic:** `0.77`
-
-**Shared structure:**
-
-- `306.00` — `assign=(call:next)`
-- `102.00` — `flow:call:next→cond`
-- `77.16` — `if(false)`
-
-**Structural overlap:** `0.37` (not merge-worthy)
-
-- share 4 callees: [fmt.Errorf, l.next, len, panic]
-- overlapping call-graph neighborhoods (1.00): 1168 shared
-- same package
-- same visibility
-- both are methods, on *openMetricsLexer and *promlexer
-- call into same packages: [tsdb]
-
----
-
-## Match #5 — Code-shape: `0.9961`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `prompb/io/prometheus/write/v2/types.pb.go:1257` | `writev2.*Histogram.MarshalToSizedBuffer` | ` ` | — |
-| **B** | `prompb/types.pb.go:1401` | `prompb.*Histogram.MarshalToSizedBuffer` | ` ` | — |
-
-**Code similarity:** `ast 0.99  flow 1.00  nesting 1.00  sig 1.00  size 0.96`
-
-**Evidence:** `4805.14` (shape 4800.14, concept 0.00, call 5.00)
-
-**Trophic:** `0.99`
-
-**Shared structure:**
-
-- `51.91` — `assign=(call:encodeVarintTypes)`
-- `51.91` — `flow:call:len→call:encodeVarintTypes`
-- `51.91` — `flow:param→call:encodeVarintTypes`
-
-**Habitat:** A fits poorly in `writev2` (fit 0.01, package norm 0.59)
-
-**Habitat:** B fits poorly in `prompb` (fit 0.00, package norm 0.61)
-
-**Structural overlap:** `0.48` (merge-worthy)
-
-- share 13 callees: [MarshalTo, MarshalToSizedBuffer, PutUint64, Size, copy, encodeVarintTypes, float64, len, make, math.Float64bits, uint32, uint64, uint8]
-- overlapping call-graph neighborhoods (1.00): 1168 shared
-- both are orchestrator functions
-- same visibility
-- same receiver type: Histogram
-- call into same packages: [tsdb]
-
----
-
-## Match #6 — Code-shape: `0.8980`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `prompb/io/prometheus/client/decoder.go:314` | `io_prometheus_client.*Metric.unmarshalWithoutLabels` | ` ` | validation |
-| **B** | `prompb/io/prometheus/client/metrics.pb.go:3733` | `io_prometheus_client.*Metric.Unmarshal` | ` ` | validation |
-
-**Profile A:** `validation` 1.00 (dominance)
-
-**Profile B:** `validation` 1.00 (dominance)
-
-**Code similarity:** `ast 0.91  flow 1.00  nesting 1.00  sig 0.67  size 0.98`
-
-**Evidence:** `3149.66` (shape 3141.40, concept 2.23, call 6.03)
-
-**Trophic:** `0.98`
-
-**Shared structure:**
-
-- `37.00` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
-- `37.00` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
-- `37.00` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
-
-**Habitat:** A fits poorly in `io_prometheus_client` (fit 0.03, package norm 0.75)
-
-**Habitat:** B fits poorly in `io_prometheus_client` (fit 0.04, package norm 0.75)
-
-**Structural overlap:** `0.74` (merge-worthy)
-
-- share 10 callees: [Unmarshal, append, fmt.Errorf, int, int32, int64, len, skipMetrics, uint, uint64]
-- overlapping call-graph neighborhoods (1.00): 1168 shared
-- share patterns: [validation]
-- both are orchestrator functions
-- same package
-- callees do related work (1.00): [validation]
-- same receiver type: Metric
-- call into same packages: [io_prometheus_client, tsdb]
-
----
-
-## Match #7 — Code-shape: `0.8253`
+## Match #1 — Code-shape: `0.8253`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
 | **A** | `scrape/scrape.go:1589` | `scrape.*scrapeLoopAppender.append` | ` ` | validation, mapping, caching |
 | **B** | `scrape/scrape_append_v2.go:90` | `scrape.*scrapeLoopAppenderV2.append` | ` ` | validation, mapping, caching |
 
-**Profile A:** `mapping` 0.52, `caching` 0.48 (coalition)
+**Profile A:** `mapping` 0.51, `caching` 0.49 (coalition)
 
-**Profile B:** `mapping` 0.52, `caching` 0.48 (coalition)
+**Profile B:** `mapping` 0.51, `caching` 0.49 (coalition)
 
 **Code similarity:** `ast 0.71  flow 1.00  nesting 0.99  sig 1.00  size 0.91`
 
-**Evidence:** `4730.38` (shape 4609.87, concept 8.24, call 112.27)
+**Evidence:** `4720.28` (shape 4601.59, concept 8.41, call 110.28)
 
 **Trophic:** `0.81`
 
 **Shared structure:**
 
-- `44.15` — `flow:call:get→cond`
-- `38.58` — `flow:call:Histogram→cond`
-- `21.07` — `seq[ if(bin:>(sel,lit:INT)) ; if(bin:>(sel,lit:INT)) ]`
+- `43.32` — `flow:call:get→cond`
+- `38.06` — `flow:call:Histogram→cond`
+- `20.76` — `seq[ if(bin:>(sel,lit:INT)) ; if(bin:>(sel,lit:INT)) ]`
+
+**Culture:** A realizes `validation` atypically (typicality 0.17, concept median 0.35, convention 0.60)
+
+**Culture:** B realizes `validation` atypically (typicality 0.17, concept median 0.35, convention 0.60)
 
 **Structural overlap:** `0.74` (merge-worthy)
 
 - share 42 callees: [Debug, Error, Inc, Warn, addDropped, addRef, app.Append, append, errors.Is, fmt.Errorf, get, getDropped, isSeriesPartOfFamily, iterDone, len, lset.Get, lset.Has, lset.Hash, lset.IsEmpty, lset.IsValid, lset.String, make, p.Exemplar, p.Help, p.Histogram, p.Labels, p.Next, p.Series, p.StartTimestamp, p.Type, p.Unit, setHelp, setType, setUnit, sl.checkAddError, sl.sampleMutator, slices.SortFunc, string, textparse.New, timestamp.FromTime, trackStaleness, verifyLabelLimits]
-- overlapping call-graph neighborhoods (1.00): 1278 shared
+- overlapping call-graph neighborhoods (1.00): 1148 shared
 - share patterns: [caching, mapping, validation]
 - both are orchestrator functions
 - same package
@@ -300,7 +80,7 @@ Families: 509 over 630 components, 1703 functions in a family, 8283 edges comple
 
 ---
 
-## Match #8 — Code-shape: `0.8224`
+## Match #2 — Code-shape: `0.8224`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -313,15 +93,15 @@ Families: 509 over 630 components, 1703 functions in a family, 8283 edges comple
 
 **Code similarity:** `ast 0.78  flow 0.99  nesting 1.00  sig 0.71  size 0.84`
 
-**Evidence:** `3059.43` (shape 3023.40, concept 7.99, call 28.04)
+**Evidence:** `3018.39` (shape 2982.95, concept 7.93, call 27.51)
 
 **Trophic:** `0.90`
 
 **Shared structure:**
 
-- `46.32` — `flow:call:AddEventHandler→call:Error`
-- `46.32` — `flow:call:AddEventHandler→cond`
-- `39.71` — `assign:=(call:WithLabelValues)`
+- `45.60` — `flow:call:AddEventHandler→call:Error`
+- `45.60` — `flow:call:AddEventHandler→cond`
+- `39.08` — `assign:=(call:WithLabelValues)`
 
 **Structural overlap:** `0.93` (merge-worthy)
 
@@ -340,7 +120,7 @@ Families: 509 over 630 components, 1703 functions in a family, 8283 edges comple
 
 ---
 
-## Match #9 — Code-shape: `0.9000`
+## Match #3 — Code-shape: `0.9000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -349,21 +129,21 @@ Families: 509 over 630 components, 1703 functions in a family, 8283 edges comple
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
 
-**Evidence:** `1990.11` (shape 1990.11, concept 0.00, call 0.00)
+**Evidence:** `2024.14` (shape 2024.14, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `23.15` — `flow:call:len→call:min`
-- `11.40` — `assign:=(call:max)`
-- `11.27` — `flow:call:len→call:float64`
+- `22.84` — `flow:call:len→call:min`
+- `11.20` — `assign:=(call:max)`
+- `11.07` — `flow:call:len→call:float64`
 
 **Structural overlap:** `0.72` (merge-worthy)
 
 - share 5 callees: [float64, len, make, max, min]
 - share 1 callers: [strutil.*JaroWinklerMatcher.Score]
-- overlapping call-graph neighborhoods (1.00): 1170 shared
+- overlapping call-graph neighborhoods (1.00): 1040 shared
 - both are leaf functions
 - same package
 - same visibility
@@ -373,7 +153,7 @@ Families: 509 over 630 components, 1703 functions in a family, 8283 edges comple
 
 ---
 
-## Match #10 — Code-shape: `0.7407`
+## Match #4 — Code-shape: `0.7407`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -386,33 +166,242 @@ Families: 509 over 630 components, 1703 functions in a family, 8283 edges comple
 
 **Code similarity:** `ast 0.66  flow 0.99  nesting 0.99  sig 0.67  size 0.54`
 
-**Evidence:** `6014.62` (shape 5965.56, concept 5.06, call 44.00)
+**Evidence:** `6107.70` (shape 6059.51, concept 4.99, call 43.21)
 
-**Trophic:** `0.64`
+**Trophic:** `0.65`
 
 **Shared structure:**
 
-- `40.80` — `flow:call:Get→call:len`
-- `30.86` — `seq[ assign=(unary) ; return() ]`
-- `30.86` — `do(call:counterAddNonZero)`
+- `40.18` — `flow:call:Get→call:len`
+- `30.45` — `seq[ assign=(unary) ; return() ]`
+- `30.45` — `do(call:counterAddNonZero)`
 
 **Structural overlap:** `0.68` (merge-worthy)
 
 - share 38 callees: [Get, Put, Warn, append, clear, close, closeAndDrain, counterAddNonZero, dec.FloatHistogramSamples, dec.HistogramSamples, dec.Samples, dec.Type, float64, fmt.Errorf, getByID, len, make, min, panic, r.Err, r.Next, r.Offset, r.Record, r.Segment, record.NewDecoder, reuseBuf, reuseHistogramBuf, setup, uint64, unknownHistogramRefs.Add, unknownHistogramRefs.Load, unknownSampleRefs.Add, unknownSampleRefs.Load, unknownSeriesRefs.count, unknownSeriesRefs.merge, wg.Add, wg.Done, wg.Wait]
-- overlapping call-graph neighborhoods (0.99): 1310 shared
+- overlapping call-graph neighborhoods (0.98): 1180 shared
 - share patterns: [concurrency, error_wrapping, logging]
 - both are orchestrator functions
 - same package
-- callees do related work (0.39): [concurrency]
+- callees do related work (0.37): [concurrency]
 - same visibility
 - same receiver type: Head
 - call into same packages: [discovery, record, rules, tsdb, wlog]
 
 ---
 
+## Match #5 — Code-shape: `0.9090`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `prompb/io/prometheus/client/decoder.go:314` | `io_prometheus_client.*Metric.unmarshalWithoutLabels` | ` ` | validation |
+| **B** | `prompb/io/prometheus/client/decoder.go:596` | `io_prometheus_client.*MetricFamily.unmarshalWithoutMetrics` | ` ` | validation |
+
+**Profile A:** `validation` 1.00 (dominance)
+
+**Profile B:** `validation` 1.00 (dominance)
+
+**Code similarity:** `ast 0.85  flow 1.00  nesting 1.00  sig 1.00  size 0.69`
+
+**Evidence:** `4344.70` (shape 4342.26, concept 2.44, call 0.00)
+
+**Trophic:** `0.75`
+
+**Shared structure:**
+
+- `64.29` — `if(bin:<(id,lit:INT))`
+- `47.22` — `flow:call:int→cond`
+- `43.24` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
+
+**Structural overlap:** `0.57` (merge-worthy)
+
+- share 9 callees: [append, errors.New, fmt.Errorf, int, int32, len, skipMetrics, uint, uint64]
+- overlapping call-graph neighborhoods (1.00): 1039 shared
+- share patterns: [validation]
+- same package
+- same visibility
+- both are methods, on *Metric and *MetricFamily
+- called from same packages: [io_prometheus_client]
+- call into same packages: [tsdb]
+
+---
+
+## Match #6 — Code-shape: `0.7631`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `discovery/kubernetes/endpoints.go:347` | `kubernetes.*Endpoints.buildEndpoints` | ` ` | logging |
+| **B** | `discovery/kubernetes/endpointslice.go:308` | `kubernetes.*EndpointSlice.buildEndpointSlice` | ` ` | — |
+
+**Profile A:** `logging` 1.00 (dominance)
+
+**Code similarity:** `ast 0.78  flow 0.98  nesting 0.92  sig 0.33  size 0.84`
+
+**Evidence:** `3719.38` (shape 3657.39, concept 0.00, call 61.98)
+
+**Trophic:** `0.81`
+
+**Shared structure:**
+
+- `58.21` — `assign=(call:lv)`
+- `43.24` — `seq[ assign=(call:lv) ; assign=(call:lv) ]`
+- `19.54` — `range{ call:add }`
+
+**Structural overlap:** `0.62` (merge-worthy)
+
+- share 19 callees: [add, addNamespaceLabels, addNodeLabels, addObjectMetaLabels, append, e.addServiceLabels, e.resolvePodRef, hasSeenPort, len, lv, model.LabelName, namespacedName, net.JoinHostPort, podLabels, strconv.FormatBool, strconv.FormatUint, string, target.Merge, uint64]
+- overlapping call-graph neighborhoods (0.99): 1066 shared
+- both are orchestrator functions
+- same package
+- callers do related work (0.63): [caching, logging, concurrency]
+- callees do related work (1.00): [logging]
+- same visibility
+- both are methods, on *Endpoints and *EndpointSlice
+- called from same packages: [kubernetes]
+- call into same packages: [kubernetes, tsdb]
+
+---
+
+## Match #7 — Code-shape: `0.9459`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `model/histogram/float_histogram.go:1420` | `histogram.addBuckets` | ` ` | — |
+| **B** | `model/histogram/float_histogram.go:1545` | `histogram.kahanAddBuckets` | ` ` | — |
+
+**Code similarity:** `ast 0.91  flow 1.00  nesting 0.99  sig 1.00  size 0.78`
+
+**Evidence:** `3138.58` (shape 3124.84, concept 0.00, call 13.75)
+
+**Trophic:** `0.86`
+
+**Shared structure:**
+
+- `20.76` — `seq[ assign=(call:append) ; do(call:copy) ]`
+- `11.48` — `assign-=(bin)`
+- `11.48` — `if(bin:<(id,call:len))`
+
+**Structural overlap:** `0.50` (merge-worthy)
+
+- share 7 callees: [IsExponentialSchema, append, copy, getBoundExponential, int, int32, len]
+- overlapping call-graph neighborhoods (0.99): 1044 shared
+- related roles: passthrough ≈ orchestrator (both high fan-out, 0.50)
+- same package
+- same visibility
+- same receiver type: plain functions
+- called from same packages: [histogram]
+- call into same packages: [histogram, tsdb]
+
+---
+
+## Match #8 — Code-shape: `0.9000`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `storage/remote/queue_manager.go:844` | `remote.*QueueManager.AppendHistograms` | ` ` | retry, concurrency, logging |
+| **B** | `storage/remote/queue_manager.go:906` | `remote.*QueueManager.AppendFloatHistograms` | ` ` | retry, concurrency, logging |
+
+**Profile A:** `retry` 1.00 (dominance)
+
+**Profile B:** `retry` 1.00 (dominance)
+
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
+
+**Evidence:** `1211.21` (shape 1178.45, concept 7.33, call 25.43)
+
+**Trophic:** `1.00`
+
+**Shared structure:**
+
+- `7.61` — `range{ call:isSampleOld call:Duration call:Inc call:WithLabelValues call:Warn call:Lock call:incr call:Info ... }`
+- `7.61` — `seq[ if(call:isSampleOld) ; if(bin:&&(bin,bin)) ]`
+- `7.21` — `seq[ do(call:Unlock) ; assign:=(call:Duration) ]`
+
+**Structural overlap:** `1.00` (merge-worthy)
+
+- share 13 callees: [Inc, Info, Lock, Unlock, Warn, WithLabelValues, enqueue, incr, isSampleOld, model.Duration, time.Duration, time.Now, time.Sleep]
+- share 1 callers: [wlog.*Watcher.readSegment]
+- overlapping call-graph neighborhoods (1.00): 380 shared
+- share patterns: [concurrency, logging, retry]
+- both are orchestrator functions
+- same package
+- callers do related work (1.00): [logging]
+- callees do related work (1.00): [logging, error_wrapping, concurrency]
+- same visibility
+- same receiver type: QueueManager
+- called from same packages: [wlog]
+- call into same packages: [discovery, remote, tsdbutil]
+
+---
+
+## Match #9 — Code-shape: `1.0000`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `util/runtime/statfs_linux_386.go:24` | `runtime.FsType` | ` ` | — |
+| **B** | `util/runtime/statfs_uint32.go:23` | `runtime.FsType` | ` ` | — |
+
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Evidence:** `2054.36` (shape 2042.77, concept 0.00, call 11.59)
+
+**Trophic:** `1.00`
+
+**Shared structure:**
+
+- `15.23` — `return(call:Itoa)`
+- `7.61` — `seq[ if(id) ; return(call:Itoa) ]`
+- `6.70` — `seq[ assign:=(call:Statfs) ; if(bin:!=(id,nil)) ]`
+
+**Structural overlap:** `0.52` (merge-worthy)
+
+- share 3 callees: [int, strconv.Itoa, syscall.Statfs]
+- both are leaf functions
+- same package
+- same visibility
+- same receiver type: plain functions
+
+---
+
+## Match #10 — Code-shape: `0.8934`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `tsdb/chunkenc/float_histogram.go:335` | `chunkenc.expandFloatSpansAndBuckets` | ` ` | — |
+| **B** | `tsdb/chunkenc/histogram.go:371` | `chunkenc.expandIntSpansAndBuckets` | ` ` | — |
+
+**Code similarity:** `ast 0.95  flow 1.00  nesting 1.00  sig 0.50  size 0.99`
+
+**Evidence:** `2179.52` (shape 2172.30, concept 0.00, call 7.22)
+
+**Trophic:** `0.96`
+
+**Shared structure:**
+
+- `30.45` — `assign=(call:addInsert)`
+- `30.45` — `flow:call:Next→call:addInsert`
+- `30.45` — `flow:call:append→call:addInsert`
+
+**Habitat:** A fits poorly in `chunkenc` (fit 0.24, package norm 0.74)
+
+**Habitat:** B fits poorly in `chunkenc` (fit 0.24, package norm 0.74)
+
+**Structural overlap:** `0.59` (merge-worthy)
+
+- share 7 callees: [addInsert, advanceA, advanceB, ai.Next, append, bi.Next, newBucketIterator]
+- overlapping call-graph neighborhoods (0.78): 7 shared
+- both are utility functions
+- same package
+- same visibility
+- same receiver type: plain functions
+- called from same packages: [chunkenc]
+- call into same packages: [chunkenc]
+
+---
+
 ## Families
 
-509 families, 1703 functions in a family, largest 55 members; 8283 edges scored here that retrieval never proposed
+477 families, 1366 functions in a family, largest 55 members; 4359 edges scored here that retrieval never proposed
 
 ### Family 1 — 55 members, every pair `>= 0.60` code-shape  (1287 edges scored here)
 
@@ -499,5 +488,5 @@ _43 more members not listed._
 
 _43 more members not listed._
 
-_504 more families not listed._
+_472 more families not listed._
 

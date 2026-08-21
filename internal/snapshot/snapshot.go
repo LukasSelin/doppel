@@ -101,6 +101,7 @@ type Params struct {
 	ChannelK   int     `json:"channelK"`
 	MaxPerFunc int     `json:"maxPerFunc"`
 	TestsMode  string  `json:"testsMode"`
+	Generated  string  `json:"generated"` // generated-file population: include, exclude, or only
 }
 
 // TagCount is one concept tag and how many units carry it.

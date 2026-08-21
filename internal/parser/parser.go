@@ -21,6 +21,7 @@ type CodeUnit struct {
 	Callees      []string                // AST-derived outgoing call names
 	Fingerprint  fingerprint.Fingerprint // deterministic static summary of the body
 	Signals      TagSignals              // AST-level evidence channels the tagger reads
+	Generated    bool                    // the file carries Go's "Code generated ... DO NOT EDIT." marker
 }
 
 // Parse extracts all CodeUnits from the Go file at the given path.

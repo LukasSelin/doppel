@@ -20,7 +20,7 @@ flowchart TD
     rank["10 · Rank and report<br/>corroborated evidence, diversity cap"]
     out["stdout, --output markdown, --format json"]
 
-    parse -->|"--tests include / exclude / only"| pop
+    parse -->|"--tests, --generated"| pop
     pop --> tag --> cg --> docs
     docs --> cult
     docs -->|"--threshold, --min-nodes, --channel-k"| ret
@@ -33,7 +33,7 @@ flowchart TD
 
 1. **Parse** — walks the target directory and extracts all Go function/method bodies, names, signatures, doc comments, visibility, receiver types, and AST-derived callees using the `go/ast` package; non-`.go` files are skipped
 2. **Fingerprint** — while the AST is still in hand, summarises each body into a `Fingerprint`: hashed 3-grams over a canonicalized AST token stream, a control-flow histogram, the normalized parameter/result types, a node count, and the multi-level pattern multiset the shape channel retrieves on
-3. **Choose the population** — `--tests` (`include`, `exclude`, `only`; default `exclude`) decides which functions exist for the rest of the run. This runs *before* any corpus statistic is computed, so tag frequencies, document frequencies and every culture model describe exactly the population the report describes. Cross test/production pairs are never reported in any mode — different build units are not merge candidates
+3. **Choose the population** — `--tests` and `--generated` (`include`, `exclude`, `only` each; both default `exclude`) decide which functions exist for the rest of the run: tests are conventionally similar by design, and files carrying Go's "Code generated ... DO NOT EDIT." marker are near-identical by construction (left in, protobuf `Unmarshal` methods owned moby's entire top ten). This runs *before* any corpus statistic is computed, so tag frequencies, document frequencies and every culture model describe exactly the population the report describes. Cross test/production pairs are never reported in any mode — different build units are not merge candidates
 4. **Tag** — detects intent patterns (`retry`, `http_call`, `db_access`, `validation`, `mapping`, `transaction`, `caching`, `concurrency`, `error_wrapping`) from AST evidence: call selectors, imports, string-literal contents, identifier names, and node kinds. Comments are not evidence, so SQL in a comment tags nothing. Each tag is a leaf of the concept taxonomy described below, which is what lets two different tags still score against each other. Tag frequencies over the whole corpus then weight concept matching in step 7 — sharing a near-universal tag is weak evidence, sharing a rare one is strong
 5. **Map** — builds a resolved, repo-internal call graph (qualified names; import-aware; method calls resolved when unambiguous; no stdlib noise) and enriches each concept doc with callers, resolved callees, the depth-2 call-graph neighbourhood, aggregated caller/callee patterns and packages, and a structural role (`leaf`, `utility`, `orchestrator`, or `passthrough`). Role thresholds adapt to the repo: high fan-in/fan-out means above this corpus's median resolved degree, floored at 2. The role is really two independent booleans, which is why two different roles can still partly agree
 6. **Retrieve candidates** — three independent channels propose the pairs worth the expense of a full comparison; see below. This is a *recall* stage, not a ranking one
@@ -306,8 +306,9 @@ Then set up a recurring task (daily, post-merge, or pre-PR) that runs `doppel an
 
 ## Skipped Directories
 
-The following directories are automatically skipped:
-`.git`, `.claude`, `vendor`, `testdata`, `build`, `.idea`, `.vscode`
+Directories are skipped by the go tool's own rule — any name starting with `.` or `_` (which
+keeps `_examples/` demo trees out of a library's population) — plus `vendor`, `testdata` and
+`build`. The path you point doppel at is always walked, whatever its name.
 
 `_test.go` files are always parsed; `--tests` decides what to do with them. Tests are repetitive by
 design, so they form their own population rather than diluting production's:
@@ -317,6 +318,12 @@ design, so they form their own population rather than diluting production's:
 | `exclude` (default) | production functions only | models production practice |
 | `only` | test functions only | test-suite hygiene |
 | `include` | both | cross test/production pairs are still never reported |
+
+`--generated` works the same way over files carrying Go's
+"Code generated ... DO NOT EDIT." marker (the convention at
+https://go.dev/s/generatedcode, detected at parse time): `exclude` (default)
+models the code people maintain by hand, `only` audits what a generator
+emits, `include` restores the unfiltered view.
 
 Because the filter runs before any corpus statistic exists, each mode's document frequencies,
 information content and culture models describe exactly the population its report describes —

@@ -9,7 +9,7 @@ container engine; a decade of accretion across daemon, API, and plugin layers
 | Corpus | [moby](https://github.com/moby/moby) |
 | Pinned at | `v28.5.2` (`89c5e8fd66634b6128fc4c0e6f1236e2540e46e0`) |
 | Project since | 2013 |
-| doppel | `b6eeaeb` |
+| doppel | `fc06f91` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -22,422 +22,399 @@ The corpus-level models doppel builds before ranking anything, as printed to std
 ```
 Scanning . ...
 Generating concept documents...
-Culture: 12 concepts modeled, 803 associations, 113 unusual realizations
-Habitats: 168 modeled, 371 misfits; most uniform checker (norm 0.98), most diverse vfs (norm 0.56)
+Culture: 12 concepts modeled, 790 associations, 113 unusual realizations
+Habitats: 166 modeled, 253 misfits; most uniform checker (norm 0.98), most diverse vfs (norm 0.56)
 Conventions: strongest error_wrapping (0.62), loosest db_access (0.37)
-Ecosystems: 4050 profiled (3750 dominance, 300 coalition, 0 conflict, 0 weak)
-Found 8003 functions. Retrieving candidates...
-Retrieval: shape 4710, concept 2410, call 12559 -> 18189 unique pairs
-  concept-only 12.6%  call-only 61.1%  suppressed-shape functions: 204  large identity buckets: 4  surviving patterns: 46820
-Running structural comparison on 18189 pairs...
-Families: 675 over 721 components, 1735 functions in a family, 3526 edges completed
-  4 pairs suppressed by max-per-func=2
+Ecosystems: 3997 profiled (3689 dominance, 308 coalition, 0 conflict, 0 weak)
+Found 7644 functions. Retrieving candidates...
+Retrieval: shape 3983, concept 2410, call 12442 -> 17471 unique pairs
+  concept-only 13.1%  call-only 63.6%  suppressed-shape functions: 179  large identity buckets: 3  surviving patterns: 46104
+Running structural comparison on 17471 pairs...
+Families: 656 over 702 components, 1522 functions in a family, 2814 edges completed
+  1 pairs suppressed by max-per-func=2
 ```
 
 # Code Similarity Report
 
-**Functions analyzed:** 8003 | **Threshold:** 0.60 | **Pairs found:** 10
+**Functions analyzed:** 7644 | **Threshold:** 0.60 | **Pairs found:** 10
 
 ---
 
-## Match #1 — Code-shape: `0.9514`
+## Match #1 — Code-shape: `0.9535`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `libnetwork/networkdb/networkdb.pb.go:1944` | `networkdb.*NetworkEvent.Unmarshal` | ` ` | validation |
-| **B** | `libnetwork/networkdb/networkdb.pb.go:2096` | `networkdb.*NetworkEntry.Unmarshal` | ` ` | validation |
+| **A** | `libnetwork/networkdb/networkdbdiagnostic.go:128` | `networkdb.*NetworkDB.dbCreateEntry` | `—` | logging |
+| **B** | `libnetwork/networkdb/networkdbdiagnostic.go:177` | `networkdb.*NetworkDB.dbUpdateEntry` | `—` | logging |
 
-**Profile A:** `validation` 1.00 (dominance)
+**Profile A:** `logging` 1.00 (dominance)
 
-**Profile B:** `validation` 1.00 (dominance)
+**Profile B:** `logging` 1.00 (dominance)
 
 **Code similarity:** `ast 0.92  flow 1.00  nesting 1.00  sig 1.00  size 0.99`
 
-**Evidence:** `3376.91` (shape 3360.95, concept 1.98, call 13.99)
+**Evidence:** `1966.98` (shape 1919.55, concept 3.05, call 44.38)
 
-**Trophic:** `0.95`
+**Trophic:** `0.94`
 
 **Shared structure:**
 
-- `36.74` — `flow:call:int→cond`
-- `27.90` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
-- `27.90` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
+- `24.45` — `do(call:HTTPReply)`
+- `23.88` — `flow:call:ParseHTTPFormOptions→call:HTTPReply`
+- `23.62` — `flow:param→call:HTTPReply`
 
-**Habitat:** A fits poorly in `networkdb` (fit 0.21, package norm 0.68)
+**Structural overlap:** `0.79` (merge-worthy)
 
-**Habitat:** B fits poorly in `networkdb` (fit 0.21, package norm 0.68)
-
-**Structural overlap:** `0.76` (merge-worthy)
-
-- share 9 callees: [fmt.Errorf, github_com_hashicorp_serf_serf.LamportTime, int, int32, len, skipNetworkdb, string, uint, uint64]
-- overlapping call-graph neighborhoods (1.00): 106 shared
-- share patterns: [validation]
+- share 19 callees: [DecodeString, Error, String, WithFields, caller.Name, context.TODO, diagnostic.CommandSucceed, diagnostic.DebugHTTPForm, diagnostic.FailCommand, diagnostic.HTTPReply, diagnostic.ParseHTTPFormOptions, diagnostic.WrongCommand, fmt.Sprintf, len, log.G, logger.Error, logger.Info, logger.WithError, r.ParseForm]
+- overlapping call-graph neighborhoods (0.91): 29 shared
+- share patterns: [logging]
 - both are orchestrator functions
 - same package
-- callees do related work (1.00): [validation]
+- callees do related work (1.00): [serialization, concurrency]
 - same visibility
-- both are methods, on *NetworkEvent and *NetworkEntry
-- call into same packages: [ipbits, networkdb]
+- same receiver type: NetworkDB
+- call into same packages: [caller, diagnostic, networkdb]
 
 ---
 
-## Match #2 — Code-shape: `0.9231`
+## Match #2 — Code-shape: `0.9297`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `libnetwork/networkdb/networkdb.pb.go:2096` | `networkdb.*NetworkEntry.Unmarshal` | ` ` | validation |
-| **B** | `libnetwork/networkdb/networkdb.pb.go:2653` | `networkdb.*BulkSyncMessage.Unmarshal` | ` ` | validation |
+| **A** | `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:631` | `dbclient.doWriteDeleteWaitLeaveJoin` | `—` | concurrency |
+| **B** | `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:713` | `dbclient.doWriteWaitLeaveJoin` | `—` | concurrency |
 
-**Profile A:** `validation` 1.00 (dominance)
+**Profile A:** `concurrency` 1.00 (dominance)
 
-**Profile B:** `validation` 1.00 (dominance)
+**Profile B:** `concurrency` 1.00 (dominance)
 
-**Code similarity:** `ast 0.87  flow 1.00  nesting 1.00  sig 1.00  size 0.80`
+**Code similarity:** `ast 0.88  flow 1.00  nesting 1.00  sig 1.00  size 0.92`
 
-**Evidence:** `3585.27` (shape 3569.31, concept 1.98, call 13.99)
-
-**Trophic:** `0.91`
-
-**Shared structure:**
-
-- `36.74` — `flow:call:int→cond`
-- `27.90` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
-- `27.90` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
-
-**Habitat:** A fits poorly in `networkdb` (fit 0.21, package norm 0.68)
-
-**Habitat:** B fits poorly in `networkdb` (fit 0.21, package norm 0.68)
-
-**Structural overlap:** `0.77` (merge-worthy)
-
-- share 10 callees: [bool, fmt.Errorf, github_com_hashicorp_serf_serf.LamportTime, int, int32, len, skipNetworkdb, string, uint, uint64]
-- overlapping call-graph neighborhoods (1.00): 106 shared
-- share patterns: [validation]
-- both are orchestrator functions
-- same package
-- callees do related work (1.00): [validation]
-- same visibility
-- both are methods, on *NetworkEntry and *BulkSyncMessage
-- call into same packages: [ipbits, networkdb]
-
----
-
-## Match #3 — Code-shape: `0.9072`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `api/types/plugins/logdriver/entry.pb.go:360` | `logdriver.*LogEntry.Unmarshal` | ` ` | validation |
-| **B** | `libnetwork/networkdb/networkdb.pb.go:2653` | `networkdb.*BulkSyncMessage.Unmarshal` | ` ` | validation |
-
-**Profile A:** `validation` 1.00 (dominance)
-
-**Profile B:** `validation` 1.00 (dominance)
-
-**Code similarity:** `ast 0.85  flow 1.00  nesting 1.00  sig 1.00  size 0.98`
-
-**Evidence:** `3918.16` (shape 3916.18, concept 1.98, call 0.00)
-
-**Trophic:** `0.92`
-
-**Shared structure:**
-
-- `47.24` — `flow:call:int→cond`
-- `33.48` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
-- `33.48` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
-
-**Habitat:** A fits poorly in `logdriver` (fit 0.05, package norm 0.71)
-
-**Habitat:** B fits poorly in `networkdb` (fit 0.21, package norm 0.68)
-
-**Structural overlap:** `0.63` (merge-worthy)
-
-- share 9 callees: [append, bool, fmt.Errorf, int, int32, len, string, uint, uint64]
-- overlapping call-graph neighborhoods (1.00): 106 shared
-- share patterns: [validation]
-- both are orchestrator functions
-- callees do related work (1.00): [validation]
-- same visibility
-- both are methods, on *LogEntry and *BulkSyncMessage
-- call into same packages: [ipbits]
-
----
-
-## Match #4 — Code-shape: `0.8063`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `libnetwork/agent.pb.go:618` | `libnetwork.*EndpointRecord.Unmarshal` | ` ` | validation |
-| **B** | `libnetwork/networkdb/networkdb.pb.go:2384` | `networkdb.*TableEvent.Unmarshal` | ` ` | validation |
-
-**Profile A:** `validation` 1.00 (dominance)
-
-**Profile B:** `validation` 1.00 (dominance)
-
-**Code similarity:** `ast 0.68  flow 1.00  nesting 1.00  sig 1.00  size 0.81`
-
-**Evidence:** `5353.56` (shape 5351.58, concept 1.98, call 0.00)
-
-**Trophic:** `0.81`
-
-**Shared structure:**
-
-- `73.49` — `flow:call:int→cond`
-- `50.21` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
-- `50.21` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
-
-**Habitat:** B fits poorly in `networkdb` (fit 0.21, package norm 0.68)
-
-**Structural overlap:** `0.63` (merge-worthy)
-
-- share 8 callees: [append, fmt.Errorf, int, int32, len, string, uint, uint64]
-- overlapping call-graph neighborhoods (1.00): 106 shared
-- share patterns: [validation]
-- both are orchestrator functions
-- callees do related work (1.00): [validation]
-- same visibility
-- both are methods, on *EndpointRecord and *TableEvent
-- call into same packages: [ipbits]
-
----
-
-## Match #5 — Code-shape: `0.9746`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `libnetwork/networkdb/networkdb.pb.go:1824` | `networkdb.*NodeEvent.Unmarshal` | ` ` | validation |
-| **B** | `libnetwork/networkdb/networkdb.pb.go:1944` | `networkdb.*NetworkEvent.Unmarshal` | ` ` | validation |
-
-**Profile A:** `validation` 1.00 (dominance)
-
-**Profile B:** `validation` 1.00 (dominance)
-
-**Code similarity:** `ast 0.96  flow 1.00  nesting 1.00  sig 1.00  size 0.79`
-
-**Evidence:** `2820.15` (shape 2804.18, concept 1.98, call 13.99)
+**Evidence:** `1633.01` (shape 1581.67, concept 1.20, call 50.14)
 
 **Trophic:** `0.89`
 
 **Shared structure:**
 
-- `26.24` — `flow:call:int→cond`
-- `26.07` — `flow:call:skipNetworkdb→cond`
-- `22.32` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
+- `25.50` — `flow:call:WithTimeout→call:G`
+- `19.79` — `flow:call:Atoi→call:waitWriters`
+- `19.79` — `flow:call:make→call:waitWriters`
 
-**Habitat:** A fits poorly in `networkdb` (fit 0.21, package norm 0.68)
+**Structural overlap:** `0.94` (merge-worthy)
 
-**Habitat:** B fits poorly in `networkdb` (fit 0.21, package norm 0.68)
-
-**Structural overlap:** `0.76` (merge-worthy)
-
-- share 9 callees: [fmt.Errorf, github_com_hashicorp_serf_serf.LamportTime, int, int32, len, skipNetworkdb, string, uint, uint64]
-- overlapping call-graph neighborhoods (1.00): 106 shared
-- share patterns: [validation]
+- share 16 callees: [Infof, cancel, checkTable, close, context.Background, context.WithTimeout, fmt.Fprintf, joinNetwork, leaveNetwork, log.G, make, strconv.Atoi, strconv.Itoa, time.Duration, time.Sleep, waitWriters]
+- share 1 callers: [dbclient.Client]
+- overlapping call-graph neighborhoods (0.97): 76 shared
+- share patterns: [concurrency]
 - both are orchestrator functions
 - same package
-- callees do related work (1.00): [validation]
+- callees do related work (1.00): [concurrency]
 - same visibility
-- both are methods, on *NodeEvent and *NetworkEvent
-- call into same packages: [ipbits, networkdb]
+- same receiver type: plain functions
+- called from same packages: [dbclient]
+- call into same packages: [container, dbclient]
 
 ---
 
-## Match #6 — Code-shape: `0.8702`
+## Match #3 — Code-shape: `0.9443`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `api/types/plugins/logdriver/entry.pb.go:360` | `logdriver.*LogEntry.Unmarshal` | ` ` | validation |
-| **B** | `daemon/cluster/internal/runtime/plugin.pb.go:379` | `runtime.*PluginSpec.Unmarshal` | ` ` | validation |
+| **A** | `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:464` | `dbclient.doWriteKeys` | `—` | concurrency |
+| **B** | `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:497` | `dbclient.doDeleteKeys` | `—` | concurrency |
 
-**Profile A:** `validation` 1.00 (dominance)
+**Profile A:** `concurrency` 1.00 (dominance)
 
-**Profile B:** `validation` 1.00 (dominance)
+**Profile B:** `concurrency` 1.00 (dominance)
 
-**Code similarity:** `ast 0.78  flow 1.00  nesting 1.00  sig 1.00  size 0.94`
+**Code similarity:** `ast 0.91  flow 1.00  nesting 1.00  sig 1.00  size 0.99`
 
-**Evidence:** `3728.21` (shape 3726.23, concept 1.98, call 0.00)
+**Evidence:** `1010.80` (shape 978.00, concept 1.20, call 31.60)
 
-**Trophic:** `0.86`
+**Trophic:** `0.97`
 
 **Shared structure:**
 
-- `47.24` — `flow:call:int→cond`
-- `33.48` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
-- `33.48` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
+- `13.20` — `flow:call:Atoi→call:waitWriters`
+- `13.20` — `flow:call:make→call:waitWriters`
+- `9.93` — `flow:call:Atoi→cond`
 
-**Habitat:** A fits poorly in `logdriver` (fit 0.05, package norm 0.71)
+**Structural overlap:** `0.94` (merge-worthy)
 
-**Habitat:** B fits poorly in `runtime` (fit 0.06, package norm 0.70)
-
-**Structural overlap:** `0.65` (merge-worthy)
-
-- share 10 callees: [Unmarshal, append, bool, fmt.Errorf, int, int32, len, string, uint, uint64]
-- overlapping call-graph neighborhoods (1.00): 106 shared
-- share patterns: [validation]
+- share 14 callees: [Infof, cancel, checkTable, clientWatchTable, close, context.Background, context.TODO, context.WithTimeout, fmt.Fprintf, log.G, make, strconv.Atoi, strconv.Itoa, waitWriters]
+- share 1 callers: [dbclient.Client]
+- overlapping call-graph neighborhoods (0.97): 73 shared
+- share patterns: [concurrency]
 - both are orchestrator functions
-- callees do related work (1.00): [validation]
+- same package
+- callees do related work (1.00): [concurrency]
 - same visibility
-- both are methods, on *LogEntry and *PluginSpec
-- call into same packages: [ipbits]
+- same receiver type: plain functions
+- called from same packages: [dbclient]
+- call into same packages: [container, dbclient]
 
 ---
 
-## Match #7 — Code-shape: `0.9631`
+## Match #4 — Code-shape: `0.9664`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `daemon/cluster/internal/runtime/plugin.pb.go:379` | `runtime.*PluginSpec.Unmarshal` | ` ` | validation |
-| **B** | `libnetwork/agent.pb.go:618` | `libnetwork.*EndpointRecord.Unmarshal` | ` ` | validation |
+| **A** | `libnetwork/networkdb/networkdbdiagnostic.go:308` | `networkdb.*NetworkDB.dbJoinNetwork` | `—` | logging |
+| **B** | `libnetwork/networkdb/networkdbdiagnostic.go:340` | `networkdb.*NetworkDB.dbLeaveNetwork` | `—` | logging |
 
-**Profile A:** `validation` 1.00 (dominance)
+**Profile A:** `logging` 1.00 (dominance)
 
-**Profile B:** `validation` 1.00 (dominance)
+**Profile B:** `logging` 1.00 (dominance)
 
-**Code similarity:** `ast 0.94  flow 1.00  nesting 1.00  sig 1.00  size 0.61`
+**Code similarity:** `ast 0.94  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `4323.69` (shape 4321.71, concept 1.98, call 0.00)
+**Evidence:** `1134.27` (shape 1086.84, concept 3.05, call 44.38)
 
-**Trophic:** `0.74`
+**Trophic:** `0.99`
 
 **Shared structure:**
 
-- `52.49` — `flow:call:int→cond`
-- `33.48` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
-- `33.48` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
+- `18.34` — `do(call:HTTPReply)`
+- `17.91` — `flow:call:ParseHTTPFormOptions→call:HTTPReply`
+- `17.71` — `flow:param→call:HTTPReply`
 
-**Habitat:** A fits poorly in `runtime` (fit 0.06, package norm 0.70)
+**Structural overlap:** `0.79` (merge-worthy)
+
+- share 18 callees: [Error, String, WithFields, caller.Name, context.TODO, diagnostic.CommandSucceed, diagnostic.DebugHTTPForm, diagnostic.FailCommand, diagnostic.HTTPReply, diagnostic.ParseHTTPFormOptions, diagnostic.WrongCommand, fmt.Sprintf, len, log.G, logger.Error, logger.Info, logger.WithError, r.ParseForm]
+- overlapping call-graph neighborhoods (0.84): 27 shared
+- share patterns: [logging]
+- both are orchestrator functions
+- same package
+- callees do related work (1.00): [serialization, concurrency]
+- same visibility
+- same receiver type: NetworkDB
+- call into same packages: [caller, diagnostic, networkdb]
+
+---
+
+## Match #5 — Code-shape: `0.9265`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:677` | `dbclient.doWriteWaitLeave` | `—` | concurrency |
+| **B** | `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:713` | `dbclient.doWriteWaitLeaveJoin` | `—` | concurrency |
+
+**Profile A:** `concurrency` 1.00 (dominance)
+
+**Profile B:** `concurrency` 1.00 (dominance)
+
+**Code similarity:** `ast 0.88  flow 0.99  nesting 1.00  sig 1.00  size 0.75`
+
+**Evidence:** `1381.36` (shape 1335.18, concept 1.20, call 44.98)
+
+**Trophic:** `0.84`
+
+**Shared structure:**
+
+- `19.12` — `flow:call:WithTimeout→call:G`
+- `13.20` — `flow:call:Atoi→call:waitWriters`
+- `13.20` — `flow:call:make→call:waitWriters`
+
+**Structural overlap:** `0.92` (merge-worthy)
+
+- share 15 callees: [Infof, cancel, checkTable, close, context.Background, context.WithTimeout, fmt.Fprintf, leaveNetwork, log.G, make, strconv.Atoi, strconv.Itoa, time.Duration, waitWriters, writeUniqueKeys]
+- share 1 callers: [dbclient.Client]
+- overlapping call-graph neighborhoods (0.99): 76 shared
+- share patterns: [concurrency]
+- both are orchestrator functions
+- same package
+- callees do related work (1.00): [concurrency]
+- same visibility
+- same receiver type: plain functions
+- called from same packages: [dbclient]
+- call into same packages: [container, dbclient]
+
+---
+
+## Match #6 — Code-shape: `0.9353`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:567` | `dbclient.doWriteUniqueKeys` | `—` | concurrency |
+| **B** | `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:677` | `dbclient.doWriteWaitLeave` | `—` | concurrency |
+
+**Profile A:** `concurrency` 1.00 (dominance)
+
+**Profile B:** `concurrency` 1.00 (dominance)
+
+**Code similarity:** `ast 0.89  flow 1.00  nesting 1.00  sig 1.00  size 0.95`
+
+**Evidence:** `1178.57` (shape 1139.71, concept 1.20, call 37.65)
+
+**Trophic:** `0.84`
+
+**Shared structure:**
+
+- `13.20` — `flow:call:Atoi→call:waitWriters`
+- `13.20` — `flow:call:make→call:waitWriters`
+- `12.75` — `flow:call:WithTimeout→call:G`
+
+**Structural overlap:** `0.94` (merge-worthy)
+
+- share 14 callees: [Infof, cancel, checkTable, close, context.Background, context.WithTimeout, fmt.Fprintf, log.G, make, strconv.Atoi, strconv.Itoa, time.Duration, waitWriters, writeUniqueKeys]
+- share 1 callers: [dbclient.Client]
+- overlapping call-graph neighborhoods (0.97): 74 shared
+- share patterns: [concurrency]
+- both are orchestrator functions
+- same package
+- callees do related work (1.00): [concurrency]
+- same visibility
+- same receiver type: plain functions
+- called from same packages: [dbclient]
+- call into same packages: [container, dbclient]
+
+---
+
+## Match #7 — Code-shape: `0.9081`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `libnetwork/drivers/ipvlan/ipvlan_joinleave.go:33` | `ipvlan.*driver.Join` | ` ` | — |
+| **B** | `libnetwork/drivers/macvlan/macvlan_joinleave.go:21` | `macvlan.*driver.Join` | ` ` | — |
+
+**Code similarity:** `ast 0.86  flow 1.00  nesting 0.85  sig 1.00  size 0.76`
+
+**Evidence:** `1977.00` (shape 1919.05, concept 0.00, call 57.94)
+
+**Trophic:** `0.88`
+
+**Shared structure:**
+
+- `48.11` — `flow:call:getNetwork→cond`
+- `29.52` — `flow:call:getNetwork→return`
+- `28.27` — `flow:call:getNetwork→call:Errorf`
+
+**Structural overlap:** `0.51` (merge-worthy)
+
+- share 26 callees: [Debugf, Start, String, attribute.String, d.getNetwork, d.storeUpdate, fmt.Errorf, iNames.SetNames, jinfo.DisableGatewayService, jinfo.InterfaceName, jinfo.SetGateway, jinfo.SetGatewayIPv6, len, log.G, n.endpoint, n.getSubnetforIPv4, n.getSubnetforIPv6, net.ParseCIDR, netlabel.GetIfname, netutils.GenerateIfaceName, ns.NlHandle, otel.Tracer, span.End, trace.WithAttributes, v4gw.String, v6gw.String]
+- overlapping call-graph neighborhoods (0.98): 134 shared
+- both are orchestrator functions
+- callees do related work (1.00): [concurrency]
+- same visibility
+- same receiver type: driver
+- call into same packages: [libnetwork, netlabel, netutils, ns, tailfile]
+
+---
+
+## Match #8 — Code-shape: `0.8508`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `libnetwork/networkdb/networkdbdiagnostic.go:225` | `networkdb.*NetworkDB.dbDeleteEntry` | `—` | logging |
+| **B** | `libnetwork/networkdb/networkdbdiagnostic.go:262` | `networkdb.*NetworkDB.dbGetEntry` | `—` | logging |
+
+**Profile A:** `logging` 1.00 (dominance)
+
+**Profile B:** `logging` 1.00 (dominance)
+
+**Code similarity:** `ast 0.76  flow 0.98  nesting 0.98  sig 1.00  size 0.82`
+
+**Evidence:** `1381.44` (shape 1334.02, concept 3.05, call 44.38)
+
+**Trophic:** `0.87`
+
+**Shared structure:**
+
+- `18.34` — `do(call:HTTPReply)`
+- `17.91` — `flow:call:ParseHTTPFormOptions→call:HTTPReply`
+- `17.71` — `flow:param→call:HTTPReply`
+
+**Structural overlap:** `0.74` (merge-worthy)
+
+- share 18 callees: [Error, String, WithFields, caller.Name, context.TODO, diagnostic.CommandSucceed, diagnostic.DebugHTTPForm, diagnostic.FailCommand, diagnostic.HTTPReply, diagnostic.ParseHTTPFormOptions, diagnostic.WrongCommand, fmt.Sprintf, len, log.G, logger.Error, logger.Info, logger.WithError, r.ParseForm]
+- overlapping call-graph neighborhoods (0.78): 25 shared
+- share patterns: [logging]
+- both are orchestrator functions
+- same package
+- callees do related work (0.66): [serialization]
+- same visibility
+- same receiver type: NetworkDB
+- call into same packages: [caller, diagnostic, networkdb]
+
+---
+
+## Match #9 — Code-shape: `0.6408`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `daemon/logger/loggertest/logreader.go:73` | `loggertest.Reader.testTail` | `—` | validation, logging |
+| **B** | `daemon/logger/loggertest/logreader.go:196` | `loggertest.Reader.TestFollow` | `—` | validation, concurrency, logging |
+
+**Profile A:** `logging` 1.00 (dominance)
+
+**Profile B:** `logging` 1.00 (dominance)
+
+**Code similarity:** `ast 0.56  flow 0.94  nesting 0.86  sig 0.50  size 0.56`
+
+**Evidence:** `4483.96` (shape 4440.46, concept 5.08, call 38.42)
+
+**Trophic:** `0.58`
+
+**Shared structure:**
+
+- `60.63` — `flow:call:ReadLogs→call:readAll`
+- `60.63` — `flow:param→call:readAll`
+- `60.58` — `do(call:Run)`
+
+**Culture:** B realizes `validation` atypically (typicality 0.13, concept median 0.30, convention 0.59)
 
 **Structural overlap:** `0.66` (merge-worthy)
 
-- share 10 callees: [Unmarshal, append, bool, fmt.Errorf, int, int32, len, string, uint, uint64]
-- overlapping call-graph neighborhoods (1.00): 106 shared
-- share patterns: [validation]
+- share 14 callees: [Add, Truncate, assert.DeepEqual, assert.NilError, context.TODO, factory, l.Close, logMessages, lw.ConsumerGone, makeTestMessages, readAll, t.Parallel, t.Run, tr.Factory]
+- overlapping call-graph neighborhoods (0.92): 11 shared
+- share patterns: [logging, validation]
 - both are orchestrator functions
-- callees do related work (1.00): [validation]
-- same visibility
-- both are methods, on *PluginSpec and *EndpointRecord
-- call into same packages: [ipbits]
+- same package
+- callees do related work (1.00): [mapping, logging, validation]
+- same receiver type: Reader
+- call into same packages: [logger, loggertest]
 
 ---
 
-## Match #8 — Code-shape: `1.0000`
+## Match #10 — Code-shape: `0.8631`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `api/types/plugins/logdriver/entry.pb.go:672` | `logdriver.skipEntry` | ` ` | validation |
-| **B** | `daemon/cluster/internal/runtime/plugin.pb.go:725` | `runtime.skipPlugin` | ` ` | validation |
+| **A** | `daemon/graphdriver/fuse-overlayfs/fuseoverlayfs.go:172` | `fuseoverlayfs.*Driver.create` | ` ` | file_io |
+| **B** | `daemon/graphdriver/overlay2/overlay.go:345` | `overlay2.*Driver.create` | ` ` | file_io |
 
-**Profile A:** `validation` 1.00 (dominance)
+**Profile A:** `file_io` 1.00 (dominance)
 
-**Profile B:** `validation` 1.00 (dominance)
+**Profile B:** `file_io` 1.00 (dominance)
 
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+**Code similarity:** `ast 0.77  flow 1.00  nesting 0.99  sig 1.00  size 0.84`
 
-**Evidence:** `2122.40` (shape 2120.42, concept 1.98, call 0.00)
+**Evidence:** `1441.84` (shape 1399.43, concept 2.18, call 40.23)
 
-**Trophic:** `1.00`
-
-**Shared structure:**
-
-- `30.16` — `return(lit:INT,id)`
-- `25.39` — `assign+=(lit:INT)`
-- `24.60` — `return(lit:INT,sel)`
-
-**Habitat:** A fits poorly in `logdriver` (fit 0.06, package norm 0.71)
-
-**Habitat:** B fits poorly in `runtime` (fit 0.06, package norm 0.70)
-
-**Structural overlap:** `0.72` (merge-worthy)
-
-- share 5 callees: [fmt.Errorf, int, len, uint, uint64]
-- overlapping call-graph neighborhoods (1.00): 106 shared
-- share patterns: [validation]
-- both are utility functions
-- callers do related work (1.00): [validation]
-- same visibility
-- same receiver type: plain functions
-- call into same packages: [ipbits]
-
----
-
-## Match #9 — Code-shape: `1.0000`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `api/types/plugins/logdriver/entry.pb.go:672` | `logdriver.skipEntry` | ` ` | validation |
-| **B** | `libnetwork/agent.pb.go:1085` | `libnetwork.skipAgent` | ` ` | validation |
-
-**Profile A:** `validation` 1.00 (dominance)
-
-**Profile B:** `validation` 1.00 (dominance)
-
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
-
-**Evidence:** `2122.40` (shape 2120.42, concept 1.98, call 0.00)
-
-**Trophic:** `1.00`
+**Trophic:** `0.89`
 
 **Shared structure:**
 
-- `30.16` — `return(lit:INT,id)`
-- `25.39` — `assign+=(lit:INT)`
-- `24.60` — `return(lit:INT,sel)`
+- `60.58` — `flow:call:MkdirAllAndChown→cond`
+- `60.58` — `flow:call:MkdirAllAndChown→return`
+- `34.43` — `flow:call:RootPair→call:MkdirAndChown`
 
-**Habitat:** A fits poorly in `logdriver` (fit 0.06, package norm 0.71)
+**Structural overlap:** `0.65` (merge-worthy)
 
-**Structural overlap:** `0.72` (merge-worthy)
-
-- share 5 callees: [fmt.Errorf, int, len, uint, uint64]
-- overlapping call-graph neighborhoods (1.00): 106 shared
-- share patterns: [validation]
-- both are utility functions
-- callers do related work (1.00): [validation]
+- share 11 callees: [RootPair, d.dir, d.getLower, len, os.RemoveAll, os.Symlink, overlayutils.GenerateID, path.Dir, path.Join, user.MkdirAllAndChown, user.MkdirAndChown]
+- overlapping call-graph neighborhoods (0.76): 34 shared
+- share patterns: [file_io]
+- both are orchestrator functions
+- callees do related work (1.00): [retry, logging]
 - same visibility
-- same receiver type: plain functions
-- call into same packages: [ipbits]
-
----
-
-## Match #10 — Code-shape: `1.0000`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `daemon/cluster/internal/runtime/plugin.pb.go:725` | `runtime.skipPlugin` | ` ` | validation |
-| **B** | `libnetwork/agent.pb.go:1085` | `libnetwork.skipAgent` | ` ` | validation |
-
-**Profile A:** `validation` 1.00 (dominance)
-
-**Profile B:** `validation` 1.00 (dominance)
-
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
-
-**Evidence:** `2122.40` (shape 2120.42, concept 1.98, call 0.00)
-
-**Trophic:** `1.00`
-
-**Shared structure:**
-
-- `30.16` — `return(lit:INT,id)`
-- `25.39` — `assign+=(lit:INT)`
-- `24.60` — `return(lit:INT,sel)`
-
-**Habitat:** A fits poorly in `runtime` (fit 0.06, package norm 0.70)
-
-**Structural overlap:** `0.72` (merge-worthy)
-
-- share 5 callees: [fmt.Errorf, int, len, uint, uint64]
-- overlapping call-graph neighborhoods (1.00): 106 shared
-- share patterns: [validation]
-- both are utility functions
-- callers do related work (1.00): [validation]
-- same visibility
-- same receiver type: plain functions
-- call into same packages: [ipbits]
+- same receiver type: Driver
+- call into same packages: [idtools, overlayutils]
 
 ---
 
 ## Families
 
-675 families, 1735 functions in a family, largest 44 members; 3526 edges scored here that retrieval never proposed
+656 families, 1522 functions in a family, largest 44 members; 2814 edges scored here that retrieval never proposed
 
 ### Family 1 — 44 members, every pair `>= 0.61` code-shape  (741 edges scored here)
 
@@ -456,24 +433,7 @@ Families: 675 over 721 components, 1735 functions in a family, 3526 edges comple
 
 _34 more members not listed._
 
-### Family 2 — 29 members, every pair `>= 1.00` code-shape  (276 edges scored here)
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `api/types/plugins/logdriver/entry.pb.go:66` | `logdriver.*LogEntry.GetSource` | ` ` | — |
-| `api/types/plugins/logdriver/entry.pb.go:147` | `logdriver.*PartialLogEntryMetadata.GetId` | ` ` | — |
-| `daemon/cluster/internal/runtime/plugin.pb.go:68` | `runtime.*PluginSpec.GetName` | ` ` | — |
-| `daemon/cluster/internal/runtime/plugin.pb.go:75` | `runtime.*PluginSpec.GetRemote` | ` ` | — |
-| `daemon/cluster/internal/runtime/plugin.pb.go:144` | `runtime.*PluginPrivilege.GetName` | ` ` | — |
-| `daemon/cluster/internal/runtime/plugin.pb.go:151` | `runtime.*PluginPrivilege.GetDescription` | ` ` | — |
-| `libnetwork/agent.pb.go:111` | `libnetwork.*EndpointRecord.GetName` | ` ` | — |
-| `libnetwork/agent.pb.go:118` | `libnetwork.*EndpointRecord.GetServiceName` | ` ` | — |
-| `libnetwork/agent.pb.go:125` | `libnetwork.*EndpointRecord.GetServiceID` | ` ` | — |
-| `libnetwork/agent.pb.go:132` | `libnetwork.*EndpointRecord.GetVirtualIP` | ` ` | — |
-
-_19 more members not listed._
-
-### Family 3 — 29 members, every pair `>= 0.62` code-shape  (277 edges scored here)
+### Family 2 — 29 members, every pair `>= 0.62` code-shape  (277 edges scored here)
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
@@ -490,7 +450,7 @@ _19 more members not listed._
 
 _19 more members not listed._
 
-### Family 4 — 29 members, every pair `>= 0.61` code-shape  (277 edges scored here)
+### Family 3 — 29 members, every pair `>= 0.61` code-shape  (277 edges scored here)
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
@@ -507,22 +467,39 @@ _19 more members not listed._
 
 _19 more members not listed._
 
-### Family 5 — 17 members, every pair `>= 0.86` code-shape  (66 edges scored here)
+### Family 4 — 17 members, every pair `>= 0.60` code-shape  (84 edges scored here)
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `api/types/plugins/logdriver/entry.pb.go:188` | `logdriver.*LogEntry.Marshal` | ` ` | — |
-| `api/types/plugins/logdriver/entry.pb.go:252` | `logdriver.*PartialLogEntryMetadata.Marshal` | ` ` | — |
-| `daemon/cluster/internal/runtime/plugin.pb.go:191` | `runtime.*PluginSpec.Marshal` | ` ` | — |
-| `daemon/cluster/internal/runtime/plugin.pb.go:261` | `runtime.*PluginPrivilege.Marshal` | ` ` | — |
-| `libnetwork/agent.pb.go:340` | `libnetwork.*EndpointRecord.Marshal` | ` ` | — |
-| `libnetwork/agent.pb.go:440` | `libnetwork.*PortConfig.Marshal` | ` ` | — |
-| `libnetwork/drivers/overlay/overlay.pb.go:141` | `overlay.*PeerRecord.Marshal` | ` ` | — |
-| `libnetwork/drivers/windows/overlay/overlay.pb.go:101` | `overlay.*PeerRecord.Marshal` | ` ` | — |
-| `libnetwork/networkdb/networkdb.pb.go:952` | `networkdb.*GossipMessage.Marshal` | ` ` | — |
-| `libnetwork/networkdb/networkdb.pb.go:987` | `networkdb.*NodeEvent.Marshal` | ` ` | — |
+| `client/checkpoint_list.go:12` | `client.*Client.CheckpointList` | ` ` | serialization |
+| `client/config_inspect.go:13` | `client.*Client.ConfigInspectWithRaw` | ` ` | serialization, file_io |
+| `client/container_diff.go:12` | `client.*Client.ContainerDiff` | ` ` | serialization |
+| `client/container_inspect.go:14` | `client.*Client.ContainerInspect` | ` ` | serialization |
+| `client/container_inspect.go:32` | `client.*Client.ContainerInspectWithRaw` | ` ` | serialization, file_io |
+| `client/container_top.go:13` | `client.*Client.ContainerTop` | ` ` | serialization |
+| `client/container_update.go:11` | `client.*Client.ContainerUpdate` | ` ` | serialization |
+| `client/network_inspect.go:20` | `client.*Client.NetworkInspectWithRaw` | ` ` | serialization, file_io |
+| `client/node_inspect.go:13` | `client.*Client.NodeInspectWithRaw` | ` ` | serialization, file_io |
+| `client/plugin_inspect.go:13` | `client.*Client.PluginInspectWithRaw` | ` ` | serialization, file_io |
 
 _7 more members not listed._
 
-_670 more families not listed._
+### Family 5 — 17 members, every pair `>= 0.60` code-shape  (88 edges scored here)
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `client/checkpoint_list.go:12` | `client.*Client.CheckpointList` | ` ` | serialization |
+| `client/config_inspect.go:13` | `client.*Client.ConfigInspectWithRaw` | ` ` | serialization, file_io |
+| `client/container_diff.go:12` | `client.*Client.ContainerDiff` | ` ` | serialization |
+| `client/container_exec.go:71` | `client.*Client.ContainerExecInspect` | ` ` | serialization |
+| `client/container_inspect.go:14` | `client.*Client.ContainerInspect` | ` ` | serialization |
+| `client/container_inspect.go:32` | `client.*Client.ContainerInspectWithRaw` | ` ` | serialization, file_io |
+| `client/container_top.go:13` | `client.*Client.ContainerTop` | ` ` | serialization |
+| `client/container_update.go:11` | `client.*Client.ContainerUpdate` | ` ` | serialization |
+| `client/node_inspect.go:13` | `client.*Client.NodeInspectWithRaw` | ` ` | serialization, file_io |
+| `client/plugin_inspect.go:13` | `client.*Client.PluginInspectWithRaw` | ` ` | serialization, file_io |
+
+_7 more members not listed._
+
+_651 more families not listed._
 
