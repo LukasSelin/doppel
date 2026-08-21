@@ -131,3 +131,100 @@ func TestTruncateKeepsWholeLines(t *testing.T) {
 		t.Error("truncate cut mid-line")
 	}
 }
+
+func pc(a, b string, score, overlap float64, merge, attr bool) snapshot.PairChange {
+	return snapshot.PairChange{
+		Pair:         snapshot.Pair{A: a, B: b, Score: score, Overlap: overlap, MergeWorthy: merge},
+		Attributable: attr,
+	}
+}
+
+// The bar for interrupting the model is far higher than the bar for a line the
+// user chose to look at. Anything below the merge-worthy gate, and anything the
+// session did not cause, must not reach it.
+func TestNotableAdmitsOnlyMergeWorthyAttributablePairs(t *testing.T) {
+	d := snapshot.Delta{Comparable: true, PairsAdded: []snapshot.PairChange{
+		pc("a.Keep", "b.Keep", 1.00, 0.71, true, true),
+		pc("a.Low", "b.Low", 0.99, 0.12, false, true),     // below the gate
+		pc("a.Churn", "b.Churn", 1.00, 0.80, true, false), // no edit caused it
+	}}
+	got := Notable(d)
+	if len(got) != 1 {
+		t.Fatalf("want 1 notable finding, got %d: %+v", len(got), got)
+	}
+	if !strings.Contains(got[0].Line, "a.Keep") {
+		t.Errorf("wrong finding surfaced: %q", got[0].Line)
+	}
+	if got[0].Key != "new:a.Keep|b.Keep" {
+		t.Errorf("key = %q, want a stable new: key", got[0].Key)
+	}
+}
+
+// A gate crossing is reportable even with no score movement — that is the whole
+// reason Drift admission was widened.
+func TestNotableReportsGateCrossings(t *testing.T) {
+	d := snapshot.Delta{Comparable: true, Drift: []snapshot.Drift{{
+		A: "a.One", B: "b.Two",
+		ScoreBefore: 0.8, ScoreAfter: 0.8,
+		OverlapBefore: 0.31, OverlapAfter: 0.44,
+		MergeWorthyBefore: false, MergeWorthyAfter: true,
+		Attributable: true,
+	}}}
+	got := Notable(d)
+	if len(got) != 1 {
+		t.Fatalf("want 1 finding, got %d", len(got))
+	}
+	if !strings.Contains(got[0].Line, "became merge-worthy") {
+		t.Errorf("line does not name the crossing: %q", got[0].Line)
+	}
+	if got[0].Key != "gate:a.One|b.Two" {
+		t.Errorf("key = %q, want a gate: key", got[0].Key)
+	}
+}
+
+// Drift that neither crosses the gate nor moves visibly is not worth a turn.
+func TestNotableIgnoresSmallDrift(t *testing.T) {
+	d := snapshot.Delta{Comparable: true, Drift: []snapshot.Drift{{
+		A: "a.One", B: "b.Two",
+		ScoreBefore: 0.80, ScoreAfter: 0.81, // below notableDrift
+		MergeWorthyBefore: true, MergeWorthyAfter: true,
+		Attributable: true,
+	}}}
+	if got := Notable(d); len(got) != 0 {
+		t.Fatalf("want no findings, got %+v", got)
+	}
+}
+
+func TestNotableIgnoresIncomparableDelta(t *testing.T) {
+	d := snapshot.Delta{Comparable: false, PairsAdded: []snapshot.PairChange{
+		pc("a.X", "b.Y", 1.0, 0.9, true, true),
+	}}
+	if got := Notable(d); got != nil {
+		t.Fatalf("want nil for an incomparable delta, got %+v", got)
+	}
+}
+
+func TestAgentDigestEmptyFindingsRenderNothing(t *testing.T) {
+	if got := AgentDigest(nil); got != "" {
+		t.Errorf("AgentDigest(nil) = %q, want the empty string", got)
+	}
+}
+
+// The note arrives while the turn is being deliberately continued, so it must
+// read as a measurement and not as an instruction to go refactor.
+func TestAgentDigestStatesFactsAndCapsTheList(t *testing.T) {
+	var f []Finding
+	for _, n := range []string{"one", "two", "three", "four", "five"} {
+		f = append(f, Finding{Key: "new:" + n, Line: n + " <-> other"})
+	}
+	got := AgentDigest(f)
+	if strings.Count(got, "<->") != maxAgentListed {
+		t.Errorf("listed %d findings, want %d:\n%s", strings.Count(got, "<->"), maxAgentListed, got)
+	}
+	if !strings.Contains(got, "2 further findings not listed") {
+		t.Errorf("missing the roll-up line:\n%s", got)
+	}
+	if !strings.Contains(got, "No change is required.") {
+		t.Errorf("digest does not bound itself as a measurement:\n%s", got)
+	}
+}

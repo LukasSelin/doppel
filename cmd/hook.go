@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"time"
 
 	"github.com/LukasSelin/doppel/internal/reporter"
@@ -27,6 +28,11 @@ type hookInput struct {
 	SessionID string `json:"session_id"`
 	Cwd       string `json:"cwd"`
 	Source    string `json:"source"`
+	// StopHookActive is set by the harness when this Stop hook fires on a turn
+	// that a Stop hook already continued. It is the loop guard: a hook that
+	// keeps producing output every time it is re-entered never lets the turn
+	// end, and Claude Code eventually overrides it with a warning.
+	StopHookActive bool `json:"stop_hook_active"`
 }
 
 // baselineFile wraps a Snapshot with the things that must not live inside one.
@@ -40,6 +46,16 @@ type baselineFile struct {
 	Root      string            `json:"root"`
 	CreatedAt string            `json:"createdAt"`
 	Snapshot  snapshot.Snapshot `json:"snapshot"`
+	// Reported is the ledger of findings already surfaced this session, sorted.
+	//
+	// A delta is cumulative against the session-start origin, so without this a
+	// single new duplicate would be reported again on every subsequent turn —
+	// and in agent mode would continue every subsequent turn. The ledger rides
+	// in the baseline file rather than a second one on purpose: the conventions
+	// allow exactly one persisted artifact, and this is a property of the
+	// session the baseline already represents. It is never compared, and it
+	// never touches Snapshot, which must stay the untouched origin.
+	Reported []string `json:"reported,omitempty"`
 }
 
 var hookCmd = &cobra.Command{
@@ -114,14 +130,30 @@ func runHookSessionStart(cmd *cobra.Command, args []string) error {
 // runHookStop reports the session's cumulative effect on the duplication
 // picture.
 //
-// The digest goes out as systemMessage, not additionalContext, and that is not
-// a stylistic choice: additionalContext on a Stop hook keeps the conversation
-// running, so a measurement would end every turn by handing the agent its own
-// report and telling it to carry on working. systemMessage shows the user and
-// lets the turn end.
+// Two channels, and the difference between them is a hard constraint of the
+// harness rather than a matter of taste. systemMessage reaches the user and
+// lets the turn end. additionalContext reaches the model — and continues the
+// turn: Claude Code appends the hook's message to the same list it treats as
+// blocking output and re-enters the query loop. There is no third option; a
+// Stop hook cannot put text in the model's context without the agent working
+// again.
+//
+// So agent mode is opt-outable (hook-notify) and gated hard (reporter.Notable
+// plus the Reported ledger), because every finding it emits costs a model
+// turn. A measurement that interrupts on every count that moved would be worse
+// than no measurement at all.
 func runHookStop(cmd *cobra.Command, args []string) error {
 	in, err := readHookInput(cmd.InOrStdin())
 	if err != nil {
+		return emitNothing()
+	}
+
+	// The turn we are being asked about is one this hook already continued.
+	// Speaking again would continue it again, and the loop only ends when the
+	// harness overrides us with a warning. Return before any analysis: this is
+	// the guard, and it also spares the repo a second full pipeline run for a
+	// turn already reported on.
+	if in.StopHookActive {
 		return emitNothing()
 	}
 
@@ -158,6 +190,13 @@ func runHookStop(cmd *cobra.Command, args []string) error {
 		return emitNothing()
 	}
 
+	mode, err := hookNotify(root)
+	if err != nil || mode == NotifyOff {
+		// A malformed hook-notify is the user's config error, but a hook is the
+		// wrong place to learn about it: stderr here reads as a broken tool.
+		return emitNothing()
+	}
+
 	digest := reporter.ImpactDigest(delta, "")
 	if digest == "" {
 		return emitNothing()
@@ -168,7 +207,69 @@ func runHookStop(cmd *cobra.Command, args []string) error {
 		digest = reporter.ImpactDigest(delta, deltaPath)
 	}
 
-	return emitJSON(cmd, map[string]any{"systemMessage": digest})
+	out := map[string]any{"systemMessage": digest}
+
+	if mode == NotifyAgent {
+		if fresh := unreported(reporter.Notable(delta), base.Reported); len(fresh) > 0 {
+			if note := reporter.AgentDigest(fresh); note != "" {
+				// Record before emitting. If the write fails we would rather
+				// stay silent than repeat this finding on every future turn,
+				// each time continuing the turn to do it.
+				if err := writeJSONAtomic(path, withReported(base, fresh)); err == nil {
+					out["hookSpecificOutput"] = map[string]any{
+						"hookEventName":     "Stop",
+						"additionalContext": note,
+					}
+				}
+			}
+		}
+	}
+
+	return emitJSON(cmd, out)
+}
+
+// unreported drops findings already surfaced this session.
+func unreported(findings []reporter.Finding, reported []string) []reporter.Finding {
+	if len(findings) == 0 {
+		return nil
+	}
+	seen := make(map[string]bool, len(reported))
+	for _, k := range reported {
+		seen[k] = true
+	}
+	var out []reporter.Finding
+	for _, f := range findings {
+		if !seen[f.Key] {
+			out = append(out, f)
+		}
+	}
+	return out
+}
+
+// withReported returns the baseline with these findings added to its ledger.
+//
+// Snapshot and CreatedAt are carried over untouched: this records what has been
+// said about the session, and must not move the origin the session is measured
+// against. The ledger is sorted and deduped so the file stays byte-stable for
+// an unchanged set.
+func withReported(base baselineFile, fresh []reporter.Finding) baselineFile {
+	seen := make(map[string]bool, len(base.Reported)+len(fresh))
+	var keys []string
+	for _, k := range base.Reported {
+		if !seen[k] {
+			seen[k] = true
+			keys = append(keys, k)
+		}
+	}
+	for _, f := range fresh {
+		if !seen[f.Key] {
+			seen[f.Key] = true
+			keys = append(keys, f.Key)
+		}
+	}
+	sort.Strings(keys)
+	base.Reported = keys
+	return base
 }
 
 // snapshotAt analyzes root the way a hook must and returns the comparable

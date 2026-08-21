@@ -210,3 +210,74 @@ func TestDiffScoreboardCounts(t *testing.T) {
 		t.Errorf("merge-worthy %d -> %d, want 1 -> 0", d.MergeBefore, d.MergeAfter)
 	}
 }
+
+// A pair can cross the merge-worthy gate without its shape score moving at all:
+// merge-worthiness is gated on overlap, score is not. Admitting drift on score
+// movement alone would silently drop exactly the drift that changes a decision.
+func TestDriftRecordsGateCrossingWithoutScoreMovement(t *testing.T) {
+	before := snap(func(s *Snapshot) {
+		s.Pairs = []Pair{{A: "a.One", B: "b.Two", Score: 0.80, Overlap: 0.31, MergeWorthy: false}}
+	})
+	after := snap(func(s *Snapshot) {
+		s.Pairs = []Pair{{A: "a.One", B: "b.Two", Score: 0.80, Overlap: 0.44, MergeWorthy: true}}
+	})
+
+	d := Diff(before, after)
+	if !d.Comparable {
+		t.Fatalf("snapshots not comparable: %s", d.Reason)
+	}
+	if len(d.Drift) != 1 {
+		t.Fatalf("want 1 drift entry for the gate crossing, got %d", len(d.Drift))
+	}
+	got := d.Drift[0]
+	if got.ScoreMoved() != 0 {
+		t.Errorf("score moved %v, want 0 — the fixture is meant to isolate overlap", got.ScoreMoved())
+	}
+	if !got.CrossedGate() {
+		t.Error("CrossedGate() = false, want true")
+	}
+	if got.MergeWorthyBefore || !got.MergeWorthyAfter {
+		t.Errorf("merge-worthy %v -> %v, want false -> true", got.MergeWorthyBefore, got.MergeWorthyAfter)
+	}
+	if got.OverlapBefore != 0.31 || got.OverlapAfter != 0.44 {
+		t.Errorf("overlap %v -> %v, want 0.31 -> 0.44", got.OverlapBefore, got.OverlapAfter)
+	}
+}
+
+// Invisible score movement stays out, as it always did. Widening the admission
+// rule must not turn driftFloor off.
+func TestDriftStillIgnoresInvisibleMovement(t *testing.T) {
+	before := snap(func(s *Snapshot) {
+		s.Pairs = []Pair{{A: "a.One", B: "b.Two", Score: 0.8000, Overlap: 0.5, MergeWorthy: true}}
+	})
+	after := snap(func(s *Snapshot) {
+		s.Pairs = []Pair{{A: "a.One", B: "b.Two", Score: 0.8001, Overlap: 0.5, MergeWorthy: true}}
+	})
+	if d := Diff(before, after); len(d.Drift) != 0 {
+		t.Fatalf("want no drift below driftFloor, got %d", len(d.Drift))
+	}
+}
+
+// Gate crossings sort ahead of larger score moves: a crossing can carry zero
+// movement, which the movement-first order would bury.
+func TestDriftSortsGateCrossingsFirst(t *testing.T) {
+	before := snap(func(s *Snapshot) {
+		s.Pairs = []Pair{
+			{A: "a.One", B: "b.Two", Score: 0.80, Overlap: 0.31, MergeWorthy: false},
+			{A: "c.Three", B: "d.Four", Score: 0.20, Overlap: 0.10, MergeWorthy: false},
+		}
+	})
+	after := snap(func(s *Snapshot) {
+		s.Pairs = []Pair{
+			{A: "a.One", B: "b.Two", Score: 0.80, Overlap: 0.44, MergeWorthy: true},
+			{A: "c.Three", B: "d.Four", Score: 0.90, Overlap: 0.10, MergeWorthy: false},
+		}
+	})
+	d := Diff(before, after)
+	if len(d.Drift) != 2 {
+		t.Fatalf("want 2 drift entries, got %d", len(d.Drift))
+	}
+	if d.Drift[0].A != "a.One" {
+		t.Errorf("gate crossing sorted second; order = %s, %s", d.Drift[0].A, d.Drift[1].A)
+	}
+}

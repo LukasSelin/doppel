@@ -25,6 +25,40 @@ type AnalysisConfig struct {
 	MaxPerFunc *int     `json:"max-per-func,omitempty"`
 	Tests      *string  `json:"tests,omitempty"`
 	Format     *string  `json:"format,omitempty"`
+	HookNotify *string  `json:"hook-notify,omitempty"`
+}
+
+// Hook notification modes. These decide who a Stop hook's findings reach, and
+// they are the one setting with a cost attached: reaching the agent means the
+// turn continues, because a Stop hook cannot put text in the model's context
+// any other way. See hookNotify.
+const (
+	NotifyAgent = "agent" // additionalContext to the model, plus a line for the user
+	NotifyUser  = "user"  // systemMessage only; never continues a turn
+	NotifyOff   = "off"   // silence
+)
+
+// hookNotify reads the notification mode for a hook run.
+//
+// Deliberately not part of Params. Params is compared field-by-field to decide
+// whether a baseline still answers the same question, so anything in it
+// invalidates a baseline when it changes. Who gets told about a finding has no
+// bearing on what was measured, and switching modes mid-session must not throw
+// away the session's origin.
+func hookNotify(root string) (string, error) {
+	cfg, err := loadConfig(filepath.Join(root, ".doppel.json"))
+	if err != nil {
+		return NotifyAgent, err
+	}
+	if cfg == nil || cfg.HookNotify == nil {
+		return NotifyAgent, nil
+	}
+	mode := *cfg.HookNotify
+	switch mode {
+	case NotifyAgent, NotifyUser, NotifyOff:
+		return mode, nil
+	}
+	return NotifyAgent, fmt.Errorf("invalid hook-notify value %q: want agent, user, or off", mode)
 }
 
 // loadConfig reads a JSON config file. Returns nil (no error) if the file does not exist.

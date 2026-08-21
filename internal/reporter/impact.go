@@ -20,6 +20,15 @@ const (
 	// with every look-alike it has, and ten near-identical lines about one
 	// edit bury the one line that asks for a decision.
 	maxImpactListed = 6
+	// The agent digest is not merely short, it is expensive: handing a Stop
+	// hook's output to the model continues the turn, so every line here costs
+	// part of a model turn. Three findings is enough to act on and few enough
+	// that the cost stays proportionate.
+	maxAgentListed = 3
+	// notableDrift is the movement worth interrupting for, an order above
+	// driftFloor. driftFloor only asks "is this visible at all"; this asks "is
+	// this worth a turn".
+	notableDrift = 0.05
 )
 
 // ConceptDigest describes a corpus in the terms doppel reasons about, for the
@@ -343,4 +352,108 @@ func truncate(s string) string {
 		cut = digestMaxChars
 	}
 	return s[:cut] + "\n  (truncated)\n"
+}
+
+// A Finding is one thing about the duplication surface worth an agent's
+// attention. Key is stable across runs so a caller can remember what it has
+// already surfaced; Line is the rendered sentence.
+type Finding struct {
+	Key  string
+	Line string
+}
+
+// Notable selects the findings from a delta that justify occupying context.
+//
+// The bar is deliberately far higher than the user-facing digest's. That digest
+// is read by someone who chose to look at it; this one interrupts. Two kinds
+// qualify, and nothing else does:
+//
+//   - a new near-duplicate that is both attributable to an edit this session
+//     and merge-worthy — code that was just written and already has a twin;
+//   - a pair with an edited side that crossed the merge-worthy gate, or,
+//     failing that, moved by notableDrift.
+//
+// Attribution gates the crossings as hard as it gates the new pairs, and
+// measurement proved it has to. Merge-worthiness is corpus-weighted: adding two
+// functions anywhere shifts the information content of every tag and nudges
+// pairs nobody touched across the 0.4 boundary. Reporting those would blame a
+// session for arithmetic it did not cause — the same reason Delta omits role
+// changes and caller counts.
+//
+// Everything the impact digest also prints — count scoreboards, pairs below the
+// gate, the retrieval re-ranking line — is excluded on purpose. A count that
+// moved is not a finding, and a look-alike below the gate is not a decision.
+//
+// Results are ordered gate-crossings-last-in, findings-first: new duplication
+// leads, because it is the only category describing something that did not
+// exist before this session.
+func Notable(d snapshot.Delta) []Finding {
+	if !d.Comparable {
+		return nil
+	}
+	var out []Finding
+
+	added, _ := d.AttributablePairs()
+	sortForReading(added)
+	for _, p := range added {
+		if !p.MergeWorthy {
+			continue
+		}
+		out = append(out, Finding{
+			Key:  "new:" + p.A + "|" + p.B,
+			Line: fmt.Sprintf("%s <-> %s  shape %.2f  overlap %.2f", p.A, p.B, p.Score, p.Overlap),
+		})
+	}
+
+	for _, dr := range d.Drift {
+		switch {
+		case dr.CrossedGate() && dr.Attributable:
+			verb := "became merge-worthy"
+			if !dr.MergeWorthyAfter {
+				verb = "is no longer merge-worthy"
+			}
+			out = append(out, Finding{
+				Key: "gate:" + dr.A + "|" + dr.B,
+				Line: fmt.Sprintf("%s <-> %s  %s (overlap %.3f -> %.3f)",
+					dr.A, dr.B, verb, dr.OverlapBefore, dr.OverlapAfter),
+			})
+		case dr.Attributable && dr.ScoreMoved() >= notableDrift:
+			out = append(out, Finding{
+				Key: "drift:" + dr.A + "|" + dr.B,
+				Line: fmt.Sprintf("%s <-> %s  shape %.2f -> %.2f",
+					dr.A, dr.B, dr.ScoreBefore, dr.ScoreAfter),
+			})
+		}
+	}
+	return out
+}
+
+// AgentDigest renders findings as a note for the model, or "" for none.
+//
+// Phrasing follows the same rule as ConceptDigest, and for a sharper reason:
+// this text arrives while the turn is being deliberately continued, so a line
+// that reads as an instruction would be an out-of-band order to go refactor
+// something the user never asked about. Every line states a fact and asks for
+// nothing. The closing sentence exists to bound that explicitly.
+func AgentDigest(findings []Finding) string {
+	if len(findings) == 0 {
+		return ""
+	}
+
+	noun := "near-duplicate findings"
+	if len(findings) == 1 {
+		noun = "near-duplicate finding"
+	}
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "doppel measured this session's effect on the repository's duplication surface and found %d new %s:\n",
+		len(findings), noun)
+	for _, f := range head(findings, maxAgentListed) {
+		fmt.Fprintf(&b, "  %s\n", f.Line)
+	}
+	if more := len(findings) - maxAgentListed; more > 0 {
+		fmt.Fprintf(&b, "  (%d further findings not listed)\n", more)
+	}
+	b.WriteString("This is a measurement, not a request. No change is required.\n")
+	return truncate(b.String())
 }

@@ -516,7 +516,8 @@ Two invariants worth knowing:
   "channel-k": 5,
   "debug": false,
   "max-per-func": 2,
-  "tests": "exclude"
+  "tests": "exclude",
+  "hook-notify": "agent"
 }
 ```
 
@@ -528,7 +529,9 @@ top-K; `--debug` adds retrieval provenance lines to the report; `--max-per-func`
 final-report pairs any one function may appear in (0 disables); `--tests` picks the population
 (`include`/`exclude`/`only`, default `exclude`) before any statistic is computed.
 
-`format` (`text` or `json`) is a key like any other. Every functional flag except `--config` has a
+`hook-notify` (`agent` | `user` | `off`) is read only by `doppel hook stop` and has no flag — there
+is no CLI surface a hook setting would belong to. `format` (`text` or `json`) is a key like any
+other. Every functional flag except `--config` has a
 config key. Precedence: `applyConfig` only calls
 `Flags().Set` when `!Flags().Changed(name)`, so explicit CLI flags always win over the file.
 Unknown keys are ignored rather than rejected, so a stale config file does not break a run.
@@ -591,10 +594,32 @@ reason rather than returning a partial delta.
 - `session-start` emits `additionalContext` (the corpus concept inventory) and writes the baseline
   **only if one does not already exist**. SessionStart also fires on resume and after compaction;
   re-recording then would silently move the origin mid-session.
-- `stop` emits **`systemMessage`, never `additionalContext`**. This is load-bearing, not stylistic:
-  `additionalContext` on a Stop hook keeps the conversation running, so a measurement would end every
-  turn by handing the agent its own report and telling it to carry on working. It is also cumulative
-  — every turn diffs against the same session-start baseline — and silent when the delta is empty.
+- `stop` emits `systemMessage` to the user and, under `hook-notify: agent` (the default),
+  `additionalContext` to the model. **`additionalContext` on a Stop hook continues the turn** —
+  verified against the shipped Claude Code binary, because the public docs do not document Stop's
+  decision-control fields at all. The hook's message is appended to the same list the harness
+  returns as `blockingErrors`, and a non-empty list re-enters the query loop
+  (`transition: {reason: "stop_hook_blocking"}`). There is no way to put text in the model's
+  context from a Stop hook without the agent working again.
+
+  Three things make that affordable, and removing any one of them makes the feature hostile:
+
+  1. **The `stop_hook_active` guard.** The harness sets it on the re-entry; `runHookStop` returns
+     before any analysis when it is true. Without it the turn never ends until Claude Code
+     overrides it with a warning (`CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`). It also spares a second full
+     pipeline run per reported turn.
+  2. **`reporter.Notable`, a much higher bar than the user digest's.** Only new merge-worthy
+     attributable pairs, and gate crossings with an edited side. Attribution gates the crossings
+     as hard as the pairs, and measurement proved it must: merge-worthiness is corpus-weighted, so
+     adding two functions anywhere nudges untouched pairs across the 0.4 boundary.
+  3. **The `Reported` ledger** in the baseline wrapper. A delta is cumulative against the
+     session-start origin, so an unremembered finding is re-reported — and re-continues the turn —
+     every turn thereafter. The ledger rides in the baseline file rather than a second one, and
+     never touches its `Snapshot`.
+
+  `hook-notify` (`agent` | `user` | `off`) is the escape hatch; `user` is the pre-existing
+  behaviour exactly. It is deliberately **not** in `Params`, because who gets told has no bearing
+  on what was measured and must not invalidate a baseline.
 - The session id is **hashed, not validated**, to build the baseline path. Against a fixed-length hex
   digest, traversal, absolute paths, drive letters and reserved device names are impossible by
   construction rather than by a blocklist somebody has to keep correct.
