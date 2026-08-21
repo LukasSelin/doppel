@@ -51,7 +51,7 @@ internal/
   concepter/    ConceptDoc; callgraph.go (BuildCallGraph); role.go (ClassifyRole, role constants)
   mapper/       Where enrichment actually happens: callers, role classification, aggregated patterns/packages
   retriever/    Multi-channel candidate retrieval: shape.go / concept.go / calls.go inverted indexes, retriever.go union + evidence
-  culture/      Corpus-culture model: ecology.go (PMI associations), prototype.go (concept prototypes + typicality)
+  culture/      Corpus-culture model: ecology.go (PMI), prototype.go (prototypes + typicality), habitat.go (fit), convention.go
   analyzer/     SimilarPair + Retrieval types; FindSimilar (library API); SortByEvidence (final ranking)
   comparator/   Weighted structural overlap scoring (9 signals → 0.0–1.0 composite)
   reporter/     Plain-text (stdout) and Markdown (--output) formatting
@@ -236,6 +236,40 @@ median, so a legitimately diverse concept lowers its own bar and a tight concept
 Membership stays binary (the tag); typicality grades it. The report surfaces notes only on a
 pair's **shared** tags ("you both claim transaction but B does it unlike anything else here" — the
 drift-vs-duplication signal), one `culture:` line per note, per-channel detail under `--debug`.
+
+### Habitats and conventions
+
+The thermodynamic static layer, also in `internal/culture` (habitat.go, convention.go): how well a
+function fits where it lives, and how strict each concept's practice is. Human vocabulary in
+output (fit, surprise, convention); precise terms live here.
+
+**Habitat** = a Go package with ≥ `MinHabitatMembers` (5) functions (empty package names are
+skipped; smaller packages are silent). Channels are the culture channels minus `package`
+(constant within a habitat): calls 44 / flow 22 / tags 17 / role 17 — integer weights summing to
+exactly 100, pinned. **The smoothing identity is load-bearing**: leave-one-out counts plus one
+pseudo-count collapse to the plain presence fraction, `P_i(x|h) = (cnt_-i(x)+1)/((m−1)+1) =
+cnt(x)/m` — no surprisal is ever infinite, everything is integer counts over one denominator, and
+a member never certifies its own normality beyond the pseudo-count.
+
+- **Strain** = weighted mean feature surprisal (mean per channel, so richness is not penalized;
+  an empty feature set scores the empty-set event — doing nothing can be the norm).
+- **Temperature** = median member strain (one alien cannot heat the habitat enough to excuse
+  itself).
+- **Fit** = excess-energy Boltzmann factor: 1.0 when strain ≤ T; `exp(−(strain−T)/T)` above; the
+  median member reads exactly 1.0 by construction. T = 0 (frozen habitat) makes any deviation
+  fit 0.0 — branch order keeps all-identical habitats at 1.0.
+- **Misfit** ⇔ strain > `MisfitFactor` (2.0) × T, or any positive strain when T = 0. At factor
+  2.0 this is fit < e⁻¹. Only misfits produce `habitat:` report lines.
+- **Norm** = mean member fit — the `package norm` contrast number and the stderr superlative
+  ranking (median fit would be ≈ 1.0 always; the mean is dragged by outliers, which is the
+  signal).
+
+**Convention strength** per prototyped concept: 1 − the mass-weighted mean **Bernoulli** entropy
+of feature presence across members, per channel, combined with the prototype's 40/20/15/15/10
+weights. Bernoulli-per-feature rather than entropy over the mass distribution, deliberately: a
+concept where every member does the same two things has uniform masses (maximal mass-entropy)
+but zero presence-disorder — universal co-occurrence is unanimity, not diversity. Empty channels
+score 1.0 (unanimity of absence). Shown as `convention` on culture notes; superlatives on stderr.
 
 ### Fingerprint scoring
 
@@ -477,6 +511,15 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   design trade (the old exhaustive `FindSimilar` pass remains available as a library call). The
   worst case of the inverted-index accumulation is `O(cap · postings)`, comfortably sub-quadratic
   at 10k functions (~2.5s on an 8.7k-function corpus, vs ~20s for the old all-pairs pass).
+- **Habitat = package is crude.** One Go package can host several micro-habitats (handlers next
+  to helpers next to tests — test functions in a production package legitimately read as
+  misfits). Directory- or subsystem-level habitat rollup is future work, as are all the delta
+  quantities: Δentropy/fragmentation, phase transitions, chemical potential (marginal duplication
+  pressure), git-derived heat, inter-package JS divergence, free energy.
+- **Convention entropy is a dispersion proxy, not realization clustering.** It measures how
+  predictable each practice is across members, not how many distinct whole realizations exist.
+  Habitat fit and misfit notes are corpus-relative like roles and typicality — a function's fit
+  can move when unrelated code shifts its package.
 - **Culture associations are computed but unsurfaced.** The ecology model (PMI associations) is
   built, tested, and reported only as a stderr count — per-pair surfacing was deliberately
   deferred because an association annotates the corpus, not a pair. A `doppel culture` command is
