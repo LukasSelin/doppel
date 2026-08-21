@@ -243,7 +243,8 @@ func habitatChannelLine(channels []analyzer.HabitatChannel) string {
 // breakdownLine renders the component scores behind a pair score, so a match
 // can be inspected without re-reading both function bodies.
 func breakdownLine(b fingerprint.Breakdown) string {
-	return fmt.Sprintf("ast %.2f  flow %.2f  sig %.2f  size %.2f", b.AST, b.Flow, b.Signature, b.SizeRatio)
+	return fmt.Sprintf("ast %.2f  flow %.2f  nesting %.2f  sig %.2f  size %.2f",
+		b.AST, b.Flow, b.Depth, b.Signature, b.SizeRatio)
 }
 
 func mdTableRow(w io.Writer, label string, u parser.CodeUnit) {

@@ -49,7 +49,12 @@ import (
 // 2 dropped every field no consumer read. A snapshot is diffed and rendered,
 // never browsed, so a field nothing reads is pure weight in a file the Stop
 // hook rewrites and re-parses on every turn.
-const Schema = 2
+//
+// 3 extended Digest with the fingerprint's nesting-depth histogram: the same
+// body hashes differently under schema 2 and 3, so cross-schema diffs would
+// report every function as changed. The histogram itself is not stored — no
+// consumer reads it back, and rule four still holds.
+const Schema = 3
 
 // Snapshot is one full analysis run.
 //
@@ -229,12 +234,15 @@ func Build(units []parser.CodeUnit, docs []concepter.ConceptDoc, pairs []analyze
 // corpus-independent "this body changed" bit, and the most attributable signal
 // a diff has.
 //
-// All four fingerprint fields are already sorted and deduped by
+// All five hashed fingerprint fields are already sorted and deduped by
 // fingerprint.Build, so the hash is deterministic without any extra ordering
-// work. The zero fingerprint (a declaration with no body) digests to the empty
-// string rather than to a hash value, mirroring the rule that a zero
-// fingerprint never matches anything: two body-less units must not be reported
-// as having identical bodies.
+// work. Depth is included because a nesting change is a body change — the
+// token stream can be identical while the structure is not, and that is
+// exactly the blindness the Depth histogram exists to remove. The zero
+// fingerprint (a declaration with no body) digests to the empty string rather
+// than to a hash value, mirroring the rule that a zero fingerprint never
+// matches anything: two body-less units must not be reported as having
+// identical bodies.
 func Digest(fp fingerprint.Fingerprint) string {
 	if fp.Nodes == 0 {
 		return ""
@@ -255,6 +263,10 @@ func Digest(fp fingerprint.Fingerprint) string {
 	write(^uint64(0))
 	for _, f := range fp.Flow {
 		write(uint64(f))
+	}
+	write(^uint64(0))
+	for _, d := range fp.Depth {
+		write(uint64(d))
 	}
 	write(^uint64(0))
 	for _, t := range fp.Types {

@@ -370,13 +370,23 @@ extinct because they explain none of the surrounding evidence.
 
 ### Fingerprint scoring
 
-`fingerprint.Similarity` blends three components; weights are constants and sum to exactly `1.00`.
+`fingerprint.Similarity` blends four components; weights are constants and sum to exactly `1.00`.
 
 | Component | Metric | Weight |
 | --- | --- | --- |
 | AST shingles | Jaccard over hashed 3-grams | 0.60 |
-| Control flow | cosine over the node-kind histogram | 0.25 |
+| Control flow | cosine over the node-kind histogram | 0.20 |
+| Nesting depth | cosine over the entry-depth histogram | 0.05 |
 | Signature | Jaccard over normalized param/result types | 0.15 |
+
+The depth histogram (`Fingerprint.Depth`, 6 buckets, deep tails folded into the last) records the
+nesting depth each control-flow node is *entered* at; the seven statement-bearing constructs (if,
+for, range, switch, type switch, select, funclit) push a level for their children. It exists
+because flattened tokens carry no depth: sequential ifs and nested ifs used to have identical
+token bags, identical flow histograms, and score 1.0. Depth's 0.05 was carved entirely out of
+Flow (0.25 → 0.20) — nesting is flow-adjacent, so flow pays for it. Rendered as `nesting:` in the
+breakdown line. A nesting change is a body change: `snapshot.Digest` hashes Depth (snapshot
+Schema 3).
 
 `SizeRatio` is reported in the `Breakdown` but **not** scored — Jaccard already penalizes size
 mismatch through the union, so damping again would double-count it.

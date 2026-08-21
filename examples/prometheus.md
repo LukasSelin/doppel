@@ -9,7 +9,7 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `27da9f4` |
+| doppel | `0fe7542` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -27,9 +27,9 @@ Habitats: 90 modeled, 566 misfits; most uniform tracing (norm 0.97), most divers
 Conventions: strongest error_wrapping (0.63), loosest retry (0.34)
 Ecosystems: 2520 profiled (1738 dominance, 782 coalition, 0 conflict, 0 weak)
 Found 6245 functions. Retrieving candidates...
-Retrieval: shape 4365, concept 3885, call 8864 -> 15587 unique pairs
-  concept-only 23.5%  call-only 47.6%  suppressed-shape functions: 272  large identity buckets: 5  surviving patterns: 15278
-Running structural comparison on 15587 pairs...
+Retrieval: shape 4351, concept 3885, call 8864 -> 15577 unique pairs
+  concept-only 23.6%  call-only 47.6%  suppressed-shape functions: 272  large identity buckets: 5  surviving patterns: 15278
+Running structural comparison on 15577 pairs...
 ```
 
 # Code Similarity Report
@@ -49,7 +49,7 @@ Running structural comparison on 15587 pairs...
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 0.97`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 0.97`
 
 **Evidence:** `3190.07` (shape 3182.87, concept 2.23, call 4.98)
 
@@ -78,14 +78,14 @@ Running structural comparison on 15587 pairs...
 
 ---
 
-## Match #2 — Code-shape: `0.9151`
+## Match #2 — Code-shape: `0.9153`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
 | **A** | `model/textparse/openmetricslex.l.go:25` | `textparse.*openMetricsLexer.Lex` | ` ` | — |
 | **B** | `model/textparse/promlex.l.go:39` | `textparse.*promlexer.Lex` | ` ` | — |
 
-**Code similarity:** `ast 0.86  flow 1.00  sig 1.00  size 0.69`
+**Code similarity:** `ast 0.86  flow 1.00  nesting 1.00  sig 1.00  size 0.69`
 
 **Evidence:** `7537.35` (shape 7537.35, concept 0.00, call 0.00)
 
@@ -108,7 +108,7 @@ Running structural comparison on 15587 pairs...
 
 ---
 
-## Match #3 — Code-shape: `0.9580`
+## Match #3 — Code-shape: `0.9571`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -119,7 +119,7 @@ Running structural comparison on 15587 pairs...
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.93  flow 1.00  sig 1.00  size 1.00`
+**Code similarity:** `ast 0.93  flow 1.00  nesting 0.98  sig 1.00  size 1.00`
 
 **Evidence:** `2799.49` (shape 2792.29, concept 2.23, call 4.98)
 
@@ -148,7 +148,7 @@ Running structural comparison on 15587 pairs...
 
 ---
 
-## Match #4 — Code-shape: `0.9580`
+## Match #4 — Code-shape: `0.9573`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -159,7 +159,7 @@ Running structural comparison on 15587 pairs...
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.93  flow 1.00  sig 1.00  size 0.98`
+**Code similarity:** `ast 0.93  flow 1.00  nesting 0.99  sig 1.00  size 0.98`
 
 **Evidence:** `2799.49` (shape 2792.29, concept 2.23, call 4.98)
 
@@ -195,7 +195,7 @@ Running structural comparison on 15587 pairs...
 | **A** | `prompb/io/prometheus/write/v2/types.pb.go:1257` | `writev2.*Histogram.MarshalToSizedBuffer` | ` ` | — |
 | **B** | `prompb/types.pb.go:1401` | `prompb.*Histogram.MarshalToSizedBuffer` | ` ` | — |
 
-**Code similarity:** `ast 0.99  flow 1.00  sig 1.00  size 0.96`
+**Code similarity:** `ast 0.99  flow 1.00  nesting 1.00  sig 1.00  size 0.96`
 
 **Evidence:** `1751.24` (shape 1746.24, concept 0.00, call 5.00)
 
@@ -222,7 +222,7 @@ Running structural comparison on 15587 pairs...
 
 ---
 
-## Match #6 — Code-shape: `0.8257`
+## Match #6 — Code-shape: `0.8253`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -233,7 +233,7 @@ Running structural comparison on 15587 pairs...
 
 **Profile B:** `mapping` 0.52, `caching` 0.48 (coalition)
 
-**Code similarity:** `ast 0.71  flow 1.00  sig 1.00  size 0.91`
+**Code similarity:** `ast 0.71  flow 1.00  nesting 0.99  sig 1.00  size 0.91`
 
 **Evidence:** `1793.62` (shape 1673.12, concept 8.24, call 112.27)
 
@@ -259,7 +259,7 @@ Running structural comparison on 15587 pairs...
 
 ---
 
-## Match #7 — Code-shape: `0.8218`
+## Match #7 — Code-shape: `0.8224`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -270,7 +270,7 @@ Running structural comparison on 15587 pairs...
 
 **Profile B:** `caching` 1.00 (dominance)
 
-**Code similarity:** `ast 0.78  flow 0.99  sig 0.71  size 0.84`
+**Code similarity:** `ast 0.78  flow 0.99  nesting 1.00  sig 0.71  size 0.84`
 
 **Evidence:** `1166.27` (shape 1130.23, concept 7.99, call 28.04)
 
@@ -299,7 +299,7 @@ Running structural comparison on 15587 pairs...
 
 ---
 
-## Match #8 — Code-shape: `0.7659`
+## Match #8 — Code-shape: `0.7631`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -308,7 +308,7 @@ Running structural comparison on 15587 pairs...
 
 **Profile A:** `logging` 1.00 (dominance)
 
-**Code similarity:** `ast 0.78  flow 0.98  sig 0.33  size 0.84`
+**Code similarity:** `ast 0.78  flow 0.98  nesting 0.92  sig 0.33  size 0.84`
 
 **Evidence:** `1720.40` (shape 1657.09, concept 0.00, call 63.31)
 
@@ -342,7 +342,7 @@ Running structural comparison on 15587 pairs...
 | **A** | `util/strutil/jarowinkler.go:57` | `strutil.jaroWinklerString` | ` ` | — |
 | **B** | `util/strutil/jarowinkler.go:125` | `strutil.jaroWinklerRunes` | ` ` | — |
 
-**Code similarity:** `ast 1.00  flow 1.00  sig 0.33  size 1.00`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
 
 **Evidence:** `839.26` (shape 839.26, concept 0.00, call 0.00)
 
@@ -375,7 +375,7 @@ Running structural comparison on 15587 pairs...
 | **A** | `util/runtime/statfs_linux_386.go:24` | `runtime.FsType` | ` ` | — |
 | **B** | `util/runtime/statfs_uint32.go:23` | `runtime.FsType` | ` ` | — |
 
-**Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 1.00`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Evidence:** `1012.76` (shape 1000.90, concept 0.00, call 11.86)
 

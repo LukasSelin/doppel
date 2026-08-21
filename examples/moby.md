@@ -9,7 +9,7 @@ container engine; a decade of accretion across daemon, API, and plugin layers
 | Corpus | [moby](https://github.com/moby/moby) |
 | Pinned at | `v28.5.2` (`89c5e8fd66634b6128fc4c0e6f1236e2540e46e0`) |
 | Project since | 2013 |
-| doppel | `27da9f4` |
+| doppel | `0fe7542` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -27,9 +27,9 @@ Habitats: 168 modeled, 371 misfits; most uniform checker (norm 0.98), most diver
 Conventions: strongest error_wrapping (0.62), loosest db_access (0.37)
 Ecosystems: 4050 profiled (3750 dominance, 300 coalition, 0 conflict, 0 weak)
 Found 8003 functions. Retrieving candidates...
-Retrieval: shape 4137, concept 2410, call 12559 -> 17585 unique pairs
-  concept-only 13.0%  call-only 63.0%  suppressed-shape functions: 376  large identity buckets: 4  surviving patterns: 19542
-Running structural comparison on 17585 pairs...
+Retrieval: shape 4126, concept 2410, call 12559 -> 17584 unique pairs
+  concept-only 13.0%  call-only 63.1%  suppressed-shape functions: 376  large identity buckets: 4  surviving patterns: 19542
+Running structural comparison on 17584 pairs...
   6 pairs suppressed by max-per-func=2
 ```
 
@@ -50,7 +50,7 @@ Running structural comparison on 17585 pairs...
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.92  flow 1.00  sig 1.00  size 0.99`
+**Code similarity:** `ast 0.92  flow 1.00  nesting 1.00  sig 1.00  size 0.99`
 
 **Evidence:** `1246.32` (shape 1230.35, concept 1.98, call 13.99)
 
@@ -91,7 +91,7 @@ Running structural comparison on 17585 pairs...
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.87  flow 1.00  sig 1.00  size 0.80`
+**Code similarity:** `ast 0.87  flow 1.00  nesting 1.00  sig 1.00  size 0.80`
 
 **Evidence:** `1322.97` (shape 1307.00, concept 1.98, call 13.99)
 
@@ -132,7 +132,7 @@ Running structural comparison on 17585 pairs...
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.85  flow 1.00  sig 1.00  size 0.98`
+**Code similarity:** `ast 0.85  flow 1.00  nesting 1.00  sig 1.00  size 0.98`
 
 **Evidence:** `1398.11` (shape 1396.13, concept 1.98, call 0.00)
 
@@ -172,7 +172,7 @@ Running structural comparison on 17585 pairs...
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.68  flow 1.00  sig 1.00  size 0.81`
+**Code similarity:** `ast 0.68  flow 1.00  nesting 1.00  sig 1.00  size 0.81`
 
 **Evidence:** `1880.91` (shape 1878.93, concept 1.98, call 0.00)
 
@@ -210,7 +210,7 @@ Running structural comparison on 17585 pairs...
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.96  flow 1.00  sig 1.00  size 0.79`
+**Code similarity:** `ast 0.96  flow 1.00  nesting 1.00  sig 1.00  size 0.79`
 
 **Evidence:** `1068.42` (shape 1052.45, concept 1.98, call 13.99)
 
@@ -240,7 +240,7 @@ Running structural comparison on 17585 pairs...
 
 ---
 
-## Match #6 — Code-shape: `0.8945`
+## Match #6 — Code-shape: `0.8944`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -251,7 +251,7 @@ Running structural comparison on 17585 pairs...
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.82  flow 1.00  sig 1.00  size 0.86`
+**Code similarity:** `ast 0.82  flow 1.00  nesting 1.00  sig 1.00  size 0.86`
 
 **Evidence:** `1031.79` (shape 1015.83, concept 1.98, call 13.99)
 
@@ -292,7 +292,7 @@ Running structural comparison on 17585 pairs...
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 1.00`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Evidence:** `846.54` (shape 844.57, concept 1.98, call 0.00)
 
@@ -332,7 +332,7 @@ Running structural comparison on 17585 pairs...
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 1.00`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Evidence:** `846.54` (shape 844.57, concept 1.98, call 0.00)
 
@@ -370,7 +370,7 @@ Running structural comparison on 17585 pairs...
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 1.00`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Evidence:** `846.54` (shape 844.57, concept 1.98, call 0.00)
 
@@ -408,7 +408,7 @@ Running structural comparison on 17585 pairs...
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.78  flow 1.00  sig 1.00  size 0.94`
+**Code similarity:** `ast 0.78  flow 1.00  nesting 1.00  sig 1.00  size 0.94`
 
 **Evidence:** `1338.28` (shape 1336.30, concept 1.98, call 0.00)
 

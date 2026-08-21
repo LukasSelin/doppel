@@ -9,7 +9,7 @@ static site generator; a large monolith with heavy template and resource subsyst
 | Corpus | [hugo](https://github.com/gohugoio/hugo) |
 | Pinned at | `v0.165.0` (`76a5e1880ab46688155b02e99bab9be2a6134492`) |
 | Project since | 2013 |
-| doppel | `27da9f4` |
+| doppel | `0fe7542` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -27,9 +27,9 @@ Habitats: 126 modeled, 665 misfits; most uniform partials (norm 0.98), most dive
 Conventions: strongest error_wrapping (0.64), loosest serialization (0.52)
 Ecosystems: 1999 profiled (1410 dominance, 589 coalition, 0 conflict, 0 weak)
 Found 5460 functions. Retrieving candidates...
-Retrieval: shape 2058, concept 4068, call 8309 -> 13635 unique pairs
-  concept-only 28.6%  call-only 55.2%  suppressed-shape functions: 141  large identity buckets: 0  surviving patterns: 12924
-Running structural comparison on 13635 pairs...
+Retrieval: shape 2055, concept 4068, call 8309 -> 13630 unique pairs
+  concept-only 28.6%  call-only 55.3%  suppressed-shape functions: 141  large identity buckets: 0  surviving patterns: 12924
+Running structural comparison on 13630 pairs...
 ```
 
 # Code Similarity Report
@@ -38,7 +38,7 @@ Running structural comparison on 13635 pairs...
 
 ---
 
-## Match #1 — Code-shape: `0.8458`
+## Match #1 — Code-shape: `0.8459`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -49,7 +49,7 @@ Running structural comparison on 13635 pairs...
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.78  flow 1.00  sig 0.86  size 0.75`
+**Code similarity:** `ast 0.78  flow 1.00  nesting 1.00  sig 0.86  size 0.75`
 
 **Evidence:** `1525.62` (shape 1470.98, concept 4.61, call 50.02)
 
@@ -79,14 +79,14 @@ Running structural comparison on 13635 pairs...
 
 ---
 
-## Match #2 — Code-shape: `0.8493`
+## Match #2 — Code-shape: `0.8498`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
 | **A** | `tpl/math/init.go:26` | `math.init` | `—` | — |
 | **B** | `tpl/strings/init.go:25` | `strings.init` | `—` | — |
 
-**Code similarity:** `ast 0.77  flow 0.94  sig 1.00  size 0.92`
+**Code similarity:** `ast 0.77  flow 0.94  nesting 0.95  sig 1.00  size 0.92`
 
 **Evidence:** `1634.98` (shape 1624.69, concept 0.00, call 10.29)
 
@@ -124,7 +124,7 @@ Running structural comparison on 13635 pairs...
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.88  flow 1.00  sig 1.00  size 0.75`
+**Code similarity:** `ast 0.88  flow 1.00  nesting 1.00  sig 1.00  size 0.75`
 
 **Evidence:** `842.82` (shape 826.90, concept 2.49, call 13.43)
 
@@ -157,7 +157,7 @@ Running structural comparison on 13635 pairs...
 | **A** | `tpl/collections/init.go:25` | `collections.init` | `—` | — |
 | **B** | `tpl/strings/init.go:25` | `strings.init` | `—` | — |
 
-**Code similarity:** `ast 0.93  flow 1.00  sig 1.00  size 0.86`
+**Code similarity:** `ast 0.93  flow 1.00  nesting 1.00  sig 1.00  size 0.86`
 
 **Evidence:** `1432.59` (shape 1422.30, concept 0.00, call 10.29)
 
@@ -194,7 +194,7 @@ Running structural comparison on 13635 pairs...
 
 **Profile B:** `file_io` 0.94, `caching` 0.06 (dominance)
 
-**Code similarity:** `ast 0.82  flow 1.00  sig 0.00  size 0.96`
+**Code similarity:** `ast 0.82  flow 1.00  nesting 1.00  sig 0.00  size 0.96`
 
 **Evidence:** `607.74` (shape 546.95, concept 7.07, call 53.72)
 
@@ -226,7 +226,7 @@ Running structural comparison on 13635 pairs...
 
 ---
 
-## Match #6 — Code-shape: `0.7595`
+## Match #6 — Code-shape: `0.7598`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -237,7 +237,7 @@ Running structural comparison on 13635 pairs...
 
 **Profile B:** `file_io` 1.00 (dominance)
 
-**Code similarity:** `ast 0.61  flow 0.98  sig 1.00  size 0.75`
+**Code similarity:** `ast 0.61  flow 0.98  nesting 0.99  sig 1.00  size 0.75`
 
 **Evidence:** `858.15` (shape 741.28, concept 5.81, call 111.05)
 
@@ -271,14 +271,14 @@ Running structural comparison on 13635 pairs...
 
 ---
 
-## Match #7 — Code-shape: `0.8181`
+## Match #7 — Code-shape: `0.8185`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
 | **A** | `tpl/collections/init.go:25` | `collections.init` | `—` | — |
 | **B** | `tpl/math/init.go:26` | `math.init` | `—` | — |
 
-**Code similarity:** `ast 0.72  flow 0.94  sig 1.00  size 0.94`
+**Code similarity:** `ast 0.72  flow 0.94  nesting 0.95  sig 1.00  size 0.94`
 
 **Evidence:** `1254.95` (shape 1244.66, concept 0.00, call 10.29)
 
@@ -303,7 +303,7 @@ Running structural comparison on 13635 pairs...
 
 ---
 
-## Match #8 — Code-shape: `0.9535`
+## Match #8 — Code-shape: `0.9533`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -314,7 +314,7 @@ Running structural comparison on 13635 pairs...
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.92  flow 1.00  sig 1.00  size 0.92`
+**Code similarity:** `ast 0.92  flow 1.00  nesting 0.99  sig 1.00  size 0.92`
 
 **Evidence:** `604.74` (shape 581.61, concept 2.49, call 20.65)
 
@@ -338,7 +338,7 @@ Running structural comparison on 13635 pairs...
 
 ---
 
-## Match #9 — Code-shape: `0.8114`
+## Match #9 — Code-shape: `0.8113`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -349,7 +349,7 @@ Running structural comparison on 13635 pairs...
 
 **Profile B:** `file_io` 1.00 (dominance)
 
-**Code similarity:** `ast 0.69  flow 1.00  sig 1.00  size 0.91`
+**Code similarity:** `ast 0.69  flow 1.00  nesting 1.00  sig 1.00  size 0.91`
 
 **Evidence:** `984.39` (shape 871.59, concept 5.81, call 106.99)
 
@@ -395,7 +395,7 @@ Running structural comparison on 13635 pairs...
 
 **Profile B:** `caching` 1.00 (dominance)
 
-**Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 0.99`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 0.99`
 
 **Evidence:** `315.75` (shape 278.79, concept 1.65, call 35.31)
 

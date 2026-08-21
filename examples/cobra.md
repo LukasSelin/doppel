@@ -9,7 +9,7 @@ CLI framework; one dominant type with a long method set, plus shell-completion g
 | Corpus | [cobra](https://github.com/spf13/cobra) |
 | Pinned at | `v1.10.2` (`88b30ab89da2d0d0abb153818746c5a2d30eccec`) |
 | Project since | 2015 |
-| doppel | `27da9f4` |
+| doppel | `0fe7542` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -45,7 +45,7 @@ Running structural comparison on 826 pairs...
 | **A** | `doc/md_docs.go:57` | `doc.GenMarkdownCustom` | ` ` | — |
 | **B** | `doc/rest_docs.go:62` | `doc.GenReSTCustom` | ` ` | — |
 
-**Code similarity:** `ast 0.80  flow 1.00  sig 0.60  size 0.86`
+**Code similarity:** `ast 0.80  flow 1.00  nesting 1.00  sig 0.60  size 0.86`
 
 **Evidence:** `929.98` (shape 872.01, concept 0.00, call 57.97)
 
@@ -82,7 +82,7 @@ Running structural comparison on 826 pairs...
 
 **Profile B:** `file_io` 1.00 (dominance)
 
-**Code similarity:** `ast 0.85  flow 1.00  sig 0.80  size 1.00`
+**Code similarity:** `ast 0.85  flow 1.00  nesting 1.00  sig 0.80  size 1.00`
 
 **Evidence:** `308.38` (shape 280.36, concept 1.24, call 26.78)
 
@@ -119,7 +119,7 @@ Running structural comparison on 826 pairs...
 
 **Profile B:** `file_io` 1.00 (dominance)
 
-**Code similarity:** `ast 0.79  flow 1.00  sig 0.80  size 1.00`
+**Code similarity:** `ast 0.79  flow 1.00  nesting 1.00  sig 0.80  size 1.00`
 
 **Evidence:** `294.00` (shape 265.99, concept 1.24, call 26.78)
 
@@ -152,7 +152,7 @@ Running structural comparison on 826 pairs...
 | **A** | `doc/md_docs.go:32` | `doc.printOptions` | ` ` | — |
 | **B** | `doc/rest_docs.go:30` | `doc.printOptionsReST` | ` ` | — |
 
-**Code similarity:** `ast 0.97  flow 1.00  sig 1.00  size 0.86`
+**Code similarity:** `ast 0.97  flow 1.00  nesting 1.00  sig 1.00  size 0.86`
 
 **Evidence:** `291.88` (shape 278.00, concept 0.00, call 13.88)
 
@@ -188,7 +188,7 @@ Running structural comparison on 826 pairs...
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 1.00`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Evidence:** `193.28` (shape 181.34, concept 1.07, call 10.87)
 
@@ -224,7 +224,7 @@ Running structural comparison on 826 pairs...
 
 **Profile B:** `file_io` 1.00 (dominance)
 
-**Code similarity:** `ast 0.79  flow 1.00  sig 1.00  size 1.00`
+**Code similarity:** `ast 0.79  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Evidence:** `294.00` (shape 265.99, concept 1.24, call 26.78)
 
@@ -259,7 +259,7 @@ Running structural comparison on 826 pairs...
 
 **Profile A:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 1.00`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Evidence:** `192.21` (shape 181.34, concept 0.00, call 10.87)
 
@@ -292,7 +292,7 @@ Running structural comparison on 826 pairs...
 
 **Profile A:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 1.00`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Evidence:** `192.21` (shape 181.34, concept 0.00, call 10.87)
 
@@ -327,7 +327,7 @@ Running structural comparison on 826 pairs...
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.75  flow 1.00  sig 1.00  size 0.97`
+**Code similarity:** `ast 0.75  flow 1.00  nesting 1.00  sig 1.00  size 0.97`
 
 **Evidence:** `161.46` (shape 149.36, concept 1.07, call 11.03)
 
@@ -355,14 +355,14 @@ Running structural comparison on 826 pairs...
 
 ---
 
-## Match #10 — Code-shape: `0.6271`
+## Match #10 — Code-shape: `0.6265`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
 | **A** | `command.go:674` | `cobra.stripFlags` | ` ` | — |
 | **B** | `command.go:715` | `cobra.*Command.argsMinusFirstX` | ` ` | — |
 
-**Code similarity:** `ast 0.51  flow 0.98  sig 0.50  size 0.94`
+**Code similarity:** `ast 0.51  flow 0.98  nesting 0.97  sig 0.50  size 0.94`
 
 **Evidence:** `348.86` (shape 327.56, concept 0.00, call 21.31)
 

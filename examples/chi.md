@@ -9,7 +9,7 @@ HTTP router; a narrow core with a middleware package beside it
 | Corpus | [chi](https://github.com/go-chi/chi) |
 | Pinned at | `v5.3.2` (`38939062c5df4d3e8814aad1a488983112627ced`) |
 | Project since | 2015 |
-| doppel | `27da9f4` |
+| doppel | `0fe7542` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -27,9 +27,9 @@ Habitats: 3 modeled, 4 misfits; most uniform chi (norm 0.91), most diverse middl
 Conventions: strongest validation (0.41), loosest validation (0.41)
 Ecosystems: 53 profiled (53 dominance, 0 coalition, 0 conflict, 0 weak)
 Found 254 functions. Retrieving candidates...
-Retrieval: shape 88, concept 36, call 542 -> 618 unique pairs
-  concept-only 5.0%  call-only 80.3%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 1166
-Running structural comparison on 618 pairs...
+Retrieval: shape 86, concept 36, call 542 -> 617 unique pairs
+  concept-only 5.0%  call-only 80.6%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 1166
+Running structural comparison on 617 pairs...
 ```
 
 # Code Similarity Report
@@ -38,14 +38,14 @@ Running structural comparison on 618 pairs...
 
 ---
 
-## Match #1 — Code-shape: `0.8443`
+## Match #1 — Code-shape: `0.8396`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
 | **A** | `middleware/recoverer.go:132` | `middleware.prettyStack.decorateFuncCallLine` | ` ` | — |
 | **B** | `middleware/recoverer.go:172` | `middleware.prettyStack.decorateSourceLine` | ` ` | — |
 
-**Code similarity:** `ast 0.74  flow 1.00  sig 1.00  size 0.99`
+**Code similarity:** `ast 0.74  flow 1.00  nesting 0.90  sig 1.00  size 0.99`
 
 **Evidence:** `430.04` (shape 414.55, concept 0.00, call 15.49)
 
@@ -78,7 +78,7 @@ Running structural comparison on 618 pairs...
 | **A** | `_examples/todos-resource/todos.go:12` | `main.todosResource.Routes` | ` ` | — |
 | **B** | `_examples/todos-resource/users.go:12` | `main.usersResource.Routes` | ` ` | — |
 
-**Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 0.90`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 0.90`
 
 **Evidence:** `206.36` (shape 200.70, concept 0.00, call 5.66)
 
@@ -102,14 +102,14 @@ Running structural comparison on 618 pairs...
 
 ---
 
-## Match #3 — Code-shape: `0.8475`
+## Match #3 — Code-shape: `0.8367`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
 | **A** | `tree.go:559` | `chi.*node.findEdge` | ` ` | — |
 | **B** | `tree.go:850` | `chi.nodes.findEdge` | ` ` | — |
 
-**Code similarity:** `ast 0.85  flow 0.96  sig 0.67  size 0.80`
+**Code similarity:** `ast 0.85  flow 0.96  nesting 0.74  sig 0.67  size 0.80`
 
 **Evidence:** `275.77` (shape 275.77, concept 0.00, call 0.00)
 
@@ -138,7 +138,7 @@ Running structural comparison on 618 pairs...
 | **A** | `mux.go:203` | `chi.*Mux.NotFound` | `—` | — |
 | **B** | `mux.go:223` | `chi.*Mux.MethodNotAllowed` | `—` | — |
 
-**Code similarity:** `ast 0.86  flow 1.00  sig 1.00  size 1.00`
+**Code similarity:** `ast 0.86  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Evidence:** `173.04` (shape 158.92, concept 0.00, call 14.13)
 
@@ -164,14 +164,14 @@ Running structural comparison on 618 pairs...
 
 ---
 
-## Match #5 — Code-shape: `0.7881`
+## Match #5 — Code-shape: `0.7972`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
 | **A** | `middleware/route_headers.go:48` | `middleware.HeaderRouter.Route` | ` ` | — |
 | **B** | `middleware/route_headers.go:58` | `middleware.HeaderRouter.RouteAny` | ` ` | — |
 
-**Code similarity:** `ast 0.79  flow 0.82  sig 0.75  size 0.74`
+**Code similarity:** `ast 0.79  flow 0.82  nesting 1.00  sig 0.75  size 0.74`
 
 **Evidence:** `136.30` (shape 128.22, concept 0.00, call 8.08)
 
@@ -202,7 +202,7 @@ Running structural comparison on 618 pairs...
 | **A** | `_examples/hello-world/main.go:10` | `main.main` | `—` | — |
 | **B** | `_examples/todos-resource/main.go:14` | `main.main` | `—` | — |
 
-**Code similarity:** `ast 0.74  flow 1.00  sig 1.00  size 0.69`
+**Code similarity:** `ast 0.74  flow 1.00  nesting 1.00  sig 1.00  size 0.69`
 
 **Evidence:** `172.32` (shape 121.20, concept 0.00, call 51.12)
 
@@ -226,14 +226,14 @@ Running structural comparison on 618 pairs...
 
 ---
 
-## Match #7 — Code-shape: `0.6707`
+## Match #7 — Code-shape: `0.6704`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
 | **A** | `middleware/content_encoding.go:10` | `middleware.AllowContentEncoding` | ` ` | — |
 | **B** | `middleware/content_type.go:20` | `middleware.AllowContentType` | ` ` | — |
 
-**Code similarity:** `ast 0.62  flow 0.98  sig 0.33  size 0.98`
+**Code similarity:** `ast 0.62  flow 0.98  nesting 0.98  sig 0.33  size 0.98`
 
 **Evidence:** `204.55` (shape 195.53, concept 0.00, call 9.01)
 
@@ -264,7 +264,7 @@ Running structural comparison on 618 pairs...
 
 **Profile A:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 1.00`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Evidence:** `61.27` (shape 61.27, concept 0.00, call 0.00)
 
@@ -297,7 +297,7 @@ Running structural comparison on 618 pairs...
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.43  flow 1.00  sig 1.00  size 0.85`
+**Code similarity:** `ast 0.43  flow 1.00  nesting 1.00  sig 1.00  size 0.85`
 
 **Evidence:** `138.02` (shape 119.87, concept 1.35, call 16.80)
 
@@ -334,7 +334,7 @@ Running structural comparison on 618 pairs...
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.47  flow 1.00  sig 1.00  size 0.78`
+**Code similarity:** `ast 0.47  flow 1.00  nesting 1.00  sig 1.00  size 0.78`
 
 **Evidence:** `121.14` (shape 105.06, concept 1.35, call 14.72)
 

@@ -9,7 +9,7 @@ structured concurrency library; generics-heavy, one idea, written recently and a
 | Corpus | [conc](https://github.com/sourcegraph/conc) |
 | Pinned at | `v0.3.0` (`7b8c8f2875cb861bb61844c9bcaa1aed070adbd4`) |
 | Project since | 2023 |
-| doppel | `27da9f4` |
+| doppel | `0fe7542` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -45,7 +45,7 @@ Running structural comparison on 79 pairs...
 | **A** | `pool/result_context_pool.go:22` | `pool.*ResultContextPool[T].Go` | `—` | — |
 | **B** | `pool/result_error_pool.go:25` | `pool.*ResultErrorPool[T].Go` | `—` | — |
 
-**Code similarity:** `ast 0.79  flow 1.00  sig 0.00  size 0.87`
+**Code similarity:** `ast 0.79  flow 1.00  nesting 1.00  sig 0.00  size 0.87`
 
 **Evidence:** `80.90` (shape 77.61, concept 0.00, call 3.30)
 
@@ -81,7 +81,7 @@ Running structural comparison on 79 pairs...
 | **A** | `pool/error_pool.go:45` | `pool.*ErrorPool.WithContext` | ` ` | — |
 | **B** | `pool/pool.go:138` | `pool.*Pool.WithContext` | ` ` | — |
 
-**Code similarity:** `ast 0.81  flow 1.00  sig 1.00  size 0.91`
+**Code similarity:** `ast 0.81  flow 1.00  nesting 1.00  sig 1.00  size 0.91`
 
 **Evidence:** `75.87` (shape 72.17, concept 0.00, call 3.70)
 
@@ -114,7 +114,7 @@ Running structural comparison on 79 pairs...
 | **A** | `pool/result_error_pool.go:55` | `pool.*ResultErrorPool[T].WithContext` | ` ` | — |
 | **B** | `pool/result_pool.go:63` | `pool.*ResultPool[T].WithContext` | ` ` | — |
 
-**Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 1.00`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Evidence:** `44.07` (shape 44.07, concept 0.00, call 0.00)
 
@@ -143,7 +143,7 @@ Running structural comparison on 79 pairs...
 | **A** | `pool/result_context_pool.go:34` | `pool.*ResultContextPool[T].Wait` | ` ` | — |
 | **B** | `pool/result_error_pool.go:37` | `pool.*ResultErrorPool[T].Wait` | ` ` | — |
 
-**Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 1.00`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Evidence:** `27.52` (shape 27.52, concept 0.00, call 0.00)
 
@@ -165,7 +165,7 @@ Running structural comparison on 79 pairs...
 
 ---
 
-## Match #5 — Code-shape: `0.5825`
+## Match #5 — Code-shape: `0.5864`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -174,7 +174,7 @@ Running structural comparison on 79 pairs...
 
 **Profile B:** `concurrency` 1.00 (dominance)
 
-**Code similarity:** `ast 0.53  flow 0.82  sig 0.40  size 0.50`
+**Code similarity:** `ast 0.53  flow 0.82  nesting 0.89  sig 0.40  size 0.50`
 
 **Evidence:** `90.28` (shape 86.58, concept 0.00, call 3.70)
 
@@ -204,7 +204,7 @@ Running structural comparison on 79 pairs...
 | **A** | `pool/context_pool.go:64` | `pool.*ContextPool.WithFirstError` | ` ` | — |
 | **B** | `pool/result_context_pool.go:50` | `pool.*ResultContextPool[T].WithFirstError` | ` ` | — |
 
-**Code similarity:** `ast 1.00  flow 1.00  sig 0.00  size 1.00`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.00  size 1.00`
 
 **Evidence:** `29.19` (shape 29.19, concept 0.00, call 0.00)
 
@@ -233,7 +233,7 @@ Running structural comparison on 79 pairs...
 | **A** | `pool/context_pool.go:64` | `pool.*ContextPool.WithFirstError` | ` ` | — |
 | **B** | `pool/result_error_pool.go:64` | `pool.*ResultErrorPool[T].WithFirstError` | ` ` | — |
 
-**Code similarity:** `ast 1.00  flow 1.00  sig 0.00  size 1.00`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.00  size 1.00`
 
 **Evidence:** `29.19` (shape 29.19, concept 0.00, call 0.00)
 
@@ -262,7 +262,7 @@ Running structural comparison on 79 pairs...
 | **A** | `pool/result_context_pool.go:50` | `pool.*ResultContextPool[T].WithFirstError` | ` ` | — |
 | **B** | `pool/result_error_pool.go:64` | `pool.*ResultErrorPool[T].WithFirstError` | ` ` | — |
 
-**Code similarity:** `ast 1.00  flow 1.00  sig 0.00  size 1.00`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.00  size 1.00`
 
 **Evidence:** `29.19` (shape 29.19, concept 0.00, call 0.00)
 
@@ -291,7 +291,7 @@ Running structural comparison on 79 pairs...
 | **A** | `pool/context_pool.go:86` | `pool.*ContextPool.WithMaxGoroutines` | ` ` | — |
 | **B** | `pool/error_pool.go:65` | `pool.*ErrorPool.WithMaxGoroutines` | ` ` | — |
 
-**Code similarity:** `ast 1.00  flow 1.00  sig 0.33  size 1.00`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
 
 **Evidence:** `25.62` (shape 25.62, concept 0.00, call 0.00)
 
@@ -320,7 +320,7 @@ Running structural comparison on 79 pairs...
 | **A** | `pool/context_pool.go:86` | `pool.*ContextPool.WithMaxGoroutines` | ` ` | — |
 | **B** | `pool/result_context_pool.go:67` | `pool.*ResultContextPool[T].WithMaxGoroutines` | ` ` | — |
 
-**Code similarity:** `ast 1.00  flow 1.00  sig 0.33  size 1.00`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
 
 **Evidence:** `25.62` (shape 25.62, concept 0.00, call 0.00)
 

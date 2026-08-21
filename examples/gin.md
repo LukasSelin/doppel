@@ -9,7 +9,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `27da9f4` |
+| doppel | `0fe7542` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -45,7 +45,7 @@ Running structural comparison on 1021 pairs...
 | **A** | `auth.go:48` | `gin.BasicAuthForRealm` | ` ` | — |
 | **B** | `auth.go:98` | `gin.BasicAuthForProxy` | ` ` | — |
 
-**Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 1.00`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Evidence:** `305.26` (shape 272.00, concept 0.00, call 33.26)
 
@@ -81,7 +81,7 @@ Running structural comparison on 1021 pairs...
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.87  flow 1.00  sig 0.50  size 0.87`
+**Code similarity:** `ast 0.87  flow 1.00  nesting 1.00  sig 0.50  size 0.87`
 
 **Evidence:** `203.54` (shape 178.51, concept 1.32, call 23.71)
 
@@ -118,7 +118,7 @@ Running structural comparison on 1021 pairs...
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 1.00`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Evidence:** `74.47` (shape 73.14, concept 1.32, call 0.00)
 
@@ -142,7 +142,7 @@ Running structural comparison on 1021 pairs...
 
 ---
 
-## Match #4 — Code-shape: `0.6549`
+## Match #4 — Code-shape: `0.6573`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -151,7 +151,7 @@ Running structural comparison on 1021 pairs...
 
 **Profile A:** `file_io` 1.00 (dominance)
 
-**Code similarity:** `ast 0.62  flow 0.94  sig 0.33  size 0.69`
+**Code similarity:** `ast 0.62  flow 0.94  nesting 0.99  sig 0.33  size 0.69`
 
 **Evidence:** `205.26` (shape 192.99, concept 0.00, call 12.27)
 
@@ -186,7 +186,7 @@ Running structural comparison on 1021 pairs...
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.60  flow 1.00  sig 0.00  size 0.87`
+**Code similarity:** `ast 0.60  flow 1.00  nesting 1.00  sig 0.00  size 0.87`
 
 **Evidence:** `171.77` (shape 146.74, concept 1.32, call 23.71)
 
@@ -219,7 +219,7 @@ Running structural comparison on 1021 pairs...
 | **A** | `gin.go:561` | `gin.*Engine.RunTLS` | ` ` | — |
 | **B** | `gin.go:645` | `gin.*Engine.RunListener` | ` ` | — |
 
-**Code similarity:** `ast 0.72  flow 1.00  sig 0.33  size 0.98`
+**Code similarity:** `ast 0.72  flow 1.00  nesting 1.00  sig 0.33  size 0.98`
 
 **Evidence:** `171.66` (shape 159.39, concept 0.00, call 12.27)
 
@@ -250,7 +250,7 @@ Running structural comparison on 1021 pairs...
 | **A** | `routergroup.go:181` | `gin.*RouterGroup.staticFileHandler` | ` ` | — |
 | **B** | `routergroup.go:203` | `gin.*RouterGroup.StaticFS` | ` ` | — |
 
-**Code similarity:** `ast 0.69  flow 1.00  sig 0.50  size 0.71`
+**Code similarity:** `ast 0.69  flow 1.00  nesting 1.00  sig 0.50  size 0.71`
 
 **Evidence:** `170.37` (shape 150.10, concept 0.00, call 20.27)
 
@@ -285,7 +285,7 @@ Running structural comparison on 1021 pairs...
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 1.00`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Evidence:** `74.47` (shape 73.14, concept 1.32, call 0.00)
 
@@ -320,7 +320,7 @@ Running structural comparison on 1021 pairs...
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 1.00`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Evidence:** `74.47` (shape 73.14, concept 1.32, call 0.00)
 
@@ -351,7 +351,7 @@ Running structural comparison on 1021 pairs...
 | **A** | `gin.go:561` | `gin.*Engine.RunTLS` | ` ` | — |
 | **B** | `gin.go:630` | `gin.*Engine.RunQUIC` | ` ` | — |
 
-**Code similarity:** `ast 0.57  flow 1.00  sig 1.00  size 0.79`
+**Code similarity:** `ast 0.57  flow 1.00  nesting 1.00  sig 1.00  size 0.79`
 
 **Evidence:** `144.09` (shape 131.82, concept 0.00, call 12.27)
 
