@@ -10,8 +10,8 @@ func snap(mut func(*Snapshot)) Snapshot {
 		Params:    Params{Threshold: 0.6, MinNodes: 12, TestsMode: "exclude"},
 		Functions: 2,
 		Units: []Unit{
-			{Key: "a.One", Digest: "d1", Nodes: 20},
-			{Key: "b.Two", Digest: "d2", Nodes: 30},
+			{Key: "a.One", Digest: "d1"},
+			{Key: "b.Two", Digest: "d2"},
 		},
 		Pairs: []Pair{{A: "a.One", B: "b.Two", Score: 0.80, Overlap: 0.5, MergeWorthy: true}},
 	}

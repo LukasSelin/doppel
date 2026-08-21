@@ -95,10 +95,16 @@ reporting it as your session's impact would be wrong. Everything that defines th
 
 ## Cost
 
-Both hooks run a full analysis of the repository, which is O(n²) in candidate scoring with no
-blocking. On a few hundred functions this is well under a second. On a very large repository the
-Stop hook runs on every turn, so if it becomes noticeable, raise `threshold` or lower `channel-k`
-in `.doppel.json`, or remove the Stop hook and keep only SessionStart.
+Both hooks run a full analysis of the repository. Candidate retrieval is sub-quadratic — inverted
+indexes with a bounded top-K per function, not an all-pairs scan — and nothing blocks. On a few
+hundred functions this is well under a second; a few thousand still lands in a couple of seconds.
+The Stop hook runs on every turn, so on a very large repository it is the first thing to feel.
+
+If it becomes noticeable, **`channel-k` is the lever that works**. It is the per-function per-channel
+top-K, so it bounds the candidate set directly; dropping it from 5 to 2 roughly halves the pairs.
+`threshold` looks like the obvious knob and mostly is not — it gates admission to the *structural*
+channel only, and the concept and call channels bypass it entirely, so raising it prunes far less
+than the number suggests. Failing that, remove the Stop hook and keep only SessionStart.
 
 ## State
 

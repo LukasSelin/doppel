@@ -7,9 +7,10 @@
   },
   "homepage": "https://github.com/LukasSelin/doppel",
   "keywords": ["go", "duplication", "refactoring", "static-analysis"],
-  "user_config": {
+  "userConfig": {
     "doppel_binary": {
       "type": "string",
+      "title": "doppel binary",
       "description": "Path to the doppel binary. Leave as \"doppel\" if it is on your PATH; otherwise give an absolute path.",
       "default": "doppel"
     }
