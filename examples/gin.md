@@ -9,7 +9,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `acebce0` |
+| doppel | `27da9f4` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -22,14 +22,14 @@ The corpus-level models doppel builds before ranking anything, as printed to std
 ```
 Scanning . ...
 Generating concept documents...
-Culture: 4 concepts modeled, 9 associations, 1 unusual realizations
-Habitats: 5 modeled, 13 misfits; most uniform binding (norm 0.92), most diverse json (norm 0.71)
-Conventions: strongest mapping (0.73), loosest caching (0.37)
-Ecosystems: 101 profiled (101 dominance, 0 coalition, 0 conflict, 0 weak)
+Culture: 5 concepts modeled, 11 associations, 2 unusual realizations
+Habitats: 5 modeled, 17 misfits; most uniform binding (norm 0.91), most diverse json (norm 0.63)
+Conventions: strongest serialization (0.72), loosest caching (0.37)
+Ecosystems: 128 profiled (128 dominance, 0 coalition, 0 conflict, 0 weak)
 Found 497 functions. Retrieving candidates...
-Retrieval: shape 154, concept 180, call 609 -> 896 unique pairs
-  concept-only 19.4%  call-only 63.2%  suppressed-shape functions: 1  large identity buckets: 0  surviving patterns: 1491
-Running structural comparison on 896 pairs...
+Retrieval: shape 154, concept 317, call 609 -> 1021 unique pairs
+  concept-only 29.3%  call-only 54.6%  suppressed-shape functions: 1  large identity buckets: 0  surviving patterns: 1491
+Running structural comparison on 1021 pairs...
 ```
 
 # Code Similarity Report
@@ -83,7 +83,7 @@ Running structural comparison on 896 pairs...
 
 **Code similarity:** `ast 0.87  flow 1.00  sig 0.50  size 0.87`
 
-**Evidence:** `203.04` (shape 178.51, concept 0.82, call 23.71)
+**Evidence:** `203.54` (shape 178.51, concept 1.32, call 23.71)
 
 **Trophic:** `0.86`
 
@@ -112,41 +112,6 @@ Running structural comparison on 896 pairs...
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
 | **A** | `binding/toml.go:29` | `binding.decodeToml` | ` ` | validation |
-| **B** | `binding/xml.go:28` | `binding.decodeXML` | ` ` | validation |
-
-**Profile A:** `validation` 1.00 (dominance)
-
-**Profile B:** `validation` 1.00 (dominance)
-
-**Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 1.00`
-
-**Evidence:** `73.97` (shape 73.14, concept 0.82, call 0.00)
-
-**Trophic:** `1.00`
-
-**Shared structure:**
-
-- `4.53` — `seq[ assign:=(call:NewDecoder) ; if(bin:!=(id,nil)) ]`
-- `4.24` — `assign:=(call:NewDecoder)`
-- `4.01` — `assign:=(call:Decode)`
-
-**Structural overlap:** `0.66` (merge-worthy)
-
-- share 2 callees: [decoder.Decode, validate]
-- share patterns: [validation]
-- both are utility functions
-- same package
-- same visibility
-- same receiver type: plain functions
-- called from same packages: [binding]
-
----
-
-## Match #4 — Code-shape: `1.0000`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `binding/toml.go:29` | `binding.decodeToml` | ` ` | validation |
 | **B** | `binding/yaml.go:29` | `binding.decodeYAML` | ` ` | validation |
 
 **Profile A:** `validation` 1.00 (dominance)
@@ -155,7 +120,7 @@ Running structural comparison on 896 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `73.97` (shape 73.14, concept 0.82, call 0.00)
+**Evidence:** `74.47` (shape 73.14, concept 1.32, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -177,47 +142,14 @@ Running structural comparison on 896 pairs...
 
 ---
 
-## Match #5 — Code-shape: `1.0000`
+## Match #4 — Code-shape: `0.6549`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `binding/xml.go:28` | `binding.decodeXML` | ` ` | validation |
-| **B** | `binding/yaml.go:29` | `binding.decodeYAML` | ` ` | validation |
-
-**Profile A:** `validation` 1.00 (dominance)
-
-**Profile B:** `validation` 1.00 (dominance)
-
-**Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 1.00`
-
-**Evidence:** `73.97` (shape 73.14, concept 0.82, call 0.00)
-
-**Trophic:** `1.00`
-
-**Shared structure:**
-
-- `4.53` — `seq[ assign:=(call:NewDecoder) ; if(bin:!=(id,nil)) ]`
-- `4.24` — `assign:=(call:NewDecoder)`
-- `4.01` — `assign:=(call:Decode)`
-
-**Structural overlap:** `0.66` (merge-worthy)
-
-- share 2 callees: [decoder.Decode, validate]
-- share patterns: [validation]
-- both are utility functions
-- same package
-- same visibility
-- same receiver type: plain functions
-- called from same packages: [binding]
-
----
-
-## Match #6 — Code-shape: `0.6549`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `gin.go:581` | `gin.*Engine.RunUnix` | ` ` | — |
+| **A** | `gin.go:581` | `gin.*Engine.RunUnix` | ` ` | file_io |
 | **B** | `gin.go:645` | `gin.*Engine.RunListener` | ` ` | — |
+
+**Profile A:** `file_io` 1.00 (dominance)
 
 **Code similarity:** `ast 0.62  flow 0.94  sig 0.33  size 0.69`
 
@@ -243,7 +175,7 @@ Running structural comparison on 896 pairs...
 
 ---
 
-## Match #7 — Code-shape: `0.6100`
+## Match #5 — Code-shape: `0.6100`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -256,7 +188,7 @@ Running structural comparison on 896 pairs...
 
 **Code similarity:** `ast 0.60  flow 1.00  sig 0.00  size 0.87`
 
-**Evidence:** `171.27` (shape 146.74, concept 0.82, call 23.71)
+**Evidence:** `171.77` (shape 146.74, concept 1.32, call 23.71)
 
 **Trophic:** `0.75`
 
@@ -280,7 +212,7 @@ Running structural comparison on 896 pairs...
 
 ---
 
-## Match #8 — Code-shape: `0.7320`
+## Match #6 — Code-shape: `0.7320`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -311,7 +243,7 @@ Running structural comparison on 896 pairs...
 
 ---
 
-## Match #9 — Code-shape: `0.7364`
+## Match #7 — Code-shape: `0.7364`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -339,6 +271,76 @@ Running structural comparison on 896 pairs...
 - same receiver type: RouterGroup
 - called from same packages: [gin]
 - call into same packages: [gin]
+
+---
+
+## Match #8 — Code-shape: `1.0000`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `binding/toml.go:29` | `binding.decodeToml` | ` ` | validation |
+| **B** | `binding/xml.go:28` | `binding.decodeXML` | ` ` | validation, serialization |
+
+**Profile A:** `validation` 1.00 (dominance)
+
+**Profile B:** `validation` 1.00 (dominance)
+
+**Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 1.00`
+
+**Evidence:** `74.47` (shape 73.14, concept 1.32, call 0.00)
+
+**Trophic:** `1.00`
+
+**Shared structure:**
+
+- `4.53` — `seq[ assign:=(call:NewDecoder) ; if(bin:!=(id,nil)) ]`
+- `4.24` — `assign:=(call:NewDecoder)`
+- `4.01` — `assign:=(call:Decode)`
+
+**Structural overlap:** `0.57` (merge-worthy)
+
+- share 2 callees: [decoder.Decode, validate]
+- share patterns: [validation]
+- both are utility functions
+- same package
+- same visibility
+- same receiver type: plain functions
+- called from same packages: [binding]
+
+---
+
+## Match #9 — Code-shape: `1.0000`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `binding/xml.go:28` | `binding.decodeXML` | ` ` | validation, serialization |
+| **B** | `binding/yaml.go:29` | `binding.decodeYAML` | ` ` | validation |
+
+**Profile A:** `validation` 1.00 (dominance)
+
+**Profile B:** `validation` 1.00 (dominance)
+
+**Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 1.00`
+
+**Evidence:** `74.47` (shape 73.14, concept 1.32, call 0.00)
+
+**Trophic:** `1.00`
+
+**Shared structure:**
+
+- `4.53` — `seq[ assign:=(call:NewDecoder) ; if(bin:!=(id,nil)) ]`
+- `4.24` — `assign:=(call:NewDecoder)`
+- `4.01` — `assign:=(call:Decode)`
+
+**Structural overlap:** `0.57` (merge-worthy)
+
+- share 2 callees: [decoder.Decode, validate]
+- share patterns: [validation]
+- both are utility functions
+- same package
+- same visibility
+- same receiver type: plain functions
+- called from same packages: [binding]
 
 ---
 

@@ -9,7 +9,7 @@ CLI framework; one dominant type with a long method set, plus shell-completion g
 | Corpus | [cobra](https://github.com/spf13/cobra) |
 | Pinned at | `v1.10.2` (`88b30ab89da2d0d0abb153818746c5a2d30eccec`) |
 | Project since | 2015 |
-| doppel | `acebce0` |
+| doppel | `27da9f4` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -22,14 +22,14 @@ The corpus-level models doppel builds before ranking anything, as printed to std
 ```
 Scanning . ...
 Generating concept documents...
-Culture: 1 concepts modeled, 7 associations, 0 unusual realizations
-Habitats: 2 modeled, 0 misfits; most uniform doc (norm 0.91), most diverse cobra (norm 0.91)
-Conventions: strongest validation (0.44), loosest validation (0.44)
-Ecosystems: 108 profiled (108 dominance, 0 coalition, 0 conflict, 0 weak)
+Culture: 2 concepts modeled, 15 associations, 0 unusual realizations
+Habitats: 2 modeled, 0 misfits; most uniform doc (norm 0.93), most diverse cobra (norm 0.91)
+Conventions: strongest validation (0.44), loosest file_io (0.42)
+Ecosystems: 125 profiled (125 dominance, 0 coalition, 0 conflict, 0 weak)
 Found 269 functions. Retrieving candidates...
-Retrieval: shape 117, concept 45, call 712 -> 810 unique pairs
-  concept-only 5.1%  call-only 80.0%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 1257
-Running structural comparison on 810 pairs...
+Retrieval: shape 117, concept 85, call 712 -> 826 unique pairs
+  concept-only 6.9%  call-only 76.6%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 1257
+Running structural comparison on 826 pairs...
 ```
 
 # Code Similarity Report
@@ -57,11 +57,49 @@ Running structural comparison on 810 pairs...
 - `14.51` — `do(call:Fprintf)`
 - `9.09` — `seq[ assign=(call:ReplaceAll) ; do(call:Fprintf) ]`
 
-**Structural overlap:** `0.58` (merge-worthy)
+**Structural overlap:** `0.63` (merge-worthy)
 
 - share 25 callees: [Format, buf.WriteString, buf.WriteTo, byName, child.IsAdditionalHelpTopicCommand, child.IsAvailableCommand, child.Name, cmd.CommandPath, cmd.Commands, cmd.HasParent, cmd.InitDefaultHelpCmd, cmd.InitDefaultHelpFlag, cmd.Parent, cmd.Runnable, cmd.UseLine, cmd.VisitParents, fmt.Fprintf, hasSeeAlso, len, linkHandler, new, parent.CommandPath, sort.Sort, strings.ReplaceAll, time.Now]
 - overlapping call-graph neighborhoods (0.95): 87 shared
 - both are passthrough functions
+- same package
+- callers do related work (1.00): [file_io]
+- same visibility
+- same receiver type: plain functions
+- called from same packages: [doc]
+- call into same packages: [cobra, doc]
+
+---
+
+## Match #2 — Code-shape: `0.8777`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `doc/rest_docs.go:145` | `doc.GenReSTTreeCustom` | ` ` | file_io |
+| **B** | `doc/yaml_docs.go:60` | `doc.GenYamlTreeCustom` | ` ` | file_io |
+
+**Profile A:** `file_io` 1.00 (dominance)
+
+**Profile B:** `file_io` 1.00 (dominance)
+
+**Code similarity:** `ast 0.85  flow 1.00  sig 0.80  size 1.00`
+
+**Evidence:** `308.38` (shape 280.36, concept 1.24, call 26.78)
+
+**Trophic:** `0.93`
+
+**Shared structure:**
+
+- `7.34` — `if(bin:!=(id,nil))`
+- `4.14` — `seq[ assign:=(bin) ; assign:=(call:Join) ]`
+- `4.14` — `seq[ defer(call:Close) ; if(bin:!=(id,nil)) ]`
+
+**Structural overlap:** `0.74` (merge-worthy)
+
+- share 10 callees: [c.IsAdditionalHelpTopicCommand, c.IsAvailableCommand, cmd.CommandPath, cmd.Commands, f.Close, filePrepender, filepath.Join, io.WriteString, os.Create, strings.ReplaceAll]
+- overlapping call-graph neighborhoods (0.83): 35 shared
+- share patterns: [file_io]
+- both are orchestrator functions
 - same package
 - same visibility
 - same receiver type: plain functions
@@ -70,7 +108,44 @@ Running structural comparison on 810 pairs...
 
 ---
 
-## Match #2 — Code-shape: `0.9806`
+## Match #3 — Code-shape: `0.8425`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `doc/md_docs.go:133` | `doc.GenMarkdownTreeCustom` | ` ` | file_io |
+| **B** | `doc/rest_docs.go:145` | `doc.GenReSTTreeCustom` | ` ` | file_io |
+
+**Profile A:** `file_io` 1.00 (dominance)
+
+**Profile B:** `file_io` 1.00 (dominance)
+
+**Code similarity:** `ast 0.79  flow 1.00  sig 0.80  size 1.00`
+
+**Evidence:** `294.00` (shape 265.99, concept 1.24, call 26.78)
+
+**Trophic:** `0.89`
+
+**Shared structure:**
+
+- `7.34` — `if(bin:!=(id,nil))`
+- `4.14` — `seq[ assign:=(bin) ; assign:=(call:Join) ]`
+- `4.14` — `seq[ defer(call:Close) ; if(bin:!=(id,nil)) ]`
+
+**Structural overlap:** `0.74` (merge-worthy)
+
+- share 10 callees: [c.IsAdditionalHelpTopicCommand, c.IsAvailableCommand, cmd.CommandPath, cmd.Commands, f.Close, filePrepender, filepath.Join, io.WriteString, os.Create, strings.ReplaceAll]
+- overlapping call-graph neighborhoods (0.90): 36 shared
+- share patterns: [file_io]
+- both are orchestrator functions
+- same package
+- same visibility
+- same receiver type: plain functions
+- called from same packages: [doc]
+- call into same packages: [cobra, doc]
+
+---
+
+## Match #4 — Code-shape: `0.9806`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -102,7 +177,7 @@ Running structural comparison on 810 pairs...
 
 ---
 
-## Match #3 — Code-shape: `1.0000`
+## Match #5 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -115,7 +190,7 @@ Running structural comparison on 810 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `192.74` (shape 181.34, concept 0.53, call 10.87)
+**Evidence:** `193.28` (shape 181.34, concept 1.07, call 10.87)
 
 **Trophic:** `1.00`
 
@@ -138,18 +213,22 @@ Running structural comparison on 810 pairs...
 
 ---
 
-## Match #4 — Code-shape: `0.8777`
+## Match #6 — Code-shape: `0.8725`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `doc/rest_docs.go:145` | `doc.GenReSTTreeCustom` | ` ` | — |
-| **B** | `doc/yaml_docs.go:60` | `doc.GenYamlTreeCustom` | ` ` | — |
+| **A** | `doc/md_docs.go:133` | `doc.GenMarkdownTreeCustom` | ` ` | file_io |
+| **B** | `doc/yaml_docs.go:60` | `doc.GenYamlTreeCustom` | ` ` | file_io |
 
-**Code similarity:** `ast 0.85  flow 1.00  sig 0.80  size 1.00`
+**Profile A:** `file_io` 1.00 (dominance)
 
-**Evidence:** `307.14` (shape 280.36, concept 0.00, call 26.78)
+**Profile B:** `file_io` 1.00 (dominance)
 
-**Trophic:** `0.93`
+**Code similarity:** `ast 0.79  flow 1.00  sig 1.00  size 1.00`
+
+**Evidence:** `294.00` (shape 265.99, concept 1.24, call 26.78)
+
+**Trophic:** `0.87`
 
 **Shared structure:**
 
@@ -157,10 +236,11 @@ Running structural comparison on 810 pairs...
 - `4.14` — `seq[ assign:=(bin) ; assign:=(call:Join) ]`
 - `4.14` — `seq[ defer(call:Close) ; if(bin:!=(id,nil)) ]`
 
-**Structural overlap:** `0.56` (merge-worthy)
+**Structural overlap:** `0.74` (merge-worthy)
 
 - share 10 callees: [c.IsAdditionalHelpTopicCommand, c.IsAvailableCommand, cmd.CommandPath, cmd.Commands, f.Close, filePrepender, filepath.Join, io.WriteString, os.Create, strings.ReplaceAll]
 - overlapping call-graph neighborhoods (0.83): 35 shared
+- share patterns: [file_io]
 - both are orchestrator functions
 - same package
 - same visibility
@@ -170,7 +250,7 @@ Running structural comparison on 810 pairs...
 
 ---
 
-## Match #5 — Code-shape: `1.0000`
+## Match #7 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -203,7 +283,7 @@ Running structural comparison on 810 pairs...
 
 ---
 
-## Match #6 — Code-shape: `1.0000`
+## Match #8 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -236,70 +316,6 @@ Running structural comparison on 810 pairs...
 
 ---
 
-## Match #7 — Code-shape: `0.8425`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `doc/md_docs.go:133` | `doc.GenMarkdownTreeCustom` | ` ` | — |
-| **B** | `doc/rest_docs.go:145` | `doc.GenReSTTreeCustom` | ` ` | — |
-
-**Code similarity:** `ast 0.79  flow 1.00  sig 0.80  size 1.00`
-
-**Evidence:** `292.76` (shape 265.99, concept 0.00, call 26.78)
-
-**Trophic:** `0.89`
-
-**Shared structure:**
-
-- `7.34` — `if(bin:!=(id,nil))`
-- `4.14` — `seq[ assign:=(bin) ; assign:=(call:Join) ]`
-- `4.14` — `seq[ defer(call:Close) ; if(bin:!=(id,nil)) ]`
-
-**Structural overlap:** `0.56` (merge-worthy)
-
-- share 10 callees: [c.IsAdditionalHelpTopicCommand, c.IsAvailableCommand, cmd.CommandPath, cmd.Commands, f.Close, filePrepender, filepath.Join, io.WriteString, os.Create, strings.ReplaceAll]
-- overlapping call-graph neighborhoods (0.90): 36 shared
-- both are orchestrator functions
-- same package
-- same visibility
-- same receiver type: plain functions
-- called from same packages: [doc]
-- call into same packages: [cobra, doc]
-
----
-
-## Match #8 — Code-shape: `0.8725`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `doc/md_docs.go:133` | `doc.GenMarkdownTreeCustom` | ` ` | — |
-| **B** | `doc/yaml_docs.go:60` | `doc.GenYamlTreeCustom` | ` ` | — |
-
-**Code similarity:** `ast 0.79  flow 1.00  sig 1.00  size 1.00`
-
-**Evidence:** `292.76` (shape 265.99, concept 0.00, call 26.78)
-
-**Trophic:** `0.87`
-
-**Shared structure:**
-
-- `7.34` — `if(bin:!=(id,nil))`
-- `4.14` — `seq[ assign:=(bin) ; assign:=(call:Join) ]`
-- `4.14` — `seq[ defer(call:Close) ; if(bin:!=(id,nil)) ]`
-
-**Structural overlap:** `0.56` (merge-worthy)
-
-- share 10 callees: [c.IsAdditionalHelpTopicCommand, c.IsAvailableCommand, cmd.CommandPath, cmd.Commands, f.Close, filePrepender, filepath.Join, io.WriteString, os.Create, strings.ReplaceAll]
-- overlapping call-graph neighborhoods (0.83): 35 shared
-- both are orchestrator functions
-- same package
-- same visibility
-- same receiver type: plain functions
-- called from same packages: [doc]
-- call into same packages: [cobra, doc]
-
----
-
 ## Match #9 — Code-shape: `0.8473`
 
 | | Location | Function | Signature | Patterns |
@@ -313,7 +329,7 @@ Running structural comparison on 810 pairs...
 
 **Code similarity:** `ast 0.75  flow 1.00  sig 1.00  size 0.97`
 
-**Evidence:** `160.92` (shape 149.36, concept 0.53, call 11.03)
+**Evidence:** `161.46` (shape 149.36, concept 1.07, call 11.03)
 
 **Trophic:** `0.83`
 

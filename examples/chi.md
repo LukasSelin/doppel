@@ -9,7 +9,7 @@ HTTP router; a narrow core with a middleware package beside it
 | Corpus | [chi](https://github.com/go-chi/chi) |
 | Pinned at | `v5.3.2` (`38939062c5df4d3e8814aad1a488983112627ced`) |
 | Project since | 2015 |
-| doppel | `acebce0` |
+| doppel | `27da9f4` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -25,11 +25,11 @@ Generating concept documents...
 Culture: 1 concepts modeled, 6 associations, 0 unusual realizations
 Habitats: 3 modeled, 4 misfits; most uniform chi (norm 0.91), most diverse middleware (norm 0.85)
 Conventions: strongest validation (0.41), loosest validation (0.41)
-Ecosystems: 52 profiled (52 dominance, 0 coalition, 0 conflict, 0 weak)
+Ecosystems: 53 profiled (53 dominance, 0 coalition, 0 conflict, 0 weak)
 Found 254 functions. Retrieving candidates...
-Retrieval: shape 88, concept 31, call 542 -> 614 unique pairs
-  concept-only 4.4%  call-only 80.9%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 1166
-Running structural comparison on 614 pairs...
+Retrieval: shape 88, concept 36, call 542 -> 618 unique pairs
+  concept-only 5.0%  call-only 80.3%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 1166
+Running structural comparison on 618 pairs...
 ```
 
 # Code Similarity Report
@@ -299,7 +299,7 @@ Running structural comparison on 614 pairs...
 
 **Code similarity:** `ast 0.43  flow 1.00  sig 1.00  size 0.85`
 
-**Evidence:** `137.77` (shape 119.87, concept 1.10, call 16.80)
+**Evidence:** `138.02` (shape 119.87, concept 1.35, call 16.80)
 
 **Trophic:** `0.73`
 
@@ -336,7 +336,7 @@ Running structural comparison on 614 pairs...
 
 **Code similarity:** `ast 0.47  flow 1.00  sig 1.00  size 0.78`
 
-**Evidence:** `120.88` (shape 105.06, concept 1.10, call 14.72)
+**Evidence:** `121.14` (shape 105.06, concept 1.35, call 14.72)
 
 **Trophic:** `0.72`
 

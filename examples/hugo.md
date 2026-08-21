@@ -9,7 +9,7 @@ static site generator; a large monolith with heavy template and resource subsyst
 | Corpus | [hugo](https://github.com/gohugoio/hugo) |
 | Pinned at | `v0.165.0` (`76a5e1880ab46688155b02e99bab9be2a6134492`) |
 | Project since | 2013 |
-| doppel | `acebce0` |
+| doppel | `27da9f4` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -22,14 +22,14 @@ The corpus-level models doppel builds before ranking anything, as printed to std
 ```
 Scanning . ...
 Generating concept documents...
-Culture: 5 concepts modeled, 252 associations, 46 unusual realizations
-Habitats: 126 modeled, 661 misfits; most uniform partials (norm 0.98), most diverse page (norm 0.61)
-Conventions: strongest error_wrapping (0.63), loosest validation (0.58)
-Ecosystems: 1954 profiled (1369 dominance, 585 coalition, 0 conflict, 0 weak)
+Culture: 8 concepts modeled, 350 associations, 57 unusual realizations
+Habitats: 126 modeled, 665 misfits; most uniform partials (norm 0.98), most diverse page (norm 0.61)
+Conventions: strongest error_wrapping (0.64), loosest serialization (0.52)
+Ecosystems: 1999 profiled (1410 dominance, 589 coalition, 0 conflict, 0 weak)
 Found 5460 functions. Retrieving candidates...
-Retrieval: shape 2058, concept 3644, call 8309 -> 13284 unique pairs
-  concept-only 26.7%  call-only 57.2%  suppressed-shape functions: 141  large identity buckets: 0  surviving patterns: 12924
-Running structural comparison on 13284 pairs...
+Retrieval: shape 2058, concept 4068, call 8309 -> 13635 unique pairs
+  concept-only 28.6%  call-only 55.2%  suppressed-shape functions: 141  large identity buckets: 0  surviving patterns: 12924
+Running structural comparison on 13635 pairs...
 ```
 
 # Code Similarity Report
@@ -51,7 +51,7 @@ Running structural comparison on 13284 pairs...
 
 **Code similarity:** `ast 0.78  flow 1.00  sig 0.86  size 0.75`
 
-**Evidence:** `1525.22` (shape 1470.98, concept 4.22, call 50.02)
+**Evidence:** `1525.62` (shape 1470.98, concept 4.61, call 50.02)
 
 **Trophic:** `0.89`
 
@@ -61,9 +61,9 @@ Running structural comparison on 13284 pairs...
 - `17.98` — `do(call:errorf)`
 - `15.17` — `assign=(call:evalArg)`
 
-**Culture:** B realizes `error_wrapping` atypically (typicality 0.16, concept median 0.39, convention 0.63)
+**Culture:** B realizes `error_wrapping` atypically (typicality 0.16, concept median 0.36, convention 0.64)
 
-**Culture:** B realizes `validation` atypically (typicality 0.16, concept median 0.34, convention 0.58)
+**Culture:** B realizes `validation` atypically (typicality 0.16, concept median 0.34, convention 0.59)
 
 **Structural overlap:** `0.68` (merge-worthy)
 
@@ -126,7 +126,7 @@ Running structural comparison on 13284 pairs...
 
 **Code similarity:** `ast 0.88  flow 1.00  sig 1.00  size 0.75`
 
-**Evidence:** `842.62` (shape 826.90, concept 2.29, call 13.43)
+**Evidence:** `842.82` (shape 826.90, concept 2.49, call 13.43)
 
 **Trophic:** `0.88`
 
@@ -187,16 +187,16 @@ Running structural comparison on 13284 pairs...
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `resources/image.go:82` | `resources.*imageResource.newExifInfoFn` | ` ` | mapping, caching |
-| **B** | `resources/image.go:125` | `resources.*imageResource.newMetaInfoFn` | ` ` | mapping, caching |
+| **A** | `resources/image.go:82` | `resources.*imageResource.newExifInfoFn` | ` ` | caching, serialization, file_io |
+| **B** | `resources/image.go:125` | `resources.*imageResource.newMetaInfoFn` | ` ` | caching, serialization, file_io |
 
-**Profile A:** `caching` 1.00 (dominance)
+**Profile A:** `file_io` 0.94, `caching` 0.06 (dominance)
 
-**Profile B:** `caching` 1.00 (dominance)
+**Profile B:** `file_io` 0.94, `caching` 0.06 (dominance)
 
 **Code similarity:** `ast 0.82  flow 1.00  sig 0.00  size 0.96`
 
-**Evidence:** `603.56` (shape 546.95, concept 2.89, call 53.72)
+**Evidence:** `607.74` (shape 546.95, concept 7.07, call 53.72)
 
 **Trophic:** `0.97`
 
@@ -206,16 +206,16 @@ Running structural comparison on 13284 pairs...
 - `7.59` — `seq[ assign:=(call:ReadOrCreate) ; return(id,id) ]`
 - `7.59` — `seq[ assign:=(call:ToImageMetaImageFormatFormat) ; if(bin:==(id,unary)) ]`
 
-**Habitat:** A fits poorly in `resources` (fit 0.32, package norm 0.75)
+**Habitat:** A fits poorly in `resources` (fit 0.27, package norm 0.75)
 
-**Habitat:** B fits poorly in `resources` (fit 0.33, package norm 0.75)
+**Habitat:** B fits poorly in `resources` (fit 0.29, package norm 0.75)
 
 **Structural overlap:** `0.89` (merge-worthy)
 
 - share 14 callees: [InternalResourceSourcePathBestEffort, ReadOrCreate, ToImageMetaImageFormatFormat, Warnf, enc.Encode, f.Close, i.Key, i.ReadSeekCloser, i.getSpec, io.ReadAll, json.NewEncoder, json.Unmarshal, sync.OnceValues, w.Close]
 - share 1 callers: [resources.newImageResource]
 - overlapping call-graph neighborhoods (0.55): 24 shared
-- share patterns: [caching, mapping]
+- share patterns: [caching, file_io, serialization]
 - both are orchestrator functions
 - same package
 - callees do related work (1.00): [caching, concurrency]
@@ -230,16 +230,16 @@ Running structural comparison on 13284 pairs...
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `resources/resource_transformers/cssjs/postcss.go:146` | `cssjs.*postcssTransformation.Transform` | ` ` | mapping, concurrency |
-| **B** | `resources/resource_transformers/cssjs/tailwindcss.go:80` | `cssjs.*tailwindcssTransformation.Transform` | ` ` | mapping, concurrency |
+| **A** | `resources/resource_transformers/cssjs/postcss.go:146` | `cssjs.*postcssTransformation.Transform` | ` ` | mapping, concurrency, file_io |
+| **B** | `resources/resource_transformers/cssjs/tailwindcss.go:80` | `cssjs.*tailwindcssTransformation.Transform` | ` ` | mapping, concurrency, file_io |
 
-**Profile A:** `mapping` 1.00 (dominance)
+**Profile A:** `file_io` 1.00 (dominance)
 
-**Profile B:** `mapping` 1.00 (dominance)
+**Profile B:** `file_io` 1.00 (dominance)
 
 **Code similarity:** `ast 0.61  flow 0.98  sig 1.00  size 0.75`
 
-**Evidence:** `855.08` (shape 741.28, concept 2.75, call 111.05)
+**Evidence:** `858.15` (shape 741.28, concept 5.81, call 111.05)
 
 **Trophic:** `0.80`
 
@@ -249,22 +249,22 @@ Running structural comparison on 13284 pairs...
 - `14.36` — `if(call:IsNotFound)`
 - `7.59` — `seq[ assign:=(call:LevelLoggerToWriter) ; assign:=(sel) ]`
 
-**Culture:** A realizes `concurrency` atypically (typicality 0.13, concept median 0.36, convention 0.60)
+**Culture:** A realizes `concurrency` atypically (typicality 0.13, concept median 0.35, convention 0.60)
 
-**Culture:** B realizes `concurrency` atypically (typicality 0.13, concept median 0.36, convention 0.60)
+**Culture:** B realizes `concurrency` atypically (typicality 0.13, concept median 0.35, convention 0.60)
 
-**Culture:** A realizes `mapping` atypically (typicality 0.14, concept median 0.31, convention 0.62)
+**Culture:** A realizes `mapping` atypically (typicality 0.14, concept median 0.31, convention 0.63)
 
-**Culture:** B realizes `mapping` atypically (typicality 0.14, concept median 0.31, convention 0.62)
+**Culture:** B realizes `mapping` atypically (typicality 0.15, concept median 0.31, convention 0.63)
 
 **Structural overlap:** `0.72` (merge-worthy)
 
 - share 21 callees: [BaseConfig, InfoCommand, append, cmd.Run, cmd.StdinPipe, errBuf.String, ex.Npx, hexec.IsNotFound, hexec.WithDir, hexec.WithEnviron, hexec.WithStderr, hexec.WithStdout, hugo.GetExecEnviron, imp.resolve, imp.toFileError, io.Copy, io.MultiWriter, loggers.LevelLoggerToWriter, newImportResolver, options.toArgs, stdin.Close]
 - overlapping call-graph neighborhoods (0.90): 44 shared
-- share patterns: [concurrency, mapping]
+- share patterns: [concurrency, file_io, mapping]
 - both are orchestrator functions
 - same package
-- callees do related work (1.00): [caching]
+- callees do related work (1.00): [file_io, caching]
 - same visibility
 - both are methods, on *postcssTransformation and *tailwindcssTransformation
 - call into same packages: [allconfig, cssjs, hexec, hugo, loggers]
@@ -316,7 +316,7 @@ Running structural comparison on 13284 pairs...
 
 **Code similarity:** `ast 0.92  flow 1.00  sig 1.00  size 0.92`
 
-**Evidence:** `604.55` (shape 581.61, concept 2.29, call 20.65)
+**Evidence:** `604.74` (shape 581.61, concept 2.49, call 20.65)
 
 **Trophic:** `0.97`
 
@@ -326,7 +326,7 @@ Running structural comparison on 13284 pairs...
 - `12.67` — `return(call:ValueOf)`
 - `10.67` — `assign=(call:Elem)`
 
-**Structural overlap:** `0.50` (merge-worthy)
+**Structural overlap:** `0.49` (merge-worthy)
 
 - share 14 callees: [AssignableTo, Elem, canBeNil, reflect.PointerTo, reflect.ValueOf, reflect.Zero, s.errorf, value.Addr, value.CanAddr, value.Elem, value.IsNil, value.IsValid, value.Kind, value.Type]
 - overlapping call-graph neighborhoods (0.07): 3 shared
@@ -342,16 +342,16 @@ Running structural comparison on 13284 pairs...
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `resources/resource_transformers/babel/babel.go:115` | `babel.*babelTransformation.Transform` | ` ` | mapping, concurrency, error_wrapping |
-| **B** | `resources/resource_transformers/cssjs/postcss.go:146` | `cssjs.*postcssTransformation.Transform` | ` ` | mapping, concurrency |
+| **A** | `resources/resource_transformers/babel/babel.go:115` | `babel.*babelTransformation.Transform` | ` ` | mapping, concurrency, error_wrapping, file_io |
+| **B** | `resources/resource_transformers/cssjs/postcss.go:146` | `cssjs.*postcssTransformation.Transform` | ` ` | mapping, concurrency, file_io |
 
-**Profile A:** `mapping` 1.00 (dominance)
+**Profile A:** `file_io` 1.00 (dominance)
 
-**Profile B:** `mapping` 1.00 (dominance)
+**Profile B:** `file_io` 1.00 (dominance)
 
 **Code similarity:** `ast 0.69  flow 1.00  sig 1.00  size 0.91`
 
-**Evidence:** `981.33` (shape 871.59, concept 2.75, call 106.99)
+**Evidence:** `984.39` (shape 871.59, concept 5.81, call 106.99)
 
 **Trophic:** `0.79`
 
@@ -361,23 +361,23 @@ Running structural comparison on 13284 pairs...
 - `14.36` — `assign=(call:ResolveJSConfigFile)`
 - `14.36` — `if(call:IsNotFound)`
 
-**Culture:** A realizes `concurrency` atypically (typicality 0.12, concept median 0.36, convention 0.60)
+**Culture:** A realizes `concurrency` atypically (typicality 0.13, concept median 0.35, convention 0.60)
 
-**Culture:** B realizes `concurrency` atypically (typicality 0.13, concept median 0.36, convention 0.60)
+**Culture:** B realizes `concurrency` atypically (typicality 0.13, concept median 0.35, convention 0.60)
 
-**Culture:** A realizes `mapping` atypically (typicality 0.14, concept median 0.31, convention 0.62)
+**Culture:** A realizes `mapping` atypically (typicality 0.14, concept median 0.31, convention 0.63)
 
-**Culture:** B realizes `mapping` atypically (typicality 0.14, concept median 0.31, convention 0.62)
+**Culture:** B realizes `mapping` atypically (typicality 0.14, concept median 0.31, convention 0.63)
 
-**Habitat:** A fits poorly in `babel` (fit 0.36, package norm 0.85)
+**Habitat:** A fits poorly in `babel` (fit 0.35, package norm 0.85)
 
 **Structural overlap:** `0.53` (merge-worthy)
 
 - share 23 callees: [BaseConfig, InfoCommand, ResolveJSConfigFile, append, cmd.Run, cmd.StdinPipe, errBuf.String, ex.Npx, filepath.Clean, filepath.IsAbs, fmt.Errorf, hexec.IsNotFound, hexec.WithDir, hexec.WithEnviron, hexec.WithStderr, hexec.WithStdout, hugo.GetExecEnviron, infol.Logf, io.Copy, io.MultiWriter, len, loggers.LevelLoggerToWriter, stdin.Close]
 - overlapping call-graph neighborhoods (0.39): 34 shared
-- share patterns: [concurrency, mapping]
+- share patterns: [concurrency, file_io, mapping]
 - both are orchestrator functions
-- callees do related work (1.00): [caching]
+- callees do related work (0.40): [caching]
 - same visibility
 - both are methods, on *babelTransformation and *postcssTransformation
 - call into same packages: [allconfig, filesystems, hexec, hugo, loggers]
@@ -397,7 +397,7 @@ Running structural comparison on 13284 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 0.99`
 
-**Evidence:** `315.56` (shape 278.79, concept 1.45, call 35.31)
+**Evidence:** `315.75` (shape 278.79, concept 1.65, call 35.31)
 
 **Trophic:** `1.00`
 
@@ -414,7 +414,7 @@ Running structural comparison on 13284 pairs...
 - share patterns: [caching]
 - both are orchestrator functions
 - same package
-- callers do related work (1.00): [caching, mapping]
+- callers do related work (1.00): [serialization, file_io, caching]
 - same visibility
 - same receiver type: imageResource
 - called from same packages: [resources]

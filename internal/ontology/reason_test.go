@@ -24,6 +24,12 @@ func TestRelatednessPinnedExamples(t *testing.T) {
 		{"shallower siblings", ConMapping, ConValidation, 0.5},
 		{"uneven depth siblings", ConConcurrency, ConRetry, 0.4},
 		{"leaf against its own parent", ConHTTPCall, ConRemoteIO, 0.8},
+		{"remote_io siblings", ConHTTPCall, ConGRPCCall, 2.0 / 3.0},
+		{"fault_tolerance siblings", ConRetry, ConCircuitBreaker, 2.0 / 3.0},
+		{"direct io_operation leaves", ConFileIO, ConLogging, 0.5},
+		{"serialization joins the transformation siblings", ConMapping, ConSerialization, 0.5},
+		{"deep against shallow under io_operation", ConHTTPCall, ConFileIO, 0.4},
+		{"store against direct io leaf", ConDBAccess, ConLogging, 0.4},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -48,11 +54,12 @@ func TestRelatednessGuards(t *testing.T) {
 		{"empty left", "", ConHTTPCall, 0},
 		{"empty right", ConHTTPCall, "", 0},
 		{"both empty", "", "", 0},
-		{"unknown term", "grpc_call", ConHTTPCall, 0},
+		{"unknown term", "soap_call", ConHTTPCall, 0},
 		// A tag the ontology has not learned about yet must still match its own
 		// twin, or adding a tagger rule before a concept term would silently
-		// drop identical-tag credit to zero.
-		{"unknown term against itself", "grpc_call", "grpc_call", 1},
+		// drop identical-tag credit to zero. (grpc_call played this role until
+		// it joined the taxonomy; the stand-in must stay unregistered.)
+		{"unknown term against itself", "soap_call", "soap_call", 1},
 		{"across kinds", ConHTTPCall, RoleLeaf, 0},
 		{"root against a leaf", ConConcept, ConHTTPCall, 0},
 		{"abstract siblings", ConRemoteIO, ConDataStoreAccess, 0.5},
@@ -79,8 +86,9 @@ func TestLCA(t *testing.T) {
 		{ConHTTPCall, ConHTTPCall, ConHTTPCall, true},
 		{ConHTTPCall, ConRemoteIO, ConRemoteIO, true},
 		{RoleLeaf, RoleUtility, RoleRole, true},
+		{ConHTTPCall, ConGRPCCall, ConRemoteIO, true},
 		{ConHTTPCall, RoleLeaf, "", false},
-		{ConHTTPCall, "grpc_call", "", false},
+		{ConHTTPCall, "soap_call", "", false},
 	}
 	for _, tt := range tests {
 		got, ok := o.LCA(tt.a, tt.b)

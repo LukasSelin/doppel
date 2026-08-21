@@ -101,6 +101,15 @@ func extractSignals(fd *ast.FuncDecl, file *ast.File) TagSignals {
 		case *ast.SelectorExpr:
 			if x, ok := node.X.(*ast.Ident); ok {
 				selectors[x.Name+"."+node.Sel.Name] = struct{}{}
+			} else if x, ok := node.X.(*ast.SelectorExpr); ok {
+				// A nested selector like c.httpClient.Do used to record only
+				// the inner pair ("c.httpClient") and drop the outer call
+				// entirely, which is how a wrapper-client codebase reported
+				// zero http_call. Record the tail pair ("httpClient.Do") so
+				// receiver rules see the field the call goes through; one
+				// level deep, additive, and only for the tagger — Callees and
+				// the call graph never read Selectors.
+				selectors[x.Sel.Name+"."+node.Sel.Name] = struct{}{}
 			}
 		case *ast.BasicLit:
 			if node.Kind.String() == "STRING" {

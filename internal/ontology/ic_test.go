@@ -21,11 +21,12 @@ func toyCounts() map[TermID]int {
 	}
 }
 
-// With add-one smoothing over the 9 leaves, N=100 gives a root frequency of
-// 109 and per-term frequencies of count+1, summed up the tree.
+// With add-one smoothing over the 14 leaves, N=100 gives a root frequency of
+// 114 and per-term frequencies of count+1, summed up the tree. The five
+// leaves the toy corpus never mentions carry exactly their pseudo-count.
 func TestNewCorpusICToyValues(t *testing.T) {
 	ic := NewCorpusIC(Default(), toyCounts())
-	root := 109.0
+	root := 114.0
 	tests := []struct {
 		id   TermID
 		freq float64
@@ -37,20 +38,25 @@ func TestNewCorpusICToyValues(t *testing.T) {
 		{ConTransaction, 4},
 		{ConDataStoreAccess, 21}, // 11 + 6 + 4
 		{ConHTTPCall, 6},
-		{ConRemoteIO, 6},
-		{ConIOOperation, 27}, // 21 + 6
+		{ConGRPCCall, 1},
+		{ConRemoteIO, 7}, // 6 + 1
+		{ConFileIO, 1},
+		{ConLogging, 1},
+		{ConIOOperation, 30}, // 21 + 7 + 1 + 1
 		{ConValidation, 6},
 		{ConMapping, 6},
-		{ConDataTransformation, 12},
+		{ConSerialization, 1},
+		{ConDataTransformation, 13}, // 6 + 6 + 1
 		{ConConcurrency, 6},
 		{ConRetry, 3},
-		{ConFaultTolerance, 3},
-		{ConControlFlow, 9},
+		{ConCircuitBreaker, 1},
+		{ConFaultTolerance, 4}, // 3 + 1
+		{ConControlFlow, 10},   // 6 + 4
 	}
 	for _, tt := range tests {
 		want := math.Log(root / tt.freq)
 		if got := ic.Of(tt.id); !closeTo(got, want) {
-			t.Errorf("IC(%q) = %v, want ln(109/%g) = %v", tt.id, got, tt.freq, want)
+			t.Errorf("IC(%q) = %v, want ln(114/%g) = %v", tt.id, got, tt.freq, want)
 		}
 	}
 
@@ -71,8 +77,8 @@ func TestNewCorpusICToyValues(t *testing.T) {
 	}
 
 	// An unknown term is treated as maximally rare: pseudo-count 1.
-	if got, want := ic.Of("grpc_call"), math.Log(root); !closeTo(got, want) {
-		t.Errorf("IC(unknown) = %v, want ln(109) = %v", got, want)
+	if got, want := ic.Of("soap_call"), math.Log(root); !closeTo(got, want) {
+		t.Errorf("IC(unknown) = %v, want ln(114) = %v", got, want)
 	}
 }
 
@@ -80,14 +86,15 @@ func TestNewCorpusICToyValues(t *testing.T) {
 // same pseudo-count, hence the same IC — behaviorally uniform, like today.
 func TestNewCorpusICEmptyCorpus(t *testing.T) {
 	ic := NewCorpusIC(Default(), nil)
-	want := math.Log(9.0)
+	want := math.Log(14.0)
 	leaves := []TermID{
 		ConRetry, ConHTTPCall, ConDBAccess, ConValidation, ConMapping,
 		ConTransaction, ConCaching, ConConcurrency, ConErrorWrapping,
+		ConGRPCCall, ConCircuitBreaker, ConSerialization, ConFileIO, ConLogging,
 	}
 	for _, id := range leaves {
 		if got := ic.Of(id); !closeTo(got, want) {
-			t.Errorf("IC(%q) on empty corpus = %v, want ln(9) = %v", id, got, want)
+			t.Errorf("IC(%q) on empty corpus = %v, want ln(14) = %v", id, got, want)
 		}
 	}
 	if got := ic.Of(ConConcept); got != 0 {

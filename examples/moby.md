@@ -9,7 +9,7 @@ container engine; a decade of accretion across daemon, API, and plugin layers
 | Corpus | [moby](https://github.com/moby/moby) |
 | Pinned at | `v28.5.2` (`89c5e8fd66634b6128fc4c0e6f1236e2540e46e0`) |
 | Project since | 2013 |
-| doppel | `acebce0` |
+| doppel | `27da9f4` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -22,14 +22,14 @@ The corpus-level models doppel builds before ranking anything, as printed to std
 ```
 Scanning . ...
 Generating concept documents...
-Culture: 9 concepts modeled, 548 associations, 95 unusual realizations
-Habitats: 168 modeled, 368 misfits; most uniform checker (norm 0.98), most diverse vfs (norm 0.56)
+Culture: 12 concepts modeled, 803 associations, 113 unusual realizations
+Habitats: 168 modeled, 371 misfits; most uniform checker (norm 0.98), most diverse vfs (norm 0.56)
 Conventions: strongest error_wrapping (0.62), loosest db_access (0.37)
-Ecosystems: 3903 profiled (3712 dominance, 191 coalition, 0 conflict, 0 weak)
+Ecosystems: 4050 profiled (3750 dominance, 300 coalition, 0 conflict, 0 weak)
 Found 8003 functions. Retrieving candidates...
-Retrieval: shape 4137, concept 1271, call 12559 -> 16514 unique pairs
-  concept-only 7.4%  call-only 67.3%  suppressed-shape functions: 376  large identity buckets: 4  surviving patterns: 19542
-Running structural comparison on 16514 pairs...
+Retrieval: shape 4137, concept 2410, call 12559 -> 17585 unique pairs
+  concept-only 13.0%  call-only 63.0%  suppressed-shape functions: 376  large identity buckets: 4  surviving patterns: 19542
+Running structural comparison on 17585 pairs...
   6 pairs suppressed by max-per-func=2
 ```
 
@@ -52,7 +52,7 @@ Running structural comparison on 16514 pairs...
 
 **Code similarity:** `ast 0.92  flow 1.00  sig 1.00  size 0.99`
 
-**Evidence:** `1246.08` (shape 1230.35, concept 1.74, call 13.99)
+**Evidence:** `1246.32` (shape 1230.35, concept 1.98, call 13.99)
 
 **Trophic:** `0.95`
 
@@ -62,9 +62,9 @@ Running structural comparison on 16514 pairs...
 - `27.90` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
 - `27.90` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
 
-**Habitat:** A fits poorly in `networkdb` (fit 0.20, package norm 0.69)
+**Habitat:** A fits poorly in `networkdb` (fit 0.21, package norm 0.68)
 
-**Habitat:** B fits poorly in `networkdb` (fit 0.20, package norm 0.69)
+**Habitat:** B fits poorly in `networkdb` (fit 0.21, package norm 0.68)
 
 **Structural overlap:** `0.76` (merge-worthy)
 
@@ -93,7 +93,7 @@ Running structural comparison on 16514 pairs...
 
 **Code similarity:** `ast 0.87  flow 1.00  sig 1.00  size 0.80`
 
-**Evidence:** `1322.73` (shape 1307.00, concept 1.74, call 13.99)
+**Evidence:** `1322.97` (shape 1307.00, concept 1.98, call 13.99)
 
 **Trophic:** `0.92`
 
@@ -103,9 +103,9 @@ Running structural comparison on 16514 pairs...
 - `27.90` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
 - `27.90` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
 
-**Habitat:** A fits poorly in `networkdb` (fit 0.20, package norm 0.69)
+**Habitat:** A fits poorly in `networkdb` (fit 0.21, package norm 0.68)
 
-**Habitat:** B fits poorly in `networkdb` (fit 0.20, package norm 0.69)
+**Habitat:** B fits poorly in `networkdb` (fit 0.21, package norm 0.68)
 
 **Structural overlap:** `0.77` (merge-worthy)
 
@@ -134,7 +134,7 @@ Running structural comparison on 16514 pairs...
 
 **Code similarity:** `ast 0.85  flow 1.00  sig 1.00  size 0.98`
 
-**Evidence:** `1397.87` (shape 1396.13, concept 1.74, call 0.00)
+**Evidence:** `1398.11` (shape 1396.13, concept 1.98, call 0.00)
 
 **Trophic:** `0.93`
 
@@ -146,7 +146,7 @@ Running structural comparison on 16514 pairs...
 
 **Habitat:** A fits poorly in `logdriver` (fit 0.05, package norm 0.71)
 
-**Habitat:** B fits poorly in `networkdb` (fit 0.20, package norm 0.69)
+**Habitat:** B fits poorly in `networkdb` (fit 0.21, package norm 0.68)
 
 **Structural overlap:** `0.63` (merge-worthy)
 
@@ -174,7 +174,7 @@ Running structural comparison on 16514 pairs...
 
 **Code similarity:** `ast 0.68  flow 1.00  sig 1.00  size 0.81`
 
-**Evidence:** `1880.68` (shape 1878.93, concept 1.74, call 0.00)
+**Evidence:** `1880.91` (shape 1878.93, concept 1.98, call 0.00)
 
 **Trophic:** `0.83`
 
@@ -184,7 +184,7 @@ Running structural comparison on 16514 pairs...
 - `50.21` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
 - `50.21` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
 
-**Habitat:** B fits poorly in `networkdb` (fit 0.20, package norm 0.69)
+**Habitat:** B fits poorly in `networkdb` (fit 0.21, package norm 0.68)
 
 **Structural overlap:** `0.63` (merge-worthy)
 
@@ -212,7 +212,7 @@ Running structural comparison on 16514 pairs...
 
 **Code similarity:** `ast 0.96  flow 1.00  sig 1.00  size 0.79`
 
-**Evidence:** `1068.18` (shape 1052.45, concept 1.74, call 13.99)
+**Evidence:** `1068.42` (shape 1052.45, concept 1.98, call 13.99)
 
 **Trophic:** `0.91`
 
@@ -222,9 +222,9 @@ Running structural comparison on 16514 pairs...
 - `22.32` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
 - `22.32` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
 
-**Habitat:** A fits poorly in `networkdb` (fit 0.20, package norm 0.69)
+**Habitat:** A fits poorly in `networkdb` (fit 0.21, package norm 0.68)
 
-**Habitat:** B fits poorly in `networkdb` (fit 0.20, package norm 0.69)
+**Habitat:** B fits poorly in `networkdb` (fit 0.21, package norm 0.68)
 
 **Structural overlap:** `0.76` (merge-worthy)
 
@@ -253,7 +253,7 @@ Running structural comparison on 16514 pairs...
 
 **Code similarity:** `ast 0.82  flow 1.00  sig 1.00  size 0.86`
 
-**Evidence:** `1031.56` (shape 1015.83, concept 1.74, call 13.99)
+**Evidence:** `1031.79` (shape 1015.83, concept 1.98, call 13.99)
 
 **Trophic:** `0.95`
 
@@ -263,9 +263,9 @@ Running structural comparison on 16514 pairs...
 - `22.32` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
 - `22.32` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
 
-**Habitat:** A fits poorly in `networkdb` (fit 0.20, package norm 0.69)
+**Habitat:** A fits poorly in `networkdb` (fit 0.21, package norm 0.68)
 
-**Habitat:** B fits poorly in `networkdb` (fit 0.20, package norm 0.69)
+**Habitat:** B fits poorly in `networkdb` (fit 0.21, package norm 0.68)
 
 **Structural overlap:** `0.75` (merge-worthy)
 
@@ -294,7 +294,7 @@ Running structural comparison on 16514 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `846.31` (shape 844.57, concept 1.74, call 0.00)
+**Evidence:** `846.54` (shape 844.57, concept 1.98, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -334,7 +334,7 @@ Running structural comparison on 16514 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `846.31` (shape 844.57, concept 1.74, call 0.00)
+**Evidence:** `846.54` (shape 844.57, concept 1.98, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -372,7 +372,7 @@ Running structural comparison on 16514 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `846.31` (shape 844.57, concept 1.74, call 0.00)
+**Evidence:** `846.54` (shape 844.57, concept 1.98, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -410,7 +410,7 @@ Running structural comparison on 16514 pairs...
 
 **Code similarity:** `ast 0.78  flow 1.00  sig 1.00  size 0.94`
 
-**Evidence:** `1338.05` (shape 1336.30, concept 1.74, call 0.00)
+**Evidence:** `1338.28` (shape 1336.30, concept 1.98, call 0.00)
 
 **Trophic:** `0.89`
 

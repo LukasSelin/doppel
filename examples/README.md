@@ -28,7 +28,7 @@ corpus is a decade of accretion". Both ends are visible below.
 | [conc](conc.md) | 2023 | `v0.3.0` | 81 | 79 | 1 | 4 |
 
 Counts are for the production population (`--tests exclude`, the default).
-"Concepts modeled" is how many of the nine tags reached the five-member floor
+"Concepts modeled" is how many of the fourteen tags reached the five-member floor
 culture needs to build a prototype: nine on moby, one on conc. That column is
 the ladder in miniature — the culture, habitat and arena layers have real
 material at the top and almost nothing to work with at the bottom, and say so

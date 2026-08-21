@@ -9,7 +9,7 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `acebce0` |
+| doppel | `27da9f4` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -22,14 +22,14 @@ The corpus-level models doppel builds before ranking anything, as printed to std
 ```
 Scanning . ...
 Generating concept documents...
-Culture: 9 concepts modeled, 377 associations, 32 unusual realizations
-Habitats: 90 modeled, 559 misfits; most uniform graphite (norm 0.98), most diverse testhelpers (norm 0.55)
-Conventions: strongest error_wrapping (0.64), loosest retry (0.34)
-Ecosystems: 2434 profiled (1837 dominance, 597 coalition, 0 conflict, 0 weak)
+Culture: 12 concepts modeled, 659 associations, 30 unusual realizations
+Habitats: 90 modeled, 566 misfits; most uniform tracing (norm 0.97), most diverse testhelpers (norm 0.55)
+Conventions: strongest error_wrapping (0.63), loosest retry (0.34)
+Ecosystems: 2520 profiled (1738 dominance, 782 coalition, 0 conflict, 0 weak)
 Found 6245 functions. Retrieving candidates...
-Retrieval: shape 4365, concept 2583, call 8864 -> 14371 unique pairs
-  concept-only 17.1%  call-only 52.0%  suppressed-shape functions: 272  large identity buckets: 5  surviving patterns: 15278
-Running structural comparison on 14371 pairs...
+Retrieval: shape 4365, concept 3885, call 8864 -> 15587 unique pairs
+  concept-only 23.5%  call-only 47.6%  suppressed-shape functions: 272  large identity buckets: 5  surviving patterns: 15278
+Running structural comparison on 15587 pairs...
 ```
 
 # Code Similarity Report
@@ -51,7 +51,7 @@ Running structural comparison on 14371 pairs...
 
 **Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 0.97`
 
-**Evidence:** `3189.80` (shape 3182.87, concept 1.96, call 4.98)
+**Evidence:** `3190.07` (shape 3182.87, concept 2.23, call 4.98)
 
 **Trophic:** `0.99`
 
@@ -121,7 +121,7 @@ Running structural comparison on 14371 pairs...
 
 **Code similarity:** `ast 0.93  flow 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `2799.22` (shape 2792.29, concept 1.96, call 4.98)
+**Evidence:** `2799.49` (shape 2792.29, concept 2.23, call 4.98)
 
 **Trophic:** `0.91`
 
@@ -161,7 +161,7 @@ Running structural comparison on 14371 pairs...
 
 **Code similarity:** `ast 0.93  flow 1.00  sig 1.00  size 0.98`
 
-**Evidence:** `2799.22` (shape 2792.29, concept 1.96, call 4.98)
+**Evidence:** `2799.49` (shape 2792.29, concept 2.23, call 4.98)
 
 **Trophic:** `0.90`
 
@@ -229,13 +229,13 @@ Running structural comparison on 14371 pairs...
 | **A** | `scrape/scrape.go:1589` | `scrape.*scrapeLoopAppender.append` | ` ` | validation, mapping, caching |
 | **B** | `scrape/scrape_append_v2.go:90` | `scrape.*scrapeLoopAppenderV2.append` | ` ` | validation, mapping, caching |
 
-**Profile A:** `caching` 0.97 (dominance)
+**Profile A:** `mapping` 0.52, `caching` 0.48 (coalition)
 
-**Profile B:** `caching` 0.97 (dominance)
+**Profile B:** `mapping` 0.52, `caching` 0.48 (coalition)
 
 **Code similarity:** `ast 0.71  flow 1.00  sig 1.00  size 0.91`
 
-**Evidence:** `1792.32` (shape 1673.12, concept 6.93, call 112.27)
+**Evidence:** `1793.62` (shape 1673.12, concept 8.24, call 112.27)
 
 **Trophic:** `0.83`
 
@@ -263,8 +263,8 @@ Running structural comparison on 14371 pairs...
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `discovery/kubernetes/endpoints.go:63` | `kubernetes.NewEndpoints` | ` ` | mapping, caching |
-| **B** | `discovery/kubernetes/endpointslice.go:62` | `kubernetes.NewEndpointSlice` | ` ` | mapping, caching |
+| **A** | `discovery/kubernetes/endpoints.go:63` | `kubernetes.NewEndpoints` | ` ` | mapping, caching, logging |
+| **B** | `discovery/kubernetes/endpointslice.go:62` | `kubernetes.NewEndpointSlice` | ` ` | mapping, caching, logging |
 
 **Profile A:** `caching` 1.00 (dominance)
 
@@ -272,7 +272,7 @@ Running structural comparison on 14371 pairs...
 
 **Code similarity:** `ast 0.78  flow 0.99  sig 0.71  size 0.84`
 
-**Evidence:** `1163.25` (shape 1130.23, concept 4.97, call 28.04)
+**Evidence:** `1166.27` (shape 1130.23, concept 7.99, call 28.04)
 
 **Trophic:** `0.90`
 
@@ -282,16 +282,16 @@ Running structural comparison on 14371 pairs...
 - `33.09` — `seq[ assign:=(call:WithLabelValues) ; assign:=(call:WithLabelValues) ]`
 - `23.15` — `seq[ do(call:Inc) ; do(call:serviceUpdate) ]`
 
-**Structural overlap:** `0.94` (merge-worthy)
+**Structural overlap:** `0.93` (merge-worthy)
 
 - share 20 callees: [AddEventHandler, Error, RoleService.String, convertToService, e.enqueue, e.enqueueNamespace, e.enqueueNode, eps.GetStore, eventCount.WithLabelValues, l.Error, namespacedName, nodeName, pod.GetStore, promslog.NewNopLogger, serviceUpdate, svc.GetStore, svcAddCount.Inc, svcDeleteCount.Inc, svcUpdateCount.Inc, workqueue.NewTypedWithConfig]
 - share 1 callers: [kubernetes.*Discovery.Run]
 - overlapping call-graph neighborhoods (0.99): 141 shared
-- share patterns: [caching, mapping]
+- share patterns: [caching, logging, mapping]
 - both are orchestrator functions
 - same package
-- callers do related work (1.00): [caching, concurrency]
-- callees do related work (1.00): [mapping, caching]
+- callers do related work (1.00): [caching, logging, concurrency]
+- callees do related work (0.75): [mapping, caching]
 - same visibility
 - same receiver type: plain functions
 - called from same packages: [kubernetes]
@@ -299,7 +299,43 @@ Running structural comparison on 14371 pairs...
 
 ---
 
-## Match #8 — Code-shape: `0.9000`
+## Match #8 — Code-shape: `0.7659`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `discovery/kubernetes/endpoints.go:347` | `kubernetes.*Endpoints.buildEndpoints` | ` ` | logging |
+| **B** | `discovery/kubernetes/endpointslice.go:308` | `kubernetes.*EndpointSlice.buildEndpointSlice` | ` ` | — |
+
+**Profile A:** `logging` 1.00 (dominance)
+
+**Code similarity:** `ast 0.78  flow 0.98  sig 0.33  size 0.84`
+
+**Evidence:** `1720.40` (shape 1657.09, concept 0.00, call 63.31)
+
+**Trophic:** `0.84`
+
+**Shared structure:**
+
+- `59.24` — `assign=(call:lv)`
+- `43.86` — `seq[ assign=(call:lv) ; assign=(call:lv) ]`
+- `19.85` — `range{ call:add }`
+
+**Structural overlap:** `0.62` (merge-worthy)
+
+- share 19 callees: [add, addNamespaceLabels, addNodeLabels, addObjectMetaLabels, append, e.addServiceLabels, e.resolvePodRef, hasSeenPort, len, lv, model.LabelName, namespacedName, net.JoinHostPort, podLabels, strconv.FormatBool, strconv.FormatUint, string, target.Merge, uint64]
+- overlapping call-graph neighborhoods (0.99): 1196 shared
+- both are orchestrator functions
+- same package
+- callers do related work (0.63): [caching, logging, concurrency]
+- callees do related work (1.00): [logging]
+- same visibility
+- both are methods, on *Endpoints and *EndpointSlice
+- called from same packages: [kubernetes]
+- call into same packages: [kubernetes, tsdb]
+
+---
+
+## Match #9 — Code-shape: `0.9000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -329,39 +365,6 @@ Running structural comparison on 14371 pairs...
 - same receiver type: plain functions
 - called from same packages: [strutil]
 - call into same packages: [tsdb]
-
----
-
-## Match #9 — Code-shape: `0.7659`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `discovery/kubernetes/endpoints.go:347` | `kubernetes.*Endpoints.buildEndpoints` | ` ` | — |
-| **B** | `discovery/kubernetes/endpointslice.go:308` | `kubernetes.*EndpointSlice.buildEndpointSlice` | ` ` | — |
-
-**Code similarity:** `ast 0.78  flow 0.98  sig 0.33  size 0.84`
-
-**Evidence:** `1720.40` (shape 1657.09, concept 0.00, call 63.31)
-
-**Trophic:** `0.84`
-
-**Shared structure:**
-
-- `59.24` — `assign=(call:lv)`
-- `43.86` — `seq[ assign=(call:lv) ; assign=(call:lv) ]`
-- `19.85` — `range{ call:add }`
-
-**Structural overlap:** `0.57` (merge-worthy)
-
-- share 19 callees: [add, addNamespaceLabels, addNodeLabels, addObjectMetaLabels, append, e.addServiceLabels, e.resolvePodRef, hasSeenPort, len, lv, model.LabelName, namespacedName, net.JoinHostPort, podLabels, strconv.FormatBool, strconv.FormatUint, string, target.Merge, uint64]
-- overlapping call-graph neighborhoods (0.99): 1196 shared
-- both are orchestrator functions
-- same package
-- callers do related work (0.56): [caching, concurrency]
-- same visibility
-- both are methods, on *Endpoints and *EndpointSlice
-- called from same packages: [kubernetes]
-- call into same packages: [kubernetes, tsdb]
 
 ---
 

@@ -12,14 +12,21 @@ func toyScorer() *Scorer {
 }
 
 // adversarialScorer is the corpus on which sorting candidates by similarity is
-// provably suboptimal: db_access and http_call are both rare while their
-// data_store_access siblings are not, so Lin(db, http) > Lin(db, caching) even
-// though the db/caching pair shares strictly more information.
+// provably suboptimal: retry and concurrency are both rare while retry's
+// fault_tolerance sibling circuit_breaker is rarer still, so
+// Lin(retry, concurrency) > Lin(retry, circuit_breaker) even though the
+// retry/circuit_breaker pair shares strictly more information.
+//
+// The original inversion lived on the io_operation branch (db_access against
+// caching and http_call), but the file_io and logging leaves added in 1.1.0
+// dilute io_operation's IC through their pseudo-counts and dissolve it.
+// control_flow gained only circuit_breaker, so the same construction survives
+// there.
 func adversarialScorer() *Scorer {
 	o := Default()
 	return NewScorer(o, NewCorpusIC(o, map[TermID]int{
-		ConDBAccess:      4,
-		ConHTTPCall:      2,
+		ConRetry:         6,
+		ConConcurrency:   2,
 		ConErrorWrapping: 94,
 	}))
 }
@@ -60,7 +67,7 @@ func TestScorerWithoutICDelegates(t *testing.T) {
 func TestLinRelatednessToyValues(t *testing.T) {
 	s := toyScorer()
 	lin := func(fLCS, fA, fB float64) float64 {
-		return 2 * math.Log(109/fLCS) / (math.Log(109/fA) + math.Log(109/fB))
+		return 2 * math.Log(114/fLCS) / (math.Log(114/fA) + math.Log(114/fB))
 	}
 	tests := []struct {
 		name string
@@ -69,9 +76,10 @@ func TestLinRelatednessToyValues(t *testing.T) {
 	}{
 		{"identical stays 1.0 regardless of ubiquity", ConErrorWrapping, ConErrorWrapping, 1.0},
 		{"siblings", ConDBAccess, ConCaching, lin(21, 11, 6)},
-		{"cousins", ConHTTPCall, ConDBAccess, lin(27, 6, 11)},
+		{"cousins", ConHTTPCall, ConDBAccess, lin(30, 6, 11)},
 		{"cross-branch is exactly zero", ConHTTPCall, ConRetry, 0.0},
-		{"shallow siblings", ConMapping, ConValidation, lin(12, 6, 6)},
+		{"shallow siblings", ConMapping, ConValidation, lin(13, 6, 6)},
+		{"unmentioned leaf carries only its pseudo-count", ConHTTPCall, ConGRPCCall, lin(7, 6, 1)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -85,11 +93,11 @@ func TestLinRelatednessToyValues(t *testing.T) {
 		})
 	}
 	// The two literals the design write-up quotes.
-	if got := s.Relatedness(ConDBAccess, ConCaching); math.Abs(got-0.634243) > 1e-4 {
-		t.Errorf("Lin(db_access, caching) = %v, want ~0.634243", got)
+	if got := s.Relatedness(ConDBAccess, ConCaching); math.Abs(got-0.640454) > 1e-4 {
+		t.Errorf("Lin(db_access, caching) = %v, want ~0.640454", got)
 	}
-	if got := s.Relatedness(ConHTTPCall, ConDBAccess); math.Abs(got-0.537454) > 1e-4 {
-		t.Errorf("Lin(http_call, db_access) = %v, want ~0.537454", got)
+	if got := s.Relatedness(ConHTTPCall, ConDBAccess); math.Abs(got-0.505420) > 1e-4 {
+		t.Errorf("Lin(http_call, db_access) = %v, want ~0.505420", got)
 	}
 }
 
@@ -102,8 +110,8 @@ func TestLinRelatednessGuards(t *testing.T) {
 	}{
 		{"empty left", "", ConHTTPCall, 0},
 		{"both empty", "", "", 0},
-		{"unknown vs known", "grpc_call", ConHTTPCall, 0},
-		{"unknown vs itself", "grpc_call", "grpc_call", 1},
+		{"unknown vs known", "soap_call", ConHTTPCall, 0},
+		{"unknown vs itself", "soap_call", "soap_call", 1},
 		{"cross kind", ConHTTPCall, RoleLeaf, 0},
 	}
 	for _, tt := range tests {
@@ -125,11 +133,11 @@ func TestWeightedSetRelatednessDiscountsUbiquity(t *testing.T) {
 	rare, _ := s.SetRelatedness(
 		[]string{"db_access", "mapping"}, []string{"db_access", "concurrency"})
 
-	if math.Abs(ubiquitous-0.166800) > 1e-4 {
-		t.Errorf("sharing only error_wrapping scored %v, want ~0.1668", ubiquitous)
+	if math.Abs(ubiquitous-0.175173) > 1e-4 {
+		t.Errorf("sharing only error_wrapping scored %v, want ~0.1752", ubiquitous)
 	}
-	if math.Abs(rare-0.441640) > 1e-4 {
-		t.Errorf("sharing only db_access scored %v, want ~0.4416", rare)
+	if math.Abs(rare-0.442631) > 1e-4 {
+		t.Errorf("sharing only db_access scored %v, want ~0.4426", rare)
 	}
 	if ubiquitous >= rare {
 		t.Errorf("ubiquitous shared tag (%v) should score below rare shared tag (%v)", ubiquitous, rare)
@@ -173,8 +181,8 @@ func TestWeightedSetRelatednessToyValues(t *testing.T) {
 	}
 	// Documentation-level literal from the design write-up.
 	got, _ := s.SetRelatedness([]string{"error_wrapping", "db_access"}, []string{"error_wrapping", "caching"})
-	if math.Abs(got-0.640017) > 1e-4 {
-		t.Errorf("{ew,db} vs {ew,caching} = %v, want ~0.640017", got)
+	if math.Abs(got-0.649063) > 1e-4 {
+		t.Errorf("{ew,db} vs {ew,caching} = %v, want ~0.649063", got)
 	}
 }
 
@@ -204,22 +212,22 @@ func TestWeightedMatchesOrderedByContribution(t *testing.T) {
 	}
 }
 
-// The adversarial pin: greedy by similarity would pair db_access with
-// http_call (more similar) and score 0.2883; pairing it with caching (more
-// shared information) is optimal at 0.3314.
+// The adversarial pin: greedy by similarity would pair retry with concurrency
+// (more similar) and score ~0.2802; pairing it with circuit_breaker (more
+// shared information) is optimal at ~0.3180.
 func TestWeightedMatcherPrefersContributionOverSimilarity(t *testing.T) {
 	s := adversarialScorer()
 
-	if simDBHTTP, simDBCache := s.Relatedness(ConDBAccess, ConHTTPCall), s.Relatedness(ConDBAccess, ConCaching); simDBHTTP <= simDBCache {
-		t.Fatalf("fixture broken: need Lin(db,http)=%v > Lin(db,caching)=%v for the inversion", simDBHTTP, simDBCache)
+	if simConc, simCB := s.Relatedness(ConRetry, ConConcurrency), s.Relatedness(ConRetry, ConCircuitBreaker); simConc <= simCB {
+		t.Fatalf("fixture broken: need Lin(retry,concurrency)=%v > Lin(retry,circuit_breaker)=%v for the inversion", simConc, simCB)
 	}
 
-	got, matches := s.SetRelatedness([]string{"db_access"}, []string{"caching", "http_call"})
-	if math.Abs(got-0.331396) > 1e-4 {
-		t.Errorf("score = %v, want ~0.331396 (the optimal pairing)", got)
+	got, matches := s.SetRelatedness([]string{"retry"}, []string{"circuit_breaker", "concurrency"})
+	if math.Abs(got-0.318027) > 1e-4 {
+		t.Errorf("score = %v, want ~0.318027 (the optimal pairing)", got)
 	}
-	if len(matches) != 1 || matches[0].B != "caching" {
-		t.Fatalf("matched %+v, want db_access paired with caching", matches)
+	if len(matches) != 1 || matches[0].B != "circuit_breaker" {
+		t.Fatalf("matched %+v, want retry paired with circuit_breaker", matches)
 	}
 }
 
@@ -285,8 +293,10 @@ func TestWeightedSetRelatednessNeverFallsBelowWeightedExactShare(t *testing.T) {
 
 // The contribution-sorted greedy must equal the exact optimum under IC weights,
 // checked against the same oracle that certifies the uniform matcher. Full
-// exhaustion on the adversarial corpus, where similarity-sorted greedy is known
-// to fail on thousands of subset pairs.
+// exhaustion runs on the covering subset — which contains the adversarial
+// corpus's whole inversion (retry, circuit_breaker, concurrency), where
+// similarity-sorted greedy is known to fail on thousands of subset pairs —
+// with seeded sampling over the full 14-leaf space alongside.
 func TestWeightedGreedyMatchingIsOptimal(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -312,7 +322,26 @@ func TestWeightedGreedyMatchingIsOptimal(t *testing.T) {
 			}
 			pairScore := func(a, b string) float64 { return contrib[[2]string{a, b}] }
 
-			subsets := allSubsets(leaves)
+			check := func(as, bs []string) {
+				got, _ := s.SetRelatedness(as, bs)
+				var sumA, sumB float64
+				for _, x := range as {
+					sumA += s.ic.Of(TermID(x))
+				}
+				for _, x := range bs {
+					sumB += s.ic.Of(TermID(x))
+				}
+				denom := sumA
+				if sumB > denom {
+					denom = sumB
+				}
+				want := optimalMatchSum(as, bs, pairScore) / denom
+				if math.Abs(got-want) > 1e-9 {
+					t.Fatalf("SetRelatedness(%v, %v) = %.9f, optimal = %.9f", as, bs, got, want)
+				}
+			}
+
+			subsets := allSubsets(coveringLeaves(t))
 			if !tc.full {
 				var small [][]string
 				for _, set := range subsets {
@@ -325,26 +354,15 @@ func TestWeightedGreedyMatchingIsOptimal(t *testing.T) {
 			var checked int
 			for _, as := range subsets {
 				for _, bs := range subsets {
-					got, _ := s.SetRelatedness(as, bs)
-					var sumA, sumB float64
-					for _, x := range as {
-						sumA += s.ic.Of(TermID(x))
-					}
-					for _, x := range bs {
-						sumB += s.ic.Of(TermID(x))
-					}
-					denom := sumA
-					if sumB > denom {
-						denom = sumB
-					}
-					want := optimalMatchSum(as, bs, pairScore) / denom
-					if math.Abs(got-want) > 1e-9 {
-						t.Fatalf("SetRelatedness(%v, %v) = %.9f, optimal = %.9f", as, bs, got, want)
-					}
+					check(as, bs)
 					checked++
 				}
 			}
-			t.Logf("weighted greedy == optimal on %d subset pairs", checked)
+			sampled := sampledSubsetPairs(leaves, 20_000, 7, 2)
+			for _, p := range sampled {
+				check(p[0], p[1])
+			}
+			t.Logf("weighted greedy == optimal on %d exhaustive + %d sampled subset pairs", checked, len(sampled))
 		})
 	}
 }

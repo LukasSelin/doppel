@@ -63,13 +63,14 @@ func TestGet(t *testing.T) {
 	}
 }
 
-// The nine concept leaves are the tagger's tags. Their IDs are the tool's
+// The fourteen concept leaves are the tagger's tags. Their IDs are the tool's
 // output, so a change here is a change to every report and every config a user
 // has written.
-func TestConceptLeavesAreTheNineTags(t *testing.T) {
+func TestConceptLeavesAreTheFourteenTags(t *testing.T) {
 	want := []TermID{
 		ConRetry, ConHTTPCall, ConDBAccess, ConValidation, ConMapping,
 		ConTransaction, ConCaching, ConConcurrency, ConErrorWrapping,
+		ConGRPCCall, ConCircuitBreaker, ConSerialization, ConFileIO, ConLogging,
 	}
 	got := map[TermID]bool{}
 	for _, term := range Default().TermsOfKind(KindConcept) {
@@ -94,8 +95,10 @@ func TestChildrenAreSorted(t *testing.T) {
 		want   []TermID
 	}{
 		{ConDataStoreAccess, []TermID{ConCaching, ConDBAccess, ConTransaction}},
-		{ConIOOperation, []TermID{ConDataStoreAccess, ConRemoteIO}},
-		{ConRemoteIO, []TermID{ConHTTPCall}},
+		{ConIOOperation, []TermID{ConDataStoreAccess, ConFileIO, ConLogging, ConRemoteIO}},
+		{ConRemoteIO, []TermID{ConGRPCCall, ConHTTPCall}},
+		{ConFaultTolerance, []TermID{ConCircuitBreaker, ConRetry}},
+		{ConDataTransformation, []TermID{ConMapping, ConSerialization, ConValidation}},
 		{ConHTTPCall, nil},
 		{RoleRole, []TermID{RoleLeaf, RoleOrchestrator, RolePassthrough, RoleUtility}},
 	}
