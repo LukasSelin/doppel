@@ -14,7 +14,6 @@ import (
 // screenful stops being read anyway. These bound the two digests well under it.
 const (
 	digestMaxChars = 8000
-	maxListed      = 10
 	// The impact digest is read at the end of every turn, so it is held
 	// tighter than the one-off session-start inventory: a new function pairs
 	// with every look-alike it has, and ten near-identical lines about one
@@ -77,25 +76,15 @@ func ConceptDigest(s snapshot.Snapshot, root string) string {
 		fmt.Fprintf(&b, "Structural roles: %s.\n", strings.Join(roles, ", "))
 	}
 
-	if byPkg := conceptsByPackage(s); len(byPkg) > 0 {
-		fmt.Fprintf(&b, "Concepts by package: %s.\n", strings.Join(byPkg, "; "))
-	}
-
-	merge := s.MergeWorthy()
+	// One count line and no pair listing, deliberately. SessionStart fires
+	// before any target is known, so a pair list here is global trivia that
+	// mostly names packages the session will never touch — as is a
+	// concepts-by-package survey, which capped out alphabetically. The
+	// per-target findings live where a target exists: the user-prompt hook
+	// scopes them to the packages a prompt mentions, and the pre-tool hook
+	// to the file about to be edited.
 	fmt.Fprintf(&b, "Near-duplicate pairs reported at threshold %.2f: %d, of which %d are merge-worthy.\n",
-		s.Params.Threshold, len(s.Pairs), merge)
-	shown := 0
-	for _, p := range s.Pairs {
-		if !p.MergeWorthy {
-			continue
-		}
-		if shown == maxListed {
-			fmt.Fprintf(&b, "  (%d more merge-worthy pairs not listed)\n", merge-shown)
-			break
-		}
-		fmt.Fprintf(&b, "  %s <-> %s  shape %.2f  overlap %.2f\n", p.A, p.B, p.Score, p.Overlap)
-		shown++
-	}
+		s.Params.Threshold, len(s.Pairs), s.MergeWorthy())
 
 	// Declarative, like every line above: the command exists whether or not
 	// anyone runs it. Without this sentence the query feature is invisible to
@@ -312,39 +301,6 @@ func absentConcepts(present []snapshot.TagCount) []string {
 		out = append(out, string(term.ID))
 	}
 	sort.Strings(out)
-	return out
-}
-
-func conceptsByPackage(s snapshot.Snapshot) []string {
-	byPkg := make(map[string]map[string]bool)
-	for _, u := range s.Units {
-		if len(u.Patterns) == 0 {
-			continue
-		}
-		if byPkg[u.Package] == nil {
-			byPkg[u.Package] = make(map[string]bool)
-		}
-		for _, p := range u.Patterns {
-			byPkg[u.Package][p] = true
-		}
-	}
-	pkgs := make([]string, 0, len(byPkg))
-	for p := range byPkg {
-		pkgs = append(pkgs, p)
-	}
-	sort.Strings(pkgs)
-	if len(pkgs) > maxListed {
-		pkgs = pkgs[:maxListed]
-	}
-	out := make([]string, 0, len(pkgs))
-	for _, p := range pkgs {
-		tags := make([]string, 0, len(byPkg[p]))
-		for t := range byPkg[p] {
-			tags = append(tags, t)
-		}
-		sort.Strings(tags)
-		out = append(out, fmt.Sprintf("%s — %s", p, strings.Join(tags, ", ")))
-	}
 	return out
 }
 

@@ -611,9 +611,26 @@ reason rather than returning a partial delta.
   exits non-zero or writes to stderr** — every failure path ends at `emitNothing`. A SessionStart
   hook's stderr surfaces to the user as a broken-tool notice, and blocking a session over a
   measurement would be indefensible.
-- `session-start` emits `additionalContext` (the corpus concept inventory) and writes the baseline
-  **only if one does not already exist**. SessionStart also fires on resume and after compaction;
-  re-recording then would silently move the origin mid-session.
+- `session-start` emits `additionalContext` (the corpus concept inventory — deliberately only
+  what is session-stable: tag counts, absent tags, roles, one pair-count line; per-target findings
+  live in the two hooks below, where a target exists) and writes the baseline **only if one does
+  not already exist**. SessionStart also fires on resume and after compaction; re-recording then
+  would silently move the origin mid-session.
+- `user-prompt` (UserPromptSubmit) scopes the corpus's duplication facts to the packages the
+  prompt mentions — `@path/to/pkg` mentions and bare package names, confirmed against the corpus,
+  capped at 3 in first-mention order (multi-matches resolved in sorted order; map order deciding
+  who wins the cap would break run-to-run stability). It re-runs the full pipeline once per
+  prompt, and is silent for prompts mentioning nothing it knows — the common case pays the
+  analysis and says nothing.
+- `pre-tool` (PreToolUse, matched on `Edit|Write`) advises on the merge-worthy twins of the file
+  about to be edited, from the **session-start baseline**, labeled "as of session start". This is
+  a deliberate widening of the baseline's role — fact sheet as well as measurement origin — with
+  the original boundary intact: `analyze` never reads it and no pipeline stage is ever skipped
+  because it exists; the advisory is not a pipeline, and recomputing instead would cost a full
+  analysis per edit. **Advisory-only, permanently**: `additionalContext` is emitted,
+  `permissionDecision` never is — a blocking dedupe hook misfiring on a genuine near-duplicate
+  (exactly what it fires on) would be worse than none. An `Advised` ledger in the baseline
+  wrapper (same mechanism as `Reported`) makes each file's advisory fire once per session.
 - `stop` emits `systemMessage` to the user and, under `hook-notify: agent` (the default),
   `additionalContext` to the model. **`additionalContext` on a Stop hook continues the turn** —
   verified against the shipped Claude Code binary, because the public docs do not document Stop's

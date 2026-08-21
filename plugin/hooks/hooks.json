@@ -1,5 +1,5 @@
 {
-  "description": "doppel: corpus concept inventory at session start, duplication impact at end of turn",
+  "description": "doppel: corpus inventory at session start, request-scoped facts at each prompt, twin advisories before edits, duplication impact at end of turn",
   "hooks": {
     "SessionStart": [
       {
@@ -10,6 +10,33 @@
             "args": ["hook", "session-start"],
             "timeout": 120,
             "statusMessage": "doppel: taking corpus snapshot"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${user_config.doppel_binary}",
+            "args": ["hook", "user-prompt"],
+            "timeout": 120,
+            "statusMessage": "doppel: scoping to the request"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${user_config.doppel_binary}",
+            "args": ["hook", "pre-tool"],
+            "timeout": 15,
+            "statusMessage": "doppel: checking for twins"
           }
         ]
       }

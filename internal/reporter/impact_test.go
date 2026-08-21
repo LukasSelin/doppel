@@ -94,11 +94,19 @@ func TestConceptDigestNamesPresentAndAbsentConcepts(t *testing.T) {
 		"3 Go functions",
 		"test functions excluded",
 		"db_access 2",
-		"store — db_access",
-		"store.Save <-> store.Load",
+		"of which 1 are merge-worthy",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("digest missing %q:\n%s", want, got)
+		}
+	}
+	// Per-target findings deliberately do not appear at SessionStart: the
+	// pair listing moved to the user-prompt and pre-tool hooks, where a
+	// target exists to scope them to, and the concepts-by-package survey
+	// (alphabetical, capped) is gone outright.
+	for _, gone := range []string{"store.Save <-> store.Load", "Concepts by package"} {
+		if strings.Contains(got, gone) {
+			t.Errorf("digest still contains %q, which moved out of SessionStart:\n%s", gone, got)
 		}
 	}
 	// The absent list is the direct answer to "is there already something

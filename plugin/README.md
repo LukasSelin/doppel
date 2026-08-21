@@ -1,11 +1,15 @@
 # doppel — Claude Code plugin
 
-Two hooks around a Go repo:
+Four hooks around a Go repo, ordered by when they fire:
 
-- **At session start**, an inventory of the concepts the codebase already contains, so "is there
-  already something that does this?" has an answer before anything gets written.
-- **At the end of each turn**, what the session so far did to the repo's duplication surface —
-  which near-duplicate pairs it introduced, which it removed.
+- **At session start**, an inventory of the concepts the codebase contains — the session-stable
+  framing: which tags exist here, which are absent, the role distribution.
+- **At each prompt**, the duplication facts scoped to the packages the prompt mentions — the
+  moment the target is first known and no edit exists yet.
+- **Right before each Edit or Write**, an advisory naming the merge-worthy twins of the file
+  about to change — the last responsible moment.
+- **At the end of each turn**, what the session did to the duplication surface — which
+  near-duplicate pairs it introduced, which it removed.
 
 ## Install
 
@@ -57,6 +61,35 @@ It also records a **baseline** — the measurement origin the Stop hook compares
 is written once per session; SessionStart also fires on resume and after compaction, and re-recording
 then would quietly move the origin so the impact report described the last few minutes instead of the
 session.
+
+### UserPromptSubmit
+
+Extracts package mentions from your message — `@backend/internal/hubspot` style paths and bare
+package names, confirmed against the corpus — and emits only that package's facts:
+
+```
+doppel: backend/internal/hubspot (41 functions)
+  merge-worthy pairs within this package:
+    Service.postClaimChannelMessage <-> Service.postLostChannelMessage  shape 1.00  overlap 0.86
+  3 merge-worthy pairs connect this package to others.
+```
+
+Silent when the prompt mentions nothing the corpus knows, which is most prompts. This runs a full
+analysis once per prompt — same cost as the Stop hook.
+
+### PreToolUse (Edit|Write)
+
+Right before a file is edited, names the merge-worthy twins of the functions in it:
+
+```
+doppel (as of session start): functions in internal/hubspot/service.go have merge-worthy twins:
+  Service.postClaimChannelMessage <-> Service.postLostChannelMessage  shape 1.00  overlap 0.86
+```
+
+The facts come from the session-start baseline — the label says so — which is what makes this hook
+millisecond-fast on every edit instead of costing a full analysis each time. Each file's advisory
+fires **once per session**. It is advisory-only: it never blocks an edit, because a blocking dedupe
+hook that misfires on a genuine near-duplicate would be worse than none.
 
 ### Stop
 

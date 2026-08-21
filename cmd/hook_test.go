@@ -277,3 +277,27 @@ func TestHookNotifyDefaultsAndValidates(t *testing.T) {
 		})
 	}
 }
+
+func TestReadHookInputParsesPromptAndToolFields(t *testing.T) {
+	in, err := readHookInput(strings.NewReader(
+		`{"session_id":"s","prompt":"fix internal/culture","tool_name":"Edit","tool_input":{"file_path":"C:/repo/a.go","old_string":"x"}}`))
+	if err != nil {
+		t.Fatalf("readHookInput: %v", err)
+	}
+	if in.Prompt != "fix internal/culture" {
+		t.Errorf("Prompt = %q", in.Prompt)
+	}
+	if in.ToolName != "Edit" || in.ToolInput.FilePath != "C:/repo/a.go" {
+		t.Errorf("tool fields = %q / %q", in.ToolName, in.ToolInput.FilePath)
+	}
+}
+
+func TestRelativeToRootRejectsOutsiders(t *testing.T) {
+	root := filepath.Join("C:", "repo")
+	if rel, ok := relativeToRoot(root, filepath.Join(root, "internal", "a.go")); !ok || rel != "internal/a.go" {
+		t.Errorf("inside file: rel=%q ok=%v", rel, ok)
+	}
+	if _, ok := relativeToRoot(root, filepath.Join("C:", "elsewhere", "b.go")); ok {
+		t.Error("file outside the analyzed tree was accepted")
+	}
+}
