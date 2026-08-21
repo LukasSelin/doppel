@@ -80,9 +80,13 @@ bodies in unrelated subsystems) from high on both (a real merge candidate), and 
 destroys that distinction.
 
 The report is **ranked by neither alone**: `analyzer.SortForReport` orders by **corroborated
-evidence** — `Retrieval.Total × Evidence.OverlapScore × Score × TrophicSim²` — evidence mass
-discounted by architectural corroboration, structural similarity, and squared trophic
-similarity. Raw mass alone let verbose shared vocabularies (PDF drawing APIs) outrank a
+evidence** — `Retrieval.Total × Evidence.OverlapScore × Score × TrophicSim²`, with one further
+linear factor `CallSim` (the call-channel Dice: the mutual fraction of the two functions'
+informative call energy) **when both sides live in `_test.go` files** — SUT-aware test
+discounting: two tests are related through what they exercise, not their driver skeleton.
+Near-identical table-driven harnesses over different functions share no informative call tokens
+and key to zero, while tests of the same machinery keep their shared call mass. Under
+`--tests only` every pair is a test pair, so the hygiene view is SUT-aware globally. Raw mass alone let verbose shared vocabularies (PDF drawing APIs) outrank a
 self-documented production clone; adding overlap and code-shape fixed that but left
 family-skeleton siblings (a shared compose-send prologue with large unshared bodies) beating
 genuine family clones. Trophic² separates them: squared because the Dice, squared, approximates
@@ -606,11 +610,13 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   twins read trophic 1.0 with *small* energy — the energy is what ranks, so this is display-level
   nuance, not a scoring bug.
 - **Corroborated ranking has thin margins on vocabulary-heavy pairs.** A cross-package true
-  clone and a vocabulary false positive can sit ~10-20% apart in key. The golden benchmark
-  exists to watch exactly this; one labeled semantic false positive with genuinely high
-  corroboration AND high trophic (sibling table-driven tests of different functions — the
-  drivers really are near-clones; only the tested function differs) keeps the full-population
-  benchmark's assertions deliberately red until a mechanism can express it (SUT-aware test
-  discounting via the call graph is the named candidate). Trophic² also discounts non-identical
-  true clones somewhat (the production clone sits mid-top-50, not top-20, in the full-population
-  view) — the price of demoting skeleton siblings, watched by the same benchmark.
+  clone and a vocabulary false positive can sit ~10-20% apart in key; the golden benchmark
+  watches exactly this. Trophic² also discounts non-identical true clones somewhat (the
+  production clone sits mid-top-50, not top-20, in the full-population view) — the price of
+  demoting skeleton siblings.
+- **SUT-aware test discounting is only as good as call resolution.** A test pair with zero
+  informative call tokens keys to zero even when genuinely duplicated (mock-heavy tests whose
+  every call is variable-receiver read CallSim 0 — harsh but honest: no call evidence, no SUT
+  corroboration). Both label sets pin the behavior; the historical semantic false positive
+  (sibling table-driven tests of different calculations) is resolved by this factor, and both
+  benchmarks' assertions are green.
