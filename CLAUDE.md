@@ -271,6 +271,38 @@ concept where every member does the same two things has uniform masses (maximal 
 but zero presence-disorder — universal co-occurrence is unanimity, not diversity. Empty channels
 score 1.0 (unanimity of absence). Shown as `convention` on culture notes; superlatives on stderr.
 
+### The concept arena
+
+`internal/culture/arena.go`: instead of five independent booleans, each function is an arena where
+candidate concepts compete for its evidence under deterministic replicator dynamics, yielding an
+equilibrium **concept profile** (masses summing to 1) and an **ecosystem state**. Everything is
+corpus-derived — the PMI ecology is the arena's physics.
+
+- **Candidates**: the unit's own tags ∪ concepts with a reported positive (PMI ≥ ln 2) tag~call
+  association to any of its resolved call tokens ∪ positive tag~role associations to its role.
+  Empty set → silence (`ArenaProfile` ok=false), not a state.
+- **Evidence(f,c)** in nats, fixed order: tag presence → `IC(c) = ln(N/df)` (plain, matching the
+  retriever idiom), + each positive tag~call PMI over the unit's tokens, + positive tag~role PMI.
+  Deliberately not typicality-scaled (asymmetric for unprototyped concepts; future work).
+- **Interactions**: reported TagTag PMI as-is; `-Inf` (never co-occur) maps to `−ln N`, the
+  largest finite repulsion the corpus can express; unreported pairs 0; diagonal 0 (the
+  replicator's own mass term carries self-reinforcement).
+- **Dynamics** (consts, not Options: η 0.25, 64-round cap, 1e-9 convergence, 1e-6 extinction
+  clamp): `x' ∝ x·exp(η·(F − maxF))` with `F = E + Σ M·x`, all in fixed ascending-candidate
+  order; the max-shift makes overflow impossible and is scan-order independent; clamped concepts
+  never revive.
+- **States, pinned precedence**: **weak** (TotalEvidence < ln 2 — an equilibrium over noise is
+  noise) → **conflict** (≥2 survivors with a reported-negative interaction — checked before
+  dominance so the smell is never masked by a big top mass) → **dominance** (1 survivor or top ≥
+  0.6) → **coalition**. Survivor floor 0.05 (max mass ≥ 1/9 so someone always survives).
+- **Report**: `profile A: transaction 0.39  db_access 0.34 (coalition)` under the unit lines
+  (the flat `tags:` line stays); extinct candidates + rounds under `--debug`; stderr
+  `Ecosystems: N profiled (…)`. Profiles never rank.
+
+On real corpora the flagship behavior is visible: units tagged `validation, db_access, mapping`
+(fixture-string tags) equilibrate to `validation 1.00 (dominance)` — the unsupported tags go
+extinct because they explain none of the surrounding evidence.
+
 ### Fingerprint scoring
 
 `fingerprint.Similarity` blends three components; weights are constants and sum to exactly `1.00`.
@@ -511,6 +543,15 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   design trade (the old exhaustive `FindSimilar` pass remains available as a library call). The
   worst case of the inverted-index accumulation is `O(cap · postings)`, comfortably sub-quadratic
   at 10k functions (~2.5s on an 8.7k-function corpus, vs ~20s for the old all-pairs pass).
+- **Arena equilibria are corpus-relative thrice over.** Tag dfs, association cutoffs, and the
+  interaction matrix all move with unrelated code, so a function's profile and state can change
+  when the corpus does. Convergence is capped at 64 rounds, not proven (small fitness gaps end
+  `capped`, which the debug line shows honestly). A concept can only invade a function through a
+  *reported* association — the ecology's cutoffs bound the arena's imagination. On Sendify the
+  states degenerate gracefully: ~98% dominance, few coalitions, conflict/weak ≈ 0 (any invaded
+  candidate carries ≥ ln 2 evidence by construction, so the weak floor rarely triggers).
+  Function-vs-function niches, invasion/speciation/overcrowding, dominant-set clustering, and
+  Potts-style domains are named future work.
 - **Habitat = package is crude.** One Go package can host several micro-habitats (handlers next
   to helpers next to tests — test functions in a production package legitimately read as
   misfits). Directory- or subsystem-level habitat rollup is future work, as are all the delta
