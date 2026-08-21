@@ -118,7 +118,9 @@ type Run struct {
 // place and is safe to call repeatedly on the same predecessors, which is
 // what makes per-stage benchmarking honest.
 
-// StageTag tags every unit and accumulates the corpus tag counts.
+// StageTag tags every unit and accumulates the corpus tag counts. A Run with
+// Onto pre-set keeps it — the weight-override seam AnalyzeWith uses; nil means
+// the production default.
 func (r *Run) StageTag() {
 	r.TagCounts = make(map[ontology.TermID]int)
 	for i := range r.Units {
@@ -127,7 +129,9 @@ func (r *Run) StageTag() {
 			r.TagCounts[ontology.TermID(tag)]++
 		}
 	}
-	r.Onto = ontology.Default()
+	if r.Onto == nil {
+		r.Onto = ontology.Default()
+	}
 	r.IC = ontology.NewCorpusIC(r.Onto, r.TagCounts)
 	r.Comp = comparator.New(ontology.NewScorer(r.Onto, r.IC))
 }
@@ -175,7 +179,13 @@ func (r *Run) StageCompare() {
 
 // Analyze runs every stage in pipeline order.
 func Analyze(units []parser.CodeUnit, opt retriever.Options) *Run {
-	r := &Run{Units: units}
+	return AnalyzeWith(units, opt, nil)
+}
+
+// AnalyzeWith runs every stage under a custom vocabulary — the seam the
+// ablation and fitting harness scores through. A nil onto is Analyze exactly.
+func AnalyzeWith(units []parser.CodeUnit, opt retriever.Options, onto *ontology.Ontology) *Run {
+	r := &Run{Units: units, Onto: onto}
 	r.StageTag()
 	r.StageGraph()
 	r.StageMap()
@@ -183,6 +193,18 @@ func Analyze(units []parser.CodeUnit, opt retriever.Options) *Run {
 	r.StagePairs()
 	r.StageCompare()
 	return r
+}
+
+// Rescore re-runs only the weight-sensitive tail — comparator construction and
+// StageCompare — under a different vocabulary, reusing parse, tags, IC, the
+// call graph and retrieval. That reuse is exact, not approximate: relation
+// weights affect neither the taxonomy nor IC nor any retrieval channel; the
+// only reader is Compare's composite sum. This is what makes a 12-way ablation
+// cost twelve compare passes instead of twelve pipelines.
+func (r *Run) Rescore(onto *ontology.Ontology) {
+	r.Onto = onto
+	r.Comp = comparator.New(ontology.NewScorer(onto, r.IC))
+	r.StageCompare()
 }
 
 // RankKey is the corroborated-evidence ordering quantity SortForReport uses,

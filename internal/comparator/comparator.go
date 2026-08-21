@@ -22,7 +22,10 @@ const (
 
 // The weight of each signal lives on its relation term in the ontology rather
 // than as a constant here, so the scoring table and the vocabulary cannot drift
-// apart and an axiom can assert the weights sum to 1.0.
+// apart and an axiom can assert the weights sum to 1.0. Compare reads them
+// through the Comparator's own vocabulary (the scorer's), so this default is
+// only the corpus-independent path's; the bench harness swaps in a reweighted
+// one via ontology.WithWeights.
 var onto = ontology.Default()
 
 // Comparator scores structural overlap through a Scorer, which decides whether
@@ -31,10 +34,16 @@ var onto = ontology.Default()
 // tag contributes little evidence and a rare one a lot.
 type Comparator struct {
 	scorer *ontology.Scorer
+	onto   *ontology.Ontology // the scorer's vocabulary; carries the relation weights
 }
 
-// New creates a Comparator over the given scorer.
-func New(scorer *ontology.Scorer) *Comparator { return &Comparator{scorer: scorer} }
+// New creates a Comparator over the given scorer. The relation weights come
+// from the scorer's own vocabulary, so a scorer built over a reweighted
+// ontology (ontology.WithWeights — the bench harness's ablation seam) scores
+// with those weights while the default path is unchanged.
+func New(scorer *ontology.Scorer) *Comparator {
+	return &Comparator{scorer: scorer, onto: scorer.Ontology()}
+}
 
 // defaultComparator is corpus-independent: plain Wu-Palmer matching, the
 // behavior every regression test pins.
@@ -142,7 +151,7 @@ func (c *Comparator) Compare(a, b concepter.ConceptDoc) StructuralEvidence {
 
 	if c.scorer.Weighted() {
 		// Recompute the pattern matches taxonomy-only for the gate.
-		_, taxonomyMatches := onto.SetRelatedness(a.Patterns, b.Patterns)
+		_, taxonomyMatches := c.onto.SetRelatedness(a.Patterns, b.Patterns)
 		ev.PatternSignalBest = ontology.BestMatch(taxonomyMatches)
 	} else {
 		// The unweighted matches already are taxonomy-only.
@@ -154,18 +163,18 @@ func (c *Comparator) Compare(a, b concepter.ConceptDoc) StructuralEvidence {
 	// which is enough to move a pair across the merge threshold or the
 	// --struct-min cutoff and make the report vary between runs.
 	ev.OverlapScore = 0 +
-		onto.Weight(ontology.RelCalls)*overlapRatio(a.Callees, b.Callees, ev.SharedCallees) +
-		onto.Weight(ontology.RelExhibits)*ev.PatternRelatedness +
-		onto.Weight(ontology.RelCalledBy)*overlapRatio(a.Callers, b.Callers, ev.SharedCallers) +
-		onto.Weight(ontology.RelSharesNeighborhood)*ev.NeighborhoodOverlap +
-		onto.Weight(ontology.RelHasRole)*ev.RoleRelatedness +
-		onto.Weight(ontology.RelDeclaredIn)*boolFloat(ev.SamePackage) +
-		onto.Weight(ontology.RelCalledFromConcept)*ev.CallerConceptRelatedness +
-		onto.Weight(ontology.RelCallsIntoConcept)*ev.CalleeConceptRelatedness +
-		onto.Weight(ontology.RelHasVisibility)*boolFloat(ev.SameVisibility) +
-		onto.Weight(ontology.RelBoundTo)*ev.ReceiverRelatedness +
-		onto.Weight(ontology.RelCalledFromPackage)*overlapRatio(a.CallerPackages, b.CallerPackages, ev.SharedCallerPkgs) +
-		onto.Weight(ontology.RelCallsIntoPackage)*overlapRatio(a.CalleePackages, b.CalleePackages, ev.SharedCalleePkgs)
+		c.onto.Weight(ontology.RelCalls)*overlapRatio(a.Callees, b.Callees, ev.SharedCallees) +
+		c.onto.Weight(ontology.RelExhibits)*ev.PatternRelatedness +
+		c.onto.Weight(ontology.RelCalledBy)*overlapRatio(a.Callers, b.Callers, ev.SharedCallers) +
+		c.onto.Weight(ontology.RelSharesNeighborhood)*ev.NeighborhoodOverlap +
+		c.onto.Weight(ontology.RelHasRole)*ev.RoleRelatedness +
+		c.onto.Weight(ontology.RelDeclaredIn)*boolFloat(ev.SamePackage) +
+		c.onto.Weight(ontology.RelCalledFromConcept)*ev.CallerConceptRelatedness +
+		c.onto.Weight(ontology.RelCallsIntoConcept)*ev.CalleeConceptRelatedness +
+		c.onto.Weight(ontology.RelHasVisibility)*boolFloat(ev.SameVisibility) +
+		c.onto.Weight(ontology.RelBoundTo)*ev.ReceiverRelatedness +
+		c.onto.Weight(ontology.RelCalledFromPackage)*overlapRatio(a.CallerPackages, b.CallerPackages, ev.SharedCallerPkgs) +
+		c.onto.Weight(ontology.RelCallsIntoPackage)*overlapRatio(a.CalleePackages, b.CalleePackages, ev.SharedCalleePkgs)
 
 	if ev.OverlapScore > 1.0 {
 		ev.OverlapScore = 1.0
