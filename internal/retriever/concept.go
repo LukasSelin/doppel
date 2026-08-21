@@ -73,38 +73,46 @@ func buildConceptIndex(units []parser.CodeUnit, onto *ontology.Ontology,
 func (x *conceptIndex) admitPairs(opt Options) []pairKey {
 	var pairs []pairKey
 	for a := range x.expanded {
-		if len(x.expanded[a]) == 0 {
+		pairs = append(pairs, x.admitFor(a, opt)...)
+	}
+	return pairs
+}
+
+// admitFor is one function's turn of the admitPairs loop, factored out so a
+// single probe unit can be retrieved without the all-pairs pass.
+func (x *conceptIndex) admitFor(a int, opt Options) []pairKey {
+	if len(x.expanded[a]) == 0 {
+		return nil
+	}
+	nbrSet := make(map[int]bool)
+	for _, term := range x.expanded[a] {
+		posting := x.postings[term]
+		if len(posting) < 2 || len(posting) > opt.MaxConceptDF {
 			continue
 		}
-		nbrSet := make(map[int]bool)
-		for _, term := range x.expanded[a] {
-			posting := x.postings[term]
-			if len(posting) < 2 || len(posting) > opt.MaxConceptDF {
-				continue
-			}
-			for _, b := range posting {
-				if b != a {
-					nbrSet[b] = true
-				}
+		for _, b := range posting {
+			if b != a {
+				nbrSet[b] = true
 			}
 		}
-		if len(nbrSet) == 0 {
-			continue
+	}
+	if len(nbrSet) == 0 {
+		return nil
+	}
+	cand := make([]int, 0, len(nbrSet))
+	for b := range nbrSet {
+		cand = append(cand, b)
+	}
+	sort.Ints(cand)
+	neighbors := make([]neighborMass, 0, len(cand))
+	for _, b := range cand {
+		if mass := x.sharedMass(a, b); mass > 0 {
+			neighbors = append(neighbors, neighborMass{idx: b, mass: mass})
 		}
-		cand := make([]int, 0, len(nbrSet))
-		for b := range nbrSet {
-			cand = append(cand, b)
-		}
-		sort.Ints(cand)
-		neighbors := make([]neighborMass, 0, len(cand))
-		for _, b := range cand {
-			if mass := x.sharedMass(a, b); mass > 0 {
-				neighbors = append(neighbors, neighborMass{idx: b, mass: mass})
-			}
-		}
-		for _, nb := range topK(neighbors, opt.ChannelK) {
-			pairs = append(pairs, orderPair(a, nb.idx))
-		}
+	}
+	var pairs []pairKey
+	for _, nb := range topK(neighbors, opt.ChannelK) {
+		pairs = append(pairs, orderPair(a, nb.idx))
 	}
 	return pairs
 }

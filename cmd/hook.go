@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/LukasSelin/doppel/internal/reporter"
@@ -33,6 +34,14 @@ type hookInput struct {
 	// keeps producing output every time it is re-entered never lets the turn
 	// end, and Claude Code eventually overrides it with a warning.
 	StopHookActive bool `json:"stop_hook_active"`
+	// Prompt is the user's message text, present on UserPromptSubmit.
+	Prompt string `json:"prompt"`
+	// ToolName and ToolInput are present on PreToolUse. ToolInput is the
+	// tool's own argument object; only file_path is read here.
+	ToolName  string `json:"tool_name"`
+	ToolInput struct {
+		FilePath string `json:"file_path"`
+	} `json:"tool_input"`
 }
 
 // baselineFile wraps a Snapshot with the things that must not live inside one.
@@ -56,6 +65,11 @@ type baselineFile struct {
 	// session the baseline already represents. It is never compared, and it
 	// never touches Snapshot, which must stay the untouched origin.
 	Reported []string `json:"reported,omitempty"`
+	// Advised is the pre-tool ledger: relative slash paths of files whose
+	// twin advisory has already been given this session. Same mechanism and
+	// rationale as Reported — the facts are session-cumulative, so an
+	// unremembered advisory repeats on every edit of the same file.
+	Advised []string `json:"advised,omitempty"`
 }
 
 var hookCmd = &cobra.Command{
@@ -72,6 +86,20 @@ var hookSessionStartCmd = &cobra.Command{
 	RunE:  runHookSessionStart,
 }
 
+var hookUserPromptCmd = &cobra.Command{
+	Use:   "user-prompt",
+	Short: "Scope the corpus's duplication facts to the packages a prompt mentions",
+	Args:  cobra.NoArgs,
+	RunE:  runHookUserPrompt,
+}
+
+var hookPreToolCmd = &cobra.Command{
+	Use:   "pre-tool",
+	Short: "Advise on merge-worthy twins in a file about to be edited",
+	Args:  cobra.NoArgs,
+	RunE:  runHookPreTool,
+}
+
 var hookStopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Report how much this session changed the duplication picture",
@@ -82,7 +110,7 @@ var hookStopCmd = &cobra.Command{
 var hookRoot string
 
 func init() {
-	for _, c := range []*cobra.Command{hookSessionStartCmd, hookStopCmd} {
+	for _, c := range []*cobra.Command{hookSessionStartCmd, hookStopCmd, hookUserPromptCmd, hookPreToolCmd} {
 		c.Flags().StringVar(&hookRoot, "root", "", "Directory to analyze (default: the cwd from the hook payload)")
 		hookCmd.AddCommand(c)
 	}
@@ -300,6 +328,111 @@ func readHookInput(r io.Reader) (hookInput, error) {
 		return in, fmt.Errorf("empty hook payload")
 	}
 	return in, json.Unmarshal(data, &in)
+}
+
+// runHookUserPrompt scopes the corpus's duplication facts to the packages the
+// prompt mentions — the point in the session where the target is first known
+// and no edit exists yet.
+//
+// The full pipeline runs, once per user prompt, with the same uncapped params
+// the other hooks use: the cost is one analysis at the moment the answer can
+// still change what gets written. A prompt mentioning no known package — the
+// overwhelmingly common case — costs the analysis and says nothing.
+func runHookUserPrompt(cmd *cobra.Command, args []string) error {
+	in, err := readHookInput(cmd.InOrStdin())
+	if err != nil || in.Prompt == "" {
+		return emitNothing()
+	}
+
+	snap, ok := snapshotAt(resolveRoot(in.Cwd))
+	if !ok {
+		return emitNothing()
+	}
+
+	pkgs := scopedPackages(in.Prompt, snap)
+	if len(pkgs) == 0 {
+		return emitNothing()
+	}
+	digest := reporter.ScopeDigest(snap, pkgs)
+	if digest == "" {
+		return emitNothing()
+	}
+
+	return emitJSON(cmd, map[string]any{
+		"hookSpecificOutput": map[string]any{
+			"hookEventName":     "UserPromptSubmit",
+			"additionalContext": digest,
+		},
+	})
+}
+
+// runHookPreTool advises on the merge-worthy twins of the file about to be
+// edited — the last responsible moment before the edit exists.
+//
+// Facts come from the session-start baseline, and the digest labels them so.
+// This is a deliberate widening of the baseline's role — a fact sheet as well
+// as a measurement origin — with the original boundary intact: analyze never
+// reads it, and no pipeline stage is ever skipped because it exists. The
+// advisory is not a pipeline; recomputing instead would cost a full analysis
+// per Edit/Write, which on a large repo means seconds added to every edit.
+//
+// Advisory-only, permanently: additionalContext is emitted and
+// permissionDecision never is. A blocking dedupe hook that misfires on a
+// genuine near-duplicate — and near-duplicates are exactly what it would
+// fire on — would be worse than no hook.
+func runHookPreTool(cmd *cobra.Command, args []string) error {
+	in, err := readHookInput(cmd.InOrStdin())
+	if err != nil || in.ToolInput.FilePath == "" {
+		return emitNothing()
+	}
+
+	path := baselinePath(in.SessionID)
+	base, err := readBaseline(path)
+	if err != nil || base.Snapshot.Schema != snapshot.Schema {
+		return emitNothing()
+	}
+
+	rel, ok := relativeToRoot(base.Root, in.ToolInput.FilePath)
+	if !ok {
+		return emitNothing()
+	}
+	for _, a := range base.Advised {
+		if a == rel {
+			return emitNothing()
+		}
+	}
+
+	digest := reporter.AdviceDigest(base.Snapshot, rel)
+	if digest == "" {
+		return emitNothing()
+	}
+
+	// Record before emitting, like the Stop hook's Reported ledger: if the
+	// write fails, staying silent beats repeating this advisory on every
+	// future edit of the file.
+	base.Advised = append(base.Advised, rel)
+	sort.Strings(base.Advised)
+	if err := writeJSONAtomic(path, base); err != nil {
+		return emitNothing()
+	}
+
+	return emitJSON(cmd, map[string]any{
+		"hookSpecificOutput": map[string]any{
+			"hookEventName":     "PreToolUse",
+			"additionalContext": digest,
+		},
+	})
+}
+
+// relativeToRoot rewrites an absolute tool path as the snapshot's own
+// relative slash form, or reports that the file lives outside the analyzed
+// tree. The snapshot's normalization is what makes this lookup possible.
+func relativeToRoot(root, file string) (string, bool) {
+	rel, err := filepath.Rel(root, file)
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return "", false
+	}
+	return filepath.ToSlash(rel), true
 }
 
 // emitNothing exits successfully and silently.

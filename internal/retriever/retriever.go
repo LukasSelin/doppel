@@ -95,6 +95,11 @@ func orderPair(a, b int) pairKey {
 	return pairKey{a, b}
 }
 
+// admission records which channels admitted a pair.
+type admission struct {
+	shape, concept, call bool
+}
+
 // Retrieve runs all three channels over the corpus and returns the deduped
 // union with definitive per-pair evidence, sorted by (AIdx, BIdx). Ranking by
 // evidence happens downstream, after the comparator — retriever output order
@@ -109,9 +114,6 @@ func Retrieve(units []parser.CodeUnit, g *concepter.Graph,
 	calls := buildCallIndex(units, g, opt)
 	concepts := buildConceptIndex(units, onto, scorer, opt)
 
-	type admission struct {
-		shape, concept, call bool
-	}
 	admitted := make(map[pairKey]*admission)
 	admit := func(pairs []pairKey, channel string) int {
 		distinct := 0
@@ -146,6 +148,68 @@ func Retrieve(units []parser.CodeUnit, g *concepter.Graph,
 	stats.Suppressed = shapes.suppressed
 	stats.LargeBuckets = shapes.largeBuckets
 	stats.SurvivingPatterns = len(shapes.idf)
+
+	cands := evaluate(admitted, shapes, concepts, calls, sim, opt, &stats)
+	return cands, stats
+}
+
+// Probe retrieves the corpus functions most related to units[probeIdx]. It
+// runs the same three channels, the same gates, and the same definitive
+// evidence arithmetic as Retrieve — only the admission loop is narrowed to
+// the probe's turn, so a query costs index building plus one function's
+// retrieval rather than the corpus's.
+//
+// The probe must already be a member of units: every index is positional, and
+// scoring a unit against statistics it is excluded from would misrepresent
+// how it sits in this corpus. The caller appends it before tagging and graph
+// building, which also hands it resolved callees for free.
+func Probe(units []parser.CodeUnit, probeIdx int, g *concepter.Graph,
+	onto *ontology.Ontology, ic *ontology.IC, opt Options) ([]Candidate, Stats) {
+
+	scorer := ontology.NewScorer(onto, ic)
+	sim := newSimCache(units)
+
+	shapes := buildShapeIndex(units, opt)
+	calls := buildCallIndex(units, g, opt)
+	concepts := buildConceptIndex(units, onto, scorer, opt)
+
+	admitted := make(map[pairKey]*admission)
+	// Same counting semantics as Retrieve's admit closure: distinct counts
+	// pairs newly marked for this channel, even when another channel admitted
+	// the pair first.
+	admitOne := func(pairs []pairKey, seen func(*admission) *bool) int {
+		distinct := 0
+		for _, k := range pairs {
+			a := admitted[k]
+			if a == nil {
+				a = &admission{}
+				admitted[k] = a
+			}
+			if f := seen(a); !*f {
+				*f = true
+				distinct++
+			}
+		}
+		return distinct
+	}
+
+	var stats Stats
+	stats.ShapePairs = admitOne(shapes.admitFor(probeIdx, sim, opt), func(a *admission) *bool { return &a.shape })
+	stats.ConceptPairs = admitOne(concepts.admitFor(probeIdx, opt), func(a *admission) *bool { return &a.concept })
+	stats.CallPairs = admitOne(calls.admitFor(probeIdx, opt), func(a *admission) *bool { return &a.call })
+	stats.Union = len(admitted)
+	stats.Suppressed = shapes.suppressed
+	stats.LargeBuckets = shapes.largeBuckets
+	stats.SurvivingPatterns = len(shapes.idf)
+
+	cands := evaluate(admitted, shapes, concepts, calls, sim, opt, &stats)
+	return cands, stats
+}
+
+// evaluate computes the definitive evidence for every admitted pair, in
+// (AIdx, BIdx) order. Shared by Retrieve and Probe so the two cannot drift.
+func evaluate(admitted map[pairKey]*admission, shapes *shapeIndex, concepts *conceptIndex,
+	calls *callIndex, sim *simCache, opt Options, stats *Stats) []Candidate {
 
 	keys := make([]pairKey, 0, len(admitted))
 	for k := range admitted {
@@ -192,7 +256,7 @@ func Retrieve(units []parser.CodeUnit, g *concepter.Graph,
 		}
 		cands = append(cands, c)
 	}
-	return cands, stats
+	return cands
 }
 
 // simCache memoizes exact fingerprint similarity per unordered pair, so the

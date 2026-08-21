@@ -161,38 +161,46 @@ func patternBucket(patterns []fingerprint.Pattern) uint64 {
 func (x *shapeIndex) admitPairs(sim *simCache, opt Options) []pairKey {
 	var pairs []pairKey
 	for a := range x.surviving {
-		if len(x.surviving[a]) == 0 {
-			continue
-		}
-		acc := make(map[int]float64)
-		for _, sp := range x.surviving[a] {
-			w := x.idf[sp.hash]
-			for _, po := range x.postings[sp.hash] {
-				if po.idx != a {
-					acc[po.idx] += w * float64(minCount(sp.count, po.count))
-				}
+		pairs = append(pairs, x.admitFor(a, sim, opt)...)
+	}
+	return pairs
+}
+
+// admitFor is one function's turn of the admitPairs loop, factored out so a
+// single probe unit can be retrieved without the all-pairs pass.
+func (x *shapeIndex) admitFor(a int, sim *simCache, opt Options) []pairKey {
+	if len(x.surviving[a]) == 0 {
+		return nil
+	}
+	var pairs []pairKey
+	acc := make(map[int]float64)
+	for _, sp := range x.surviving[a] {
+		w := x.idf[sp.hash]
+		for _, po := range x.postings[sp.hash] {
+			if po.idx != a {
+				acc[po.idx] += w * float64(minCount(sp.count, po.count))
 			}
 		}
-		neighbors := make([]neighborMass, 0, len(acc))
-		for b, mass := range acc {
-			// A pattern in every eligible unit has idf 0; zero shared mass is
-			// zero evidence, not a candidate.
-			if mass > 0 {
-				neighbors = append(neighbors, neighborMass{idx: b, mass: mass})
-			}
+	}
+	neighbors := make([]neighborMass, 0, len(acc))
+	for b, mass := range acc {
+		// A pattern in every eligible unit has idf 0; zero shared mass is
+		// zero evidence, not a candidate.
+		if mass > 0 {
+			neighbors = append(neighbors, neighborMass{idx: b, mass: mass})
 		}
-		neighbors = topK(neighbors, 0) // full deterministic order; probe bound below
-		maxProbe := 4 * opt.ChannelK
-		admitted, probed := 0, 0
-		for _, nb := range neighbors {
-			if admitted >= opt.ChannelK || probed >= maxProbe {
-				break
-			}
-			probed++
-			if sim.get(a, nb.idx).Score >= opt.Threshold {
-				pairs = append(pairs, orderPair(a, nb.idx))
-				admitted++
-			}
+	}
+	neighbors = topK(neighbors, 0) // full deterministic order; probe bound below
+	maxProbe := 4 * opt.ChannelK
+	admitted, probed := 0, 0
+	for _, nb := range neighbors {
+		if admitted >= opt.ChannelK || probed >= maxProbe {
+			break
+		}
+		probed++
+		if sim.get(a, nb.idx).Score >= opt.Threshold {
+			pairs = append(pairs, orderPair(a, nb.idx))
+			admitted++
 		}
 	}
 	return pairs
