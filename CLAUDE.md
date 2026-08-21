@@ -55,6 +55,8 @@ internal/
   analyzer/     SimilarPair + Retrieval types; FindSimilar (library API); SortByEvidence (final ranking)
   comparator/   Weighted structural overlap scoring (9 signals → 0.0–1.0 composite)
   reporter/     Plain-text (stdout) and Markdown (--output) formatting
+  bench/        Measurement harness: golden-ranking scorer, the pinned public corpus ladder, per-stage benchmarks, example generator
+examples/       Committed real reports for each corpus rung, plus labels/ (committed golden reviews) — see examples/README.md
 ```
 
 Dependency directions that must hold: `analyzer` imports `comparator` (for the `Evidence` field), so
@@ -109,6 +111,11 @@ task build    # go build -o doppel .
 task test     # go test ./...
 task vet      # go vet ./...
 task fmt      # gofmt -w .
+
+task corpora  # fetch the pinned public corpus ladder (network, a few hundred MB)
+task bench    # per-stage pipeline benchmarks over whatever is fetched
+task golden   # score examples/labels/*.labels.json against the fetched corpora
+task examples # regenerate examples/<corpus>.md
 ```
 
 Running the tool against this repo:
@@ -534,14 +541,39 @@ Unknown keys are ignored rather than rejected, so a stale config file does not b
 - Tested: `ontology`, `fingerprint`, `analyzer`, `comparator`, `tagger`, `parser`,
   `concepter/role`, `retriever`, `culture`, `reporter`, `cmd` config precedence. Untested and
   worth covering: `mapper`.
-- **Golden ranking benchmark** (`internal/bench`): a corpus-agnostic, env-guarded harness scoring
-  the final ranking against a human-reviewed labels file. Both inputs come from outside the repo
-  (`DOPPEL_BENCH_CORPUS` + `DOPPEL_BENCH_LABELS`); **no corpus names, paths, or labeled pairs may
-  ever be committed** — the labels JSON is a local artifact the user keeps. Run:
-  `DOPPEL_BENCH_CORPUS=<corpus> DOPPEL_BENCH_LABELS=<labels.json> go test ./internal/bench/ -v`.
-  One labeled semantic false positive keeps two assertions deliberately red (see rough edges).
-  The harness analyzes the full population (`--tests include` semantics, cross pairs dropped)
-  because label files may span test and production pairs.
+- **Measurement harness** (`internal/bench`), four jobs in one package:
+  - `scoreLabels` ranks a corpus and scores a human-reviewed labels file against it: every
+    labeled pair gets a rank or an absence reason, three assertions are hard (merges retrieved,
+    no false positive above the worst merge, no false positive in the top 20), the rest is a
+    logged scorecard. A **partial** review is fine — only labeled pairs are scored, so a
+    genuinely contested pair is better left unlabeled than guessed.
+  - `TestGoldenRanking` scores a **private** review: both inputs come from outside the repo
+    (`DOPPEL_BENCH_CORPUS` + `DOPPEL_BENCH_LABELS`) and **no name, path, or labeled pair from
+    that corpus may ever be committed**. Run:
+    `DOPPEL_BENCH_CORPUS=<corpus> DOPPEL_BENCH_LABELS=<labels.json> go test ./internal/bench/ -v`.
+    Labels declare their own population; the harness mirrors the `--tests` filter before any
+    corpus statistic, and drops cross test/prod pairs like the pipeline.
+  - `TestGoldenCorpora` scores the **committed** reviews in `examples/labels/<corpus>.labels.json`
+    against the matching rung of the public ladder, skipping corpora that are not fetched. The
+    public/private split is the whole point: the committed reviews make the benchmark
+    reproducible by anyone, the env-driven one keeps the private corpus private.
+  - `Corpora` (corpora.go) pins seven public Go repos at release tags, ordered old-and-complex
+    to new-and-narrow (moby 8003 funcs → conc 81). Only coordinates are committed; `Fetch`
+    shallow-clones into `Root()` (`$DOPPEL_CORPORA`, else user cache) and verifies HEAD against
+    the manifest, so a moved tag fails loudly instead of silently changing every example.
+    `Root()` is deliberately outside the working tree — a corpus under it would be walked by
+    `doppel analyze .` on this repo. Annotated tags need their **peeled** commit
+    (`git ls-remote <repo> refs/tags/<tag>^{}`), which is what bit the first version of the
+    manifest.
+  - `pipeline.go` is the ranking-relevant pipeline as a library (`Load` + `Run` stages +
+    `Analyze` + `RankKey`), shared by the golden scorer and `BenchmarkCorpus`. Culture, habitats
+    and arenas are deliberately absent: they annotate, they never rank. `RankKey` duplicates
+    `SortForReport`'s ordering quantity so a scorecard can print it — it must track it.
+  - `TestGenerateExamples` (guard `DOPPEL_BENCH_EXAMPLES=1`) regenerates `examples/<name>.md` by
+    running the **built binary** with `cmd.Dir` set to the corpus — not the library — so the
+    committed reports are what the documented command actually prints, culture/habitat/arena
+    annotations included, with corpus-relative paths. The one stderr line naming a local path is
+    filtered out.
 
 ## Rough edges
 
@@ -614,6 +646,21 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   watches exactly this. Trophic² also discounts non-identical true clones somewhat (the
   production clone sits mid-top-50, not top-20, in the full-population view) — the price of
   demoting skeleton siblings.
+- **Generated code owns the top of a large old corpus.** moby's entire top ten is `.pb.go`
+  protobuf `Unmarshal`/`skipX` methods, and half of prometheus's is; the pairs are factually
+  near-identical and completely unactionable. doppel has no exclusion flag and no notion of
+  "this directory is not the library" (chi's `_examples/` demo `main`s are the small-corpus
+  version of the same problem), so the only answer today is pointing it at a hand-written
+  subtree — `prometheus/tsdb` reports the real float/int histogram duplication instead. A
+  generated-file or path-exclusion filter is the obvious fix and is deliberately not built.
+- **Committed examples drift silently.** `examples/*.md` is real output from a pinned tree, but
+  nothing verifies it: any ranking change makes every file stale until somebody runs
+  `task examples`. Regenerating is cheap (~10s for all seven) — do it in the same change that
+  moves ranking, and re-read the diff, because it is the fastest available review of what a
+  scoring change actually did. `task golden` is the assertion-backed half of that check; the
+  reports are the eyeball half. The measured numbers in `examples/README.md` are hand-copied
+  from a `task bench` run on one machine and go stale the same way.
+
 - **SUT-aware test discounting is only as good as call resolution.** A test pair with zero
   informative call tokens keys to zero even when genuinely duplicated (mock-heavy tests whose
   every call is variable-receiver read CallSim 0 — harsh but honest: no call evidence, no SUT

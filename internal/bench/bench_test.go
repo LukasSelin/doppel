@@ -3,7 +3,6 @@ package bench
 import (
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -11,13 +10,7 @@ import (
 	"testing"
 
 	"github.com/LukasSelin/doppel/internal/analyzer"
-	"github.com/LukasSelin/doppel/internal/comparator"
-	"github.com/LukasSelin/doppel/internal/concepter"
-	"github.com/LukasSelin/doppel/internal/mapper"
-	"github.com/LukasSelin/doppel/internal/ontology"
-	"github.com/LukasSelin/doppel/internal/parser"
 	"github.com/LukasSelin/doppel/internal/retriever"
-	"github.com/LukasSelin/doppel/internal/tagger"
 )
 
 type label struct {
@@ -107,21 +100,8 @@ func TestLabelsFileWellFormed(t *testing.T) {
 	}
 }
 
-func skipDir(name string) bool {
-	switch name {
-	case ".git", ".claude", "vendor", "testdata", "build", ".idea", ".vscode":
-		return true
-	}
-	return false
-}
-
-func qualifiedName(u parser.CodeUnit) string {
-	if u.Package == "" {
-		return u.Name
-	}
-	return u.Package + "." + u.Name
-}
-
+// TestGoldenRanking scores a private review: both the corpus and the labels
+// file arrive by environment variable, so nothing about them is committed.
 func TestGoldenRanking(t *testing.T) {
 	corpus := os.Getenv("DOPPEL_BENCH_CORPUS")
 	labelsPath := os.Getenv("DOPPEL_BENCH_LABELS")
@@ -136,84 +116,71 @@ func TestGoldenRanking(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse labels: %v", err)
 	}
+	scoreLabels(t, corpus, lf)
+}
 
+// TestGoldenCorpora scores the reviews that ARE committed: examples/labels/
+// <corpus>.labels.json against the matching rung of the public ladder. Each
+// labeled pair names two functions in a pinned public tree, so any reader can
+// open them and disagree — which is the only way a golden benchmark on
+// somebody else's judgment is worth anything. Corpora that have not been
+// fetched are skipped.
+func TestGoldenCorpora(t *testing.T) {
+	dir := filepath.Join(repoRoot(t), "examples", "labels")
+	entries, err := filepath.Glob(filepath.Join(dir, "*.labels.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) == 0 {
+		t.Skip("no committed labels files")
+	}
+	for _, path := range entries {
+		name := strings.TrimSuffix(filepath.Base(path), ".labels.json")
+		t.Run(name, func(t *testing.T) {
+			c, ok := Find(name)
+			if !ok {
+				t.Fatalf("%s: no corpus in the ladder is named %q", filepath.Base(path), name)
+			}
+			if !Present(c) {
+				t.Skipf("%s not fetched; run `task corpora`", name)
+			}
+			corpus, err := Path(c)
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			lf, err := parseLabels(data)
+			if err != nil {
+				t.Fatalf("parse %s: %v", path, err)
+			}
+			scoreLabels(t, corpus, lf)
+		})
+	}
+}
+
+// scoreLabels runs the pipeline over corpus and scores lf against the
+// resulting ranking: every labeled pair gets a rank or an absence reason,
+// three assertions are hard, and the rest is a logged scorecard.
+func scoreLabels(t *testing.T, corpus string, lf labelsFile) {
 	// The pipeline's ranking-relevant stages, as a library, at production
 	// defaults. Culture/habitat/arena are skipped: they annotate, never rank.
-	var units []parser.CodeUnit
-	err = filepath.WalkDir(corpus, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return nil
-		}
-		if d.IsDir() {
-			if skipDir(d.Name()) {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		parsed, err := parser.Parse(path)
-		if err != nil {
-			return nil
-		}
-		units = append(units, parsed...)
-		return nil
-	})
+	// The labels declare which population they describe; Load mirrors the
+	// pipeline's --tests filter before any corpus statistic is computed, and
+	// Analyze drops cross test/prod pairs the way the pipeline does.
+	units, err := Load(corpus, Population(lf.Population))
 	if err != nil {
-		t.Fatalf("walk corpus: %v", err)
-	}
-	// The labels declare which population they describe; the harness mirrors
-	// the pipeline's --tests filter before any corpus statistic is computed.
-	if lf.Population != "include" {
-		keepTests := lf.Population == "only"
-		kept := units[:0]
-		for _, u := range units {
-			if strings.HasSuffix(u.File, "_test.go") == keepTests {
-				kept = append(kept, u)
-			}
-		}
-		units = kept
+		t.Fatalf("load corpus: %v", err)
 	}
 	if len(units) == 0 {
 		t.Fatal("corpus yielded no functions")
 	}
 	t.Logf("corpus %s (population %s): %d functions", lf.Corpus, lf.Population, len(units))
 
-	tagCounts := make(map[ontology.TermID]int)
-	for i := range units {
-		units[i].Patterns = tagger.Tag(units[i])
-		for _, tag := range units[i].Patterns {
-			tagCounts[ontology.TermID(tag)]++
-		}
-	}
-	onto := ontology.Default()
-	ic := ontology.NewCorpusIC(onto, tagCounts)
-	comp := comparator.New(ontology.NewScorer(onto, ic))
-	cg := concepter.BuildCallGraph(units)
-	docs := mapper.Map(units, cg, concepter.New())
-	cands, _ := retriever.Retrieve(units, cg, onto, ic, retriever.DefaultOptions())
-
-	// The harness analyzes the full population (labels span test and
-	// production pairs) but mirrors the pipeline's --tests include rule:
-	// cross test/prod pairs are never reported.
-	isTest := func(u parser.CodeUnit) bool { return strings.HasSuffix(u.File, "_test.go") }
-	pairs := make([]analyzer.SimilarPair, 0, len(cands))
-	for _, c := range cands {
-		if isTest(units[c.AIdx]) != isTest(units[c.BIdx]) {
-			continue
-		}
-		pairs = append(pairs, analyzer.SimilarPair{
-			A: units[c.AIdx], B: units[c.BIdx],
-			AIdx: c.AIdx, BIdx: c.BIdx,
-			Score: c.Breakdown.Score, Breakdown: c.Breakdown,
-			Retrieval: &analyzer.Retrieval{
-				Shape: c.Shape, Concept: c.Concept, Call: c.Call, Total: c.Total,
-				TrophicSim: c.TrophicSim, CallSim: c.CallSim,
-			},
-		})
-	}
-	for i := range pairs {
-		ev := comp.Compare(docs[pairs[i].AIdx], docs[pairs[i].BIdx])
-		pairs[i].Evidence = &ev
-	}
+	run := Analyze(units, retriever.DefaultOptions())
+	pairs := run.Pairs
 
 	retrieved := make(map[string]bool, len(pairs))
 	for _, p := range pairs {
@@ -231,12 +198,7 @@ func TestGoldenRanking(t *testing.T) {
 		k := pairKey(qualifiedName(p.A), qualifiedName(p.B))
 		if _, ok := rankOf[k]; !ok {
 			rankOf[k] = i + 1
-			t := p.Retrieval.TrophicSim
-			kv := p.Retrieval.Total * p.Evidence.OverlapScore * p.Score * t * t
-			if isTest(p.A) && isTest(p.B) {
-				kv *= p.Retrieval.CallSim
-			}
-			keyOf[k] = kv
+			keyOf[k] = RankKey(p)
 		}
 	}
 
