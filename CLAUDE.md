@@ -540,8 +540,9 @@ functions, `analyzer` compares two fingerprints, `reporter` renders one result �
 compare two *analyses*. A `Snapshot` is one run reduced to comparable plain data, `Diff` produces a
 `Delta` from two of them, and `doppel hook` wires both to Claude Code.
 
-Three rules hold the schema together, and each exists because breaking it produces a confidently
-wrong answer rather than a missing one:
+Four rules hold the schema together. The first three exist because breaking them produces a
+confidently wrong answer rather than a missing one; the fourth is what keeps the file small enough
+to rewrite on every turn:
 
 - **No maps, no wall-clock, no absolute paths.** Every map is flattened into a sorted slice before it
   reaches JSON, and unit paths are stored relative to the analysis root and slash-separated. A
@@ -559,6 +560,15 @@ wrong answer rather than a missing one:
   *corpus* (`threshold`, `min-nodes`, `channel-k`, `tests`) and overrides the ones that only decide
   what gets *shown* (`top`, `max-per-func`, `struct-min`). A pair that fell past rank 20 has not
   changed; reporting it as a session's impact would be a lie.
+- **Only what a consumer reads is stored.** `Schema` 2 dropped every field nothing read back:
+  `Unit.Qualified`/`Exported`/`Receiver`/`Nodes`/`Callers`/`Callees`, and on `Pair` the four
+  `fingerprint.Breakdown` components and the evidence `Reasons`. The text report renders both of
+  those straight off `analyzer.SimilarPair` and never through a snapshot, so they were write-only
+  — and `Reasons`, free-text English restating counts, was a *quarter* of a baseline's bytes.
+  Removing them cut a 280-function baseline from 461KB to 189KB (59%). `Unit.Role` is the one
+  deliberate exception: no internal consumer reads it either, but the `--format` row in `README.md`
+  documents it as part of the `--format json` payload, so it stays until that promise changes.
+  Anything added back needs a reader, or it is weight in a file the Stop hook rewrites every turn.
 
 **What a delta may and may not claim.** `UnitsAdded`, `UnitsRemoved` and `BodiesChanged` are solid:
 they come from names and from `Digest`, an FNV-1a hash of the unit's own fingerprint, so nothing
@@ -760,3 +770,30 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   `(devel)` for a plain `go build`, so rebuilding doppel mid-session with changed scoring constants
   leaves a stale baseline looking comparable. Ldflags-stamped releases do not have this problem, and
   the fallback deliberately does not invent a value that would make every baseline stale instead.
+
+- **`go install github.com/LukasSelin/doppel@latest` does not work.** The only version tag,
+  `v0.0.1-alpha`, is a lightweight tag on `9c221eb` — the *initial* commit, whose `go.mod` still
+  reads `module github.com/lukse/doppel`. `@latest` resolves to it and fails on the module-path
+  mismatch, and even if it resolved it predates the `hook` subcommands the plugin invokes. The
+  README documents the command in three places regardless. The fix is to cut a fresh tag on
+  `master` (`v0.1.0`, matching the plugin manifest version) rather than move the existing one —
+  the bench manifest already learned the hard way that moved tags fail loudly for a reason.
+
+- **`http_call` never fires on a wrapper-client codebase.** The rule matches one channel,
+  `selectors`, by exact string against `http.Get`/`http.Post`/`http.Do`/`http.NewRequest`. Three
+  independent defects: `http.Do` is not a function in `net/http` at all (it is a method on
+  `*http.Client`), so that term is dead and can never match; `http.NewRequestWithContext`, the
+  idiomatic constructor since Go 1.13, is absent; and `extractSignals` records a selector only when
+  its `X` is a bare `*ast.Ident`, so `c.client.Do(req)` records `"c.client"` and drops the outer
+  selector entirely. A codebase whose HTTP calls all go through a wrapper client reports zero
+  `http_call` — observed on a real corpus with a dozen-plus HTTP integrations. The tag is
+  deliberately not import-based (servers import `net/http` too), so the fix is more selector terms
+  plus a nested-selector tail in the extractor, not an import signal.
+
+- **Interface implementations dominate merge-worthy output.** Methods satisfying a shared interface
+  across sibling packages — a `Validate` per provider, say — are near-identical by construction and
+  completely unactionable, and on a wide corpus they crowd the top of the list the same way
+  generated code does. Recognising one needs `go/types`, which is out of proportion here, and a
+  name-or-signature heuristic is exactly the kind of rule the tagger and retriever avoid
+  everywhere else. The digest orders what it *shows* by merge-worthiness and overlap, which helps
+  a six-line hook report and does nothing for a full `analyze` run.

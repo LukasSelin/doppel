@@ -45,7 +45,11 @@ import (
 
 // Schema is the snapshot format version. Bump it whenever a field's meaning
 // changes, so an older baseline is discarded rather than misread.
-const Schema = 1
+//
+// 2 dropped every field no consumer read. A snapshot is diffed and rendered,
+// never browsed, so a field nothing reads is pure weight in a file the Stop
+// hook rewrites and re-parses on every turn.
+const Schema = 2
 
 // Snapshot is one full analysis run.
 //
@@ -102,49 +106,49 @@ type RoleCount struct {
 
 // Unit is one function or method as this run saw it.
 //
-// Fields divide into two groups, and the division decides what a diff may claim.
-// Key, Patterns, Nodes and Digest are corpus-independent: they depend only on
-// this function's own AST. Role, Callers and Callees are corpus-relative and
-// move when unrelated code changes — CLAUDE.md's role caveat spells out why —
-// so they are recorded to explain a score, never to attribute a change. Line is
-// display only: inserting anything above a function shifts it.
+// Only what a consumer reads is kept. Key and Digest are corpus-independent —
+// they depend on this function's own AST alone — and together they are the
+// whole of what Diff may claim: Key recognises a function across runs, Digest
+// is the exact "this body changed" bit. Package and Patterns feed the concept
+// inventory, File and Line locate a finding for a human, and Line is display
+// only: inserting anything above a function shifts it.
+//
+// Role is corpus-relative and no internal consumer reads it. It survives
+// because `analyze --format json` documents it, not because anything here
+// needs it — see the --format row in README.md before removing it.
+//
+// Earlier schemas also carried Qualified, Exported, Receiver, Nodes, Callers
+// and Callees. Nothing ever read them.
 type Unit struct {
-	Key       string   `json:"key"`       // stable cross-run identity; see unitKeys
-	Qualified string   `json:"qualified"` // concepter.QualifiedName; may collide
-	Package   string   `json:"package"`
-	Name      string   `json:"name"`
-	File      string   `json:"file"` // relative to root, slash-separated
-	Line      int      `json:"line"` // display only, never diffed
-	Exported  bool     `json:"exported"`
-	Receiver  string   `json:"receiver,omitempty"`
-	Patterns  []string `json:"patterns,omitempty"`
-	Nodes     int      `json:"nodes"`
-	Digest    string   `json:"digest"`  // fingerprint hash: the exact "body changed" bit
-	Role      string   `json:"role"`    // corpus-relative
-	Callers   int      `json:"callers"` // corpus-relative; resolved, qualified
-	Callees   int      `json:"callees"` // corpus-relative; resolved internal only
+	Key      string   `json:"key"` // stable cross-run identity; see unitKeys
+	Package  string   `json:"package"`
+	Name     string   `json:"name"`
+	File     string   `json:"file"` // relative to root, slash-separated
+	Line     int      `json:"line"` // display only, never diffed
+	Patterns []string `json:"patterns,omitempty"`
+	Digest   string   `json:"digest"` // fingerprint hash: the exact "body changed" bit
+	Role     string   `json:"role"`   // corpus-relative; documented output only
 }
 
 // Pair is one reported near-duplicate. A and B are Unit keys, ordered A < B so
 // a pair has exactly one spelling and can be matched across runs.
 //
-// Score and the breakdown are corpus-independent: fingerprint.Similarity reads
-// two fingerprints and nothing else. Overlap is corpus-weighted through the
-// information content of this run's tag counts, and MergeWorthy is half so — the
-// signal count is corpus-independent but the 0.4 overlap gate is not. Reasons
-// are display strings; Diff ignores them, because they restate counts that move
-// with corpus churn and would manufacture noise.
+// Score is corpus-independent: fingerprint.Similarity reads two fingerprints
+// and nothing else. Overlap is corpus-weighted through the information content
+// of this run's tag counts, and MergeWorthy is half so — the signal count is
+// corpus-independent but the 0.4 overlap gate is not.
+//
+// Earlier schemas also carried the four fingerprint.Breakdown components and
+// the evidence Reasons strings. Neither was ever read back: the text report
+// renders both straight off analyzer.SimilarPair, never through a snapshot.
+// The Reasons in particular were a quarter of a baseline's bytes — free-text
+// English restating counts that move with corpus churn.
 type Pair struct {
-	A           string   `json:"a"`
-	B           string   `json:"b"`
-	Score       float64  `json:"score"`
-	AST         float64  `json:"ast"`
-	Flow        float64  `json:"flow"`
-	Signature   float64  `json:"signature"`
-	SizeRatio   float64  `json:"sizeRatio"`
-	Overlap     float64  `json:"overlap"`     // corpus-relative
-	MergeWorthy bool     `json:"mergeWorthy"` // half corpus-relative
-	Reasons     []string `json:"reasons,omitempty"`
+	A           string  `json:"a"`
+	B           string  `json:"b"`
+	Score       float64 `json:"score"`
+	Overlap     float64 `json:"overlap"`     // corpus-relative
+	MergeWorthy bool    `json:"mergeWorthy"` // half corpus-relative
 }
 
 // Build assembles a Snapshot from one pipeline run.
@@ -178,20 +182,14 @@ func Build(units []parser.CodeUnit, docs []concepter.ConceptDoc, pairs []analyze
 		}
 		roleCounts[doc.Role]++
 		s.Units = append(s.Units, Unit{
-			Key:       keys[i],
-			Qualified: concepter.QualifiedName(u),
-			Package:   u.Package,
-			Name:      u.Name,
-			File:      relSlash(root, u.File),
-			Line:      u.StartLine,
-			Exported:  u.Exported,
-			Receiver:  u.ReceiverType,
-			Patterns:  append([]string(nil), u.Patterns...),
-			Nodes:     u.Fingerprint.Nodes,
-			Digest:    Digest(u.Fingerprint),
-			Role:      doc.Role,
-			Callers:   len(doc.Callers),
-			Callees:   len(doc.ResolvedCallees),
+			Key:      keys[i],
+			Package:  u.Package,
+			Name:     u.Name,
+			File:     relSlash(root, u.File),
+			Line:     u.StartLine,
+			Patterns: append([]string(nil), u.Patterns...),
+			Digest:   Digest(u.Fingerprint),
+			Role:     doc.Role,
 		})
 	}
 	s.Roles = roleCountsOf(roleCounts)
@@ -202,19 +200,10 @@ func Build(units []parser.CodeUnit, docs []concepter.ConceptDoc, pairs []analyze
 		if a > b {
 			a, b = b, a
 		}
-		rec := Pair{
-			A:         a,
-			B:         b,
-			Score:     pr.Score,
-			AST:       pr.Breakdown.AST,
-			Flow:      pr.Breakdown.Flow,
-			Signature: pr.Breakdown.Signature,
-			SizeRatio: pr.Breakdown.SizeRatio,
-		}
+		rec := Pair{A: a, B: b, Score: pr.Score}
 		if pr.Evidence != nil {
 			rec.Overlap = pr.Evidence.OverlapScore
 			rec.MergeWorthy = pr.Evidence.MergeWorthy
-			rec.Reasons = append([]string(nil), pr.Evidence.Reasons...)
 		}
 		s.Pairs = append(s.Pairs, rec)
 	}

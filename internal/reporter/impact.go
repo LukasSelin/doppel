@@ -111,6 +111,8 @@ func ImpactDigest(d snapshot.Delta, deltaPath string) string {
 	b.WriteString(".\n")
 
 	added, removed := d.AttributablePairs()
+	sortForReading(added)
+	sortForReading(removed)
 	for _, p := range head(added, maxImpactListed) {
 		b.WriteString(fmt.Sprintf("  NEW  %s <-> %s  shape %.2f  overlap %.2f%s\n",
 			p.A, p.B, p.Score, p.Overlap, mergeTag(p.MergeWorthy)))
@@ -229,6 +231,41 @@ func head[T any](s []T, n int) []T {
 		return s[:n]
 	}
 	return s
+}
+
+// sortForReading orders pair changes so the few the digest has room to print
+// are the ones worth printing.
+//
+// Diff hands these over in snapshot order, which is score-first — fine when a
+// session touches one function, useless on a corpus where dozens of pairs move
+// at once and the six that get listed are then whichever happened to score
+// highest on code shape alone. Merge-worthiness leads because it is the only
+// bit here that claims a decision is warranted, and overlap breaks its ties
+// because a shared architectural context is what separates a real merge
+// candidate from two look-alike bodies in unrelated subsystems.
+//
+// This is presentation, and only presentation: the delta still carries every
+// pair, the hook still diffs the full candidate set, and nothing here feeds a
+// score. The trailing name keys make the order total, which the repo's
+// byte-identical-output invariant requires — without them, two pairs equal on
+// all three numbers could swap between runs.
+func sortForReading(pairs []snapshot.PairChange) {
+	sort.SliceStable(pairs, func(i, j int) bool {
+		a, b := pairs[i], pairs[j]
+		if a.MergeWorthy != b.MergeWorthy {
+			return a.MergeWorthy
+		}
+		if a.Overlap != b.Overlap {
+			return a.Overlap > b.Overlap
+		}
+		if a.Score != b.Score {
+			return a.Score > b.Score
+		}
+		if a.A != b.A {
+			return a.A < b.A
+		}
+		return a.B < b.B
+	})
 }
 
 // byCountDesc orders tags by how common they are, for reading. The snapshot
