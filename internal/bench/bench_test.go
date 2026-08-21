@@ -28,9 +28,10 @@ type label struct {
 }
 
 type labelsFile struct {
-	Corpus   string  `json:"corpus"`
-	Reviewed string  `json:"reviewed"`
-	Labels   []label `json:"labels"`
+	Corpus     string  `json:"corpus"`
+	Reviewed   string  `json:"reviewed"`
+	Population string  `json:"population"` // include (default when empty) | exclude | only
+	Labels     []label `json:"labels"`
 }
 
 // pairKey is the canonical unordered identity of a labeled pair.
@@ -48,6 +49,13 @@ func parseLabels(data []byte) (labelsFile, error) {
 	}
 	if lf.Corpus == "" || lf.Reviewed == "" || len(lf.Labels) == 0 {
 		return lf, fmt.Errorf("labels file needs corpus, reviewed, and at least one label")
+	}
+	switch lf.Population {
+	case "":
+		lf.Population = "include"
+	case "include", "exclude", "only":
+	default:
+		return lf, fmt.Errorf("invalid population %q: want include, exclude, or only", lf.Population)
 	}
 	seen := map[string]bool{}
 	for i, l := range lf.Labels {
@@ -78,10 +86,19 @@ func TestLabelsFileWellFormed(t *testing.T) {
 	if _, err := parseLabels([]byte(good)); err != nil {
 		t.Fatalf("valid labels rejected: %v", err)
 	}
+	withPop := `{"corpus":"example","reviewed":"2026-01-01","population":"exclude","labels":[
+		{"a":"alpha.DoThing","b":"beta.DoThing","class":"merge","note":"clone"}]}`
+	if lf, err := parseLabels([]byte(withPop)); err != nil || lf.Population != "exclude" {
+		t.Fatalf("population field mishandled: %v (%+v)", err, lf.Population)
+	}
+	if lf, _ := parseLabels([]byte(good)); lf.Population != "include" {
+		t.Errorf("empty population should default to include, got %q", lf.Population)
+	}
 	bad := []string{
 		`{"corpus":"x","reviewed":"2026-01-01","labels":[{"a":"a.F","b":"b.G","class":"maybe","note":""}]}`,
 		`{"corpus":"x","reviewed":"2026-01-01","labels":[{"a":"a.F","b":"b.G","class":"merge","note":""},{"a":"b.G","b":"a.F","class":"merge","note":"dup reversed"}]}`,
 		`{"corpus":"x","labels":[]}`,
+		`{"corpus":"x","reviewed":"2026-01-01","population":"sometimes","labels":[{"a":"a.F","b":"b.G","class":"merge","note":""}]}`,
 	}
 	for i, src := range bad {
 		if _, err := parseLabels([]byte(src)); err == nil {
@@ -143,10 +160,22 @@ func TestGoldenRanking(t *testing.T) {
 	if err != nil {
 		t.Fatalf("walk corpus: %v", err)
 	}
+	// The labels declare which population they describe; the harness mirrors
+	// the pipeline's --tests filter before any corpus statistic is computed.
+	if lf.Population != "include" {
+		keepTests := lf.Population == "only"
+		kept := units[:0]
+		for _, u := range units {
+			if strings.HasSuffix(u.File, "_test.go") == keepTests {
+				kept = append(kept, u)
+			}
+		}
+		units = kept
+	}
 	if len(units) == 0 {
 		t.Fatal("corpus yielded no functions")
 	}
-	t.Logf("corpus %s: %d functions", lf.Corpus, len(units))
+	t.Logf("corpus %s (population %s): %d functions", lf.Corpus, lf.Population, len(units))
 
 	tagCounts := make(map[ontology.TermID]int)
 	for i := range units {

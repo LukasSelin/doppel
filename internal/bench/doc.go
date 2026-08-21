@@ -11,6 +11,7 @@
 //	{
 //	  "corpus": "<freeform name chosen by the label author>",
 //	  "reviewed": "2026-08-21",
+//	  "population": "include" | "exclude" | "only",   // which --tests view the labels describe; default include
 //	  "labels": [
 //	    {"a": "pkg.FuncA", "b": "pkg.*Recv.FuncB",
 //	     "class": "merge" | "refactor" | "false_positive",
