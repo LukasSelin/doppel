@@ -628,6 +628,13 @@ component small enough to complete but pathologically dense). A tripped guard re
 size in `Stats.Skipped` and emits **no** families for it, rather than presenting a partial
 enumeration as the answer.
 
+**The census ranks by evidence, not size.** `Family.Evidence` sums `Retrieval.Total` over the
+clique edges retrieval proposed (completed edges contribute zero — an edge retrieval never found
+informative enough to propose adds shape to the guarantee but no energy to the rank), and
+`sortFamilies` orders by it first. Ranked by member count, every large corpus led with its biggest
+*idiom* family — moby's was 44 mutex-guarded getters, mostly stitched by completion. Under
+evidence the family section and the pair list rank in the same currency and tell one story.
+
 **Where it runs is load-bearing.** The family stage lives in the `cmd` command functions, never in
 `finishAnalyze`: `cmd/hook.go` calls `analyze()` directly and snapshots `res.Pairs`, so a stage
 inside the pipeline would change every baseline and delta. It reads `res.Pairs` — the full
