@@ -1,6 +1,9 @@
 package analyzer
 
-import "sort"
+import (
+	"sort"
+	"strings"
+)
 
 // SortByEvidence orders pairs for the final report: retrieval evidence mass
 // descending (a nil Retrieval counts as zero), then fingerprint score
@@ -46,6 +49,8 @@ func SortByEvidence(pairs []SimilarPair, topN int) []SimilarPair {
 // the pair is discounted once per side that does its own thing. (A linear
 // factor verifiably leaves a skeleton sibling within a fraction of a percent
 // of a true family clone; the golden benchmark pins the separation.)
+// Pairs where both sides live in _test.go files carry one further linear
+// factor, CallSim — SUT-aware test discounting; see the comment at the key.
 // No displayed quantity changes. A nil Evidence contributes factor 1;
 // a nil Retrieval ranks 0, matching SortByEvidence. Ties break on Score
 // desc, then AIdx, BIdx.
@@ -66,6 +71,17 @@ func SortForReport(pairs []SimilarPair, topN, maxPerFunc int) ([]SimilarPair, in
 		k := p.Retrieval.Total * p.Score * t * t
 		if p.Evidence != nil {
 			k *= p.Evidence.OverlapScore
+		}
+		// SUT-aware test discounting: two tests are related through what
+		// they exercise, not through their driver skeleton — near-identical
+		// table-driven harnesses over different functions share no
+		// informative call tokens and key to zero, while tests of the same
+		// machinery keep their shared call mass. The suffix is the same
+		// compiler-recognized distinction --tests uses. Production pairs are
+		// untouched; under --tests only, the whole hygiene view becomes
+		// SUT-aware, which is the point.
+		if strings.HasSuffix(p.A.File, "_test.go") && strings.HasSuffix(p.B.File, "_test.go") {
+			k *= p.Retrieval.CallSim
 		}
 		return k
 	}

@@ -182,6 +182,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 				Call:       c.Call,
 				Total:      c.Total,
 				TrophicSim: c.TrophicSim,
+				CallSim:    c.CallSim,
 				Channels:   c.Channels,
 				Chains:     sharedChains(c.Chains),
 			},

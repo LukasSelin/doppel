@@ -84,6 +84,7 @@ type Retrieval struct {
 	Call       float64       // shared rare-call IDF mass
 	Total      float64       // Shape + Concept + Call
 	TrophicSim float64       // 2·SharedEnergy/(E_A+E_B): how much of their structure is shared
+	CallSim    float64       // call-channel Dice: mutual fraction of informative call energy
 	Channels   []string      // which retrieval channels admitted the pair
 	Chains     []SharedChain // highest-energy shared structures, the explanation
 }

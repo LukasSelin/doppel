@@ -97,6 +97,63 @@ func TestSortForReportFamilySkeletonBelowFamilyClones(t *testing.T) {
 	}
 }
 
+// SUT-aware test discounting: two tests with near-identical driver skeletons
+// but no shared informative calls (CallSim 0 — they exercise different
+// machinery) must sink below both production pairs and same-SUT test pairs.
+// Production pairs never carry the CallSim factor.
+func TestSortForReportSUTAwareTestDiscount(t *testing.T) {
+	testPair := func(aIdx, bIdx int, total, overlap, score, trophic, callSim float64) SimilarPair {
+		p := corroboratedT(aIdx, bIdx, total, overlap, score, trophic)
+		p.Retrieval.CallSim = callSim
+		p.A.File = "pkg/a_test.go"
+		p.B.File = "pkg/b_test.go"
+		return p
+	}
+	pairs := []SimilarPair{
+		// The old-#6 shape: huge evidence, high overlap, decent trophic —
+		// but zero shared informative calls.
+		testPair(0, 1, 1812.48, 0.68, 0.53, 0.72, 0.0),
+		// A same-SUT test pair: modest numbers but real shared call mass.
+		testPair(2, 3, 400.00, 0.60, 0.80, 0.85, 0.60),
+		// A production pair with low CallSim that must NOT be discounted.
+		func() SimilarPair {
+			p := corroboratedT(4, 5, 300.00, 0.59, 0.92, 0.93)
+			p.Retrieval.CallSim = 0.0
+			p.A.File = "pkg/a.go"
+			p.B.File = "pkg/b.go"
+			return p
+		}(),
+	}
+	kept, _ := SortForReport(pairs, 0, 0)
+	var order []int
+	for _, p := range kept {
+		order = append(order, p.AIdx)
+	}
+	// prod pair ≈ 141; same-SUT test pair ≈ 83; zero-CallSim test pair = 0.
+	if want := []int{4, 2, 0}; !reflect.DeepEqual(order, want) {
+		t.Errorf("order = %v, want %v (prod, same-SUT test, skeleton test last)", order, want)
+	}
+	// A mixed test/prod pair is not discounted either.
+	mixed := corroboratedT(6, 7, 100, 0.5, 0.5, 0.5)
+	mixed.Retrieval.CallSim = 0.0
+	mixed.A.File = "pkg/a_test.go"
+	mixed.B.File = "pkg/b.go"
+	kept, _ = SortForReport([]SimilarPair{mixed}, 0, 0)
+	if len(kept) != 1 || kept[0].Retrieval.Total != 100 {
+		t.Fatal("mixed pair mangled")
+	}
+	// Its key must be nonzero (no CallSim factor): verify it outranks a
+	// true test pair with CallSim 0.
+	zeroTest := corroboratedT(8, 9, 100, 0.5, 0.5, 0.5)
+	zeroTest.Retrieval.CallSim = 0.0
+	zeroTest.A.File = "x_test.go"
+	zeroTest.B.File = "y_test.go"
+	kept, _ = SortForReport([]SimilarPair{zeroTest, mixed}, 0, 0)
+	if kept[0].AIdx != 6 {
+		t.Errorf("mixed pair should outrank the zero-CallSim test pair, got %v first", kept[0].AIdx)
+	}
+}
+
 func TestSortForReportNilFallbacks(t *testing.T) {
 	noEvidence := SimilarPair{AIdx: 0, BIdx: 1, Score: 0.5, Retrieval: &Retrieval{Total: 100, TrophicSim: 1}}
 	noRetrieval := SimilarPair{AIdx: 2, BIdx: 3, Score: 0.99}
