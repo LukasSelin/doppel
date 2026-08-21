@@ -1,0 +1,86 @@
+name: Wiki
+
+# The repo is the source of truth for the wiki: .github/wiki/ is authored and
+# reviewed like code, and github.com/LukasSelin/doppel/wiki is a rendered view
+# of it. Editing a page in the wiki UI is not durable — the next sync overwrites
+# it.
+on:
+  push:
+    branches: [master]
+    paths:
+      # The whole "a markdown page changed" condition, evaluated by GitHub for
+      # free: the job does not start at all for unrelated commits.
+      - '.github/wiki/**'
+      # A change to the sync logic itself should re-run the sync.
+      - '.github/workflows/wiki.yml'
+
+permissions:
+  contents: write
+
+# A wiki has no branches, so two runs must serialize rather than race.
+# Deliberately not cancel-in-progress: cancelling mid-push is the one way to
+# leave the wiki half-written.
+concurrency:
+  group: wiki
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # checkout rather than a hand-rolled `git clone` with the token in the
+      # URL: it passes credentials via http.extraheader and tears them down
+      # afterwards, so the token never lands in .git/config or a log line.
+      # persist-credentials stays at its default so the push below authenticates.
+      - name: Check out the wiki
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+
+      - name: Mirror .github/wiki into the wiki checkout
+        run: |
+          set -euo pipefail
+
+          # Wiki page names are flat, so nested sources would silently collide
+          # (a/page.md and b/page.md becoming one page). Fail loudly instead.
+          if find .github/wiki -mindepth 1 -type d | grep -q .; then
+            echo "::error::.github/wiki must be flat — wiki page names cannot nest." >&2
+            find .github/wiki -mindepth 1 -type d >&2
+            exit 1
+          fi
+
+          # An exact mirror: dropping the existing pages first is what makes a
+          # deletion in the repo delete the page.
+          find wiki -maxdepth 1 -name '*.md' -delete
+
+          for src in .github/wiki/*.md; do
+            base="$(basename "$src" .md)"
+            # how-it-works.md -> How-it-works.md, which GitHub titles
+            # "How it works" and serves at /wiki/How-it-works.
+            page="$(printf '%s' "${base%"${base#?}"}" | tr '[:lower:]' '[:upper:]')${base#?}"
+            cp "$src" "wiki/${page}.md"
+            echo "$src -> ${page}.md"
+          done
+
+      - name: Commit and push
+        working-directory: wiki
+        run: |
+          set -euo pipefail
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "wiki already matches .github/wiki — nothing to push"
+            exit 0
+          fi
+
+          # Name the source commit so a wiki change is traceable back to what
+          # caused it.
+          git commit -m "docs(wiki): sync from ${GITHUB_SHA:0:7}"
+          git push
