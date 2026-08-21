@@ -130,6 +130,31 @@ func guarded(mtx *sync.Mutex, done func()) {
 	}
 }
 
+// A nested selector like c.httpClient.Do records both the inner pair and the
+// tail pair, so a call through a struct field is visible to receiver rules —
+// the wrapper-client blindness that made http_call report zero on wrapper
+// codebases.
+func TestNestedSelectorRecordsTailPair(t *testing.T) {
+	u := parseOne(t, `package demo
+
+func (c *client) send(req *request) (*response, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.httpClient.Do(req.raw)
+}
+`)
+	sig := u.Signals
+	if !sig.AnySelector("httpClient.Do") {
+		t.Errorf("selectors = %v, want the tail pair httpClient.Do", sig.Selectors)
+	}
+	if !sig.AnySelector("c.httpClient") {
+		t.Errorf("selectors = %v, want the inner pair c.httpClient still recorded", sig.Selectors)
+	}
+	if !sig.AnyReceiver("httpClient") || !sig.AnyReceiver("mu") {
+		t.Errorf("receiver matching does not see field receivers: selectors = %v", sig.Selectors)
+	}
+}
+
 // Bare calls arrive as identifiers, and AnyMethod must see them too.
 func TestAnyMethodSeesBareCalls(t *testing.T) {
 	u := parseOne(t, `package demo

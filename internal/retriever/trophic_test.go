@@ -113,6 +113,12 @@ func Filler(m map[string]int) string {
 	units := parseUnits(t, "fix.go", b.String())
 	opt := DefaultOptions()
 	opt.MinNodes = 8
+	// This three-function corpus is degenerate: every shared pattern has the
+	// same idf, so the L4 flow edges (count 2) tie or beat the loop motif
+	// (count 1) on energy and would crowd it out of the default top 3. On a
+	// real corpus idf separates them; here, widen the cap so the assertion
+	// tests presence in the explanation, not victory in a rigged tie.
+	opt.ChainTopN = 10
 
 	cands, _ := retrieveAll(t, units, opt)
 	pair, ok := findCandidate(cands, unitIndex(t, units, "ReadA"), unitIndex(t, units, "ReadB"))

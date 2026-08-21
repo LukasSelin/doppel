@@ -39,8 +39,13 @@ func shape(seed uint64) fingerprint.Fingerprint {
 	return fingerprint.Fingerprint{
 		Shingles: sh,
 		Flow:     flow,
-		Types:    []string{string(rune('a' + seed%26))},
-		Nodes:    40,
+		// Real Build output always carries a depth histogram; a fixture
+		// without one loses the depth component's weight (empty-vs-empty
+		// cosine is 0) and can never reach the exact 1.0 the completion
+		// tests pin.
+		Depth: []int{1},
+		Types: []string{string(rune('a' + seed%26))},
+		Nodes: 40,
 	}
 }
 

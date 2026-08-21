@@ -10,7 +10,7 @@ Everything below happens in one pass, in this order — the shape of it matters,
 flowchart TD
     parse["1 · Walk and parse<br/>go/ast → CodeUnit + Fingerprint"]
     pop["2 · Population filter"]
-    tag["3 · Tag + corpus IC<br/>9 intent tags, tag frequencies"]
+    tag["3 · Tag + corpus IC<br/>14 intent tags, tag frequencies"]
     cg["4 · Call graph<br/>resolved, repo-internal, qualified names"]
     docs["5 · Concept docs<br/>callers, callees, neighbourhood, role"]
     cult["6 · Culture model<br/>typicality, habitats, arenas"]
@@ -109,8 +109,9 @@ Structural comparison used to compare strings. Two functions tagged `http_call` 
 I/O. Roles were just as binary: `utility` and `passthrough` scored zero against each other despite
 both being called from many places.
 
-The nine tags are now leaves of a small taxonomy. Everything above them is abstract: those interior
-nodes (rounded, below) never describe a real function, they exist only to relate the leaves.
+The fourteen tags are now leaves of a small taxonomy. Everything above them is abstract: those
+interior nodes (rounded, below) never describe a real function, they exist only to relate the
+leaves.
 
 ```mermaid
 flowchart TD
@@ -130,17 +131,22 @@ flowchart TD
 
     io --> remote
     io --> store
+    io --> file_io["file_io"]
+    io --> logging["logging"]
     remote --> http_call["http_call"]
+    remote --> grpc_call["grpc_call"]
     store --> db_access["db_access"]
     store --> caching["caching"]
     store --> transaction["transaction"]
 
     xform --> mapping["mapping"]
     xform --> validation["validation"]
+    xform --> serialization["serialization"]
 
     ctrl --> concurrency["concurrency"]
     ctrl --> fault
     fault --> retry["retry"]
+    fault --> circuit_breaker["circuit_breaker"]
 
     err --> error_wrapping["error_wrapping"]
 ```
@@ -152,6 +158,8 @@ on the graph above:
 | --- | --- | --- |
 | `db_access` / `db_access` | itself | 1.00 |
 | `db_access` / `caching` | `data_store_access` | 0.67 |
+| `http_call` / `grpc_call` | `remote_io` | 0.67 |
+| `file_io` / `logging` | `io_operation` | 0.50 |
 | `http_call` / `db_access` | `io_operation` | 0.33 |
 | `http_call` / `retry` | the root | 0.00 |
 

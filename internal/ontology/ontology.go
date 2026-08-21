@@ -20,7 +20,13 @@ import "sort"
 
 // Version identifies the vocabulary itself, so a change in term IDs or
 // taxonomy shape is nameable in a report or a changelog.
-const Version = "1.0.0"
+//
+// 1.1.0: five leaves added — grpc_call and circuit_breaker fill the reserved
+// unary slots; serialization (taking json.Marshal/Unmarshal over from
+// mapping), file_io and logging widen coverage. No existing node moved, so
+// every 1.0.0 pairwise relatedness is unchanged; corpus IC redistributes
+// because add-one smoothing now spans fourteen leaves.
+const Version = "1.1.0"
 
 // Kind partitions terms into four disjoint families, each a rooted tree.
 type Kind string

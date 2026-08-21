@@ -15,15 +15,26 @@ import (
 )
 
 // Weights for each component of the composite similarity Score.
-// They sum to exactly 1.00.
+// They sum to exactly 1.00. Depth's 0.05 was carved entirely out of Flow
+// (0.25 → 0.20): nesting is flow-adjacent information, so flow pays for it
+// rather than taxing the AST or signature components.
 const (
 	weightAST       = 0.60
-	weightFlow      = 0.25
+	weightFlow      = 0.20
+	weightDepth     = 0.05
 	weightSignature = 0.15
 )
 
 // shingleK is the sliding-window width over the AST token stream.
 const shingleK = 3
+
+// depthBuckets is the length of the nesting-depth histogram: control-flow
+// entry depths 0-4 each get a bucket and everything deeper folds into the
+// last. Without this histogram two functions with identical token bags but
+// different nesting — a flat if/if against an if nested in an if — were
+// indistinguishable: flattened tokens carry no depth and the flow histogram
+// only counts kinds.
+const depthBuckets = 6
 
 // Control-flow histogram slots. Order is fixed; flowKinds must stay last.
 const (
@@ -53,6 +64,7 @@ var FlowLabels = [flowKinds]string{
 type Fingerprint struct {
 	Shingles []uint64  // sorted, deduped FNV-1a hashes of AST 3-grams
 	Flow     []int     // control-flow node histogram, length flowKinds
+	Depth    []int     // control-flow entry-depth histogram, length depthBuckets
 	Types    []string  // sorted, deduped normalized param + result types
 	Nodes    int       // AST node count of the body (size / triviality guard)
 	Patterns []Pattern // multi-level structural pattern multiset, sorted by hash
@@ -62,6 +74,7 @@ type Fingerprint struct {
 type Breakdown struct {
 	AST       float64 // Jaccard over AST 3-gram shingles
 	Flow      float64 // cosine over the control-flow histogram
+	Depth     float64 // cosine over the nesting-depth histogram (reported as nesting:)
 	Signature float64 // Jaccard over normalized parameter and result types
 	SizeRatio float64 // min(Nodes)/max(Nodes); reported, not scored
 	Score     float64 // weighted composite, 0.0-1.0
@@ -73,13 +86,14 @@ func Build(fd *ast.FuncDecl) Fingerprint {
 	if fd == nil || fd.Body == nil {
 		return Fingerprint{}
 	}
-	tokens, flow, nodes := walk(fd.Body)
+	tokens, flow, depth, nodes := walk(fd.Body)
 	return Fingerprint{
 		Shingles: shingle(tokens),
 		Flow:     flow,
+		Depth:    depth,
 		Types:    typeStrings(fd.Type),
 		Nodes:    nodes,
-		Patterns: extractPatterns(fd.Body, tokens),
+		Patterns: extractPatterns(fd, tokens),
 	}
 }
 
@@ -92,10 +106,11 @@ func Similarity(a, b Fingerprint) Breakdown {
 	bd := Breakdown{
 		AST:       jaccardUint64(a.Shingles, b.Shingles),
 		Flow:      cosineInts(a.Flow, b.Flow),
+		Depth:     cosineInts(a.Depth, b.Depth),
 		Signature: jaccardStrings(a.Types, b.Types),
 		SizeRatio: ratio(a.Nodes, b.Nodes),
 	}
-	bd.Score = weightAST*bd.AST + weightFlow*bd.Flow + weightSignature*bd.Signature
+	bd.Score = weightAST*bd.AST + weightFlow*bd.Flow + weightDepth*bd.Depth + weightSignature*bd.Signature
 	if bd.Score > 1.0 {
 		bd.Score = 1.0
 	}
@@ -107,43 +122,85 @@ func Similarity(a, b Fingerprint) Breakdown {
 // a copy with every variable renamed still produces the same token stream.
 // Call targets keep their selector name because it carries real intent
 // (Errorf, Query, Lock).
-func walk(body *ast.BlockStmt) (tokens []string, flow []int, nodes int) {
+//
+// Alongside the tokens it histograms control-flow nesting: every flow-slot
+// node records the depth it was entered at (bucketed, deep tails folded into
+// the last bucket), and the seven statement-bearing constructs — if, for,
+// range, switch, type switch, select, funclit — push a nesting level for
+// their children. The bool stack pairs each push with the f(nil) call
+// ast.Inspect makes after a node's children, which is the only reliable
+// after-children hook Inspect offers.
+func walk(body *ast.BlockStmt) (tokens []string, flow, depth []int, nodes int) {
 	flow = make([]int, flowKinds)
+	depth = make([]int, depthBuckets)
+	nesting := 0
+	var nests []bool
+	enter := func() {
+		b := nesting
+		if b > depthBuckets-1 {
+			b = depthBuckets - 1
+		}
+		depth[b]++
+	}
 	ast.Inspect(body, func(n ast.Node) bool {
 		if n == nil {
+			if last := len(nests) - 1; last >= 0 {
+				if nests[last] {
+					nesting--
+				}
+				nests = nests[:last]
+			}
 			return false
 		}
 		nodes++
+		opens := false
 		switch node := n.(type) {
 		case *ast.IfStmt:
 			flow[flowIf]++
+			enter()
+			opens = true
 			tokens = append(tokens, "IF")
 		case *ast.ForStmt:
 			flow[flowFor]++
+			enter()
+			opens = true
 			tokens = append(tokens, "FOR")
 		case *ast.RangeStmt:
 			flow[flowRange]++
+			enter()
+			opens = true
 			tokens = append(tokens, "RANGE")
 		case *ast.SwitchStmt:
 			flow[flowSwitch]++
+			enter()
+			opens = true
 			tokens = append(tokens, "SWITCH")
 		case *ast.TypeSwitchStmt:
 			flow[flowTypeSwitch]++
+			enter()
+			opens = true
 			tokens = append(tokens, "TYPESWITCH")
 		case *ast.SelectStmt:
 			flow[flowSelect]++
+			enter()
+			opens = true
 			tokens = append(tokens, "SELECT")
 		case *ast.ReturnStmt:
 			flow[flowReturn]++
+			enter()
 			tokens = append(tokens, "RETURN")
 		case *ast.DeferStmt:
 			flow[flowDefer]++
+			enter()
 			tokens = append(tokens, "DEFER")
 		case *ast.GoStmt:
 			flow[flowGo]++
+			enter()
 			tokens = append(tokens, "GO")
 		case *ast.FuncLit:
 			flow[flowFuncLit]++
+			enter()
+			opens = true
 			tokens = append(tokens, "FUNCLIT")
 		case *ast.CallExpr:
 			tokens = append(tokens, "CALL")
@@ -179,9 +236,13 @@ func walk(body *ast.BlockStmt) (tokens []string, flow []int, nodes int) {
 		case *ast.Ident:
 			tokens = append(tokens, "ID")
 		}
+		if opens {
+			nesting++
+		}
+		nests = append(nests, opens)
 		return true
 	})
-	return tokens, flow, nodes
+	return tokens, flow, depth, nodes
 }
 
 // calleeName mirrors the selector handling in extractCallees over in the parser

@@ -244,6 +244,18 @@ func TestDigestDetectsBodyChange(t *testing.T) {
 	}
 }
 
+// A nesting change is a body change: two fingerprints identical except for
+// the Depth histogram must digest differently (schema 4).
+func TestDigestDetectsNestingChange(t *testing.T) {
+	flat := unit("p", "F", "p/a.go", 1, 20).Fingerprint
+	nested := flat
+	flat.Depth = []int{2, 0}   // two ifs, sequential
+	nested.Depth = []int{1, 1} // the same two ifs, one inside the other
+	if Digest(flat) == Digest(nested) {
+		t.Error("digest did not change when only the nesting-depth histogram did")
+	}
+}
+
 // The comparator judges architectural context and has no fingerprint to judge
 // shape with, so Build is where the two halves of the verdict meet. A pair
 // whose context clears the gate but whose bodies barely resemble each other is

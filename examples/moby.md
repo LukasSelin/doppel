@@ -9,7 +9,7 @@ container engine; a decade of accretion across daemon, API, and plugin layers
 | Corpus | [moby](https://github.com/moby/moby) |
 | Pinned at | `v28.5.2` (`89c5e8fd66634b6128fc4c0e6f1236e2540e46e0`) |
 | Project since | 2013 |
-| doppel | `706150c` |
+| doppel | `b6eeaeb` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -22,16 +22,16 @@ The corpus-level models doppel builds before ranking anything, as printed to std
 ```
 Scanning . ...
 Generating concept documents...
-Culture: 9 concepts modeled, 548 associations, 95 unusual realizations
-Habitats: 168 modeled, 368 misfits; most uniform checker (norm 0.98), most diverse vfs (norm 0.56)
+Culture: 12 concepts modeled, 803 associations, 113 unusual realizations
+Habitats: 168 modeled, 371 misfits; most uniform checker (norm 0.98), most diverse vfs (norm 0.56)
 Conventions: strongest error_wrapping (0.62), loosest db_access (0.37)
-Ecosystems: 3903 profiled (3712 dominance, 191 coalition, 0 conflict, 0 weak)
+Ecosystems: 4050 profiled (3750 dominance, 300 coalition, 0 conflict, 0 weak)
 Found 8003 functions. Retrieving candidates...
-Retrieval: shape 4137, concept 1271, call 12559 -> 16514 unique pairs
-  concept-only 7.4%  call-only 67.3%  suppressed-shape functions: 376  large identity buckets: 4  surviving patterns: 19542
-Running structural comparison on 16514 pairs...
-Families: 603 over 706 components, 1536 functions in a family, 2963 edges completed
-  6 pairs suppressed by max-per-func=2
+Retrieval: shape 4710, concept 2410, call 12559 -> 18189 unique pairs
+  concept-only 12.6%  call-only 61.1%  suppressed-shape functions: 204  large identity buckets: 4  surviving patterns: 46820
+Running structural comparison on 18189 pairs...
+Families: 675 over 721 components, 1735 functions in a family, 3526 edges completed
+  4 pairs suppressed by max-per-func=2
 ```
 
 # Code Similarity Report
@@ -51,21 +51,21 @@ Families: 603 over 706 components, 1536 functions in a family, 2963 edges comple
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.92  flow 1.00  sig 1.00  size 0.99`
+**Code similarity:** `ast 0.92  flow 1.00  nesting 1.00  sig 1.00  size 0.99`
 
-**Evidence:** `1246.08` (shape 1230.35, concept 1.74, call 13.99)
+**Evidence:** `3376.91` (shape 3360.95, concept 1.98, call 13.99)
 
 **Trophic:** `0.95`
 
 **Shared structure:**
 
+- `36.74` — `flow:call:int→cond`
 - `27.90` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
 - `27.90` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
-- `27.90` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
 
-**Habitat:** A fits poorly in `networkdb` (fit 0.20, package norm 0.69)
+**Habitat:** A fits poorly in `networkdb` (fit 0.21, package norm 0.68)
 
-**Habitat:** B fits poorly in `networkdb` (fit 0.20, package norm 0.69)
+**Habitat:** B fits poorly in `networkdb` (fit 0.21, package norm 0.68)
 
 **Structural overlap:** `0.76` (merge-worthy)
 
@@ -92,21 +92,21 @@ Families: 603 over 706 components, 1536 functions in a family, 2963 edges comple
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.87  flow 1.00  sig 1.00  size 0.80`
+**Code similarity:** `ast 0.87  flow 1.00  nesting 1.00  sig 1.00  size 0.80`
 
-**Evidence:** `1322.73` (shape 1307.00, concept 1.74, call 13.99)
+**Evidence:** `3585.27` (shape 3569.31, concept 1.98, call 13.99)
 
-**Trophic:** `0.92`
+**Trophic:** `0.91`
 
 **Shared structure:**
 
+- `36.74` — `flow:call:int→cond`
 - `27.90` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
 - `27.90` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
-- `27.90` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
 
-**Habitat:** A fits poorly in `networkdb` (fit 0.20, package norm 0.69)
+**Habitat:** A fits poorly in `networkdb` (fit 0.21, package norm 0.68)
 
-**Habitat:** B fits poorly in `networkdb` (fit 0.20, package norm 0.69)
+**Habitat:** B fits poorly in `networkdb` (fit 0.21, package norm 0.68)
 
 **Structural overlap:** `0.77` (merge-worthy)
 
@@ -133,21 +133,21 @@ Families: 603 over 706 components, 1536 functions in a family, 2963 edges comple
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.85  flow 1.00  sig 1.00  size 0.98`
+**Code similarity:** `ast 0.85  flow 1.00  nesting 1.00  sig 1.00  size 0.98`
 
-**Evidence:** `1397.87` (shape 1396.13, concept 1.74, call 0.00)
+**Evidence:** `3918.16` (shape 3916.18, concept 1.98, call 0.00)
 
-**Trophic:** `0.93`
+**Trophic:** `0.92`
 
 **Shared structure:**
 
+- `47.24` — `flow:call:int→cond`
 - `33.48` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
 - `33.48` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
-- `33.48` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
 
 **Habitat:** A fits poorly in `logdriver` (fit 0.05, package norm 0.71)
 
-**Habitat:** B fits poorly in `networkdb` (fit 0.20, package norm 0.69)
+**Habitat:** B fits poorly in `networkdb` (fit 0.21, package norm 0.68)
 
 **Structural overlap:** `0.63` (merge-worthy)
 
@@ -173,19 +173,19 @@ Families: 603 over 706 components, 1536 functions in a family, 2963 edges comple
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.68  flow 1.00  sig 1.00  size 0.81`
+**Code similarity:** `ast 0.68  flow 1.00  nesting 1.00  sig 1.00  size 0.81`
 
-**Evidence:** `1880.68` (shape 1878.93, concept 1.74, call 0.00)
+**Evidence:** `5353.56` (shape 5351.58, concept 1.98, call 0.00)
 
-**Trophic:** `0.83`
+**Trophic:** `0.81`
 
 **Shared structure:**
 
+- `73.49` — `flow:call:int→cond`
 - `50.21` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
 - `50.21` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
-- `50.21` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
 
-**Habitat:** B fits poorly in `networkdb` (fit 0.20, package norm 0.69)
+**Habitat:** B fits poorly in `networkdb` (fit 0.21, package norm 0.68)
 
 **Structural overlap:** `0.63` (merge-worthy)
 
@@ -211,21 +211,21 @@ Families: 603 over 706 components, 1536 functions in a family, 2963 edges comple
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.96  flow 1.00  sig 1.00  size 0.79`
+**Code similarity:** `ast 0.96  flow 1.00  nesting 1.00  sig 1.00  size 0.79`
 
-**Evidence:** `1068.18` (shape 1052.45, concept 1.74, call 13.99)
+**Evidence:** `2820.15` (shape 2804.18, concept 1.98, call 13.99)
 
-**Trophic:** `0.91`
+**Trophic:** `0.89`
 
 **Shared structure:**
 
+- `26.24` — `flow:call:int→cond`
+- `26.07` — `flow:call:skipNetworkdb→cond`
 - `22.32` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
-- `22.32` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
-- `22.32` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
 
-**Habitat:** A fits poorly in `networkdb` (fit 0.20, package norm 0.69)
+**Habitat:** A fits poorly in `networkdb` (fit 0.21, package norm 0.68)
 
-**Habitat:** B fits poorly in `networkdb` (fit 0.20, package norm 0.69)
+**Habitat:** B fits poorly in `networkdb` (fit 0.21, package norm 0.68)
 
 **Structural overlap:** `0.76` (merge-worthy)
 
@@ -241,48 +241,85 @@ Families: 603 over 706 components, 1536 functions in a family, 2963 edges comple
 
 ---
 
-## Match #6 — Code-shape: `0.8945`
+## Match #6 — Code-shape: `0.8702`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `libnetwork/networkdb/networkdb.pb.go:1824` | `networkdb.*NodeEvent.Unmarshal` | ` ` | validation |
-| **B** | `libnetwork/networkdb/networkdb.pb.go:2249` | `networkdb.*NetworkPushPull.Unmarshal` | ` ` | validation |
+| **A** | `api/types/plugins/logdriver/entry.pb.go:360` | `logdriver.*LogEntry.Unmarshal` | ` ` | validation |
+| **B** | `daemon/cluster/internal/runtime/plugin.pb.go:379` | `runtime.*PluginSpec.Unmarshal` | ` ` | validation |
 
 **Profile A:** `validation` 1.00 (dominance)
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.82  flow 1.00  sig 1.00  size 0.86`
+**Code similarity:** `ast 0.78  flow 1.00  nesting 1.00  sig 1.00  size 0.94`
 
-**Evidence:** `1031.56` (shape 1015.83, concept 1.74, call 13.99)
+**Evidence:** `3728.21` (shape 3726.23, concept 1.98, call 0.00)
 
-**Trophic:** `0.95`
+**Trophic:** `0.86`
 
 **Shared structure:**
 
-- `22.32` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
-- `22.32` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
-- `22.32` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
+- `47.24` — `flow:call:int→cond`
+- `33.48` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
+- `33.48` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
 
-**Habitat:** A fits poorly in `networkdb` (fit 0.20, package norm 0.69)
+**Habitat:** A fits poorly in `logdriver` (fit 0.05, package norm 0.71)
 
-**Habitat:** B fits poorly in `networkdb` (fit 0.20, package norm 0.69)
+**Habitat:** B fits poorly in `runtime` (fit 0.06, package norm 0.70)
 
-**Structural overlap:** `0.75` (merge-worthy)
+**Structural overlap:** `0.65` (merge-worthy)
 
-- share 9 callees: [fmt.Errorf, github_com_hashicorp_serf_serf.LamportTime, int, int32, len, skipNetworkdb, string, uint, uint64]
+- share 10 callees: [Unmarshal, append, bool, fmt.Errorf, int, int32, len, string, uint, uint64]
 - overlapping call-graph neighborhoods (1.00): 106 shared
 - share patterns: [validation]
 - both are orchestrator functions
-- same package
 - callees do related work (1.00): [validation]
 - same visibility
-- both are methods, on *NodeEvent and *NetworkPushPull
-- call into same packages: [ipbits, networkdb]
+- both are methods, on *LogEntry and *PluginSpec
+- call into same packages: [ipbits]
 
 ---
 
-## Match #7 — Code-shape: `1.0000`
+## Match #7 — Code-shape: `0.9631`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `daemon/cluster/internal/runtime/plugin.pb.go:379` | `runtime.*PluginSpec.Unmarshal` | ` ` | validation |
+| **B** | `libnetwork/agent.pb.go:618` | `libnetwork.*EndpointRecord.Unmarshal` | ` ` | validation |
+
+**Profile A:** `validation` 1.00 (dominance)
+
+**Profile B:** `validation` 1.00 (dominance)
+
+**Code similarity:** `ast 0.94  flow 1.00  nesting 1.00  sig 1.00  size 0.61`
+
+**Evidence:** `4323.69` (shape 4321.71, concept 1.98, call 0.00)
+
+**Trophic:** `0.74`
+
+**Shared structure:**
+
+- `52.49` — `flow:call:int→cond`
+- `33.48` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
+- `33.48` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
+
+**Habitat:** A fits poorly in `runtime` (fit 0.06, package norm 0.70)
+
+**Structural overlap:** `0.66` (merge-worthy)
+
+- share 10 callees: [Unmarshal, append, bool, fmt.Errorf, int, int32, len, string, uint, uint64]
+- overlapping call-graph neighborhoods (1.00): 106 shared
+- share patterns: [validation]
+- both are orchestrator functions
+- callees do related work (1.00): [validation]
+- same visibility
+- both are methods, on *PluginSpec and *EndpointRecord
+- call into same packages: [ipbits]
+
+---
+
+## Match #8 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -293,9 +330,9 @@ Families: 603 over 706 components, 1536 functions in a family, 2963 edges comple
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 1.00`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `846.31` (shape 844.57, concept 1.74, call 0.00)
+**Evidence:** `2122.40` (shape 2120.42, concept 1.98, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -322,7 +359,7 @@ Families: 603 over 706 components, 1536 functions in a family, 2963 edges comple
 
 ---
 
-## Match #8 — Code-shape: `1.0000`
+## Match #9 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -333,9 +370,9 @@ Families: 603 over 706 components, 1536 functions in a family, 2963 edges comple
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 1.00`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `846.31` (shape 844.57, concept 1.74, call 0.00)
+**Evidence:** `2122.40` (shape 2120.42, concept 1.98, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -360,7 +397,7 @@ Families: 603 over 706 components, 1536 functions in a family, 2963 edges comple
 
 ---
 
-## Match #9 — Code-shape: `1.0000`
+## Match #10 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -371,9 +408,9 @@ Families: 603 over 706 components, 1536 functions in a family, 2963 edges comple
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 1.00  flow 1.00  sig 1.00  size 1.00`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `846.31` (shape 844.57, concept 1.74, call 0.00)
+**Evidence:** `2122.40` (shape 2120.42, concept 1.98, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -398,49 +435,9 @@ Families: 603 over 706 components, 1536 functions in a family, 2963 edges comple
 
 ---
 
-## Match #10 — Code-shape: `0.8702`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `api/types/plugins/logdriver/entry.pb.go:360` | `logdriver.*LogEntry.Unmarshal` | ` ` | validation |
-| **B** | `daemon/cluster/internal/runtime/plugin.pb.go:379` | `runtime.*PluginSpec.Unmarshal` | ` ` | validation |
-
-**Profile A:** `validation` 1.00 (dominance)
-
-**Profile B:** `validation` 1.00 (dominance)
-
-**Code similarity:** `ast 0.78  flow 1.00  sig 1.00  size 0.94`
-
-**Evidence:** `1338.05` (shape 1336.30, concept 1.74, call 0.00)
-
-**Trophic:** `0.89`
-
-**Shared structure:**
-
-- `33.48` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
-- `33.48` — `seq[ if(bin:>=(id,id)) ; assign:=(index) ]`
-- `33.48` — `seq[ if(bin:>=(id,lit:INT)) ; if(bin:>=(id,id)) ]`
-
-**Habitat:** A fits poorly in `logdriver` (fit 0.05, package norm 0.71)
-
-**Habitat:** B fits poorly in `runtime` (fit 0.06, package norm 0.70)
-
-**Structural overlap:** `0.65` (merge-worthy)
-
-- share 10 callees: [Unmarshal, append, bool, fmt.Errorf, int, int32, len, string, uint, uint64]
-- overlapping call-graph neighborhoods (1.00): 106 shared
-- share patterns: [validation]
-- both are orchestrator functions
-- callees do related work (1.00): [validation]
-- same visibility
-- both are methods, on *LogEntry and *PluginSpec
-- call into same packages: [ipbits]
-
----
-
 ## Families
 
-603 families, 1536 functions in a family, largest 44 members; 2963 edges scored here that retrieval never proposed
+675 families, 1735 functions in a family, largest 44 members; 3526 edges scored here that retrieval never proposed
 
 ### Family 1 — 44 members, every pair `>= 0.61` code-shape  (741 edges scored here)
 
@@ -476,7 +473,41 @@ _34 more members not listed._
 
 _19 more members not listed._
 
-### Family 3 — 17 members, every pair `>= 0.86` code-shape  (66 edges scored here)
+### Family 3 — 29 members, every pair `>= 0.62` code-shape  (277 edges scored here)
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `integration/internal/container/ops.go:23` | `container.WithHostname` | ` ` | — |
+| `integration/internal/container/ops.go:30` | `container.WithLinks` | ` ` | — |
+| `integration/internal/container/ops.go:37` | `container.WithImage` | ` ` | — |
+| `integration/internal/container/ops.go:44` | `container.WithCmd` | ` ` | — |
+| `integration/internal/container/ops.go:51` | `container.WithNetworkMode` | ` ` | — |
+| `integration/internal/container/ops.go:65` | `container.WithSysctls` | ` ` | — |
+| `integration/internal/container/ops.go:92` | `container.WithTty` | ` ` | — |
+| `integration/internal/container/ops.go:99` | `container.WithWorkingDir` | ` ` | — |
+| `integration/internal/container/ops.go:234` | `container.WithUser` | ` ` | — |
+| `integration/internal/container/ops.go:241` | `container.WithAdditionalGroups` | ` ` | — |
+
+_19 more members not listed._
+
+### Family 4 — 29 members, every pair `>= 0.61` code-shape  (277 edges scored here)
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `integration/internal/container/ops.go:23` | `container.WithHostname` | ` ` | — |
+| `integration/internal/container/ops.go:30` | `container.WithLinks` | ` ` | — |
+| `integration/internal/container/ops.go:37` | `container.WithImage` | ` ` | — |
+| `integration/internal/container/ops.go:44` | `container.WithCmd` | ` ` | — |
+| `integration/internal/container/ops.go:51` | `container.WithNetworkMode` | ` ` | — |
+| `integration/internal/container/ops.go:58` | `container.WithDNS` | ` ` | — |
+| `integration/internal/container/ops.go:65` | `container.WithSysctls` | ` ` | — |
+| `integration/internal/container/ops.go:92` | `container.WithTty` | ` ` | — |
+| `integration/internal/container/ops.go:99` | `container.WithWorkingDir` | ` ` | — |
+| `integration/internal/container/ops.go:234` | `container.WithUser` | ` ` | — |
+
+_19 more members not listed._
+
+### Family 5 — 17 members, every pair `>= 0.86` code-shape  (66 edges scored here)
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
@@ -493,39 +524,5 @@ _19 more members not listed._
 
 _7 more members not listed._
 
-### Family 4 — 17 members, every pair `>= 0.78` code-shape  (61 edges scored here)
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `api/types/plugins/logdriver/entry.pb.go:360` | `logdriver.*LogEntry.Unmarshal` | ` ` | validation |
-| `api/types/plugins/logdriver/entry.pb.go:551` | `logdriver.*PartialLogEntryMetadata.Unmarshal` | ` ` | validation |
-| `daemon/cluster/internal/runtime/plugin.pb.go:379` | `runtime.*PluginSpec.Unmarshal` | ` ` | validation |
-| `daemon/cluster/internal/runtime/plugin.pb.go:579` | `runtime.*PluginPrivilege.Unmarshal` | ` ` | validation |
-| `libnetwork/agent.pb.go:618` | `libnetwork.*EndpointRecord.Unmarshal` | ` ` | validation |
-| `libnetwork/agent.pb.go:946` | `libnetwork.*PortConfig.Unmarshal` | ` ` | validation |
-| `libnetwork/drivers/overlay/overlay.pb.go:243` | `overlay.*PeerRecord.Unmarshal` | ` ` | validation |
-| `libnetwork/drivers/windows/overlay/overlay.pb.go:197` | `overlay.*PeerRecord.Unmarshal` | ` ` | validation |
-| `libnetwork/networkdb/networkdb.pb.go:1721` | `networkdb.*GossipMessage.Unmarshal` | ` ` | validation |
-| `libnetwork/networkdb/networkdb.pb.go:1824` | `networkdb.*NodeEvent.Unmarshal` | ` ` | validation |
-
-_7 more members not listed._
-
-### Family 5 — 17 members, every pair `>= 0.61` code-shape  (74 edges scored here)
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `api/types/plugins/logdriver/entry.pb.go:308` | `logdriver.*LogEntry.Size` | ` ` | — |
-| `api/types/plugins/logdriver/entry.pb.go:335` | `logdriver.*PartialLogEntryMetadata.Size` | ` ` | — |
-| `daemon/cluster/internal/runtime/plugin.pb.go:318` | `runtime.*PluginSpec.Size` | ` ` | — |
-| `daemon/cluster/internal/runtime/plugin.pb.go:350` | `runtime.*PluginPrivilege.Size` | ` ` | — |
-| `libnetwork/agent.pb.go:496` | `libnetwork.*EndpointRecord.Size` | ` ` | — |
-| `libnetwork/agent.pb.go:546` | `libnetwork.*PortConfig.Size` | ` ` | — |
-| `libnetwork/drivers/overlay/overlay.pb.go:196` | `overlay.*PeerRecord.Size` | ` ` | — |
-| `libnetwork/drivers/windows/overlay/overlay.pb.go:146` | `overlay.*PeerRecord.Size` | ` ` | — |
-| `libnetwork/networkdb/networkdb.pb.go:1387` | `networkdb.*GossipMessage.Size` | ` ` | — |
-| `libnetwork/networkdb/networkdb.pb.go:1403` | `networkdb.*NodeEvent.Size` | ` ` | — |
-
-_7 more members not listed._
-
-_598 more families not listed._
+_670 more families not listed._
 

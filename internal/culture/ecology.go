@@ -86,7 +86,7 @@ func buildAssociations(units []parser.CodeUnit, docs []concepter.ConceptDoc,
 	}
 
 	// Enumerate every marginal pair in deterministic order, keep those that
-	// pass the cutoffs. Cross products are small: 9 tags × 4 roles × capped
+	// pass the cutoffs. Cross products are small: 14 tags × 4 roles × capped
 	// tokens.
 	var out []Association
 	consider := func(kind AssocKind, a, b string, ca, cb int) {

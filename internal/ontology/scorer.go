@@ -22,6 +22,12 @@ func NewScorer(o *Ontology, ic *IC) *Scorer { return &Scorer{o: o, ic: ic} }
 // Weighted reports whether this scorer carries corpus weights.
 func (s *Scorer) Weighted() bool { return s.ic != nil }
 
+// Ontology returns the vocabulary this scorer reasons over. The comparator
+// reads its relation weights through this rather than through the package
+// default, which is what lets the bench harness score pairs under overridden
+// weights (WithWeights) without touching production state.
+func (s *Scorer) Ontology() *Ontology { return s.o }
+
 // Relatedness scores two terms. Without IC: Wu-Palmer. With IC: Lin similarity,
 // 2·IC(LCS) / (IC(a) + IC(b)) — how much of the two terms' combined information
 // their most specific common ancestor carries.

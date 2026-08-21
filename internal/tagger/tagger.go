@@ -48,8 +48,14 @@ var patternRules = []patternRule{
 		idents: []string{"retry", "Retry", "Retries", "backoff", "Backoff", "BackOff"},
 	},
 	{
-		concept:   ontology.ConHTTPCall,
-		selectors: []string{"http.Get", "http.Post", "http.Do", "http.NewRequest"},
+		concept: ontology.ConHTTPCall,
+		// http.Do was dead weight for years — net/http has no such function
+		// (Do is a method on *http.Client), so the term could never match.
+		// NewRequestWithContext is the idiomatic constructor since Go 1.13.
+		// The httpClient receiver catches wrapper clients (c.httpClient.Do),
+		// which the nested-selector tail in extractSignals makes visible.
+		selectors: []string{"http.Get", "http.Head", "http.NewRequest", "http.NewRequestWithContext", "http.Post", "http.PostForm"},
+		receivers: []string{"httpClient"},
 		// Deliberately no net/http import signal: servers import it too, and
 		// this tag means "makes an outbound call".
 	},
@@ -73,9 +79,11 @@ var patternRules = []patternRule{
 		},
 	},
 	{
-		concept:   ontology.ConMapping,
-		selectors: []string{"json.Marshal", "json.Unmarshal"},
-		idents:    []string{"transform", "Transform", "convert", "Convert", "ToDTO", "FromDTO", "toMap"},
+		concept: ontology.ConMapping,
+		// json.Marshal/Unmarshal moved to the serialization rule when that
+		// leaf arrived — otherwise every json function would carry both tags
+		// forever. Mapping is now purely the in-memory conversion vocabulary.
+		idents: []string{"transform", "Transform", "convert", "Convert", "ToDTO", "FromDTO", "toMap"},
 	},
 	{
 		concept:   ontology.ConTransaction,
@@ -110,6 +118,60 @@ var patternRules = []patternRule{
 		literals:  []string{"%w"},
 		selectors: []string{"errors.Wrap", "errors.Wrapf", "errors.WithMessage", "errors.WithStack"},
 		methods:   []string{"Wrapf", "WithMessage", "WithStack"},
+	},
+	{
+		concept: ontology.ConGRPCCall,
+		// Client-side dialing only, matching http_call's outbound-call stance:
+		// a gRPC *server* registers services and never dials. No bare grpc
+		// import signal for the same reason net/http has none.
+		selectors: []string{"grpc.Dial", "grpc.DialContext", "grpc.NewClient"},
+	},
+	{
+		concept: ontology.ConCircuitBreaker,
+		// Like retry, the evidence is genuinely lexical — Go has no structural
+		// circuit-breaker handle — plus the one conventional library import.
+		idents:  []string{"circuitBreaker", "CircuitBreaker", "breaker", "Breaker", "halfOpen", "HalfOpen"},
+		imports: []string{"gobreaker"},
+	},
+	{
+		concept: ontology.ConSerialization,
+		// Selector evidence only — an encoding/json import is file-level and
+		// half of Go imports it, so an import signal would tag every function
+		// in every file that touches json anywhere. The method names are the
+		// exact stdlib interface implementations.
+		selectors: []string{
+			"json.Marshal", "json.MarshalIndent", "json.NewDecoder", "json.NewEncoder", "json.Unmarshal",
+			"xml.Marshal", "xml.NewDecoder", "xml.NewEncoder", "xml.Unmarshal",
+			"yaml.Marshal", "yaml.Unmarshal",
+			"gob.NewDecoder", "gob.NewEncoder",
+			"proto.Marshal", "proto.Unmarshal",
+		},
+		methods: []string{"MarshalJSON", "UnmarshalJSON", "MarshalBinary", "UnmarshalBinary", "MarshalText", "UnmarshalText"},
+	},
+	{
+		concept: ontology.ConFileIO,
+		// os is far too ubiquitous for an import signal; the selectors are the
+		// filesystem verbs themselves.
+		selectors: []string{
+			"filepath.Walk", "filepath.WalkDir",
+			"io.Copy", "io.ReadAll",
+			"os.Create", "os.MkdirAll", "os.Open", "os.OpenFile",
+			"os.ReadDir", "os.ReadFile", "os.Remove", "os.RemoveAll", "os.WriteFile",
+		},
+	},
+	{
+		concept: ontology.ConLogging,
+		// Package-level stdlib loggers by selector, wrapper loggers by the
+		// conventional receiver names. Never an import-substring "log" — that
+		// fragment is inside "dialog", "catalog" and half the module paths on
+		// earth, and imports are file-level anyway.
+		selectors: []string{
+			"log.Fatal", "log.Fatalf", "log.Fatalln",
+			"log.Panic", "log.Panicf", "log.Panicln",
+			"log.Print", "log.Printf", "log.Println",
+			"slog.Debug", "slog.Error", "slog.Info", "slog.Warn", "slog.With",
+		},
+		receivers: []string{"logger", "logrus", "zap"},
 	},
 }
 

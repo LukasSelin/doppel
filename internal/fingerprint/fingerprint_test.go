@@ -76,6 +76,93 @@ func TestSimilarityIdentical(t *testing.T) {
 	}
 }
 
+// The depth histogram records each control-flow node's entry depth: for srcSum
+// the range enters at 0, the if inside it at 1, and the return at 0.
+func TestDepthHistogram(t *testing.T) {
+	fp := build(t, srcSum)
+	want := make([]int, depthBuckets)
+	want[0] = 2 // range, return
+	want[1] = 1 // if inside the range
+	if len(fp.Depth) != depthBuckets {
+		t.Fatalf("Depth has %d buckets, want %d", len(fp.Depth), depthBuckets)
+	}
+	for i := range want {
+		if fp.Depth[i] != want[i] {
+			t.Fatalf("Depth = %v, want %v", fp.Depth, want)
+		}
+	}
+	// A body with no control flow at all leaves the histogram empty, so two
+	// such bodies compare 1.0 on the component (cosine's both-empty rule) —
+	// flatness agreeing with flatness.
+	if getter := build(t, srcGetter); getter.Depth[0] != 1 { // the return
+		t.Errorf("getter Depth = %v, want one depth-0 entry", getter.Depth)
+	}
+}
+
+// Two functions with identical token bags but different nesting were
+// indistinguishable before the depth histogram: flattened tokens carry no
+// depth and the flow histogram only counts kinds. Sequential ifs against
+// nested ifs must now score below 1.0 — and only the Depth component moves.
+func TestDepthSeparatesFlatFromNested(t *testing.T) {
+	flat := build(t, `
+func flat(a, b bool) int {
+	x := 0
+	if a {
+		x = 1
+	}
+	if b {
+		x = 2
+	}
+	return x
+}`)
+	nested := build(t, `
+func nested(a, b bool) int {
+	x := 0
+	if a {
+		if b {
+			x = 2
+		}
+		x = 1
+	}
+	return x
+}`)
+	bd := Similarity(flat, nested)
+	if bd.Depth >= 1.0 {
+		t.Errorf("Depth = %v, want < 1.0 for different nesting", bd.Depth)
+	}
+	if bd.Flow < 0.999 { // cosine of equal vectors can land an ulp under 1.0
+		t.Errorf("Flow = %v, want ~1.0 — same node kinds, so only Depth should separate them", bd.Flow)
+	}
+	if bd.Score >= 1.0 {
+		t.Errorf("Score = %v, want < 1.0 (breakdown %+v)", bd.Score, bd)
+	}
+}
+
+// Depths past the last bucket fold into it rather than falling off.
+func TestDepthDeepTailFolds(t *testing.T) {
+	fp := build(t, `
+func deep(a bool) {
+	if a {
+		if a {
+			if a {
+				if a {
+					if a {
+						if a {
+							if a {
+								println()
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}`)
+	if fp.Depth[depthBuckets-1] != 2 { // the ifs entered at depths 5 and 6
+		t.Errorf("Depth = %v, want the two deepest ifs folded into the last bucket", fp.Depth)
+	}
+}
+
 // Renaming every variable must not change the score: canonicalizing
 // identifiers is the whole point of the AST token stream.
 func TestSimilarityRenamedVariables(t *testing.T) {

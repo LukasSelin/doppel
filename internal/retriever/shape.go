@@ -58,6 +58,16 @@ type SharedPattern struct {
 	Render string
 }
 
+// chainRank orders chain levels by explanatory specificity for the shared
+// structure block: motifs and actions above flow role edges. See the note on
+// pairEvidence.
+func chainRank(level int) int {
+	if level == int(fingerprint.LevelFlow) {
+		return int(fingerprint.LevelAction) - 1
+	}
+	return level
+}
+
 func buildShapeIndex(units []parser.CodeUnit, opt Options) *shapeIndex {
 	x := &shapeIndex{
 		surviving: make([][]survPattern, len(units)),
@@ -217,7 +227,12 @@ func minCount(a, b uint16) uint16 {
 // single sorted-intersection pass: shared energy (Σ idf·min(count)), trophic
 // similarity (weighted Dice, 2·shared/(E_A+E_B)), and the highest-energy
 // shared high-level chains as the explanation. Chains sort by (energy desc,
-// level desc, render asc) — byte-stable ties — and truncate to chainTopN.
+// explanatory rank desc, render asc) — byte-stable ties — and truncate to
+// chainTopN. Explanatory rank is the pattern level with one exception:
+// LevelFlow sorts below the motif and action levels, because a single-hop
+// role edge (flow:param→return) is a coarser explanation than a concrete
+// loop summary or statement shape at the same energy, and the chain block
+// should lead with the most specific structure a reader can verify.
 func (x *shapeIndex) pairEvidence(a, b, chainTopN int) (float64, float64, []SharedPattern) {
 	sa, sb := x.surviving[a], x.surviving[b]
 	var mass float64
@@ -247,8 +262,8 @@ func (x *shapeIndex) pairEvidence(a, b, chainTopN int) (float64, float64, []Shar
 		if chains[p].Energy != chains[q].Energy {
 			return chains[p].Energy > chains[q].Energy
 		}
-		if chains[p].Level != chains[q].Level {
-			return chains[p].Level > chains[q].Level
+		if rp, rq := chainRank(chains[p].Level), chainRank(chains[q].Level); rp != rq {
+			return rp > rq
 		}
 		return chains[p].Render < chains[q].Render
 	})

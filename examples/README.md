@@ -19,12 +19,12 @@ corpus is a decade of accretion". Both ends are visible below.
 
 | Corpus | Since | Pinned | Functions | Pairs compared | Concepts modeled | Habitats |
 | --- | --- | --- | --- | --- | --- | --- |
-| [moby](moby.md) | 2013 | `v28.5.2` | 8003 | 16514 | 9 | 168 |
-| [prometheus](prometheus.md) | 2012 | `v3.14.0` | 6245 | 14371 | 9 | 90 |
-| [hugo](hugo.md) | 2013 | `v0.165.0` | 5460 | 13284 | 5 | 126 |
-| [gin](gin.md) | 2014 | `v1.12.0` | 497 | 896 | 4 | 5 |
-| [cobra](cobra.md) | 2015 | `v1.10.2` | 269 | 810 | 1 | 2 |
-| [chi](chi.md) | 2015 | `v5.3.2` | 254 | 614 | 1 | 3 |
+| [moby](moby.md) | 2013 | `v28.5.2` | 8003 | 18189 | 12 | 168 |
+| [prometheus](prometheus.md) | 2012 | `v3.14.0` | 6245 | 15776 | 12 | 90 |
+| [hugo](hugo.md) | 2013 | `v0.165.0` | 5460 | 13856 | 8 | 126 |
+| [gin](gin.md) | 2014 | `v1.12.0` | 497 | 1023 | 5 | 5 |
+| [cobra](cobra.md) | 2015 | `v1.10.2` | 269 | 826 | 2 | 2 |
+| [chi](chi.md) | 2015 | `v5.3.2` | 254 | 617 | 1 | 3 |
 | [conc](conc.md) | 2023 | `v0.3.0` | 81 | 79 | 1 | 4 |
 
 Counts are for the production population (`--tests exclude`, the default).
@@ -37,8 +37,8 @@ its pool variants, while prometheus's is fifty-five OpenAPI schema builders and
 moby's top families are the generated protobuf methods that already own its
 pair list. `doppel families <path>` prints the whole census rather than the
 report's first few.
-"Concepts modeled" is how many of the nine tags reached the five-member floor
-culture needs to build a prototype: nine on moby, one on conc. That column is
+"Concepts modeled" is how many of the fourteen tags reached the five-member floor
+culture needs to build a prototype: twelve on moby, one on conc. That column is
 the ladder in miniature — the culture, habitat and arena layers have real
 material at the top and almost nothing to work with at the bottom, and say so
 rather than inventing structure.
@@ -81,15 +81,17 @@ which is what a vendored-and-diverged copy looks like. The three `tpl/*/init.go`
 repetition that nobody will consolidate.
 
 **[prometheus](prometheus.md) — layers.** Deep call graphs, 90 habitats, and
-597 coalition ecosystems against 1837 dominance — the highest coalition share
+782 coalition ecosystems against 1738 dominance — the highest coalition share
 on the ladder, because a scrape loop legitimately does storage *and* validation
 *and* remote I/O at once.
 
 **[moby](moby.md) — scale.** 8003 functions in about a second of analysis after
-parsing. 67% of compared pairs arrive through the call channel alone; 376
+parsing. 61% of compared pairs arrive through the call channel alone; 204
 functions are suppressed from the shape channel entirely and 4 identity buckets
 exceed the df cap — the common-idiom suppression the retrieval design exists
-for, visible in the numbers.
+for, visible in the numbers. (The suppressed count was 376 before the w5
+pattern windows: bodies whose every 3-gram was corpus idiom now retrieve
+through rarer 5-gram windows.)
 
 ## Generated code dominates a large old corpus
 
@@ -124,9 +126,9 @@ no `false_positive` reaches the top 20.
 At the pinned commit the separation is clean:
 
 ```
-mean rank merge: 5.5 over 6 present
-mean rank refactor: 16.8 over 9 present
-mean rank false_positive: 36.3 over 3 present
+mean rank merge: 5.2 over 6 present
+mean rank refactor: 16.1 over 9 present
+mean rank false_positive: 40.0 over 3 present
 ```
 
 Because the corpus is public and pinned, every one of those judgments is

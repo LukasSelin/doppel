@@ -197,13 +197,101 @@ func fetchWithRetry(url string, maxRetries int) error {
 			want: []string{"retry", "http_call"},
 		},
 		{
-			name: "mapping via json",
+			name: "json is serialization now, not mapping",
 			src: `package p
 import "encoding/json"
 func encode(v any) ([]byte, error) {
 	return json.Marshal(v)
 }`,
+			want: []string{"serialization"},
+		},
+		{
+			name: "mapping via conversion vocabulary",
+			src: `package p
+func toDTO(u user) dto {
+	return convert(u)
+}`,
 			want: []string{"mapping"},
+		},
+		{
+			name: "grpc dialing is an outbound call",
+			src: `package p
+import "google.golang.org/grpc"
+func connect(addr string) (*grpc.ClientConn, error) {
+	return grpc.Dial(addr)
+}`,
+			want: []string{"grpc_call"},
+		},
+		{
+			name: "grpc server registration does not fire the call tag",
+			src: `package p
+import "google.golang.org/grpc"
+func serve(s *grpc.Server) {
+	registerServices(s)
+}`,
+			want: nil,
+		},
+		{
+			name: "circuit breaker evidence is lexical, like retry",
+			src: `package p
+func callGuarded(breaker *Breaker, f func() error) error {
+	if breaker.Open() {
+		return errOpen
+	}
+	return f()
+}`,
+			want: []string{"circuit_breaker"},
+		},
+		{
+			name: "marshaler implementation is serialization",
+			src: `package p
+func (d Duration) MarshalJSON() ([]byte, error) {
+	return encodeDuration(d)
+}`,
+			want: []string{"serialization"},
+		},
+		{
+			name: "file io via os verbs",
+			src: `package p
+import "os"
+func slurp(path string) ([]byte, error) {
+	return os.ReadFile(path)
+}`,
+			want: []string{"file_io"},
+		},
+		{
+			name: "stdlib logging by selector",
+			src: `package p
+import "log"
+func warn(msg string) {
+	log.Printf("warn: %s", msg)
+}`,
+			want: []string{"logging"},
+		},
+		{
+			name: "wrapper logger by receiver",
+			src: `package p
+func report(logger fieldLogger, err error) {
+	logger.Error(err)
+}`,
+			want: []string{"logging"},
+		},
+		{
+			name: "wrapper http client via the nested-selector tail",
+			src: `package p
+func (c *client) send(req *request) (*response, error) {
+	return c.httpClient.Do(req.raw)
+}`,
+			want: []string{"http_call"},
+		},
+		{
+			name: "context-aware request constructor fires http_call",
+			src: `package p
+import ("context"; "net/http")
+func build(ctx context.Context, url string) (*http.Request, error) {
+	return http.NewRequestWithContext(ctx, "GET", url, nil)
+}`,
+			want: []string{"http_call"},
 		},
 		{
 			name: "caching via receiver convention",
@@ -241,11 +329,14 @@ func validateInput(s string) error {
 }
 
 // The tags are the tool's public vocabulary: they appear in every report and in
-// the docs. Moving to AST evidence must not have renamed any of them.
+// the docs. The original nine must never be renamed; the five added in
+// ontology 1.1.0 append after them, so every pre-existing tag keeps its
+// emission position.
 func TestTagNamesAreUnchanged(t *testing.T) {
 	want := []string{
 		"retry", "http_call", "db_access", "validation", "mapping",
 		"transaction", "caching", "concurrency", "error_wrapping",
+		"grpc_call", "circuit_breaker", "serialization", "file_io", "logging",
 	}
 	if len(patternRules) != len(want) {
 		t.Fatalf("got %d rules, want %d", len(patternRules), len(want))

@@ -45,7 +45,7 @@ directly: a hook must stay silent, since stderr from a SessionStart hook surface
 broken-tool notice. Stages in execution order:
 
 1. **Walk & parse** — `filepath.WalkDir` + `shouldSkipDir`, then `parser.Parse` per `.go` file → `[]CodeUnit`. Unreadable files and parse errors are warned and skipped, never fatal. `fingerprint.Build` and `extractSignals` (the tagger's AST evidence) both run here, while the AST is still in hand.
-2. **Tag** — `tagger.Tag(unit)` sets `unit.Patterns` (9 intent tags matched against the unit's AST signals — selectors, imports, string-literal contents, identifiers, node kinds — never against raw source text). Tag counts feed the corpus IC in the same loop.
+2. **Tag** — `tagger.Tag(unit)` sets `unit.Patterns` (14 intent tags matched against the unit's AST signals — selectors, imports, string-literal contents, identifiers, node kinds — never against raw source text). Tag counts feed the corpus IC in the same loop.
 3. **Build call graph** — `concepter.BuildCallGraph(units)` → `concepter.Graph`, both directions over **qualified names** (`package.Name`, methods keeping their receiver: `comparator.*Comparator.Compare`). A resolver maps each raw callee string to at most one unit: import-qualified selectors through the file's recorded import bindings (aliases included), variable-receiver method calls only when the method name is unique corpus-wide, bare names to the same-package function. Ambiguity drops the edge; recursion is excluded; only repo-internal edges exist. Happens *before* concept docs, because docs need caller lists.
 4. **Generate + enrich concept docs** — `concepter.New()` makes bare docs; **`mapper.Map` does the real work**: attaches qualified callers, resolved internal callees, and the depth-2 call-graph neighborhood; derives per-corpus role thresholds from the resolved degree distribution and classifies; aggregates caller/callee patterns and packages from resolved edges. `culture.Build` then models the corpus's conceptual practice (see *Corpus culture*); its summary goes to stderr, and after the struct-min filter each surviving pair gets `Culture` notes for atypical realizations of its **shared** tags (positional attachment, like Evidence).
 5. **Candidate retrieval** — `retriever.Retrieve` runs three per-function top-K channels (structural shingle-IDF, concept IC, resolved-call IDF — see *Candidate retrieval* below), unions and dedupes them, and computes definitive per-pair evidence masses plus the exact `fingerprint.Breakdown` for every union pair. Retrieval stats go to stderr. `cmd` materializes the candidates into `analyzer.SimilarPair`s (with `Retrieval` set). `analyzer.FindSimilar` still exists as the simple library API but the pipeline no longer calls it.
@@ -76,7 +76,7 @@ internal/
   parser/       parser.go is a thin dispatcher; go_parser.go does the go/ast work; signals.go extracts the tagger's evidence channels → CodeUnit
   fingerprint/  AST token shingles + control-flow histogram + signature types; the code-similarity score
   ontology/     The formal vocabulary: entity kinds, typed relations, concept taxonomy, roles, axioms
-  tagger/       AST-signal intent detection → 9 pattern tags
+  tagger/       AST-signal intent detection → 14 pattern tags
   concepter/    ConceptDoc; callgraph.go (BuildCallGraph); role.go (ClassifyRole, role constants)
   mapper/       Where enrichment actually happens: callers, role classification, aggregated patterns/packages
   retriever/    Multi-channel candidate retrieval: shape.go / concept.go / calls.go inverted indexes, retriever.go union + evidence
@@ -256,14 +256,26 @@ Consequences worth knowing:
 ### Trophic structural energy
 
 The shape channel's features are the **multi-level pattern multiset** extracted by
-`fingerprint.extractPatterns` during `Build` (the AST exists only during parse): L0 token 3-gram
-windows, L1 call/binary-operator shapes, L2 statements with salient structure
+`fingerprint.extractPatterns` during `Build` (the AST exists only during parse): L0 token n-gram
+windows at widths 3 and 5 (k=3 keeps its legacy untagged hash so pre-widening dfs are unchanged;
+w5 windows are width-tagged, never clamp on short streams, and certify longer shared runs — width
+2 was built, measured on the cobra labels, and left out because its surviving mass fed
+vocabulary-heavy false positives; see `l0ExtraWidths`), L1 call/binary-operator shapes, L2
+statements with salient structure
 (`return(call:Sprintf)`, `defer(call:Close)`, `if(bin:!=(id,nil))` — nil/true/false keep their
-names so the err-check idiom falls out with no special case), and L3 motifs — loop call summaries
+names so the err-check idiom falls out with no special case), L3 motifs — loop call summaries
 covering header *and* body (`for{ call:Scan call:TrimSpace call:Atoi call:append }`, ≤ 8 callees)
-and adjacent-statement bigrams (`seq[ assign:=(call:Atoi) ; if(bin:!=(id,nil)) ]`). For levels 1–3
-the render string IS the hash serialization, so hash and explanation cannot drift; L2/L3 keep
-their renders, L0/L1 do not.
+and adjacent-statement bigrams (`seq[ assign:=(call:Atoi) ; if(bin:!=(id,nil)) ]`) — and L4
+def-use flow edges (`defuse.go`): single-hop role edges from a def source (a parameter, or a
+binding whose RHS contains a call) to a use sink (a call it is passed to or invoked on, a return,
+or a condition) — `flow:param→call:Errorf`, `flow:call:Open→call:Close`, `flow:call:Atoi→cond`.
+Renders name roles, never identifiers, so the edges are rename-invariant; the tuple rule
+(`x, err := f()` binds both names to `call:f`) is what makes the errcheck idiom fall out free. A
+value computed and dropped emits no onward edge — previously indistinguishable from one that
+flows. For levels 1–4 the render string IS the hash serialization, so hash and explanation cannot
+drift; L2/L3/L4 keep their renders, L0/L1 do not. In the `shared structure:` block L4 sorts below
+L2/L3 at equal energy (`chainRank`): a role edge is a coarser explanation than a concrete
+statement shape.
 
 Three quantities per pair, all from one sorted-intersection pass (`pairEvidence`):
 
@@ -381,13 +393,23 @@ extinct because they explain none of the surrounding evidence.
 
 ### Fingerprint scoring
 
-`fingerprint.Similarity` blends three components; weights are constants and sum to exactly `1.00`.
+`fingerprint.Similarity` blends four components; weights are constants and sum to exactly `1.00`.
 
 | Component | Metric | Weight |
 | --- | --- | --- |
 | AST shingles | Jaccard over hashed 3-grams | 0.60 |
-| Control flow | cosine over the node-kind histogram | 0.25 |
+| Control flow | cosine over the node-kind histogram | 0.20 |
+| Nesting depth | cosine over the entry-depth histogram | 0.05 |
 | Signature | Jaccard over normalized param/result types | 0.15 |
+
+The depth histogram (`Fingerprint.Depth`, 6 buckets, deep tails folded into the last) records the
+nesting depth each control-flow node is *entered* at; the seven statement-bearing constructs (if,
+for, range, switch, type switch, select, funclit) push a level for their children. It exists
+because flattened tokens carry no depth: sequential ifs and nested ifs used to have identical
+token bags, identical flow histograms, and score 1.0. Depth's 0.05 was carved entirely out of
+Flow (0.25 → 0.20) — nesting is flow-adjacent, so flow pays for it. Rendered as `nesting:` in the
+breakdown line. A nesting change is a body change: `snapshot.Digest` hashes Depth (snapshot
+Schema 3).
 
 `SizeRatio` is reported in the `Breakdown` but **not** scored — Jaccard already penalizes size
 mismatch through the union, so damping again would double-count it.
@@ -479,8 +501,10 @@ was chosen deliberately over a fixed absolute scale.
 
 ### Tagger patterns
 
-Exactly 9, emitted in declaration order: `retry`, `http_call`, `db_access`, `validation`, `mapping`,
-`transaction`, `caching`, `concurrency`, `error_wrapping`. The rules name `ontology` concept terms
+Exactly 14, emitted in declaration order: `retry`, `http_call`, `db_access`, `validation`, `mapping`,
+`transaction`, `caching`, `concurrency`, `error_wrapping`, then the five added with ontology 1.1.0 —
+`grpc_call`, `circuit_breaker`, `serialization`, `file_io`, `logging` — appended after the original
+nine so every pre-existing tag keeps its emission position. The rules name `ontology` concept terms
 rather than bare strings, so a rule pointing at a concept that does not exist stops compiling, and
 `tagger_test` enforces the other direction: every concrete concept has exactly one rule.
 
@@ -494,22 +518,30 @@ and string-literal contents and identifier names by substring, plus node-kind fl
 - `error_wrapping` is deliberately tight: a `%w` verb anywhere in a format string (the old rule
   only matched `%w"`) or a pkg/errors wrap helper. Bare `fmt.Errorf` and `errors.As`/`errors.Is`
   no longer fire it, which makes the tag rare enough to be informative under IC.
-- `retry` is the one tag with no structural handle — its evidence is lexical, in identifier names.
+- `retry` and `circuit_breaker` are the two tags with no structural handle — their evidence is
+  lexical, in identifier names (`circuit_breaker` also matches a `gobreaker` import).
 - String literals are still evidence, so a test whose fixture strings contain `%w` or `SELECT `
   earns those tags. A function carrying SQL strings is db-flavored even when it is a test.
+- `json.Marshal`/`json.Unmarshal` moved from `mapping` to `serialization` when that leaf arrived —
+  otherwise every json function would carry both tags forever. `mapping` is now purely the
+  conversion vocabulary (`transform`, `convert`, `ToDTO`, …).
+- `serialization`, `file_io` and `logging` are selector/method/receiver evidence only — an
+  `encoding/json` or `os` import is file-level and near-universal, and an import-substring `"log"`
+  would match `dialog` and half the module paths on earth.
 - The pre-Go-only polyglot keywords (`axios`, `urllib`, `Promise.`, `await `) are gone.
 
 ### The ontology
 
 `internal/ontology` is the vocabulary the comparator reasons over, and the reason a pair tagged
-`http_call`/`db_access` no longer scores the same as a pair with nothing in common. The nine tags are
-leaves of a taxonomy whose interior nodes are abstract and exist purely to relate them:
+`http_call`/`db_access` no longer scores the same as a pair with nothing in common. The fourteen tags
+are leaves of a taxonomy whose interior nodes are abstract and exist purely to relate them:
 
 ```
-concept → io_operation → remote_io → http_call
+concept → io_operation → remote_io → http_call, grpc_call
                        → data_store_access → db_access, caching, transaction
-        → data_transformation → mapping, validation
-        → control_flow → concurrency, fault_tolerance → retry
+                       → file_io, logging
+        → data_transformation → mapping, validation, serialization
+        → control_flow → concurrency, fault_tolerance → retry, circuit_breaker
         → error_handling → error_wrapping
 ```
 
@@ -845,10 +877,11 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   "correcting" the depths to match would hand every cross-branch pair a nonzero floor and inflate
   every structural score in the report. The redundant explicit guard in `Relatedness` exists to make
   that trap visible.
-- **`remote_io` and `fault_tolerance` are unary.** A taxonomy node with one child adds no
-  discriminative power and costs its leaf a level of depth, which *lowers* that leaf relatedness to
-  everything. They are kept as the slot future siblings go in (`grpc_call`, `circuit_breaker`), so
-  removing them is a scoring change rather than a simplification.
+- **`remote_io` and `fault_tolerance` were unary until ontology 1.1.0.** A taxonomy node with one
+  child adds no discriminative power and costs its leaf a level of depth, which *lowers* that leaf
+  relatedness to everything. They were kept as the slot future siblings go in, and `grpc_call` and
+  `circuit_breaker` are those siblings, arrived. `error_handling` remains unary over
+  `error_wrapping` — same reasoning, same future slot.
 - **Adjacent pairs and the neighborhood signal.** Two directly-connected functions inherently
   share each other's 1-neighborhood inside their depth-2 balls, mildly favoring adjacent pairs on
   `shares_neighborhood`. The compared counterpart itself is excluded per pair (without that,
@@ -888,6 +921,12 @@ Known traps, documented so they aren't rediscovered. None are fixed:
 - **Nested loops double-count inner calls in loop summaries.** An inner loop's callees appear in
   both its own L3 summary and every enclosing loop's — each container is a real behavioral unit,
   and de-duplicating would cost a pass per nesting level for no scoring benefit. Accepted.
+- **The L4 def-use pass is deliberately crude.** Bindings are name-keyed within the function, so
+  shadowing merges with the first binding winning; pointer/closure/field aliasing, field writes,
+  multi-hop chains, tuple position, control-flow sensitivity and cross-function flow are all
+  outside it — the full non-capture list is documented at `extractDefUse`. Each would cost a
+  resolution pass out of proportion for evidence rendering; the cure, as with the call-graph
+  resolver, is go/types.
 - **Trophic similarity of exact mid-frequency twins is 1.0.** Any normalized similarity gives
   identical inputs 1.0; trivia suppression relies on the df cap zeroing *both* sides of the Dice,
   which only engages once the idiom bucket exceeds `MaxPatternDF`. Between df=2 and the cap, exact
@@ -957,16 +996,13 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   `plugin/.claude-plugin/plugin.json`'s `version` in lockstep with it, since the plugin is coupled
   to the binary's `hook <name>` contract.
 
-- **`http_call` never fires on a wrapper-client codebase.** The rule matches one channel,
-  `selectors`, by exact string against `http.Get`/`http.Post`/`http.Do`/`http.NewRequest`. Three
-  independent defects: `http.Do` is not a function in `net/http` at all (it is a method on
-  `*http.Client`), so that term is dead and can never match; `http.NewRequestWithContext`, the
-  idiomatic constructor since Go 1.13, is absent; and `extractSignals` records a selector only when
-  its `X` is a bare `*ast.Ident`, so `c.client.Do(req)` records `"c.client"` and drops the outer
-  selector entirely. A codebase whose HTTP calls all go through a wrapper client reports zero
-  `http_call` — observed on a real corpus with a dozen-plus HTTP integrations. The tag is
-  deliberately not import-based (servers import `net/http` too), so the fix is more selector terms
-  plus a nested-selector tail in the extractor, not an import signal.
+- **`http_call` on wrapper clients is receiver-convention-deep only.** The historical defects are
+  fixed — dead `http.Do` dropped, `http.NewRequestWithContext`/`PostForm`/`Head` added, and
+  `extractSignals` now records the tail pair of a nested selector (`c.httpClient.Do` →
+  `httpClient.Do`), one level deep — but the wrapper evidence is still the `httpClient` receiver
+  name. A wrapper field named `api` or `transport` stays invisible, the nested tail goes exactly
+  one level (`a.b.c.Do` records `c.Do`, never `b.c`), and the tag remains deliberately not
+  import-based (servers import `net/http` too).
 
 - **Interface implementations dominate merge-worthy output.** Methods satisfying a shared interface
   across sibling packages — a `Validate` per provider, say — are near-identical by construction and
