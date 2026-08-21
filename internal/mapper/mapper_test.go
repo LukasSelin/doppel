@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lukse/doppel/internal/concepter"
-	"github.com/lukse/doppel/internal/parser"
-	"github.com/lukse/doppel/internal/tagger"
+	"github.com/LukasSelin/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/tagger"
 )
 
 // buildCorpus parses files in lexical path order, tags every unit, and returns

@@ -4,8 +4,8 @@ import (
 	"math"
 	"sort"
 
-	"github.com/lukse/doppel/internal/concepter"
-	"github.com/lukse/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 // The concept arena: instead of treating a function's tags as independent

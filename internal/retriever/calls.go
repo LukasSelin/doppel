@@ -3,8 +3,8 @@ package retriever
 import (
 	"math"
 
-	"github.com/lukse/doppel/internal/concepter"
-	"github.com/lukse/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 // callIndex is the call channel: an inverted index over resolved call tokens

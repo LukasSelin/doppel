@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lukse/doppel/internal/concepter"
-	"github.com/lukse/doppel/internal/ontology"
-	"github.com/lukse/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/ontology"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 // parseUnits parses one or more fixture files (path, source alternating) and

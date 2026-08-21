@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/lukse/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 // Graph is the repo-internal call graph over qualified unit names, in both

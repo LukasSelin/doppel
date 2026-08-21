@@ -1,7 +1,7 @@
 package concepter
 
 import (
-	"github.com/lukse/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 // ConceptDoc is a structured representation of a single CodeUnit: the

@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/lukse/doppel/internal/ontology"
+	"github.com/LukasSelin/doppel/internal/ontology"
 )
 
 // Two structurally dissimilar functions with identical rare tag sets, in a

@@ -3,9 +3,9 @@ package analyzer
 import (
 	"sort"
 
-	"github.com/lukse/doppel/internal/comparator"
-	"github.com/lukse/doppel/internal/fingerprint"
-	"github.com/lukse/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/comparator"
+	"github.com/LukasSelin/doppel/internal/fingerprint"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 // SimilarPair holds two code units and their static similarity score.

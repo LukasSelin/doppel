@@ -1,4 +1,4 @@
-module github.com/lukse/doppel
+module github.com/LukasSelin/doppel
 
 go 1.25.0
 

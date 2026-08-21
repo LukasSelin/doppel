@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lukse/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/concepter"
 )
 
 func approx(got, want float64) bool { return math.Abs(got-want) < 1e-9 }

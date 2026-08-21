@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lukse/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 // unitFromSource parses a snippet and returns all its units, tagged with real

@@ -3,8 +3,8 @@ package retriever
 import (
 	"sort"
 
-	"github.com/lukse/doppel/internal/ontology"
-	"github.com/lukse/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/ontology"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 // conceptIndex is the concept channel: an inverted index over tagger tags and

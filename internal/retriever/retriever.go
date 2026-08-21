@@ -12,10 +12,10 @@ package retriever
 import (
 	"sort"
 
-	"github.com/lukse/doppel/internal/concepter"
-	"github.com/lukse/doppel/internal/fingerprint"
-	"github.com/lukse/doppel/internal/ontology"
-	"github.com/lukse/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/fingerprint"
+	"github.com/LukasSelin/doppel/internal/ontology"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 // Channel names, in the fixed order they appear in Candidate.Channels.

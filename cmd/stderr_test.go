@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lukse/doppel/internal/culture"
+	"github.com/LukasSelin/doppel/internal/culture"
 )
 
 func TestPrintHabitatSummary(t *testing.T) {

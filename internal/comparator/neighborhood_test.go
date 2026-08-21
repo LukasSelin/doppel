@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lukse/doppel/internal/concepter"
-	"github.com/lukse/doppel/internal/ontology"
+	"github.com/LukasSelin/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/ontology"
 )
 
 func nbrDoc(name string, neighborhood ...string) concepter.ConceptDoc {

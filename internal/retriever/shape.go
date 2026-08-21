@@ -6,8 +6,8 @@ import (
 	"math"
 	"sort"
 
-	"github.com/lukse/doppel/internal/fingerprint"
-	"github.com/lukse/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/fingerprint"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 // largeBucketSize is the diagnostic threshold for "common structural idiom":

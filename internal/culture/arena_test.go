@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/lukse/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 // sqlUnit is a unit calling the external token database/sql.Open.

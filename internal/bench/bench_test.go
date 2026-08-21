@@ -10,14 +10,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lukse/doppel/internal/analyzer"
-	"github.com/lukse/doppel/internal/comparator"
-	"github.com/lukse/doppel/internal/concepter"
-	"github.com/lukse/doppel/internal/mapper"
-	"github.com/lukse/doppel/internal/ontology"
-	"github.com/lukse/doppel/internal/parser"
-	"github.com/lukse/doppel/internal/retriever"
-	"github.com/lukse/doppel/internal/tagger"
+	"github.com/LukasSelin/doppel/internal/analyzer"
+	"github.com/LukasSelin/doppel/internal/comparator"
+	"github.com/LukasSelin/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/mapper"
+	"github.com/LukasSelin/doppel/internal/ontology"
+	"github.com/LukasSelin/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/retriever"
+	"github.com/LukasSelin/doppel/internal/tagger"
 )
 
 type label struct {

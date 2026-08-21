@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/lukse/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 const fixture = `package fixture

@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/lukse/doppel/internal/comparator"
+	"github.com/LukasSelin/doppel/internal/comparator"
 )
 
 func pairWith(aIdx, bIdx int, score float64, ret *Retrieval) SimilarPair {

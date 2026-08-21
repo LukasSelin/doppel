@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/lukse/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 // QualifiedNames returns the set of QualifiedName(u) over units — the

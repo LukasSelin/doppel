@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/lukse/doppel/internal/ontology"
+	"github.com/LukasSelin/doppel/internal/ontology"
 	"github.com/spf13/cobra"
 )
 

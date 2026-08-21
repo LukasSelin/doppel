@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lukse/doppel/internal/analyzer"
-	"github.com/lukse/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/analyzer"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 func samplePair(ret *analyzer.Retrieval) analyzer.SimilarPair {

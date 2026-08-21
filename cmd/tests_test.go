@@ -3,7 +3,7 @@ package cmd
 import (
 	"testing"
 
-	"github.com/lukse/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 func testPopulation() []parser.CodeUnit {

@@ -4,8 +4,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/lukse/doppel/internal/concepter"
-	"github.com/lukse/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 // unit builds a minimal hand-constructed CodeUnit. Culture only reads

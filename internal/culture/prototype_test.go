@@ -5,9 +5,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/lukse/doppel/internal/concepter"
-	"github.com/lukse/doppel/internal/fingerprint"
-	"github.com/lukse/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/fingerprint"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 func TestChannelWeightsSumToOne(t *testing.T) {

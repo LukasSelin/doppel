@@ -3,7 +3,7 @@ package concepter
 import (
 	"sort"
 
-	"github.com/lukse/doppel/internal/ontology"
+	"github.com/LukasSelin/doppel/internal/ontology"
 )
 
 // Role names, re-exported from the ontology so existing callers keep compiling
