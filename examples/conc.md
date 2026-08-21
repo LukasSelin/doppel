@@ -9,7 +9,7 @@ structured concurrency library; generics-heavy, one idea, written recently and a
 | Corpus | [conc](https://github.com/sourcegraph/conc) |
 | Pinned at | `v0.3.0` (`7b8c8f2875cb861bb61844c9bcaa1aed070adbd4`) |
 | Project since | 2023 |
-| doppel | `eeb5608` |
+| doppel | `d9e6c71` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -44,8 +44,8 @@ Families: 7 over 8 components, 20 functions in a family
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `pool/result_context_pool.go:22` | `pool.*ResultContextPool[T].Go` | `—` | — |
-| **B** | `pool/result_error_pool.go:25` | `pool.*ResultErrorPool[T].Go` | `—` | — |
+| **A** | `pool/result_context_pool.go:22` | `pool.*ResultContextPool[T].Go` | `(func(context.Context) (T, error))` | — |
+| **B** | `pool/result_error_pool.go:25` | `pool.*ResultErrorPool[T].Go` | `(func() (T, error))` | — |
 
 **Code similarity:** `ast 0.79  flow 1.00  nesting 1.00  sig 0.00  size 0.87`
 
@@ -80,8 +80,8 @@ Families: 7 over 8 components, 20 functions in a family
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `pool/result_error_pool.go:55` | `pool.*ResultErrorPool[T].WithContext` | ` ` | — |
-| **B** | `pool/result_pool.go:63` | `pool.*ResultPool[T].WithContext` | ` ` | — |
+| **A** | `pool/result_error_pool.go:55` | `pool.*ResultErrorPool[T].WithContext` | `(context.Context) (*ResultContextPool[T])` | — |
+| **B** | `pool/result_pool.go:63` | `pool.*ResultPool[T].WithContext` | `(context.Context) (*ResultContextPool[T])` | — |
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
@@ -109,8 +109,8 @@ Families: 7 over 8 components, 20 functions in a family
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `pool/error_pool.go:45` | `pool.*ErrorPool.WithContext` | ` ` | — |
-| **B** | `pool/pool.go:138` | `pool.*Pool.WithContext` | ` ` | — |
+| **A** | `pool/error_pool.go:45` | `pool.*ErrorPool.WithContext` | `(context.Context) (*ContextPool)` | — |
+| **B** | `pool/pool.go:138` | `pool.*Pool.WithContext` | `(context.Context) (*ContextPool)` | — |
 
 **Code similarity:** `ast 0.81  flow 1.00  nesting 1.00  sig 1.00  size 0.91`
 
@@ -142,8 +142,8 @@ Families: 7 over 8 components, 20 functions in a family
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `pool/result_context_pool.go:34` | `pool.*ResultContextPool[T].Wait` | ` ` | — |
-| **B** | `pool/result_error_pool.go:37` | `pool.*ResultErrorPool[T].Wait` | ` ` | — |
+| **A** | `pool/result_context_pool.go:34` | `pool.*ResultContextPool[T].Wait` | `() ([]T, error)` | — |
+| **B** | `pool/result_error_pool.go:37` | `pool.*ResultErrorPool[T].Wait` | `() ([]T, error)` | — |
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
@@ -171,8 +171,8 @@ Families: 7 over 8 components, 20 functions in a family
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `iter/map.go:27` | `iter.Mapper[T, R].Map` | ` ` | — |
-| **B** | `iter/map.go:48` | `iter.Mapper[T, R].MapErr` | ` ` | concurrency |
+| **A** | `iter/map.go:27` | `iter.Mapper[T, R].Map` | `([]T, func(*T) R) ([]R)` | — |
+| **B** | `iter/map.go:48` | `iter.Mapper[T, R].MapErr` | `([]T, func(*T) (R, error)) ([]R, error)` | concurrency |
 
 **Profile B:** `concurrency` 1.00 (dominance)
 
@@ -204,8 +204,8 @@ Families: 7 over 8 components, 20 functions in a family
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `pool/context_pool.go:86` | `pool.*ContextPool.WithMaxGoroutines` | ` ` | — |
-| **B** | `pool/error_pool.go:65` | `pool.*ErrorPool.WithMaxGoroutines` | ` ` | — |
+| **A** | `pool/context_pool.go:86` | `pool.*ContextPool.WithMaxGoroutines` | `(int) (*ContextPool)` | — |
+| **B** | `pool/error_pool.go:65` | `pool.*ErrorPool.WithMaxGoroutines` | `(int) (*ErrorPool)` | — |
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
 
@@ -233,8 +233,8 @@ Families: 7 over 8 components, 20 functions in a family
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `pool/context_pool.go:86` | `pool.*ContextPool.WithMaxGoroutines` | ` ` | — |
-| **B** | `pool/result_context_pool.go:67` | `pool.*ResultContextPool[T].WithMaxGoroutines` | ` ` | — |
+| **A** | `pool/context_pool.go:86` | `pool.*ContextPool.WithMaxGoroutines` | `(int) (*ContextPool)` | — |
+| **B** | `pool/result_context_pool.go:67` | `pool.*ResultContextPool[T].WithMaxGoroutines` | `(int) (*ResultContextPool[T])` | — |
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
 
@@ -262,8 +262,8 @@ Families: 7 over 8 components, 20 functions in a family
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `pool/error_pool.go:65` | `pool.*ErrorPool.WithMaxGoroutines` | ` ` | — |
-| **B** | `pool/result_context_pool.go:67` | `pool.*ResultContextPool[T].WithMaxGoroutines` | ` ` | — |
+| **A** | `pool/error_pool.go:65` | `pool.*ErrorPool.WithMaxGoroutines` | `(int) (*ErrorPool)` | — |
+| **B** | `pool/result_context_pool.go:67` | `pool.*ResultContextPool[T].WithMaxGoroutines` | `(int) (*ResultContextPool[T])` | — |
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
 
@@ -291,8 +291,8 @@ Families: 7 over 8 components, 20 functions in a family
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `pool/result_error_pool.go:72` | `pool.*ResultErrorPool[T].WithMaxGoroutines` | ` ` | — |
-| **B** | `pool/result_pool.go:72` | `pool.*ResultPool[T].WithMaxGoroutines` | ` ` | — |
+| **A** | `pool/result_error_pool.go:72` | `pool.*ResultErrorPool[T].WithMaxGoroutines` | `(int) (*ResultErrorPool[T])` | — |
+| **B** | `pool/result_pool.go:72` | `pool.*ResultPool[T].WithMaxGoroutines` | `(int) (*ResultPool[T])` | — |
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
 
@@ -320,8 +320,8 @@ Families: 7 over 8 components, 20 functions in a family
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `pool/context_pool.go:64` | `pool.*ContextPool.WithFirstError` | ` ` | — |
-| **B** | `pool/result_context_pool.go:50` | `pool.*ResultContextPool[T].WithFirstError` | ` ` | — |
+| **A** | `pool/context_pool.go:64` | `pool.*ContextPool.WithFirstError` | `() (*ContextPool)` | — |
+| **B** | `pool/result_context_pool.go:50` | `pool.*ResultContextPool[T].WithFirstError` | `() (*ResultContextPool[T])` | — |
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.00  size 1.00`
 
@@ -353,45 +353,45 @@ Families: 7 over 8 components, 20 functions in a family
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `pool/context_pool.go:86` | `pool.*ContextPool.WithMaxGoroutines` | ` ` | — |
-| `pool/error_pool.go:65` | `pool.*ErrorPool.WithMaxGoroutines` | ` ` | — |
-| `pool/result_context_pool.go:67` | `pool.*ResultContextPool[T].WithMaxGoroutines` | ` ` | — |
-| `pool/result_error_pool.go:72` | `pool.*ResultErrorPool[T].WithMaxGoroutines` | ` ` | — |
-| `pool/result_pool.go:72` | `pool.*ResultPool[T].WithMaxGoroutines` | ` ` | — |
+| `pool/context_pool.go:86` | `pool.*ContextPool.WithMaxGoroutines` | `(int) (*ContextPool)` | — |
+| `pool/error_pool.go:65` | `pool.*ErrorPool.WithMaxGoroutines` | `(int) (*ErrorPool)` | — |
+| `pool/result_context_pool.go:67` | `pool.*ResultContextPool[T].WithMaxGoroutines` | `(int) (*ResultContextPool[T])` | — |
+| `pool/result_error_pool.go:72` | `pool.*ResultErrorPool[T].WithMaxGoroutines` | `(int) (*ResultErrorPool[T])` | — |
+| `pool/result_pool.go:72` | `pool.*ResultPool[T].WithMaxGoroutines` | `(int) (*ResultPool[T])` | — |
 
 ### Family 2 — 4 members, every pair `>= 0.85` code-shape, evidence `222`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `pool/context_pool.go:78` | `pool.*ContextPool.WithCancelOnError` | ` ` | — |
-| `pool/error_pool.go:57` | `pool.*ErrorPool.WithFirstError` | ` ` | — |
-| `pool/result_context_pool.go:42` | `pool.*ResultContextPool[T].WithCollectErrored` | ` ` | — |
-| `pool/result_error_pool.go:45` | `pool.*ResultErrorPool[T].WithCollectErrored` | ` ` | — |
+| `pool/context_pool.go:78` | `pool.*ContextPool.WithCancelOnError` | `() (*ContextPool)` | — |
+| `pool/error_pool.go:57` | `pool.*ErrorPool.WithFirstError` | `() (*ErrorPool)` | — |
+| `pool/result_context_pool.go:42` | `pool.*ResultContextPool[T].WithCollectErrored` | `() (*ResultContextPool[T])` | — |
+| `pool/result_error_pool.go:45` | `pool.*ResultErrorPool[T].WithCollectErrored` | `() (*ResultErrorPool[T])` | — |
 
 ### Family 3 — 3 members, every pair `>= 0.68` code-shape, evidence `211`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `pool/result_error_pool.go:55` | `pool.*ResultErrorPool[T].WithContext` | ` ` | — |
-| `pool/result_pool.go:52` | `pool.*ResultPool[T].WithErrors` | ` ` | — |
-| `pool/result_pool.go:63` | `pool.*ResultPool[T].WithContext` | ` ` | — |
+| `pool/result_error_pool.go:55` | `pool.*ResultErrorPool[T].WithContext` | `(context.Context) (*ResultContextPool[T])` | — |
+| `pool/result_pool.go:52` | `pool.*ResultPool[T].WithErrors` | `() (*ResultErrorPool[T])` | — |
+| `pool/result_pool.go:63` | `pool.*ResultPool[T].WithContext` | `(context.Context) (*ResultContextPool[T])` | — |
 
 ### Family 4 — 4 members, every pair `>= 0.71` code-shape, evidence `180`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `pool/error_pool.go:36` | `pool.*ErrorPool.Wait` | ` ` | — |
-| `pool/result_context_pool.go:34` | `pool.*ResultContextPool[T].Wait` | ` ` | — |
-| `pool/result_error_pool.go:37` | `pool.*ResultErrorPool[T].Wait` | ` ` | — |
-| `pool/result_pool.go:40` | `pool.*ResultPool[T].Wait` | ` ` | — |
+| `pool/error_pool.go:36` | `pool.*ErrorPool.Wait` | `() (error)` | — |
+| `pool/result_context_pool.go:34` | `pool.*ResultContextPool[T].Wait` | `() ([]T, error)` | — |
+| `pool/result_error_pool.go:37` | `pool.*ResultErrorPool[T].Wait` | `() ([]T, error)` | — |
+| `pool/result_pool.go:40` | `pool.*ResultPool[T].Wait` | `() ([]T)` | — |
 
 ### Family 5 — 3 members, every pair `>= 0.85` code-shape, evidence `151`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `pool/context_pool.go:64` | `pool.*ContextPool.WithFirstError` | ` ` | — |
-| `pool/result_context_pool.go:50` | `pool.*ResultContextPool[T].WithFirstError` | ` ` | — |
-| `pool/result_error_pool.go:64` | `pool.*ResultErrorPool[T].WithFirstError` | ` ` | — |
+| `pool/context_pool.go:64` | `pool.*ContextPool.WithFirstError` | `() (*ContextPool)` | — |
+| `pool/result_context_pool.go:50` | `pool.*ResultContextPool[T].WithFirstError` | `() (*ResultContextPool[T])` | — |
+| `pool/result_error_pool.go:64` | `pool.*ResultErrorPool[T].WithFirstError` | `() (*ResultErrorPool[T])` | — |
 
 _2 more families not listed._
 

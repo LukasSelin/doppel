@@ -195,7 +195,12 @@ doppel ontology --defs                                # print the vocabulary and
 
 - **CodeUnit** (`internal/parser/parser.go`) — one function/method from the AST: `Name`, `File`,
   `StartLine`, `Body`, `Signature`, `Package`, `Patterns`, `DocComment`, `Exported`, `ReceiverType`,
-  `Callees`, `Fingerprint`. Methods are named `"*Server.Start"` — the receiver keeps its star.
+  `Callees`, `Fingerprint`, `Generated`. Methods are named `"*Server.Start"` — the receiver keeps its
+  star; `parser.MethodName` strips it back off. `Signature` is rendered text — `([]int) (int)`,
+  types in order, names dropped, one entry per declared name — and is what the `sig:` line and the
+  interface-implementation kind read; `Fingerprint.Types` (the sorted `in:`/`out:` type *set*) is
+  what the similarity score reads. (For a long time `Signature` was empty on every unit: the old
+  extractor handed an `*ast.FieldList` to `go/printer`, which rejects it silently.)
 - **Fingerprint** (`internal/fingerprint/fingerprint.go`) — `Shingles` (sorted, deduped 3-gram
   hashes), `Flow` (control-flow histogram), `Types` (normalized param/result types), `Nodes`, and
   `Patterns` (the multi-level trophic pattern multiset — see *Trophic structural energy*).

@@ -9,7 +9,7 @@ CLI framework; one dominant type with a long method set, plus shell-completion g
 | Corpus | [cobra](https://github.com/spf13/cobra) |
 | Pinned at | `v1.10.2` (`88b30ab89da2d0d0abb153818746c5a2d30eccec`) |
 | Project since | 2015 |
-| doppel | `eeb5608` |
+| doppel | `d9e6c71` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -43,8 +43,8 @@ Families: 18 over 43 components, 63 functions in a family, 3 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `doc/md_docs.go:57` | `doc.GenMarkdownCustom` | ` ` | — |
-| **B** | `doc/rest_docs.go:62` | `doc.GenReSTCustom` | ` ` | — |
+| **A** | `doc/md_docs.go:57` | `doc.GenMarkdownCustom` | `(*cobra.Command, io.Writer, func(string) string) (error)` | — |
+| **B** | `doc/rest_docs.go:62` | `doc.GenReSTCustom` | `(*cobra.Command, io.Writer, func(string, string) string) (error)` | — |
 
 **Code similarity:** `ast 0.80  flow 1.00  nesting 1.00  sig 0.60  size 0.86`
 
@@ -76,8 +76,8 @@ Families: 18 over 43 components, 63 functions in a family, 3 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `doc/rest_docs.go:145` | `doc.GenReSTTreeCustom` | ` ` | file_io |
-| **B** | `doc/yaml_docs.go:60` | `doc.GenYamlTreeCustom` | ` ` | file_io |
+| **A** | `doc/rest_docs.go:145` | `doc.GenReSTTreeCustom` | `(*cobra.Command, string, func(string) string, func(string, string) string) (error)` | file_io |
+| **B** | `doc/yaml_docs.go:60` | `doc.GenYamlTreeCustom` | `(*cobra.Command, string, func(string) string, func(string) string) (error)` | file_io |
 
 **Profile A:** `file_io` 1.00 (dominance)
 
@@ -113,8 +113,8 @@ Families: 18 over 43 components, 63 functions in a family, 3 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `flag_groups.go:33` | `cobra.*Command.MarkFlagsRequiredTogether` | `—` | validation |
-| **B** | `flag_groups.go:49` | `cobra.*Command.MarkFlagsOneRequired` | `—` | validation |
+| **A** | `flag_groups.go:33` | `cobra.*Command.MarkFlagsRequiredTogether` | `(...string)` | validation |
+| **B** | `flag_groups.go:49` | `cobra.*Command.MarkFlagsOneRequired` | `(...string)` | validation |
 
 **Profile A:** `validation` 1.00 (dominance)
 
@@ -149,8 +149,8 @@ Families: 18 over 43 components, 63 functions in a family, 3 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `doc/md_docs.go:32` | `doc.printOptions` | ` ` | — |
-| **B** | `doc/rest_docs.go:30` | `doc.printOptionsReST` | ` ` | — |
+| **A** | `doc/md_docs.go:32` | `doc.printOptions` | `(*bytes.Buffer, *cobra.Command, string) (error)` | — |
+| **B** | `doc/rest_docs.go:30` | `doc.printOptionsReST` | `(*bytes.Buffer, *cobra.Command, string) (error)` | — |
 
 **Code similarity:** `ast 0.97  flow 1.00  nesting 1.00  sig 1.00  size 0.86`
 
@@ -181,8 +181,8 @@ Families: 18 over 43 components, 63 functions in a family, 3 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `doc/md_docs.go:133` | `doc.GenMarkdownTreeCustom` | ` ` | file_io |
-| **B** | `doc/rest_docs.go:145` | `doc.GenReSTTreeCustom` | ` ` | file_io |
+| **A** | `doc/md_docs.go:133` | `doc.GenMarkdownTreeCustom` | `(*cobra.Command, string, func(string) string, func(string) string) (error)` | file_io |
+| **B** | `doc/rest_docs.go:145` | `doc.GenReSTTreeCustom` | `(*cobra.Command, string, func(string) string, func(string, string) string) (error)` | file_io |
 
 **Profile A:** `file_io` 1.00 (dominance)
 
@@ -218,8 +218,8 @@ Families: 18 over 43 components, 63 functions in a family, 3 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `doc/md_docs.go:133` | `doc.GenMarkdownTreeCustom` | ` ` | file_io |
-| **B** | `doc/yaml_docs.go:60` | `doc.GenYamlTreeCustom` | ` ` | file_io |
+| **A** | `doc/md_docs.go:133` | `doc.GenMarkdownTreeCustom` | `(*cobra.Command, string, func(string) string, func(string) string) (error)` | file_io |
+| **B** | `doc/yaml_docs.go:60` | `doc.GenYamlTreeCustom` | `(*cobra.Command, string, func(string) string, func(string) string) (error)` | file_io |
 
 **Profile A:** `file_io` 1.00 (dominance)
 
@@ -255,8 +255,8 @@ Families: 18 over 43 components, 63 functions in a family, 3 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `flag_groups.go:33` | `cobra.*Command.MarkFlagsRequiredTogether` | `—` | validation |
-| **B** | `flag_groups.go:65` | `cobra.*Command.MarkFlagsMutuallyExclusive` | `—` | — |
+| **A** | `flag_groups.go:33` | `cobra.*Command.MarkFlagsRequiredTogether` | `(...string)` | validation |
+| **B** | `flag_groups.go:65` | `cobra.*Command.MarkFlagsMutuallyExclusive` | `(...string)` | — |
 
 **Profile A:** `validation` 1.00 (dominance)
 
@@ -288,8 +288,8 @@ Families: 18 over 43 components, 63 functions in a family, 3 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `flag_groups.go:49` | `cobra.*Command.MarkFlagsOneRequired` | `—` | validation |
-| **B** | `flag_groups.go:65` | `cobra.*Command.MarkFlagsMutuallyExclusive` | `—` | — |
+| **A** | `flag_groups.go:49` | `cobra.*Command.MarkFlagsOneRequired` | `(...string)` | validation |
+| **B** | `flag_groups.go:65` | `cobra.*Command.MarkFlagsMutuallyExclusive` | `(...string)` | — |
 
 **Profile A:** `validation` 1.00 (dominance)
 
@@ -321,8 +321,8 @@ Families: 18 over 43 components, 63 functions in a family, 3 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `flag_groups.go:144` | `cobra.validateRequiredFlagGroups` | ` ` | validation |
-| **B** | `flag_groups.go:188` | `cobra.validateExclusiveFlagGroups` | ` ` | validation |
+| **A** | `flag_groups.go:144` | `cobra.validateRequiredFlagGroups` | `(map[string]map[string]bool) (error)` | validation |
+| **B** | `flag_groups.go:188` | `cobra.validateExclusiveFlagGroups` | `(map[string]map[string]bool) (error)` | validation |
 
 **Profile A:** `validation` 1.00 (dominance)
 
@@ -360,8 +360,8 @@ Families: 18 over 43 components, 63 functions in a family, 3 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `flag_groups.go:167` | `cobra.validateOneRequiredFlagGroups` | ` ` | validation |
-| **B** | `flag_groups.go:188` | `cobra.validateExclusiveFlagGroups` | ` ` | validation |
+| **A** | `flag_groups.go:167` | `cobra.validateOneRequiredFlagGroups` | `(map[string]map[string]bool) (error)` | validation |
+| **B** | `flag_groups.go:188` | `cobra.validateExclusiveFlagGroups` | `(map[string]map[string]bool) (error)` | validation |
 
 **Profile A:** `validation` 1.00 (dominance)
 
@@ -403,50 +403,50 @@ Families: 18 over 43 components, 63 functions in a family, 3 edges completed
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `command.go:412` | `cobra.*Command.getOut` | ` ` | — |
-| `command.go:422` | `cobra.*Command.getErr` | ` ` | — |
-| `command.go:432` | `cobra.*Command.getIn` | ` ` | — |
-| `command.go:464` | `cobra.*Command.getUsageTemplateFunc` | ` ` | — |
-| `command.go:505` | `cobra.*Command.getHelpTemplateFunc` | ` ` | — |
-| `command.go:592` | `cobra.*Command.UsageTemplate` | ` ` | — |
-| `command.go:605` | `cobra.*Command.HelpTemplate` | ` ` | — |
-| `command.go:618` | `cobra.*Command.VersionTemplate` | ` ` | — |
-| `command.go:631` | `cobra.*Command.getVersionTemplateFunc` | ` ` | — |
+| `command.go:412` | `cobra.*Command.getOut` | `(io.Writer) (io.Writer)` | — |
+| `command.go:422` | `cobra.*Command.getErr` | `(io.Writer) (io.Writer)` | — |
+| `command.go:432` | `cobra.*Command.getIn` | `(io.Reader) (io.Reader)` | — |
+| `command.go:464` | `cobra.*Command.getUsageTemplateFunc` | `() (func(w io.Writer, data interface{}) error)` | — |
+| `command.go:505` | `cobra.*Command.getHelpTemplateFunc` | `() (func(w io.Writer, data interface{}) error)` | — |
+| `command.go:592` | `cobra.*Command.UsageTemplate` | `() (string)` | — |
+| `command.go:605` | `cobra.*Command.HelpTemplate` | `() (string)` | — |
+| `command.go:618` | `cobra.*Command.VersionTemplate` | `() (string)` | — |
+| `command.go:631` | `cobra.*Command.getVersionTemplateFunc` | `() (func(w io.Writer, data interface{}) error)` | — |
 
 ### Family 2 — 3 members, every pair `>= 0.84` code-shape, evidence `1891`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `doc/md_docs.go:133` | `doc.GenMarkdownTreeCustom` | ` ` | file_io |
-| `doc/rest_docs.go:145` | `doc.GenReSTTreeCustom` | ` ` | file_io |
-| `doc/yaml_docs.go:60` | `doc.GenYamlTreeCustom` | ` ` | file_io |
+| `doc/md_docs.go:133` | `doc.GenMarkdownTreeCustom` | `(*cobra.Command, string, func(string) string, func(string) string) (error)` | file_io |
+| `doc/rest_docs.go:145` | `doc.GenReSTTreeCustom` | `(*cobra.Command, string, func(string) string, func(string, string) string) (error)` | file_io |
+| `doc/yaml_docs.go:60` | `doc.GenYamlTreeCustom` | `(*cobra.Command, string, func(string) string, func(string) string) (error)` | file_io |
 
 ### Family 3 — 4 members, every pair `>= 0.64` code-shape, evidence `1702`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `command.go:1688` | `cobra.*Command.Flags` | ` ` | — |
-| `command.go:1716` | `cobra.*Command.LocalFlags` | ` ` | — |
-| `command.go:1744` | `cobra.*Command.InheritedFlags` | ` ` | — |
-| `command.go:1775` | `cobra.*Command.PersistentFlags` | ` ` | — |
+| `command.go:1688` | `cobra.*Command.Flags` | `() (*flag.FlagSet)` | — |
+| `command.go:1716` | `cobra.*Command.LocalFlags` | `() (*flag.FlagSet)` | — |
+| `command.go:1744` | `cobra.*Command.InheritedFlags` | `() (*flag.FlagSet)` | — |
+| `command.go:1775` | `cobra.*Command.PersistentFlags` | `() (*flag.FlagSet)` | — |
 
 ### Family 4 — 5 members, every pair `>= 0.81` code-shape, evidence `1244`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `bash_completions.go:701` | `cobra.*Command.GenBashCompletionFile` | ` ` | file_io |
-| `bash_completionsV2.go:470` | `cobra.*Command.GenBashCompletionFileV2` | ` ` | file_io |
-| `fish_completions.go:284` | `cobra.*Command.GenFishCompletionFile` | ` ` | file_io |
-| `powershell_completions.go:320` | `cobra.*Command.genPowerShellCompletionFile` | ` ` | file_io |
-| `zsh_completions.go:70` | `cobra.*Command.genZshCompletionFile` | ` ` | file_io |
+| `bash_completions.go:701` | `cobra.*Command.GenBashCompletionFile` | `(string) (error)` | file_io |
+| `bash_completionsV2.go:470` | `cobra.*Command.GenBashCompletionFileV2` | `(string, bool) (error)` | file_io |
+| `fish_completions.go:284` | `cobra.*Command.GenFishCompletionFile` | `(string, bool) (error)` | file_io |
+| `powershell_completions.go:320` | `cobra.*Command.genPowerShellCompletionFile` | `(string, bool) (error)` | file_io |
+| `zsh_completions.go:70` | `cobra.*Command.genZshCompletionFile` | `(string, bool) (error)` | file_io |
 
 ### Family 5 — 3 members, every pair `>= 1.00` code-shape, evidence `1228`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `flag_groups.go:33` | `cobra.*Command.MarkFlagsRequiredTogether` | `—` | validation |
-| `flag_groups.go:49` | `cobra.*Command.MarkFlagsOneRequired` | `—` | validation |
-| `flag_groups.go:65` | `cobra.*Command.MarkFlagsMutuallyExclusive` | `—` | — |
+| `flag_groups.go:33` | `cobra.*Command.MarkFlagsRequiredTogether` | `(...string)` | validation |
+| `flag_groups.go:49` | `cobra.*Command.MarkFlagsOneRequired` | `(...string)` | validation |
+| `flag_groups.go:65` | `cobra.*Command.MarkFlagsMutuallyExclusive` | `(...string)` | — |
 
 _13 more families not listed._
 

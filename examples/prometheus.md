@@ -9,7 +9,7 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `eeb5608` |
+| doppel | `d9e6c71` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -43,8 +43,8 @@ Families: 477 over 611 components, 1366 functions in a family, 4359 edges comple
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `scrape/scrape.go:1589` | `scrape.*scrapeLoopAppender.append` | ` ` | validation, mapping, caching |
-| **B** | `scrape/scrape_append_v2.go:90` | `scrape.*scrapeLoopAppenderV2.append` | ` ` | validation, mapping, caching |
+| **A** | `scrape/scrape.go:1589` | `scrape.*scrapeLoopAppender.append` | `([]byte, string, time.Time) (int, int, int, error)` | validation, mapping, caching |
+| **B** | `scrape/scrape_append_v2.go:90` | `scrape.*scrapeLoopAppenderV2.append` | `([]byte, string, time.Time) (int, int, int, error)` | validation, mapping, caching |
 
 **Profile A:** `mapping` 0.51, `caching` 0.49 (coalition)
 
@@ -84,8 +84,8 @@ Families: 477 over 611 components, 1366 functions in a family, 4359 edges comple
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `discovery/kubernetes/endpoints.go:63` | `kubernetes.NewEndpoints` | ` ` | mapping, caching, logging |
-| **B** | `discovery/kubernetes/endpointslice.go:62` | `kubernetes.NewEndpointSlice` | ` ` | mapping, caching, logging |
+| **A** | `discovery/kubernetes/endpoints.go:63` | `kubernetes.NewEndpoints` | `(*slog.Logger, cache.SharedIndexInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, bool, bool, bool, *prometheus.CounterVec) (*Endpoints)` | mapping, caching, logging |
+| **B** | `discovery/kubernetes/endpointslice.go:62` | `kubernetes.NewEndpointSlice` | `(*slog.Logger, cache.SharedIndexInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, bool, bool, bool, *prometheus.CounterVec) (*EndpointSlice)` | mapping, caching, logging |
 
 **Profile A:** `caching` 1.00 (dominance)
 
@@ -124,8 +124,8 @@ Families: 477 over 611 components, 1366 functions in a family, 4359 edges comple
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `util/strutil/jarowinkler.go:57` | `strutil.jaroWinklerString` | ` ` | — |
-| **B** | `util/strutil/jarowinkler.go:125` | `strutil.jaroWinklerRunes` | ` ` | — |
+| **A** | `util/strutil/jarowinkler.go:57` | `strutil.jaroWinklerString` | `(string, string) (float64)` | — |
+| **B** | `util/strutil/jarowinkler.go:125` | `strutil.jaroWinklerRunes` | `([]rune, []rune) (float64)` | — |
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
 
@@ -157,8 +157,8 @@ Families: 477 over 611 components, 1366 functions in a family, 4359 edges comple
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `tsdb/head_wal.go:81` | `tsdb.*Head.loadWAL` | ` ` | concurrency, error_wrapping, logging |
-| **B** | `tsdb/head_wal.go:871` | `tsdb.*Head.loadWBL` | ` ` | concurrency, error_wrapping, logging |
+| **A** | `tsdb/head_wal.go:81` | `tsdb.*Head.loadWAL` | `(*wlog.Reader, *labels.SymbolTable, map[chunks.HeadSeriesRef]chunks.HeadSeriesRef, map[chunks.HeadSeriesRef][]*mmappedChunk, map[chunks.HeadSeriesRef][]*mmappedChunk) (error)` | concurrency, error_wrapping, logging |
+| **B** | `tsdb/head_wal.go:871` | `tsdb.*Head.loadWBL` | `(*wlog.Reader, *labels.SymbolTable, map[chunks.HeadSeriesRef]chunks.HeadSeriesRef, chunks.ChunkDiskMapperRef) (error)` | concurrency, error_wrapping, logging |
 
 **Profile A:** `logging` 1.00 (dominance)
 
@@ -194,8 +194,8 @@ Families: 477 over 611 components, 1366 functions in a family, 4359 edges comple
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `prompb/io/prometheus/client/decoder.go:314` | `io_prometheus_client.*Metric.unmarshalWithoutLabels` | ` ` | validation |
-| **B** | `prompb/io/prometheus/client/decoder.go:596` | `io_prometheus_client.*MetricFamily.unmarshalWithoutMetrics` | ` ` | validation |
+| **A** | `prompb/io/prometheus/client/decoder.go:314` | `io_prometheus_client.*Metric.unmarshalWithoutLabels` | `(*MetricStreamingDecoder, []byte) (error)` | validation |
+| **B** | `prompb/io/prometheus/client/decoder.go:596` | `io_prometheus_client.*MetricFamily.unmarshalWithoutMetrics` | `(*MetricStreamingDecoder, []byte) (error)` | validation |
 
 **Profile A:** `validation` 1.00 (dominance)
 
@@ -230,8 +230,8 @@ Families: 477 over 611 components, 1366 functions in a family, 4359 edges comple
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `discovery/kubernetes/endpoints.go:347` | `kubernetes.*Endpoints.buildEndpoints` | ` ` | logging |
-| **B** | `discovery/kubernetes/endpointslice.go:308` | `kubernetes.*EndpointSlice.buildEndpointSlice` | ` ` | — |
+| **A** | `discovery/kubernetes/endpoints.go:347` | `kubernetes.*Endpoints.buildEndpoints` | `(*apiv1.Endpoints) (*targetgroup.Group)` | logging |
+| **B** | `discovery/kubernetes/endpointslice.go:308` | `kubernetes.*EndpointSlice.buildEndpointSlice` | `(v1.EndpointSlice) (*targetgroup.Group)` | — |
 
 **Profile A:** `logging` 1.00 (dominance)
 
@@ -266,8 +266,8 @@ Families: 477 over 611 components, 1366 functions in a family, 4359 edges comple
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `model/histogram/float_histogram.go:1420` | `histogram.addBuckets` | ` ` | — |
-| **B** | `model/histogram/float_histogram.go:1545` | `histogram.kahanAddBuckets` | ` ` | — |
+| **A** | `model/histogram/float_histogram.go:1420` | `histogram.addBuckets` | `(int32, float64, bool, []Span, []float64, []Span, []float64) ([]Span, []float64)` | — |
+| **B** | `model/histogram/float_histogram.go:1545` | `histogram.kahanAddBuckets` | `(int32, float64, bool, []Span, []float64, []Span, []float64, []float64, []float64) ([]Span, []float64, []float64)` | — |
 
 **Code similarity:** `ast 0.91  flow 1.00  nesting 0.99  sig 1.00  size 0.78`
 
@@ -298,8 +298,8 @@ Families: 477 over 611 components, 1366 functions in a family, 4359 edges comple
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `storage/remote/queue_manager.go:844` | `remote.*QueueManager.AppendHistograms` | ` ` | retry, concurrency, logging |
-| **B** | `storage/remote/queue_manager.go:906` | `remote.*QueueManager.AppendFloatHistograms` | ` ` | retry, concurrency, logging |
+| **A** | `storage/remote/queue_manager.go:844` | `remote.*QueueManager.AppendHistograms` | `([]record.RefHistogramSample) (bool)` | retry, concurrency, logging |
+| **B** | `storage/remote/queue_manager.go:906` | `remote.*QueueManager.AppendFloatHistograms` | `([]record.RefFloatHistogramSample) (bool)` | retry, concurrency, logging |
 
 **Profile A:** `retry` 1.00 (dominance)
 
@@ -338,8 +338,8 @@ Families: 477 over 611 components, 1366 functions in a family, 4359 edges comple
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `util/runtime/statfs_linux_386.go:24` | `runtime.FsType` | ` ` | — |
-| **B** | `util/runtime/statfs_uint32.go:23` | `runtime.FsType` | ` ` | — |
+| **A** | `util/runtime/statfs_linux_386.go:24` | `runtime.FsType` | `(string) (string)` | — |
+| **B** | `util/runtime/statfs_uint32.go:23` | `runtime.FsType` | `(string) (string)` | — |
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
@@ -367,8 +367,8 @@ Families: 477 over 611 components, 1366 functions in a family, 4359 edges comple
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `tsdb/chunkenc/float_histogram.go:335` | `chunkenc.expandFloatSpansAndBuckets` | ` ` | — |
-| **B** | `tsdb/chunkenc/histogram.go:371` | `chunkenc.expandIntSpansAndBuckets` | ` ` | — |
+| **A** | `tsdb/chunkenc/float_histogram.go:335` | `chunkenc.expandFloatSpansAndBuckets` | `([]histogram.Span, []histogram.Span, []xorValue, []float64) ([]Insert, []Insert, bool)` | — |
+| **B** | `tsdb/chunkenc/histogram.go:371` | `chunkenc.expandIntSpansAndBuckets` | `([]histogram.Span, []histogram.Span, []int64, []int64) ([]Insert, []Insert, bool)` | — |
 
 **Code similarity:** `ast 0.95  flow 1.00  nesting 1.00  sig 0.50  size 0.99`
 
@@ -407,16 +407,16 @@ Families: 477 over 611 components, 1366 functions in a family, 4359 edges comple
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `web/api/v1/openapi_paths.go:28` | `v1.*OpenAPIBuilder.queryPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:55` | `v1.*OpenAPIBuilder.queryRangePath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:84` | `v1.*OpenAPIBuilder.queryExemplarsPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:108` | `v1.*OpenAPIBuilder.formatQueryPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:130` | `v1.*OpenAPIBuilder.parseQueryPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:152` | `v1.*OpenAPIBuilder.labelsPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:180` | `v1.*OpenAPIBuilder.labelValuesPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:214` | `v1.*OpenAPIBuilder.searchMetricNamesPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:250` | `v1.*OpenAPIBuilder.searchLabelNamesPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:285` | `v1.*OpenAPIBuilder.searchLabelValuesPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:28` | `v1.*OpenAPIBuilder.queryPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:55` | `v1.*OpenAPIBuilder.queryRangePath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:84` | `v1.*OpenAPIBuilder.queryExemplarsPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:108` | `v1.*OpenAPIBuilder.formatQueryPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:130` | `v1.*OpenAPIBuilder.parseQueryPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:152` | `v1.*OpenAPIBuilder.labelsPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:180` | `v1.*OpenAPIBuilder.labelValuesPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:214` | `v1.*OpenAPIBuilder.searchMetricNamesPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:250` | `v1.*OpenAPIBuilder.searchLabelNamesPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:285` | `v1.*OpenAPIBuilder.searchLabelValuesPath` | `() (*v3.PathItem)` | — |
 
 _5 more members not listed._
 
@@ -424,16 +424,16 @@ _5 more members not listed._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `web/api/v1/openapi_paths.go:28` | `v1.*OpenAPIBuilder.queryPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:55` | `v1.*OpenAPIBuilder.queryRangePath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:84` | `v1.*OpenAPIBuilder.queryExemplarsPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:108` | `v1.*OpenAPIBuilder.formatQueryPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:130` | `v1.*OpenAPIBuilder.parseQueryPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:152` | `v1.*OpenAPIBuilder.labelsPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:180` | `v1.*OpenAPIBuilder.labelValuesPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:250` | `v1.*OpenAPIBuilder.searchLabelNamesPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:285` | `v1.*OpenAPIBuilder.searchLabelValuesPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:321` | `v1.*OpenAPIBuilder.seriesPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:28` | `v1.*OpenAPIBuilder.queryPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:55` | `v1.*OpenAPIBuilder.queryRangePath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:84` | `v1.*OpenAPIBuilder.queryExemplarsPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:108` | `v1.*OpenAPIBuilder.formatQueryPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:130` | `v1.*OpenAPIBuilder.parseQueryPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:152` | `v1.*OpenAPIBuilder.labelsPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:180` | `v1.*OpenAPIBuilder.labelValuesPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:250` | `v1.*OpenAPIBuilder.searchLabelNamesPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:285` | `v1.*OpenAPIBuilder.searchLabelValuesPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:321` | `v1.*OpenAPIBuilder.seriesPath` | `() (*v3.PathItem)` | — |
 
 _7 more members not listed._
 
@@ -441,16 +441,16 @@ _7 more members not listed._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `web/api/v1/openapi_paths.go:28` | `v1.*OpenAPIBuilder.queryPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:55` | `v1.*OpenAPIBuilder.queryRangePath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:84` | `v1.*OpenAPIBuilder.queryExemplarsPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:108` | `v1.*OpenAPIBuilder.formatQueryPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:130` | `v1.*OpenAPIBuilder.parseQueryPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:152` | `v1.*OpenAPIBuilder.labelsPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:180` | `v1.*OpenAPIBuilder.labelValuesPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:285` | `v1.*OpenAPIBuilder.searchLabelValuesPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:321` | `v1.*OpenAPIBuilder.seriesPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:349` | `v1.*OpenAPIBuilder.metadataPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:28` | `v1.*OpenAPIBuilder.queryPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:55` | `v1.*OpenAPIBuilder.queryRangePath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:84` | `v1.*OpenAPIBuilder.queryExemplarsPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:108` | `v1.*OpenAPIBuilder.formatQueryPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:130` | `v1.*OpenAPIBuilder.parseQueryPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:152` | `v1.*OpenAPIBuilder.labelsPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:180` | `v1.*OpenAPIBuilder.labelValuesPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:285` | `v1.*OpenAPIBuilder.searchLabelValuesPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:321` | `v1.*OpenAPIBuilder.seriesPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:349` | `v1.*OpenAPIBuilder.metadataPath` | `() (*v3.PathItem)` | — |
 
 _7 more members not listed._
 
@@ -458,16 +458,16 @@ _7 more members not listed._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `web/api/v1/openapi_paths.go:28` | `v1.*OpenAPIBuilder.queryPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:55` | `v1.*OpenAPIBuilder.queryRangePath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:84` | `v1.*OpenAPIBuilder.queryExemplarsPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:108` | `v1.*OpenAPIBuilder.formatQueryPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:130` | `v1.*OpenAPIBuilder.parseQueryPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:152` | `v1.*OpenAPIBuilder.labelsPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:180` | `v1.*OpenAPIBuilder.labelValuesPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:321` | `v1.*OpenAPIBuilder.seriesPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:349` | `v1.*OpenAPIBuilder.metadataPath` | ` ` | — |
-| `web/api/v1/openapi_paths.go:377` | `v1.*OpenAPIBuilder.targetsPath` | ` ` | — |
+| `web/api/v1/openapi_paths.go:28` | `v1.*OpenAPIBuilder.queryPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:55` | `v1.*OpenAPIBuilder.queryRangePath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:84` | `v1.*OpenAPIBuilder.queryExemplarsPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:108` | `v1.*OpenAPIBuilder.formatQueryPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:130` | `v1.*OpenAPIBuilder.parseQueryPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:152` | `v1.*OpenAPIBuilder.labelsPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:180` | `v1.*OpenAPIBuilder.labelValuesPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:321` | `v1.*OpenAPIBuilder.seriesPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:349` | `v1.*OpenAPIBuilder.metadataPath` | `() (*v3.PathItem)` | — |
+| `web/api/v1/openapi_paths.go:377` | `v1.*OpenAPIBuilder.targetsPath` | `() (*v3.PathItem)` | — |
 
 _7 more members not listed._
 
@@ -475,16 +475,16 @@ _7 more members not listed._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `web/api/v1/openapi_examples.go:28` | `v1.queryPostExamples` | ` ` | — |
-| `web/api/v1/openapi_examples.go:57` | `v1.queryRangePostExamples` | ` ` | — |
-| `web/api/v1/openapi_examples.go:85` | `v1.queryExemplarsPostExamples` | ` ` | — |
-| `web/api/v1/openapi_examples.go:106` | `v1.formatQueryPostExamples` | ` ` | — |
-| `web/api/v1/openapi_examples.go:123` | `v1.parseQueryPostExamples` | ` ` | — |
-| `web/api/v1/openapi_examples.go:140` | `v1.labelsPostExamples` | ` ` | — |
-| `web/api/v1/openapi_examples.go:167` | `v1.searchMetricNamesPostExamples` | ` ` | — |
-| `web/api/v1/openapi_examples.go:184` | `v1.searchLabelNamesPostExamples` | ` ` | — |
-| `web/api/v1/openapi_examples.go:201` | `v1.searchLabelValuesPostExamples` | ` ` | — |
-| `web/api/v1/openapi_examples.go:219` | `v1.seriesPostExamples` | ` ` | — |
+| `web/api/v1/openapi_examples.go:28` | `v1.queryPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
+| `web/api/v1/openapi_examples.go:57` | `v1.queryRangePostExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
+| `web/api/v1/openapi_examples.go:85` | `v1.queryExemplarsPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
+| `web/api/v1/openapi_examples.go:106` | `v1.formatQueryPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
+| `web/api/v1/openapi_examples.go:123` | `v1.parseQueryPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
+| `web/api/v1/openapi_examples.go:140` | `v1.labelsPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
+| `web/api/v1/openapi_examples.go:167` | `v1.searchMetricNamesPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
+| `web/api/v1/openapi_examples.go:184` | `v1.searchLabelNamesPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
+| `web/api/v1/openapi_examples.go:201` | `v1.searchLabelValuesPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
+| `web/api/v1/openapi_examples.go:219` | `v1.seriesPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
 
 _33 more members not listed._
 

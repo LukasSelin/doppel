@@ -9,7 +9,7 @@ static site generator; a large monolith with heavy template and resource subsyst
 | Corpus | [hugo](https://github.com/gohugoio/hugo) |
 | Pinned at | `v0.165.0` (`76a5e1880ab46688155b02e99bab9be2a6134492`) |
 | Project since | 2013 |
-| doppel | `eeb5608` |
+| doppel | `d9e6c71` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -43,8 +43,8 @@ Families: 306 over 480 components, 939 functions in a family, 623 edges complete
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `tpl/internal/go_templates/texttemplate/exec.go:772` | `template.*state.evalCallOld` | ` ` | validation, error_wrapping |
-| **B** | `tpl/internal/go_templates/texttemplate/hugo_template.go:294` | `template.*state.evalCall` | ` ` | validation, error_wrapping |
+| **A** | `tpl/internal/go_templates/texttemplate/exec.go:772` | `template.*state.evalCallOld` | `(reflect.Value, reflect.Value, bool, parse.Node, string, []parse.Node, reflect.Value) (reflect.Value)` | validation, error_wrapping |
+| **B** | `tpl/internal/go_templates/texttemplate/hugo_template.go:294` | `template.*state.evalCall` | `(reflect.Value, reflect.Value, bool, parse.Node, string, []parse.Node, reflect.Value, ...reflect.Value) (reflect.Value)` | validation, error_wrapping |
 
 **Profile A:** `validation` 1.00 (dominance)
 
@@ -84,8 +84,8 @@ Families: 306 over 480 components, 939 functions in a family, 623 edges complete
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `tpl/internal/go_templates/texttemplate/exec.go:682` | `template.*state.evalFieldOld` | ` ` | validation |
-| **B** | `tpl/internal/go_templates/texttemplate/hugo_template.go:156` | `template.*state.evalField` | ` ` | validation |
+| **A** | `tpl/internal/go_templates/texttemplate/exec.go:682` | `template.*state.evalFieldOld` | `(reflect.Value, string, parse.Node, []parse.Node, reflect.Value, reflect.Value) (reflect.Value)` | validation |
+| **B** | `tpl/internal/go_templates/texttemplate/hugo_template.go:156` | `template.*state.evalField` | `(reflect.Value, string, parse.Node, []parse.Node, reflect.Value, reflect.Value) (reflect.Value)` | validation |
 
 **Profile A:** `validation` 1.00 (dominance)
 
@@ -121,8 +121,8 @@ Families: 306 over 480 components, 939 functions in a family, 623 edges complete
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `tpl/math/init.go:26` | `math.init` | `—` | — |
-| **B** | `tpl/strings/init.go:25` | `strings.init` | `—` | — |
+| **A** | `tpl/math/init.go:26` | `math.init` | `()` | — |
+| **B** | `tpl/strings/init.go:25` | `strings.init` | `()` | — |
 
 **Code similarity:** `ast 0.77  flow 0.94  nesting 0.95  sig 1.00  size 0.92`
 
@@ -155,8 +155,8 @@ Families: 306 over 480 components, 939 functions in a family, 623 edges complete
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `tpl/collections/init.go:25` | `collections.init` | `—` | — |
-| **B** | `tpl/strings/init.go:25` | `strings.init` | `—` | — |
+| **A** | `tpl/collections/init.go:25` | `collections.init` | `()` | — |
+| **B** | `tpl/strings/init.go:25` | `strings.init` | `()` | — |
 
 **Code similarity:** `ast 0.93  flow 1.00  nesting 1.00  sig 1.00  size 0.86`
 
@@ -188,8 +188,8 @@ Families: 306 over 480 components, 939 functions in a family, 623 edges complete
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `resources/image.go:82` | `resources.*imageResource.newExifInfoFn` | ` ` | caching, serialization, file_io |
-| **B** | `resources/image.go:125` | `resources.*imageResource.newMetaInfoFn` | ` ` | caching, serialization, file_io |
+| **A** | `resources/image.go:82` | `resources.*imageResource.newExifInfoFn` | `() (func() (*meta.ExifInfo, error))` | caching, serialization, file_io |
+| **B** | `resources/image.go:125` | `resources.*imageResource.newMetaInfoFn` | `() (func() (*meta.MetaInfo, error))` | caching, serialization, file_io |
 
 **Profile A:** `file_io` 0.94, `caching` 0.06 (dominance)
 
@@ -231,8 +231,8 @@ Families: 306 over 480 components, 939 functions in a family, 623 edges complete
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `tpl/internal/go_templates/texttemplate/exec.go:892` | `template.*state._validateType` | ` ` | validation |
-| **B** | `tpl/internal/go_templates/texttemplate/hugo_template.go:435` | `template.*state.validateType` | ` ` | validation, mapping |
+| **A** | `tpl/internal/go_templates/texttemplate/exec.go:892` | `template.*state._validateType` | `(reflect.Value, reflect.Type) (reflect.Value)` | validation |
+| **B** | `tpl/internal/go_templates/texttemplate/hugo_template.go:435` | `template.*state.validateType` | `(reflect.Value, reflect.Type) (reflect.Value)` | validation, mapping |
 
 **Profile A:** `validation` 1.00 (dominance)
 
@@ -266,8 +266,8 @@ Families: 306 over 480 components, 939 functions in a family, 623 edges complete
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `resources/resource_transformers/babel/babel.go:115` | `babel.*babelTransformation.Transform` | ` ` | mapping, concurrency, error_wrapping, file_io |
-| **B** | `resources/resource_transformers/cssjs/postcss.go:146` | `cssjs.*postcssTransformation.Transform` | ` ` | mapping, concurrency, file_io |
+| **A** | `resources/resource_transformers/babel/babel.go:115` | `babel.*babelTransformation.Transform` | `(*resources.ResourceTransformationCtx) (error)` | mapping, concurrency, error_wrapping, file_io |
+| **B** | `resources/resource_transformers/cssjs/postcss.go:146` | `cssjs.*postcssTransformation.Transform` | `(*resources.ResourceTransformationCtx) (error)` | mapping, concurrency, file_io |
 
 **Profile A:** `file_io` 1.00 (dominance)
 
@@ -312,8 +312,8 @@ Families: 306 over 480 components, 939 functions in a family, 623 edges complete
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `resources/image.go:198` | `resources.*imageResource.getImageMetaInfoCacheTargetPath` | ` ` | caching |
-| **B** | `resources/image.go:501` | `resources.*imageResource.getImageMetaCacheTargetPath` | ` ` | caching |
+| **A** | `resources/image.go:198` | `resources.*imageResource.getImageMetaInfoCacheTargetPath` | `() (string)` | caching |
+| **B** | `resources/image.go:501` | `resources.*imageResource.getImageMetaCacheTargetPath` | `() (string)` | caching |
 
 **Profile A:** `caching` 1.00 (dominance)
 
@@ -350,8 +350,8 @@ Families: 306 over 480 components, 939 functions in a family, 623 edges complete
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `resources/resource_transformers/cssjs/postcss.go:146` | `cssjs.*postcssTransformation.Transform` | ` ` | mapping, concurrency, file_io |
-| **B** | `resources/resource_transformers/cssjs/tailwindcss.go:80` | `cssjs.*tailwindcssTransformation.Transform` | ` ` | mapping, concurrency, file_io |
+| **A** | `resources/resource_transformers/cssjs/postcss.go:146` | `cssjs.*postcssTransformation.Transform` | `(*resources.ResourceTransformationCtx) (error)` | mapping, concurrency, file_io |
+| **B** | `resources/resource_transformers/cssjs/tailwindcss.go:80` | `cssjs.*tailwindcssTransformation.Transform` | `(*resources.ResourceTransformationCtx) (error)` | mapping, concurrency, file_io |
 
 **Profile A:** `file_io` 1.00 (dominance)
 
@@ -395,8 +395,8 @@ Families: 306 over 480 components, 939 functions in a family, 623 edges complete
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `internal/js/esbuild/batch.go:1021` | `esbuild.*scriptGroup.Runner` | ` ` | validation, concurrency |
-| **B** | `internal/js/esbuild/batch.go:1050` | `esbuild.*scriptGroup.Script` | ` ` | validation, concurrency |
+| **A** | `internal/js/esbuild/batch.go:1021` | `esbuild.*scriptGroup.Runner` | `(string) (js.OptionsSetter)` | validation, concurrency |
+| **B** | `internal/js/esbuild/batch.go:1050` | `esbuild.*scriptGroup.Script` | `(string) (js.OptionsSetter)` | validation, concurrency |
 
 **Profile A:** `validation` 1.00 (dominance)
 
@@ -436,16 +436,16 @@ Families: 306 over 480 components, 939 functions in a family, 623 edges complete
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `tpl/cast/init.go:25` | `cast.init` | `—` | — |
-| `tpl/collections/init.go:25` | `collections.init` | `—` | — |
-| `tpl/compare/init.go:26` | `compare.init` | `—` | — |
-| `tpl/crypto/init.go:25` | `crypto.init` | `—` | — |
-| `tpl/css/css.go:229` | `css.init` | `—` | mapping, caching |
-| `tpl/debug/init.go:25` | `debug.init` | `—` | — |
-| `tpl/diagrams/init.go:26` | `diagrams.init` | `—` | — |
-| `tpl/encoding/init.go:25` | `encoding.init` | `—` | — |
-| `tpl/fmt/init.go:25` | `fmt.init` | `—` | — |
-| `tpl/hash/hash.go:58` | `hash.init` | `—` | — |
+| `tpl/cast/init.go:25` | `cast.init` | `()` | — |
+| `tpl/collections/init.go:25` | `collections.init` | `()` | — |
+| `tpl/compare/init.go:26` | `compare.init` | `()` | — |
+| `tpl/crypto/init.go:25` | `crypto.init` | `()` | — |
+| `tpl/css/css.go:229` | `css.init` | `()` | mapping, caching |
+| `tpl/debug/init.go:25` | `debug.init` | `()` | — |
+| `tpl/diagrams/init.go:26` | `diagrams.init` | `()` | — |
+| `tpl/encoding/init.go:25` | `encoding.init` | `()` | — |
+| `tpl/fmt/init.go:25` | `fmt.init` | `()` | — |
+| `tpl/hash/hash.go:58` | `hash.init` | `()` | — |
 
 _17 more members not listed._
 
@@ -453,16 +453,16 @@ _17 more members not listed._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `tpl/cast/init.go:25` | `cast.init` | `—` | — |
-| `tpl/collections/init.go:25` | `collections.init` | `—` | — |
-| `tpl/compare/init.go:26` | `compare.init` | `—` | — |
-| `tpl/crypto/init.go:25` | `crypto.init` | `—` | — |
-| `tpl/debug/init.go:25` | `debug.init` | `—` | — |
-| `tpl/encoding/init.go:25` | `encoding.init` | `—` | — |
-| `tpl/fmt/init.go:25` | `fmt.init` | `—` | — |
-| `tpl/hash/hash.go:58` | `hash.init` | `—` | — |
-| `tpl/images/init.go:25` | `images.init` | `—` | — |
-| `tpl/inflect/init.go:25` | `inflect.init` | `—` | — |
+| `tpl/cast/init.go:25` | `cast.init` | `()` | — |
+| `tpl/collections/init.go:25` | `collections.init` | `()` | — |
+| `tpl/compare/init.go:26` | `compare.init` | `()` | — |
+| `tpl/crypto/init.go:25` | `crypto.init` | `()` | — |
+| `tpl/debug/init.go:25` | `debug.init` | `()` | — |
+| `tpl/encoding/init.go:25` | `encoding.init` | `()` | — |
+| `tpl/fmt/init.go:25` | `fmt.init` | `()` | — |
+| `tpl/hash/hash.go:58` | `hash.init` | `()` | — |
+| `tpl/images/init.go:25` | `images.init` | `()` | — |
+| `tpl/inflect/init.go:25` | `inflect.init` | `()` | — |
 
 _14 more members not listed._
 
@@ -470,16 +470,16 @@ _14 more members not listed._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `tpl/cast/init.go:25` | `cast.init` | `—` | — |
-| `tpl/collections/init.go:25` | `collections.init` | `—` | — |
-| `tpl/compare/init.go:26` | `compare.init` | `—` | — |
-| `tpl/crypto/init.go:25` | `crypto.init` | `—` | — |
-| `tpl/debug/init.go:25` | `debug.init` | `—` | — |
-| `tpl/diagrams/init.go:26` | `diagrams.init` | `—` | — |
-| `tpl/encoding/init.go:25` | `encoding.init` | `—` | — |
-| `tpl/fmt/init.go:25` | `fmt.init` | `—` | — |
-| `tpl/hash/hash.go:58` | `hash.init` | `—` | — |
-| `tpl/hugo/init.go:26` | `hugo.init` | `—` | — |
+| `tpl/cast/init.go:25` | `cast.init` | `()` | — |
+| `tpl/collections/init.go:25` | `collections.init` | `()` | — |
+| `tpl/compare/init.go:26` | `compare.init` | `()` | — |
+| `tpl/crypto/init.go:25` | `crypto.init` | `()` | — |
+| `tpl/debug/init.go:25` | `debug.init` | `()` | — |
+| `tpl/diagrams/init.go:26` | `diagrams.init` | `()` | — |
+| `tpl/encoding/init.go:25` | `encoding.init` | `()` | — |
+| `tpl/fmt/init.go:25` | `fmt.init` | `()` | — |
+| `tpl/hash/hash.go:58` | `hash.init` | `()` | — |
+| `tpl/hugo/init.go:26` | `hugo.init` | `()` | — |
 
 _17 more members not listed._
 
@@ -487,16 +487,16 @@ _17 more members not listed._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `tpl/cast/init.go:25` | `cast.init` | `—` | — |
-| `tpl/collections/init.go:25` | `collections.init` | `—` | — |
-| `tpl/compare/init.go:26` | `compare.init` | `—` | — |
-| `tpl/crypto/init.go:25` | `crypto.init` | `—` | — |
-| `tpl/debug/init.go:25` | `debug.init` | `—` | — |
-| `tpl/diagrams/init.go:26` | `diagrams.init` | `—` | — |
-| `tpl/encoding/init.go:25` | `encoding.init` | `—` | — |
-| `tpl/fmt/init.go:25` | `fmt.init` | `—` | — |
-| `tpl/hash/hash.go:58` | `hash.init` | `—` | — |
-| `tpl/hugo/init.go:26` | `hugo.init` | `—` | — |
+| `tpl/cast/init.go:25` | `cast.init` | `()` | — |
+| `tpl/collections/init.go:25` | `collections.init` | `()` | — |
+| `tpl/compare/init.go:26` | `compare.init` | `()` | — |
+| `tpl/crypto/init.go:25` | `crypto.init` | `()` | — |
+| `tpl/debug/init.go:25` | `debug.init` | `()` | — |
+| `tpl/diagrams/init.go:26` | `diagrams.init` | `()` | — |
+| `tpl/encoding/init.go:25` | `encoding.init` | `()` | — |
+| `tpl/fmt/init.go:25` | `fmt.init` | `()` | — |
+| `tpl/hash/hash.go:58` | `hash.init` | `()` | — |
+| `tpl/hugo/init.go:26` | `hugo.init` | `()` | — |
 
 _17 more members not listed._
 
@@ -504,16 +504,16 @@ _17 more members not listed._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `tpl/cast/init.go:25` | `cast.init` | `—` | — |
-| `tpl/collections/init.go:25` | `collections.init` | `—` | — |
-| `tpl/compare/init.go:26` | `compare.init` | `—` | — |
-| `tpl/crypto/init.go:25` | `crypto.init` | `—` | — |
-| `tpl/debug/init.go:25` | `debug.init` | `—` | — |
-| `tpl/diagrams/init.go:26` | `diagrams.init` | `—` | — |
-| `tpl/encoding/init.go:25` | `encoding.init` | `—` | — |
-| `tpl/fmt/init.go:25` | `fmt.init` | `—` | — |
-| `tpl/hash/hash.go:58` | `hash.init` | `—` | — |
-| `tpl/hugo/init.go:26` | `hugo.init` | `—` | — |
+| `tpl/cast/init.go:25` | `cast.init` | `()` | — |
+| `tpl/collections/init.go:25` | `collections.init` | `()` | — |
+| `tpl/compare/init.go:26` | `compare.init` | `()` | — |
+| `tpl/crypto/init.go:25` | `crypto.init` | `()` | — |
+| `tpl/debug/init.go:25` | `debug.init` | `()` | — |
+| `tpl/diagrams/init.go:26` | `diagrams.init` | `()` | — |
+| `tpl/encoding/init.go:25` | `encoding.init` | `()` | — |
+| `tpl/fmt/init.go:25` | `fmt.init` | `()` | — |
+| `tpl/hash/hash.go:58` | `hash.init` | `()` | — |
+| `tpl/hugo/init.go:26` | `hugo.init` | `()` | — |
 
 _17 more members not listed._
 

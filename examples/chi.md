@@ -9,7 +9,7 @@ HTTP router; a narrow core with a middleware package beside it
 | Corpus | [chi](https://github.com/go-chi/chi) |
 | Pinned at | `v5.3.2` (`38939062c5df4d3e8814aad1a488983112627ced`) |
 | Project since | 2015 |
-| doppel | `eeb5608` |
+| doppel | `d9e6c71` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -43,8 +43,8 @@ Families: 9 over 18 components, 32 functions in a family, 21 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `middleware/recoverer.go:132` | `middleware.prettyStack.decorateFuncCallLine` | ` ` | — |
-| **B** | `middleware/recoverer.go:172` | `middleware.prettyStack.decorateSourceLine` | ` ` | — |
+| **A** | `middleware/recoverer.go:132` | `middleware.prettyStack.decorateFuncCallLine` | `(string, bool, int) (string, error)` | — |
+| **B** | `middleware/recoverer.go:172` | `middleware.prettyStack.decorateSourceLine` | `(string, bool, int) (string, error)` | — |
 
 **Code similarity:** `ast 0.74  flow 1.00  nesting 0.90  sig 1.00  size 0.99`
 
@@ -76,8 +76,8 @@ Families: 9 over 18 components, 32 functions in a family, 21 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `tree.go:559` | `chi.*node.findEdge` | ` ` | — |
-| **B** | `tree.go:850` | `chi.nodes.findEdge` | ` ` | — |
+| **A** | `tree.go:559` | `chi.*node.findEdge` | `(nodeTyp, byte) (*node)` | — |
+| **B** | `tree.go:850` | `chi.nodes.findEdge` | `(byte) (*node)` | — |
 
 **Code similarity:** `ast 0.85  flow 0.96  nesting 0.74  sig 0.67  size 0.80`
 
@@ -105,8 +105,8 @@ Families: 9 over 18 components, 32 functions in a family, 21 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `mux.go:203` | `chi.*Mux.NotFound` | `—` | — |
-| **B** | `mux.go:223` | `chi.*Mux.MethodNotAllowed` | `—` | — |
+| **A** | `mux.go:203` | `chi.*Mux.NotFound` | `(http.HandlerFunc)` | — |
+| **B** | `mux.go:223` | `chi.*Mux.MethodNotAllowed` | `(http.HandlerFunc)` | — |
 
 **Code similarity:** `ast 0.86  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
@@ -138,8 +138,8 @@ Families: 9 over 18 components, 32 functions in a family, 21 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `middleware/route_headers.go:48` | `middleware.HeaderRouter.Route` | ` ` | — |
-| **B** | `middleware/route_headers.go:58` | `middleware.HeaderRouter.RouteAny` | ` ` | — |
+| **A** | `middleware/route_headers.go:48` | `middleware.HeaderRouter.Route` | `(string, string, func(next http.Handler) http.Handler) (HeaderRouter)` | — |
+| **B** | `middleware/route_headers.go:58` | `middleware.HeaderRouter.RouteAny` | `(string, []string, func(next http.Handler) http.Handler) (HeaderRouter)` | — |
 
 **Code similarity:** `ast 0.79  flow 0.82  nesting 1.00  sig 0.75  size 0.74`
 
@@ -169,8 +169,8 @@ Families: 9 over 18 components, 32 functions in a family, 21 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `middleware/content_encoding.go:10` | `middleware.AllowContentEncoding` | ` ` | — |
-| **B** | `middleware/content_type.go:20` | `middleware.AllowContentType` | ` ` | — |
+| **A** | `middleware/content_encoding.go:10` | `middleware.AllowContentEncoding` | `(...string) (func(next http.Handler) http.Handler)` | — |
+| **B** | `middleware/content_type.go:20` | `middleware.AllowContentType` | `(...string) (func(http.Handler) http.Handler)` | — |
 
 **Code similarity:** `ast 0.62  flow 0.98  nesting 0.98  sig 0.33  size 0.98`
 
@@ -198,8 +198,8 @@ Families: 9 over 18 components, 32 functions in a family, 21 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `middleware/strip.go:14` | `middleware.StripSlashes` | ` ` | — |
-| **B** | `middleware/strip.go:41` | `middleware.RedirectSlashes` | ` ` | — |
+| **A** | `middleware/strip.go:14` | `middleware.StripSlashes` | `(http.Handler) (http.Handler)` | — |
+| **B** | `middleware/strip.go:41` | `middleware.RedirectSlashes` | `(http.Handler) (http.Handler)` | — |
 
 **Code similarity:** `ast 0.56  flow 0.97  nesting 0.96  sig 1.00  size 0.83`
 
@@ -227,8 +227,8 @@ Families: 9 over 18 components, 32 functions in a family, 21 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `middleware/clean_path.go:12` | `middleware.CleanPath` | ` ` | — |
-| **B** | `middleware/get_head.go:10` | `middleware.GetHead` | ` ` | — |
+| **A** | `middleware/clean_path.go:12` | `middleware.CleanPath` | `(http.Handler) (http.Handler)` | — |
+| **B** | `middleware/get_head.go:10` | `middleware.GetHead` | `(http.Handler) (http.Handler)` | — |
 
 **Code similarity:** `ast 0.68  flow 0.98  nesting 0.79  sig 1.00  size 0.70`
 
@@ -256,8 +256,8 @@ Families: 9 over 18 components, 32 functions in a family, 21 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `middleware/wrap_writer.go:147` | `middleware.*flushWriter.Flush` | `—` | — |
-| **B** | `middleware/wrap_writer.go:172` | `middleware.*flushHijackWriter.Flush` | `—` | — |
+| **A** | `middleware/wrap_writer.go:147` | `middleware.*flushWriter.Flush` | `()` | — |
+| **B** | `middleware/wrap_writer.go:172` | `middleware.*flushHijackWriter.Flush` | `()` | — |
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
@@ -285,8 +285,8 @@ Families: 9 over 18 components, 32 functions in a family, 21 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `middleware/wrap_writer.go:147` | `middleware.*flushWriter.Flush` | `—` | — |
-| **B** | `middleware/wrap_writer.go:194` | `middleware.*httpFancyWriter.Flush` | `—` | — |
+| **A** | `middleware/wrap_writer.go:147` | `middleware.*flushWriter.Flush` | `()` | — |
+| **B** | `middleware/wrap_writer.go:194` | `middleware.*httpFancyWriter.Flush` | `()` | — |
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
@@ -314,8 +314,8 @@ Families: 9 over 18 components, 32 functions in a family, 21 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `middleware/wrap_writer.go:172` | `middleware.*flushHijackWriter.Flush` | `—` | — |
-| **B** | `middleware/wrap_writer.go:194` | `middleware.*httpFancyWriter.Flush` | `—` | — |
+| **A** | `middleware/wrap_writer.go:172` | `middleware.*flushHijackWriter.Flush` | `()` | — |
+| **B** | `middleware/wrap_writer.go:194` | `middleware.*httpFancyWriter.Flush` | `()` | — |
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
@@ -347,45 +347,45 @@ Families: 9 over 18 components, 32 functions in a family, 21 edges completed
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `middleware/clean_path.go:12` | `middleware.CleanPath` | ` ` | — |
-| `middleware/get_head.go:10` | `middleware.GetHead` | ` ` | — |
-| `middleware/strip.go:14` | `middleware.StripSlashes` | ` ` | — |
-| `middleware/strip.go:41` | `middleware.RedirectSlashes` | ` ` | — |
-| `middleware/url_format.go:46` | `middleware.URLFormat` | ` ` | — |
+| `middleware/clean_path.go:12` | `middleware.CleanPath` | `(http.Handler) (http.Handler)` | — |
+| `middleware/get_head.go:10` | `middleware.GetHead` | `(http.Handler) (http.Handler)` | — |
+| `middleware/strip.go:14` | `middleware.StripSlashes` | `(http.Handler) (http.Handler)` | — |
+| `middleware/strip.go:41` | `middleware.RedirectSlashes` | `(http.Handler) (http.Handler)` | — |
+| `middleware/url_format.go:46` | `middleware.URLFormat` | `(http.Handler) (http.Handler)` | — |
 
 ### Family 2 — 4 members, every pair `>= 1.00` code-shape, evidence `488`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `middleware/wrap_writer.go:147` | `middleware.*flushWriter.Flush` | `—` | — |
-| `middleware/wrap_writer.go:172` | `middleware.*flushHijackWriter.Flush` | `—` | — |
-| `middleware/wrap_writer.go:194` | `middleware.*httpFancyWriter.Flush` | `—` | — |
-| `middleware/wrap_writer.go:239` | `middleware.*http2FancyWriter.Flush` | `—` | — |
+| `middleware/wrap_writer.go:147` | `middleware.*flushWriter.Flush` | `()` | — |
+| `middleware/wrap_writer.go:172` | `middleware.*flushHijackWriter.Flush` | `()` | — |
+| `middleware/wrap_writer.go:194` | `middleware.*httpFancyWriter.Flush` | `()` | — |
+| `middleware/wrap_writer.go:239` | `middleware.*http2FancyWriter.Flush` | `()` | — |
 
 ### Family 3 — 3 members, every pair `>= 0.60` code-shape, evidence `437`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `middleware/clean_path.go:12` | `middleware.CleanPath` | ` ` | — |
-| `middleware/get_head.go:10` | `middleware.GetHead` | ` ` | — |
-| `middleware/request_id.go:67` | `middleware.RequestID` | ` ` | — |
+| `middleware/clean_path.go:12` | `middleware.CleanPath` | `(http.Handler) (http.Handler)` | — |
+| `middleware/get_head.go:10` | `middleware.GetHead` | `(http.Handler) (http.Handler)` | — |
+| `middleware/request_id.go:67` | `middleware.RequestID` | `(http.Handler) (http.Handler)` | — |
 
 ### Family 4 — 4 members, every pair `>= 0.62` code-shape, evidence `418`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `middleware/content_type.go:9` | `middleware.SetHeader` | ` ` | — |
-| `middleware/middleware.go:6` | `middleware.New` | ` ` | — |
-| `middleware/page_route.go:10` | `middleware.PageRoute` | ` ` | — |
-| `middleware/path_rewrite.go:9` | `middleware.PathRewrite` | ` ` | — |
+| `middleware/content_type.go:9` | `middleware.SetHeader` | `(string, string) (func(http.Handler) http.Handler)` | — |
+| `middleware/middleware.go:6` | `middleware.New` | `(http.Handler) (func(next http.Handler) http.Handler)` | — |
+| `middleware/page_route.go:10` | `middleware.PageRoute` | `(string, http.Handler) (func(http.Handler) http.Handler)` | — |
+| `middleware/path_rewrite.go:9` | `middleware.PathRewrite` | `(string, string) (func(http.Handler) http.Handler)` | — |
 
 ### Family 5 — 3 members, every pair `>= 0.62` code-shape, evidence `322`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `middleware/content_type.go:9` | `middleware.SetHeader` | ` ` | — |
-| `middleware/heartbeat.go:12` | `middleware.Heartbeat` | ` ` | — |
-| `middleware/page_route.go:10` | `middleware.PageRoute` | ` ` | — |
+| `middleware/content_type.go:9` | `middleware.SetHeader` | `(string, string) (func(http.Handler) http.Handler)` | — |
+| `middleware/heartbeat.go:12` | `middleware.Heartbeat` | `(string) (func(http.Handler) http.Handler)` | — |
+| `middleware/page_route.go:10` | `middleware.PageRoute` | `(string, http.Handler) (func(http.Handler) http.Handler)` | — |
 
 _4 more families not listed._
 

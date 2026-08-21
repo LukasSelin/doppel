@@ -9,7 +9,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `eeb5608` |
+| doppel | `d9e6c71` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -43,8 +43,8 @@ Families: 25 over 48 components, 109 functions in a family, 119 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `auth.go:48` | `gin.BasicAuthForRealm` | ` ` | — |
-| **B** | `auth.go:98` | `gin.BasicAuthForProxy` | ` ` | — |
+| **A** | `auth.go:48` | `gin.BasicAuthForRealm` | `(Accounts, string) (HandlerFunc)` | — |
+| **B** | `auth.go:98` | `gin.BasicAuthForProxy` | `(Accounts, string) (HandlerFunc)` | — |
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
@@ -75,8 +75,8 @@ Families: 25 over 48 components, 109 functions in a family, 119 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `gin.go:288` | `gin.*Engine.LoadHTMLFiles` | `—` | validation |
-| **B** | `gin.go:300` | `gin.*Engine.LoadHTMLFS` | `—` | validation |
+| **A** | `gin.go:288` | `gin.*Engine.LoadHTMLFiles` | `(...string)` | validation |
+| **B** | `gin.go:300` | `gin.*Engine.LoadHTMLFS` | `(http.FileSystem, ...string)` | validation |
 
 **Profile A:** `validation` 1.00 (dominance)
 
@@ -112,8 +112,8 @@ Families: 25 over 48 components, 109 functions in a family, 119 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `binding/toml.go:29` | `binding.decodeToml` | ` ` | validation |
-| **B** | `binding/yaml.go:29` | `binding.decodeYAML` | ` ` | validation |
+| **A** | `binding/toml.go:29` | `binding.decodeToml` | `(io.Reader, any) (error)` | validation |
+| **B** | `binding/yaml.go:29` | `binding.decodeYAML` | `(io.Reader, any) (error)` | validation |
 
 **Profile A:** `validation` 1.00 (dominance)
 
@@ -147,8 +147,8 @@ Families: 25 over 48 components, 109 functions in a family, 119 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `binding/toml.go:29` | `binding.decodeToml` | ` ` | validation |
-| **B** | `binding/xml.go:28` | `binding.decodeXML` | ` ` | validation, serialization |
+| **A** | `binding/toml.go:29` | `binding.decodeToml` | `(io.Reader, any) (error)` | validation |
+| **B** | `binding/xml.go:28` | `binding.decodeXML` | `(io.Reader, any) (error)` | validation, serialization |
 
 **Profile A:** `validation` 1.00 (dominance)
 
@@ -182,8 +182,8 @@ Families: 25 over 48 components, 109 functions in a family, 119 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `binding/xml.go:28` | `binding.decodeXML` | ` ` | validation, serialization |
-| **B** | `binding/yaml.go:29` | `binding.decodeYAML` | ` ` | validation |
+| **A** | `binding/xml.go:28` | `binding.decodeXML` | `(io.Reader, any) (error)` | validation, serialization |
+| **B** | `binding/yaml.go:29` | `binding.decodeYAML` | `(io.Reader, any) (error)` | validation |
 
 **Profile A:** `validation` 1.00 (dominance)
 
@@ -217,8 +217,8 @@ Families: 25 over 48 components, 109 functions in a family, 119 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `render/protobuf.go:21` | `render.ProtoBuf.Render` | ` ` | serialization |
-| **B** | `render/yaml.go:21` | `render.YAML.Render` | ` ` | serialization |
+| **A** | `render/protobuf.go:21` | `render.ProtoBuf.Render` | `(http.ResponseWriter) (error)` | serialization |
+| **B** | `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | serialization |
 
 **Profile A:** `serialization` 1.00 (dominance)
 
@@ -253,8 +253,8 @@ Families: 25 over 48 components, 109 functions in a family, 119 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `render/toml.go:21` | `render.TOML.Render` | ` ` | — |
-| **B** | `render/yaml.go:21` | `render.YAML.Render` | ` ` | serialization |
+| **A** | `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | — |
+| **B** | `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | serialization |
 
 **Profile B:** `serialization` 1.00 (dominance)
 
@@ -286,8 +286,8 @@ Families: 25 over 48 components, 109 functions in a family, 119 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `routergroup.go:181` | `gin.*RouterGroup.staticFileHandler` | ` ` | — |
-| **B** | `routergroup.go:203` | `gin.*RouterGroup.StaticFS` | ` ` | — |
+| **A** | `routergroup.go:181` | `gin.*RouterGroup.staticFileHandler` | `(string, HandlerFunc) (IRoutes)` | — |
+| **B** | `routergroup.go:203` | `gin.*RouterGroup.StaticFS` | `(string, http.FileSystem) (IRoutes)` | — |
 
 **Code similarity:** `ast 0.69  flow 1.00  nesting 1.00  sig 0.50  size 0.71`
 
@@ -317,8 +317,8 @@ Families: 25 over 48 components, 109 functions in a family, 119 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `gin.go:581` | `gin.*Engine.RunUnix` | ` ` | file_io |
-| **B** | `gin.go:645` | `gin.*Engine.RunListener` | ` ` | — |
+| **A** | `gin.go:581` | `gin.*Engine.RunUnix` | `(string) (error)` | file_io |
+| **B** | `gin.go:645` | `gin.*Engine.RunListener` | `(net.Listener) (error)` | — |
 
 **Profile A:** `file_io` 1.00 (dominance)
 
@@ -350,8 +350,8 @@ Families: 25 over 48 components, 109 functions in a family, 119 edges completed
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `binding/binding.go:122` | `binding.validate` | ` ` | validation |
-| **B** | `binding/binding_nomsgpack.go:116` | `binding.validate` | ` ` | validation |
+| **A** | `binding/binding.go:122` | `binding.validate` | `(any) (error)` | validation |
+| **B** | `binding/binding_nomsgpack.go:116` | `binding.validate` | `(any) (error)` | validation |
 
 **Profile A:** `validation` 1.00 (dominance)
 
@@ -391,16 +391,16 @@ Families: 25 over 48 components, 109 functions in a family, 119 edges completed
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `context.go:1180` | `gin.*Context.IndentedJSON` | `—` | — |
-| `context.go:1187` | `gin.*Context.SecureJSON` | `—` | — |
-| `context.go:1205` | `gin.*Context.JSON` | `—` | — |
-| `context.go:1211` | `gin.*Context.AsciiJSON` | `—` | — |
-| `context.go:1217` | `gin.*Context.PureJSON` | `—` | — |
-| `context.go:1223` | `gin.*Context.XML` | `—` | — |
-| `context.go:1228` | `gin.*Context.YAML` | `—` | — |
-| `context.go:1233` | `gin.*Context.TOML` | `—` | — |
-| `context.go:1238` | `gin.*Context.ProtoBuf` | `—` | — |
-| `context.go:1243` | `gin.*Context.BSON` | `—` | — |
+| `context.go:1180` | `gin.*Context.IndentedJSON` | `(int, any)` | — |
+| `context.go:1187` | `gin.*Context.SecureJSON` | `(int, any)` | — |
+| `context.go:1205` | `gin.*Context.JSON` | `(int, any)` | — |
+| `context.go:1211` | `gin.*Context.AsciiJSON` | `(int, any)` | — |
+| `context.go:1217` | `gin.*Context.PureJSON` | `(int, any)` | — |
+| `context.go:1223` | `gin.*Context.XML` | `(int, any)` | — |
+| `context.go:1228` | `gin.*Context.YAML` | `(int, any)` | — |
+| `context.go:1233` | `gin.*Context.TOML` | `(int, any)` | — |
+| `context.go:1238` | `gin.*Context.ProtoBuf` | `(int, any)` | — |
+| `context.go:1243` | `gin.*Context.BSON` | `(int, any)` | — |
 
 _3 more members not listed._
 
@@ -408,44 +408,44 @@ _3 more members not listed._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `render/json.go:78` | `render.IndentedJSON.Render` | ` ` | — |
-| `render/json.go:94` | `render.SecureJSON.Render` | ` ` | — |
-| `render/json.go:117` | `render.JsonpJSON.Render` | ` ` | — |
-| `render/protobuf.go:21` | `render.ProtoBuf.Render` | ` ` | serialization |
-| `render/toml.go:21` | `render.TOML.Render` | ` ` | — |
-| `render/yaml.go:21` | `render.YAML.Render` | ` ` | serialization |
+| `render/json.go:78` | `render.IndentedJSON.Render` | `(http.ResponseWriter) (error)` | — |
+| `render/json.go:94` | `render.SecureJSON.Render` | `(http.ResponseWriter) (error)` | — |
+| `render/json.go:117` | `render.JsonpJSON.Render` | `(http.ResponseWriter) (error)` | — |
+| `render/protobuf.go:21` | `render.ProtoBuf.Render` | `(http.ResponseWriter) (error)` | serialization |
+| `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | — |
+| `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | serialization |
 
 ### Family 3 — 6 members, every pair `>= 0.62` code-shape, evidence `1977`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `render/json.go:67` | `render.WriteJSON` | ` ` | — |
-| `render/json.go:78` | `render.IndentedJSON.Render` | ` ` | — |
-| `render/json.go:94` | `render.SecureJSON.Render` | ` ` | — |
-| `render/protobuf.go:21` | `render.ProtoBuf.Render` | ` ` | serialization |
-| `render/toml.go:21` | `render.TOML.Render` | ` ` | — |
-| `render/yaml.go:21` | `render.YAML.Render` | ` ` | serialization |
+| `render/json.go:67` | `render.WriteJSON` | `(http.ResponseWriter, any) (error)` | — |
+| `render/json.go:78` | `render.IndentedJSON.Render` | `(http.ResponseWriter) (error)` | — |
+| `render/json.go:94` | `render.SecureJSON.Render` | `(http.ResponseWriter) (error)` | — |
+| `render/protobuf.go:21` | `render.ProtoBuf.Render` | `(http.ResponseWriter) (error)` | serialization |
+| `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | — |
+| `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | serialization |
 
 ### Family 4 — 6 members, every pair `>= 0.62` code-shape, evidence `1808`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `render/bson.go:21` | `render.BSON.Render` | ` ` | — |
-| `render/json.go:67` | `render.WriteJSON` | ` ` | — |
-| `render/json.go:78` | `render.IndentedJSON.Render` | ` ` | — |
-| `render/protobuf.go:21` | `render.ProtoBuf.Render` | ` ` | serialization |
-| `render/toml.go:21` | `render.TOML.Render` | ` ` | — |
-| `render/yaml.go:21` | `render.YAML.Render` | ` ` | serialization |
+| `render/bson.go:21` | `render.BSON.Render` | `(http.ResponseWriter) (error)` | — |
+| `render/json.go:67` | `render.WriteJSON` | `(http.ResponseWriter, any) (error)` | — |
+| `render/json.go:78` | `render.IndentedJSON.Render` | `(http.ResponseWriter) (error)` | — |
+| `render/protobuf.go:21` | `render.ProtoBuf.Render` | `(http.ResponseWriter) (error)` | serialization |
+| `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | — |
+| `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | serialization |
 
 ### Family 5 — 5 members, every pair `>= 0.64` code-shape, evidence `1390`
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `binding/json.go:44` | `binding.decodeJSON` | ` ` | validation |
-| `binding/msgpack.go:31` | `binding.decodeMsgPack` | ` ` | validation |
-| `binding/toml.go:29` | `binding.decodeToml` | ` ` | validation |
-| `binding/xml.go:28` | `binding.decodeXML` | ` ` | validation, serialization |
-| `binding/yaml.go:29` | `binding.decodeYAML` | ` ` | validation |
+| `binding/json.go:44` | `binding.decodeJSON` | `(io.Reader, any) (error)` | validation |
+| `binding/msgpack.go:31` | `binding.decodeMsgPack` | `(io.Reader, any) (error)` | validation |
+| `binding/toml.go:29` | `binding.decodeToml` | `(io.Reader, any) (error)` | validation |
+| `binding/xml.go:28` | `binding.decodeXML` | `(io.Reader, any) (error)` | validation, serialization |
+| `binding/yaml.go:29` | `binding.decodeYAML` | `(io.Reader, any) (error)` | validation |
 
 _20 more families not listed._
 
