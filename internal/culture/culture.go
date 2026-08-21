@@ -23,6 +23,8 @@ type Options struct {
 	MinExpected       float64 // expected-co-occurrence floor for reporting a negative association
 	MaxCallTokenDF    int     // ecology only: call tokens in more units are corpus idiom, not culture
 	AtypicalFactor    float64 // atypical when typicality < factor × the concept's median
+	MinHabitatMembers int     // packages with fewer functions get no habitat model
+	MisfitFactor      float64 // misfit when strain > factor × the habitat temperature (median strain)
 }
 
 // DefaultOptions returns the production defaults.
@@ -33,6 +35,8 @@ func DefaultOptions() Options {
 		MinExpected:       3.0,
 		MaxCallTokenDF:    50,
 		AtypicalFactor:    0.5,
+		MinHabitatMembers: 5,
+		MisfitFactor:      2.0,
 	}
 }
 
@@ -42,28 +46,52 @@ type ChannelTyp struct {
 	Typicality float64
 }
 
-// Stats summarizes one build for the stderr diagnostic line.
+// Stats summarizes one build for the stderr diagnostic lines. Superlative
+// fields are empty strings (and their norms/strengths 0) when nothing
+// qualifies; ties resolve to the lexicographically smaller name.
 type Stats struct {
 	ConceptsModeled     int // concepts with enough members for a prototype
 	AssociationCount    int // associations surviving the cutoffs
 	UnusualRealizations int // (member, concept) pairs flagged atypical corpus-wide
+
+	HabitatsModeled             int    // packages with enough functions for a habitat model
+	HabitatMisfits              int    // units flagged Misfit corpus-wide
+	MostUniformHabitat          string // habitat with the highest norm ("coldest")
+	MostUniformNorm             float64
+	MostDiverseHabitat          string // habitat with the lowest norm ("hottest")
+	MostDiverseNorm             float64
+	StrongestConvention         string // prototyped tag with the highest convention strength
+	StrongestConventionStrength float64
+	LoosestConvention           string // prototyped tag with the lowest convention strength
+	LoosestConventionStrength   float64
 }
 
 // Model is the built culture model. Query it by unit index (into the units
 // slice given to Build) and concept tag.
 type Model struct {
-	opt          Options
-	associations []Association
-	concepts     map[string]*conceptModel // keyed by tag; only prototyped concepts
-	stats        Stats
+	opt           Options
+	associations  []Association
+	concepts      map[string]*conceptModel // keyed by tag; only prototyped concepts
+	habitats      map[string]*habitatModel // keyed by package; only modeled habitats
+	habitatByUnit map[int]*habitatModel    // modeled members only
+	stats         Stats
 }
 
 type conceptModel struct {
-	members   []int // ascending unit indices
-	typ       map[int]float64
-	chTyp     map[int][]float64 // per member, aligned with channel order
-	median    float64
-	prototype Prototype
+	members    []int // ascending unit indices
+	typ        map[int]float64
+	chTyp      map[int][]float64 // per member, aligned with channel order
+	median     float64
+	prototype  Prototype
+	convention float64 // concentration of practice, 1 - normalized entropy
+}
+
+// unitFeatures is the per-unit feature material shared by prototypes and
+// habitats, computed once per build.
+type unitFeatures struct {
+	tokens         [][]string // resolved call tokens
+	sortedPatterns [][]string // sorted unique tags
+	flowFeats      [][]string // binarized control-flow labels, sorted
 }
 
 // Build computes the whole culture model in one pass. docs[i] describes
@@ -72,18 +100,27 @@ func Build(units []parser.CodeUnit, docs []concepter.ConceptDoc,
 	g *concepter.Graph, opt Options) *Model {
 
 	internal := concepter.QualifiedNames(units)
-	tokens := make([][]string, len(units))
+	uf := &unitFeatures{
+		tokens:         make([][]string, len(units)),
+		sortedPatterns: make([][]string, len(units)),
+		flowFeats:      make([][]string, len(units)),
+	}
 	for i := range units {
-		tokens[i] = concepter.CallTokens(units[i], g, internal)
+		uf.tokens[i] = concepter.CallTokens(units[i], g, internal)
+		uf.sortedPatterns[i] = sortedUniqueTags(units[i].Patterns)
+		uf.flowFeats[i] = flowFeatures(units[i])
 	}
 
 	m := &Model{
-		opt:      opt,
-		concepts: make(map[string]*conceptModel),
+		opt:           opt,
+		concepts:      make(map[string]*conceptModel),
+		habitats:      make(map[string]*habitatModel),
+		habitatByUnit: make(map[int]*habitatModel),
 	}
-	m.associations = buildAssociations(units, docs, tokens, opt)
+	m.associations = buildAssociations(units, docs, uf.tokens, opt)
 	m.stats.AssociationCount = len(m.associations)
-	buildPrototypes(m, units, docs, tokens, opt)
+	buildPrototypes(m, units, docs, uf, opt)
+	buildHabitats(m, units, docs, uf, opt)
 	return m
 }
 

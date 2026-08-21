@@ -42,32 +42,19 @@ type Prototype struct {
 // independent of iteration order by construction; ordering rules exist for
 // the slices we expose.
 func buildPrototypes(m *Model, units []parser.CodeUnit, docs []concepter.ConceptDoc,
-	tokens [][]string, opt Options) {
+	uf *unitFeatures, opt Options) {
 
-	// Feature sets per channel per unit. The cotags channel depends on the
-	// concept under consideration, so it filters sortedPatterns on the fly.
-	sortedPatterns := make([][]string, len(units))
-	flowFeats := make([][]string, len(units))
-	for i := range units {
-		sortedPatterns[i] = sortedUniqueTags(units[i].Patterns)
-		var fl []string
-		for k, n := range units[i].Fingerprint.Flow {
-			if n > 0 {
-				fl = append(fl, fingerprint.FlowLabels[k])
-			}
-		}
-		sort.Strings(fl)
-		flowFeats[i] = fl
-	}
+	// The cotags channel depends on the concept under consideration, so it
+	// filters the shared sortedPatterns on the fly.
 	features := func(i, ch int, tag string) []string {
 		switch channelNames[ch] {
 		case "calls":
-			return tokens[i]
+			return uf.tokens[i]
 		case "flow":
-			return flowFeats[i]
+			return uf.flowFeats[i]
 		case "cotags":
 			var out []string
-			for _, t := range sortedPatterns[i] {
+			for _, t := range uf.sortedPatterns[i] {
 				if t != tag {
 					out = append(out, t)
 				}
@@ -83,7 +70,7 @@ func buildPrototypes(m *Model, units []parser.CodeUnit, docs []concepter.Concept
 
 	membersByTag := make(map[string][]int)
 	for i := range units {
-		for _, t := range sortedPatterns[i] {
+		for _, t := range uf.sortedPatterns[i] {
 			membersByTag[t] = append(membersByTag[t], i) // ascending: i ascends
 		}
 	}
@@ -187,4 +174,16 @@ func sortedCountKeysInt(m map[string][]int) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// flowFeatures binarizes a unit's control-flow histogram into named labels.
+func flowFeatures(u parser.CodeUnit) []string {
+	var fl []string
+	for k, n := range u.Fingerprint.Flow {
+		if n > 0 {
+			fl = append(fl, fingerprint.FlowLabels[k])
+		}
+	}
+	sort.Strings(fl)
+	return fl
 }
