@@ -9,7 +9,7 @@ container engine; a decade of accretion across daemon, API, and plugin layers
 | Corpus | [moby](https://github.com/moby/moby) |
 | Pinned at | `v28.5.2` (`89c5e8fd66634b6128fc4c0e6f1236e2540e46e0`) |
 | Project since | 2013 |
-| doppel | `7aa1f08` |
+| doppel | `3da92fa` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -23,7 +23,7 @@ The corpus-level models doppel builds before ranking anything, as printed to std
 Scanning . ...
 Generating concept documents...
 Culture: 12 concepts modeled, 790 associations, 113 unusual realizations
-Habitats: 166 modeled, 253 misfits; most uniform checker (norm 0.98), most diverse vfs (norm 0.56)
+Habitats: 166 modeled, 101 misfits (152 excused by subsystem), 58 subsystems; most uniform checker (norm 0.98), most diverse vfs (norm 0.56)
 Conventions: strongest error_wrapping (0.62), loosest db_access (0.37)
 Ecosystems: 3997 profiled (3689 dominance, 308 coalition, 0 conflict, 0 weak)
 Found 7644 functions. Retrieving candidates...

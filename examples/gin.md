@@ -9,7 +9,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `7aa1f08` |
+| doppel | `3da92fa` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -23,7 +23,7 @@ The corpus-level models doppel builds before ranking anything, as printed to std
 Scanning . ...
 Generating concept documents...
 Culture: 5 concepts modeled, 11 associations, 2 unusual realizations
-Habitats: 5 modeled, 17 misfits; most uniform binding (norm 0.91), most diverse json (norm 0.63)
+Habitats: 5 modeled, 17 misfits (0 excused by subsystem), 1 subsystems; most uniform binding (norm 0.91), most diverse json (norm 0.63)
 Conventions: strongest serialization (0.72), loosest caching (0.37)
 Ecosystems: 128 profiled (128 dominance, 0 coalition, 0 conflict, 0 weak)
 Found 497 functions. Retrieving candidates...

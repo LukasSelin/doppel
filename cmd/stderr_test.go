@@ -55,3 +55,23 @@ func TestPrintArenaSummary(t *testing.T) {
 		t.Errorf("empty summary = %q", got)
 	}
 }
+
+// With subsystems modeled the line carries the excused count, so the rollup
+// never hides a package misfit silently.
+func TestPrintHabitatSummaryWithSubsystems(t *testing.T) {
+	var b strings.Builder
+	printHabitatSummary(&b, culture.Stats{
+		HabitatsModeled:    126,
+		HabitatMisfits:     88,
+		MisfitsExcused:     571,
+		SubsystemsModeled:  23,
+		MostUniformHabitat: "partials",
+		MostUniformNorm:    0.98,
+		MostDiverseHabitat: "page",
+		MostDiverseNorm:    0.61,
+	})
+	want := "Habitats: 126 modeled, 88 misfits (571 excused by subsystem), 23 subsystems; most uniform partials (norm 0.98), most diverse page (norm 0.61)\n"
+	if got := b.String(); got != want {
+		t.Errorf("got  %q\nwant %q", got, want)
+	}
+}

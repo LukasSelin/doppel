@@ -353,6 +353,19 @@ a member never certifies its own normality beyond the pseudo-count.
   fit 0.0 — branch order keeps all-identical habitats at 1.0.
 - **Misfit** ⇔ strain > `MisfitFactor` (2.0) × T, or any positive strain when T = 0. At factor
   2.0 this is fit < e⁻¹. Only misfits produce `habitat:` report lines.
+- **Subsystem rollup.** With `Options.Root` set (the pipeline passes the analysis root; tests
+  leave it empty and see no subsystems), a second partition models **subsystems** — the parent
+  of each file's directory, slash-relative with a trailing slash (`tpl/`, `internal/`;
+  `subsystemKey`) — with the same features, weights and math (`buildHabitatModel` is
+  partition-agnostic; a coarser habitat just has a larger m). A unit is a **Misfit** only when it
+  is alien at every level that can judge it: a package misfit whose subsystem (when modeled)
+  says it fits is **excused** — drift across a directory, not a function out of place. `Stats`
+  carries `SubsystemsModeled` and `MisfitsExcused`; the stderr line becomes `Habitats: 126
+  modeled, 538 misfits (121 excused by subsystem), 31 subsystems; …` and stays byte-identical
+  to the old form when no subsystem is modeled; a confirmed misfit's report line adds `;
+  subsystem tpl/ fit 0.30`. Package-level superlatives and every package pin are unchanged.
+  `PackageMisfit` is the raw rule for diagnostics. On the ladder: hugo 659 → 538, prometheus
+  340 → 195, moby 253 → 101.
 - **Norm** = mean member fit — the `package norm` contrast number and the stderr superlative
   ranking (median fit would be ≈ 1.0 always; the mean is dragged by outliers, which is the
   signal).
@@ -955,10 +968,13 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   candidate carries ≥ ln 2 evidence by construction, so the weak floor rarely triggers).
   Function-vs-function niches, invasion/speciation/overcrowding, dominant-set clustering, and
   Potts-style domains are named future work.
-- **Habitat = package is crude.** One Go package can host several micro-habitats (handlers next
-  to helpers next to tests — test functions in a production package legitimately read as
-  misfits). Directory- or subsystem-level habitat rollup is future work, as are all the delta
-  quantities: Δentropy/fragmentation, phase transitions, chemical potential (marginal duplication
+- **Habitat = package is crude, and the subsystem rollup is one level deep.** One Go package can
+  host several micro-habitats (handlers next to helpers), and the rollup excuses in only one
+  direction — up to the parent directory. A package directly under the root has no parent and
+  can never be excused (most of hugo's misfits live in `hugolib`, `resources`, …, which is why
+  hugo drops least), and a repo whose packages all sit under one umbrella (`internal/`, `pkg/`)
+  gets that umbrella as its only subsystem, which is generous. The delta quantities remain future
+  work: Δentropy/fragmentation, phase transitions, chemical potential (marginal duplication
   pressure), git-derived heat, inter-package JS divergence, free energy.
 - **Convention entropy is a dispersion proxy, not realization clustering.** It measures how
   predictable each practice is across members, not how many distinct whole realizations exist.

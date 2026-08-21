@@ -190,7 +190,10 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 
 	// Model the corpus's own conceptual practice: which concepts/roles/calls
 	// co-occur beyond chance, and how each concept is normally realized here.
-	cult := culture.Build(units, docs, cg, culture.DefaultOptions())
+	// Root lets habitats roll up into subsystems (parent directories).
+	cultOpts := culture.DefaultOptions()
+	cultOpts.Root = res.Root
+	cult := culture.Build(units, docs, cg, cultOpts)
 	res.Culture = cult
 	cs := cult.Stats()
 	fmt.Fprintf(progress, "Culture: %d concepts modeled, %d associations, %d unusual realizations\n",

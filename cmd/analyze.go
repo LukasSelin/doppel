@@ -254,6 +254,11 @@ func habitatNotes(cult *culture.Model, aIdx, bIdx int, aPkg, bPkg string) []anal
 			Fit:         fit,
 			PackageNorm: norm,
 		}
+		// A confirmed misfit with a modeled subsystem was alien there too;
+		// the note says so, with the subsystem fit for contrast.
+		if key, sfit, ok := cult.SubsystemFit(side.idx); ok {
+			note.Subsystem, note.SubsystemFit = key, sfit
+		}
 		for _, ch := range cult.ChannelSurprise(side.idx) {
 			note.Channels = append(note.Channels, analyzer.HabitatChannel{
 				Name: ch.Name, Surprise: ch.Surprise,
@@ -312,11 +317,20 @@ func printArenaSummary(w io.Writer, s culture.Stats) {
 // printHabitatSummary emits the habitat and convention stderr lines in human
 // vocabulary. Superlatives are omitted entirely when nothing is modeled.
 func printHabitatSummary(w io.Writer, s culture.Stats) {
-	if s.HabitatsModeled == 0 {
+	switch {
+	case s.HabitatsModeled == 0:
 		fmt.Fprintf(w, "Habitats: 0 modeled\n")
-	} else {
+	case s.SubsystemsModeled == 0:
 		fmt.Fprintf(w, "Habitats: %d modeled, %d misfits; most uniform %s (norm %.2f), most diverse %s (norm %.2f)\n",
 			s.HabitatsModeled, s.HabitatMisfits,
+			s.MostUniformHabitat, s.MostUniformNorm,
+			s.MostDiverseHabitat, s.MostDiverseNorm)
+	default:
+		// With subsystems modeled, a package misfit that fits its parent
+		// directory is excused rather than reported; the count keeps the
+		// excuse visible.
+		fmt.Fprintf(w, "Habitats: %d modeled, %d misfits (%d excused by subsystem), %d subsystems; most uniform %s (norm %.2f), most diverse %s (norm %.2f)\n",
+			s.HabitatsModeled, s.HabitatMisfits, s.MisfitsExcused, s.SubsystemsModeled,
 			s.MostUniformHabitat, s.MostUniformNorm,
 			s.MostDiverseHabitat, s.MostDiverseNorm)
 	}

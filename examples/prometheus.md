@@ -9,7 +9,7 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `7aa1f08` |
+| doppel | `3da92fa` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -23,7 +23,7 @@ The corpus-level models doppel builds before ranking anything, as printed to std
 Scanning . ...
 Generating concept documents...
 Culture: 12 concepts modeled, 649 associations, 29 unusual realizations
-Habitats: 90 modeled, 340 misfits; most uniform tracing (norm 0.97), most diverse testhelpers (norm 0.55)
+Habitats: 90 modeled, 195 misfits (145 excused by subsystem), 16 subsystems; most uniform tracing (norm 0.97), most diverse testhelpers (norm 0.55)
 Conventions: strongest error_wrapping (0.63), loosest retry (0.34)
 Ecosystems: 2400 profiled (1707 dominance, 693 coalition, 0 conflict, 0 weak)
 Found 5469 functions. Retrieving candidates...
@@ -383,10 +383,6 @@ Families: 477 over 611 components, 1366 functions in a family, 4359 edges comple
 - `30.45` — `assign=(call:addInsert)`
 - `30.45` — `flow:call:Next→call:addInsert`
 - `30.45` — `flow:call:append→call:addInsert`
-
-**Habitat:** A fits poorly in `chunkenc` (fit 0.24, package norm 0.74)
-
-**Habitat:** B fits poorly in `chunkenc` (fit 0.24, package norm 0.74)
 
 **Structural overlap:** `0.59` (merge-worthy)
 

@@ -9,7 +9,7 @@ static site generator; a large monolith with heavy template and resource subsyst
 | Corpus | [hugo](https://github.com/gohugoio/hugo) |
 | Pinned at | `v0.165.0` (`76a5e1880ab46688155b02e99bab9be2a6134492`) |
 | Project since | 2013 |
-| doppel | `7aa1f08` |
+| doppel | `3da92fa` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -23,7 +23,7 @@ The corpus-level models doppel builds before ranking anything, as printed to std
 Scanning . ...
 Generating concept documents...
 Culture: 8 concepts modeled, 350 associations, 57 unusual realizations
-Habitats: 126 modeled, 659 misfits; most uniform partials (norm 0.98), most diverse page (norm 0.61)
+Habitats: 126 modeled, 538 misfits (121 excused by subsystem), 31 subsystems; most uniform partials (norm 0.98), most diverse page (norm 0.61)
 Conventions: strongest error_wrapping (0.64), loosest serialization (0.52)
 Ecosystems: 1997 profiled (1408 dominance, 589 coalition, 0 conflict, 0 weak)
 Found 5438 functions. Retrieving candidates...
@@ -140,10 +140,6 @@ Families: 306 over 480 components, 939 functions in a family, 623 edges complete
 - `146.58` — `seq[ do(call:AddMethodMapping) ; do(call:AddMethodMapping) ]`
 - `5.05` — `seq[ assign:=(call:New) ; assign:=(unary) ]`
 
-**Habitat:** A fits poorly in `math` (fit 0.24, package norm 0.87)
-
-**Habitat:** B fits poorly in `strings` (fit 0.17, package norm 0.84)
-
 **Structural overlap:** `0.48` (merge-worthy)
 
 - share 3 callees: [New, internal.AddTemplateFuncsNamespace, ns.AddMethodMapping]
@@ -173,8 +169,6 @@ Families: 306 over 480 components, 939 functions in a family, 623 edges complete
 - `134.39` — `do(call:AddMethodMapping)`
 - `131.42` — `seq[ do(call:AddMethodMapping) ; do(call:AddMethodMapping) ]`
 - `5.05` — `seq[ assign:=(call:New) ; assign:=(unary) ]`
-
-**Habitat:** B fits poorly in `strings` (fit 0.17, package norm 0.84)
 
 **Structural overlap:** `0.52` (merge-worthy)
 
@@ -300,8 +294,6 @@ Families: 306 over 480 components, 939 functions in a family, 623 edges complete
 **Culture:** A realizes `mapping` atypically (typicality 0.14, concept median 0.31, convention 0.63)
 
 **Culture:** B realizes `mapping` atypically (typicality 0.14, concept median 0.31, convention 0.63)
-
-**Habitat:** A fits poorly in `babel` (fit 0.35, package norm 0.85)
 
 **Structural overlap:** `0.53` (merge-worthy)
 

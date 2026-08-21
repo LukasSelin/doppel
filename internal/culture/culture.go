@@ -29,6 +29,12 @@ type Options struct {
 	SurvivorMass      float64 // equilibrium mass floor for an arena survivor
 	DominanceMass     float64 // top-survivor mass at or above which the state is dominance
 	MinArenaEvidence  float64 // weak floor on an arena's total evidence, nats
+
+	// Root is the analysis root every unit's File is relative to. When set,
+	// habitats also model subsystems — the parent directory of each file's
+	// directory — and a package misfit that fits its subsystem is excused.
+	// Empty (the zero value, and what tests use) means no subsystem level.
+	Root string
 }
 
 // DefaultOptions returns the production defaults.
@@ -62,7 +68,9 @@ type Stats struct {
 	UnusualRealizations int // (member, concept) pairs flagged atypical corpus-wide
 
 	HabitatsModeled             int    // packages with enough functions for a habitat model
-	HabitatMisfits              int    // units flagged Misfit corpus-wide
+	HabitatMisfits              int    // units flagged Misfit corpus-wide: alien in their package and, when one is modeled, in their subsystem
+	SubsystemsModeled           int    // parent directories with enough functions for a subsystem model
+	MisfitsExcused              int    // package misfits that fit their subsystem and so are not reported
 	MostUniformHabitat          string // habitat with the highest norm ("coldest")
 	MostUniformNorm             float64
 	MostDiverseHabitat          string // habitat with the lowest norm ("hottest")
@@ -87,6 +95,8 @@ type Model struct {
 	concepts      map[string]*conceptModel // keyed by tag; only prototyped concepts
 	habitats      map[string]*habitatModel // keyed by package; only modeled habitats
 	habitatByUnit map[int]*habitatModel    // modeled members only
+	subsystems    map[string]*habitatModel // keyed by subsystem directory; only modeled
+	subsysByUnit  map[int]*habitatModel    // modeled subsystem members only
 	arenas        map[int]ArenaProfile     // units with a non-empty candidate set only
 	stats         Stats
 }
@@ -130,6 +140,8 @@ func Build(units []parser.CodeUnit, docs []concepter.ConceptDoc,
 		concepts:      make(map[string]*conceptModel),
 		habitats:      make(map[string]*habitatModel),
 		habitatByUnit: make(map[int]*habitatModel),
+		subsystems:    make(map[string]*habitatModel),
+		subsysByUnit:  make(map[int]*habitatModel),
 		arenas:        make(map[int]ArenaProfile),
 	}
 	m.associations = buildAssociations(units, docs, uf.tokens, opt)
