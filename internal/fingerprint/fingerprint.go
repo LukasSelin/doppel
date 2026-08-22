@@ -351,7 +351,7 @@ func typeStrings(ft *ast.FuncType) []string {
 			return
 		}
 		for _, field := range fields.List {
-			typ := printType(field.Type)
+			typ := PrintType(field.Type)
 			if typ == "" {
 				continue
 			}
@@ -371,7 +371,12 @@ func typeStrings(ft *ast.FuncType) []string {
 	return out
 }
 
-func printType(expr ast.Expr) string {
+// PrintType renders a type expression with go/printer and collapses internal
+// whitespace, so a multi-line struct or func type is one token. It is exported
+// because parser needs exactly this rendering for CodeUnit.Signature and kept
+// a byte-identical copy of it; parser already imports fingerprint, so one
+// implementation serves both. An unprintable expression yields "".
+func PrintType(expr ast.Expr) string {
 	var buf bytes.Buffer
 	if err := printer.Fprint(&buf, token.NewFileSet(), expr); err != nil {
 		return ""

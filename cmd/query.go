@@ -62,10 +62,10 @@ sit in this corpus, not how the corpus looked without it.`,
 		if cfg != nil {
 			applyConfig(cmd, cfg)
 		}
-		if err := validateTestsMode(queryTests); err != nil {
+		if err := validateMode("tests", queryTests); err != nil {
 			return err
 		}
-		return validateGeneratedMode(queryGenerated)
+		return validateMode("generated", queryGenerated)
 	},
 	RunE: runQuery,
 }

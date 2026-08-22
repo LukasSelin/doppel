@@ -104,10 +104,10 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 	progress = progressOr(progress)
 	res := Result{Root: root, Params: p, TagCounts: map[ontology.TermID]int{}}
 
-	if err := validateTestsMode(p.TestsMode); err != nil {
+	if err := validateMode("tests", p.TestsMode); err != nil {
 		return res, err
 	}
-	if err := validateGeneratedMode(p.Generated); err != nil {
+	if err := validateMode("generated", p.Generated); err != nil {
 		return res, err
 	}
 
@@ -120,7 +120,7 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 		// The root itself is exempt from the skip rules: `doppel analyze .`
 		// hands the walker a directory literally named ".", and a user who
 		// points doppel at _examples/ or .config/ has already made the call.
-		if d.IsDir() && path != root && shouldSkipDir(d.Name()) {
+		if d.IsDir() && path != root && parser.ShouldSkipDir(d.Name()) {
 			return filepath.SkipDir
 		}
 		if d.IsDir() {
@@ -305,20 +305,15 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 	return res, nil
 }
 
-func validateTestsMode(mode string) error {
+// validateMode checks a population selector. --tests and --generated take the
+// same three values and produce the same message, so they share one check
+// parameterized by flag name rather than drifting as two copies.
+func validateMode(flag, mode string) error {
 	switch mode {
 	case "include", "exclude", "only":
 		return nil
 	}
-	return fmt.Errorf("invalid --tests value %q: want include, exclude, or only", mode)
-}
-
-func validateGeneratedMode(mode string) error {
-	switch mode {
-	case "include", "exclude", "only":
-		return nil
-	}
-	return fmt.Errorf("invalid --generated value %q: want include, exclude, or only", mode)
+	return fmt.Errorf("invalid --%s value %q: want include, exclude, or only", flag, mode)
 }
 
 // filterByOverlap drops pairs below the structural overlap threshold. A

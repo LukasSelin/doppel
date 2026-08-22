@@ -198,7 +198,7 @@ func Build(units []parser.CodeUnit, docs []concepter.ConceptDoc, pairs []analyze
 			Key:      keys[i],
 			Package:  u.Package,
 			Name:     u.Name,
-			File:     relSlash(root, u.File),
+			File:     RelSlash(root, u.File),
 			Line:     u.StartLine,
 			Patterns: append([]string(nil), u.Patterns...),
 			Digest:   Digest(u.Fingerprint),
@@ -284,7 +284,11 @@ func Digest(fp fingerprint.Fingerprint) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func relSlash(root, path string) string {
+// RelSlash is the snapshot's path rule, exported because it is the rule every
+// other surface mirrors: a path relative to the analysis root, slash-separated,
+// so a run rooted at an absolute cwd reads the same as one run at ".". cmd and
+// reporter call it rather than keeping their own copies.
+func RelSlash(root, path string) string {
 	if root == "" {
 		return filepath.ToSlash(path)
 	}
@@ -311,7 +315,7 @@ func unitKeys(units []parser.CodeUnit, root string) []string {
 	for i, u := range units {
 		qn := concepter.QualifiedName(u)
 		if counts[qn] > 1 {
-			keys[i] = qn + "@" + relSlash(root, u.File)
+			keys[i] = qn + "@" + RelSlash(root, u.File)
 			continue
 		}
 		keys[i] = qn

@@ -8,6 +8,7 @@ import (
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/family"
 	"github.com/LukasSelin/doppel/internal/reporter"
+	"github.com/LukasSelin/doppel/internal/snapshot"
 )
 
 // maxStrips bounds the strip view. Each strip is a column of bars plus a card
@@ -99,7 +100,7 @@ func buildStrip(res Result, f family.Family, n int, file string,
 
 	s := reporter.HTMLStrip{
 		Title:    fmt.Sprintf("Family %d", n),
-		File:     relSlash(res.Root, file),
+		File:     snapshot.RelSlash(res.Root, file),
 		Tag:      dominantTag(res, f),
 		MinLabel: fmt.Sprintf("%.2f", f.MinEdge),
 	}

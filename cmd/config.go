@@ -180,8 +180,8 @@ func hookParams(root string) (Params, error) {
 	if cfg.Calibrate != nil {
 		p.Calibrate = *cfg.Calibrate
 	}
-	if err := validateTestsMode(p.TestsMode); err != nil {
+	if err := validateMode("tests", p.TestsMode); err != nil {
 		return p, err
 	}
-	return p, validateGeneratedMode(p.Generated)
+	return p, validateMode("generated", p.Generated)
 }

@@ -35,20 +35,6 @@ func (p Population) valid() bool {
 	return false
 }
 
-// skipDir mirrors the walker's skip rule — dot- and underscore-prefixed
-// directories exactly as the go tool ignores them, plus vendor/testdata/build.
-// Kept here rather than imported so the harness never depends on cmd.
-func skipDir(name string) bool {
-	if name != "" && (name[0] == '.' || name[0] == '_') {
-		return true
-	}
-	switch name {
-	case "vendor", "testdata", "build":
-		return true
-	}
-	return false
-}
-
 func isTest(u parser.CodeUnit) bool { return strings.HasSuffix(u.File, "_test.go") }
 
 // qualifiedName renders a unit the way the reporter does: Package + "." +
@@ -75,7 +61,7 @@ func Load(root string, pop Population) ([]parser.CodeUnit, error) {
 			return nil
 		}
 		if d.IsDir() {
-			if path != root && skipDir(d.Name()) {
+			if path != root && parser.ShouldSkipDir(d.Name()) {
 				return filepath.SkipDir
 			}
 			return nil

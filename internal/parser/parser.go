@@ -51,3 +51,22 @@ func Parse(path string) ([]CodeUnit, error) {
 func ParseSource(path string, src []byte) ([]CodeUnit, error) {
 	return parseGoSource(path, src)
 }
+
+// ShouldSkipDir reports whether a directory is outside the population — what
+// the go tool itself ignores, directories whose name starts with "." or "_"
+// (which is what keeps _examples/ demo trees out of a library's population),
+// plus vendor, testdata and build.
+//
+// It lives here, next to what it feeds, rather than in cmd: the bench harness
+// walks the same tree and must apply the same rule, and it kept a byte-identical
+// copy precisely to avoid depending on cmd. One definition, no such dependency.
+func ShouldSkipDir(name string) bool {
+	if name != "" && (name[0] == '.' || name[0] == '_') {
+		return true
+	}
+	switch name {
+	case "vendor", "testdata", "build":
+		return true
+	}
+	return false
+}

@@ -64,7 +64,7 @@ attachment is a positional lookup, deliberately — an earlier version keyed it 
 main.go         Thin entry point → cmd.Execute()
 cmd/            CLI commands (Cobra).
   root.go       rootCmd, Execute()
-  analyze.go    Pipeline orchestrator; all flag registration
+  analyze.go    Pipeline orchestrator; analyze's own flags (each command registers its own in init)
   families.go   doppel families: the census view, plus analyze's family stage
   overview.go   Queries the corpus model (culture, ontology, call graph) into reporter.Overview
   htmlreport.go Assembles reporter.HTMLReport; strips.go derives the declaration-span strip view
@@ -75,7 +75,7 @@ cmd/            CLI commands (Cobra).
   version.go    build identity, for deciding whether a baseline is still comparable
   ontology.go   doppel ontology: print the vocabulary, check its axioms
 internal/
-  parser/       parser.go is a thin dispatcher; go_parser.go does the go/ast work; signals.go extracts the tagger's evidence channels → CodeUnit
+  parser/       parser.go is a thin dispatcher (and owns ShouldSkipDir, the walk rule cmd and bench share); go_parser.go does the go/ast work; signals.go extracts the tagger's evidence channels → CodeUnit
   fingerprint/  AST token shingles + control-flow histogram + signature types; the code-similarity score
   ontology/     The formal vocabulary: entity kinds, typed relations, concept taxonomy, roles, axioms
   tagger/       AST-signal intent detection → 14 pattern tags
@@ -93,6 +93,15 @@ internal/
   bench/        Measurement harness: golden-ranking scorer, the pinned public corpus ladder, per-stage benchmarks, example generator
 examples/       Committed real reports for each corpus rung, plus labels/ (committed golden reviews) — see examples/README.md
 ```
+
+Four helpers are deliberately shared rather than copied, because doppel found each
+of them as an exact clone of itself: `parser.ShouldSkipDir` (the walk rule — `cmd` walks
+with it and `internal/bench` mirrored it by hand, which is how the harness could have
+silently measured a different corpus than the tool), `snapshot.RelSlash` (the path rule
+`cmd` and `reporter` both described as "mirrors the snapshot's"), `fingerprint.PrintType`
+(the type rendering `parser` needs for `Signature`, wrapped there only to keep its `"?"`
+fallback), and `cmd.validateMode` (one check for `--tests` and `--generated`, parameterized
+by flag name). Do not reintroduce a local copy of any of them.
 
 Dependency directions that must hold: `analyzer` imports `comparator` (for the `Evidence` field), so
 `comparator` must never import `analyzer`. `parser` imports `fingerprint`, so `fingerprint` must
