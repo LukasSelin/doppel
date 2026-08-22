@@ -918,8 +918,31 @@ shell and behaves identically on Windows and Unix, and which is also the only fo
     manifest.
   - `pipeline.go` is the ranking-relevant pipeline as a library (`Load` + `Run` stages +
     `Analyze` + `RankKey`), shared by the golden scorer and `BenchmarkCorpus`. Culture, habitats
-    and arenas are deliberately absent: they annotate, they never rank. `RankKey` duplicates
-    `SortForReport`'s ordering quantity so a scorecard can print it — it must track it.
+    and arenas are deliberately absent: they annotate, they never rank. `bench.RankKey` is a
+    call to `analyzer.RankKey(p, DefaultRankOptions())` — one definition, so the scorecard's
+    printed key cannot drift from the ranking. `Reretrieve(opt)` re-runs retrieval → pairs →
+    compare under different `retriever.Options`, reusing tags, IC, graph and docs (exact: none of
+    Options reaches them); `Rescore(onto)` re-runs compare alone.
+  - **Measurement seams**, all no-ops at defaults and pinned as such: `fingerprint.Weights` /
+    `SimilarityWith` (the production path is `Similarity` = `DefaultWeights()`; the blend is the
+    same four-term sum in the same order, bit-identical), `retriever.Options.Weights` (zero value
+    = defaults; cmd never sets it), `analyzer.RankOptions{TrophicPower, TestCallDiscount}` /
+    `SortForReportWith` (power 2 uses `t*t`, not `math.Pow`, so the default key is byte-identical),
+    and `ontology.WithWeights`. Options and arguments, never package globals.
+  - `TestSweep` (guard `DOPPEL_BENCH_SWEEP=1`) is the sensitivity sweep: each hand-set constant
+    varied one at a time (±50% or the natural alternatives), only the stages it reaches re-run,
+    and the labeled rankings reported with a verdict — `inert` (no label moved), `moves`,
+    `load-bearing` (a violation, a presence change, or a merge-mean shift ≥ 1.0) — plus the labels
+    that moved. It asserts nothing. **Measured on cobra (18 labels):** the merge pairs never move
+    under any variant; every sensitivity is in the refactor/false-positive tail. Inert in both
+    directions: `MaxConceptDF`, `fp.Depth`. Inert in one: `ChannelK`→8, `Threshold`→0.30,
+    `MaxCallDF`→100, `calls_into_concept`×0.5, `shares_neighborhood`×0.5,
+    `calls_into_package`×0.5, `called_from_concept`×2; `TestCallDiscount` (no test pairs under
+    `exclude`). Load-bearing: `MinNodes`→18 (drops a labeled pair from retrieval). Largest movers:
+    `fp.AST`, `MaxPatternDF`, `calls`, `exhibits`, `TrophicPower`. Not swept: `ChainTopN`
+    (explanation only), `struct-min`/`family-min` (no bench analogue / census only),
+    `ForkShapeFloor` (annotation). One corpus is a direction, not a verdict; the gin/chi labels
+    are what would make it one.
   - `TestGenerateExamples` (guard `DOPPEL_BENCH_EXAMPLES=1`) regenerates `examples/<name>.md` by
     running the **built binary** with `cmd.Dir` set to the corpus — not the library — so the
     committed reports are what the documented command actually prints, culture/habitat/arena

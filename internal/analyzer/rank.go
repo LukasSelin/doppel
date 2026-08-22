@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"math"
 	"sort"
 	"strings"
 )
@@ -63,28 +64,58 @@ func SortByEvidence(pairs []SimilarPair, topN int) []SimilarPair {
 // backfilled by lower-ranked ones; the count of skips is returned for the
 // stderr accounting. SortByEvidence remains the simple library ranking.
 func SortForReport(pairs []SimilarPair, topN, maxPerFunc int) ([]SimilarPair, int) {
-	key := func(p SimilarPair) float64 {
-		if p.Retrieval == nil {
-			return 0
-		}
-		t := p.Retrieval.TrophicSim
-		k := p.Retrieval.Total * p.Score * t * t
-		if p.Evidence != nil {
-			k *= p.Evidence.OverlapScore
-		}
-		// SUT-aware test discounting: two tests are related through what
-		// they exercise, not through their driver skeleton — near-identical
-		// table-driven harnesses over different functions share no
-		// informative call tokens and key to zero, while tests of the same
-		// machinery keep their shared call mass. The suffix is the same
-		// compiler-recognized distinction --tests uses. Production pairs are
-		// untouched; under --tests only, the whole hygiene view becomes
-		// SUT-aware, which is the point.
-		if strings.HasSuffix(p.A.File, "_test.go") && strings.HasSuffix(p.B.File, "_test.go") {
-			k *= p.Retrieval.CallSim
-		}
-		return k
+	return SortForReportWith(pairs, topN, maxPerFunc, DefaultRankOptions())
+}
+
+// RankOptions parameterizes the rank key for measurement. Production always
+// ranks with DefaultRankOptions; the bench sensitivity sweep varies these
+// per call, which is why they are an argument and not a global.
+type RankOptions struct {
+	TrophicPower     float64 // exponent on TrophicSim; 2 in production
+	TestCallDiscount bool    // multiply test/test pairs by CallSim
+}
+
+// DefaultRankOptions is the shipped key: trophic squared, tests discounted.
+func DefaultRankOptions() RankOptions { return RankOptions{TrophicPower: 2, TestCallDiscount: true} }
+
+// RankKey is the corroborated-evidence ordering quantity SortForReport uses,
+// exposed so a scorecard can print it and a sweep can vary it — there is one
+// definition, so the bench copy cannot drift. A nil Retrieval keys 0; a nil
+// Evidence contributes factor 1.
+func RankKey(p SimilarPair, o RankOptions) float64 {
+	if p.Retrieval == nil {
+		return 0
 	}
+	t := p.Retrieval.TrophicSim
+	// t*t, not math.Pow(t, 2): Pow is not guaranteed bit-equal, and the
+	// default key must stay byte-identical to what every baseline ranked by.
+	var trophic float64
+	if o.TrophicPower == 2 {
+		trophic = t * t
+	} else {
+		trophic = math.Pow(t, o.TrophicPower)
+	}
+	k := p.Retrieval.Total * p.Score * trophic
+	if p.Evidence != nil {
+		k *= p.Evidence.OverlapScore
+	}
+	// SUT-aware test discounting: two tests are related through what
+	// they exercise, not through their driver skeleton — near-identical
+	// table-driven harnesses over different functions share no
+	// informative call tokens and key to zero, while tests of the same
+	// machinery keep their shared call mass. The suffix is the same
+	// compiler-recognized distinction --tests uses. Production pairs are
+	// untouched; under --tests only, the whole hygiene view becomes
+	// SUT-aware, which is the point.
+	if o.TestCallDiscount && strings.HasSuffix(p.A.File, "_test.go") && strings.HasSuffix(p.B.File, "_test.go") {
+		k *= p.Retrieval.CallSim
+	}
+	return k
+}
+
+// SortForReportWith is SortForReport under an explicit rank key.
+func SortForReportWith(pairs []SimilarPair, topN, maxPerFunc int, o RankOptions) ([]SimilarPair, int) {
+	key := func(p SimilarPair) float64 { return RankKey(p, o) }
 	sort.SliceStable(pairs, func(i, j int) bool {
 		ki, kj := key(pairs[i]), key(pairs[j])
 		if ki != kj {

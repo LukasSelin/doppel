@@ -35,6 +35,19 @@ type Options struct {
 	MaxCallDF    int     // call tokens present in more units than this carry no evidence
 	MaxConceptDF int     // concept postings larger than this are skipped for enumeration
 	ChainTopN    int     // shared-structure explanations kept per pair
+
+	// Weights is the fingerprint blend the exact code-shape score uses. The
+	// zero value means fingerprint.DefaultWeights — the production path never
+	// sets it; the bench sensitivity sweep does, per run, with no global.
+	Weights fingerprint.Weights
+}
+
+// weights resolves the blend, defaulting the zero value.
+func (o Options) weights() fingerprint.Weights {
+	if o.Weights == (fingerprint.Weights{}) {
+		return fingerprint.DefaultWeights()
+	}
+	return o.Weights
 }
 
 // DefaultOptions returns the production defaults. ChannelK mirrors the
@@ -108,7 +121,7 @@ func Retrieve(units []parser.CodeUnit, g *concepter.Graph,
 	onto *ontology.Ontology, ic *ontology.IC, opt Options) ([]Candidate, Stats) {
 
 	scorer := ontology.NewScorer(onto, ic)
-	sim := newSimCache(units)
+	sim := newSimCache(units, opt.weights())
 
 	shapes := buildShapeIndex(units, opt)
 	calls := buildCallIndex(units, g, opt)
@@ -167,7 +180,7 @@ func Probe(units []parser.CodeUnit, probeIdx int, g *concepter.Graph,
 	onto *ontology.Ontology, ic *ontology.IC, opt Options) ([]Candidate, Stats) {
 
 	scorer := ontology.NewScorer(onto, ic)
-	sim := newSimCache(units)
+	sim := newSimCache(units, opt.weights())
 
 	shapes := buildShapeIndex(units, opt)
 	calls := buildCallIndex(units, g, opt)
@@ -263,12 +276,13 @@ func evaluate(admitted map[pairKey]*admission, shapes *shapeIndex, concepts *con
 // structural channel's probing and the union's definitive Breakdown never
 // compute the same pair twice.
 type simCache struct {
-	units []parser.CodeUnit
-	seen  map[pairKey]fingerprint.Breakdown
+	units   []parser.CodeUnit
+	weights fingerprint.Weights
+	seen    map[pairKey]fingerprint.Breakdown
 }
 
-func newSimCache(units []parser.CodeUnit) *simCache {
-	return &simCache{units: units, seen: make(map[pairKey]fingerprint.Breakdown)}
+func newSimCache(units []parser.CodeUnit, w fingerprint.Weights) *simCache {
+	return &simCache{units: units, weights: w, seen: make(map[pairKey]fingerprint.Breakdown)}
 }
 
 func (c *simCache) get(a, b int) fingerprint.Breakdown {
@@ -276,7 +290,7 @@ func (c *simCache) get(a, b int) fingerprint.Breakdown {
 	if bd, ok := c.seen[k]; ok {
 		return bd
 	}
-	bd := fingerprint.Similarity(c.units[k[0]].Fingerprint, c.units[k[1]].Fingerprint)
+	bd := fingerprint.SimilarityWith(c.units[k[0]].Fingerprint, c.units[k[1]].Fingerprint, c.weights)
 	c.seen[k] = bd
 	return bd
 }

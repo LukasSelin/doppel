@@ -51,6 +51,11 @@ type Scorecard struct {
 // call exactly — SortForReport unbounded, max-per-func 2, best (lowest) rank
 // per unordered name pair when duplicate qualified names exist.
 func Score(run *Run, lf LabelsFile) Scorecard {
+	return ScoreWith(run, lf, analyzer.DefaultRankOptions())
+}
+
+// ScoreWith is Score under an explicit rank key, for the sensitivity sweep.
+func ScoreWith(run *Run, lf LabelsFile, ro analyzer.RankOptions) Scorecard {
 	pairs := run.Pairs
 
 	retrieved := make(map[string]bool, len(pairs))
@@ -58,7 +63,7 @@ func Score(run *Run, lf LabelsFile) Scorecard {
 		retrieved[pairKey(qualifiedName(p.A), qualifiedName(p.B))] = true
 	}
 
-	kept, suppressed := analyzer.SortForReport(pairs, 0, 2)
+	kept, suppressed := analyzer.SortForReportWith(pairs, 0, 2, ro)
 
 	rankOf := make(map[string]int, len(kept))
 	keyOf := make(map[string]float64, len(kept))
@@ -66,7 +71,7 @@ func Score(run *Run, lf LabelsFile) Scorecard {
 		k := pairKey(qualifiedName(p.A), qualifiedName(p.B))
 		if _, ok := rankOf[k]; !ok {
 			rankOf[k] = i + 1
-			keyOf[k] = RankKey(p)
+			keyOf[k] = analyzer.RankKey(p, ro)
 		}
 	}
 

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/LukasSelin/doppel/internal/fingerprint"
 	"github.com/LukasSelin/doppel/internal/ontology"
 	"github.com/LukasSelin/doppel/internal/retriever"
 )
@@ -85,6 +86,58 @@ func TestRescoreRoundTrip(t *testing.T) {
 		if p.Evidence.OverlapScore != original[i] {
 			t.Fatalf("pair %d: overlap %v after round-trip, want %v exactly",
 				i, p.Evidence.OverlapScore, original[i])
+		}
+	}
+}
+
+// Reretrieve under a different fingerprint blend moves code-shape scores
+// (and therefore admission), and Reretrieve back to the defaults restores
+// every Breakdown and retrieval mass bit-identically — tags, IC, the graph
+// and the docs were never touched.
+func TestReretrieveRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "corpus.go"), []byte(rescoreFixture), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	units, err := Load(dir, PopInclude)
+	if err != nil {
+		t.Fatal(err)
+	}
+	run := Analyze(units, retriever.DefaultOptions())
+	if len(run.Pairs) == 0 {
+		t.Fatal("fixture produced no pairs")
+	}
+	type snap struct {
+		score, total float64
+	}
+	original := make([]snap, len(run.Pairs))
+	for i, p := range run.Pairs {
+		original[i] = snap{p.Score, p.Retrieval.Total}
+	}
+
+	// The fixture pair is an exact renamed clone — every component is 1.0,
+	// so any blend summing to 1 still scores 1.0. Probe with a blend that
+	// does not sum to 1, which only the seam can see.
+	opt := retriever.DefaultOptions()
+	opt.Weights = fingerprint.Weights{AST: 0.3, Flow: 0.2, Depth: 0.05, Signature: 0.15}
+	run.Reretrieve(opt)
+	changed := false
+	for i, p := range run.Pairs {
+		if i < len(original) && p.Score != original[i].score {
+			changed = true
+		}
+	}
+	if !changed {
+		t.Error("halving the AST weight moved no code-shape score; the seam is not reaching the sim cache")
+	}
+
+	run.Reretrieve(retriever.DefaultOptions())
+	if len(run.Pairs) != len(original) {
+		t.Fatalf("round-trip changed the pair count: %d vs %d", len(run.Pairs), len(original))
+	}
+	for i, p := range run.Pairs {
+		if p.Score != original[i].score || p.Retrieval.Total != original[i].total {
+			t.Fatalf("pair %d not restored: %v/%v vs %v/%v", i, p.Score, p.Retrieval.Total, original[i].score, original[i].total)
 		}
 	}
 }

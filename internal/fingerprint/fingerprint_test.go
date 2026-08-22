@@ -240,3 +240,37 @@ func TestFlowLabelsAlignWithSlots(t *testing.T) {
 		t.Errorf("FlowLabels[flowFuncLit] = %q, want funclit", FlowLabels[flowFuncLit])
 	}
 }
+
+// SimilarityWith under the default blend is Similarity, bit for bit: the
+// seam exists for measurement and must not move a single score.
+func TestSimilarityWithDefaultIsIdentical(t *testing.T) {
+	fps := []Fingerprint{build(t, srcSum), build(t, srcSumRenamed), build(t, srcServe), build(t, srcGetter)}
+	for _, a := range fps {
+		for _, b := range fps {
+			if Similarity(a, b) != SimilarityWith(a, b, DefaultWeights()) {
+				t.Fatalf("SimilarityWith(DefaultWeights) differs from Similarity")
+			}
+		}
+	}
+	if s := DefaultWeights().Sum(); s != weightAST+weightFlow+weightDepth+weightSignature {
+		t.Errorf("DefaultWeights().Sum() = %v", s)
+	}
+}
+
+// Scaled moves one component and renormalizes the rest, keeping the total.
+func TestWeightsScaled(t *testing.T) {
+	w := DefaultWeights().Scaled(0, 0.5)
+	if w.AST != 0.30 {
+		t.Errorf("AST = %v, want 0.30", w.AST)
+	}
+	if d := w.Sum() - 1.0; d > 1e-12 || d < -1e-12 {
+		t.Errorf("Sum = %v, want 1.0", w.Sum())
+	}
+	// The other three scale uniformly: flow/sig ratio unchanged.
+	if r := w.Flow / w.Signature; r < 0.2/0.15-1e-9 || r > 0.2/0.15+1e-9 {
+		t.Errorf("flow/sig ratio moved: %v", r)
+	}
+	if a, b := Similarity(build(t, srcSum), build(t, srcServe)), SimilarityWith(build(t, srcSum), build(t, srcServe), w); a.Score == b.Score {
+		t.Error("a different blend left the score unchanged")
+	}
+}

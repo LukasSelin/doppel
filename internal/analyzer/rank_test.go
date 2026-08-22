@@ -237,3 +237,36 @@ func TestSortByEvidenceTruncates(t *testing.T) {
 		t.Errorf("topN=0 must not truncate")
 	}
 }
+
+// One rank key: SortForReport and RankKey(DefaultRankOptions) must agree,
+// and the default trophic term must be the exact t*t form.
+func TestRankKeyMatchesSortForReport(t *testing.T) {
+	mk := func(a, b int, total, score, trophic, overlap float64) SimilarPair {
+		ev := comparator.StructuralEvidence{OverlapScore: overlap}
+		return SimilarPair{AIdx: a, BIdx: b, Score: score,
+			Retrieval: &Retrieval{Total: total, TrophicSim: trophic}, Evidence: &ev}
+	}
+	pairs := []SimilarPair{mk(0, 1, 10, 0.9, 0.5, 0.4), mk(1, 2, 8, 0.95, 0.9, 0.6), mk(2, 3, 30, 0.7, 0.3, 0.5), mk(0, 3, 30, 0.7, 0.3, 0.5)}
+	for _, p := range pairs {
+		t2 := p.Retrieval.TrophicSim * p.Retrieval.TrophicSim
+		want := p.Retrieval.Total * p.Score * t2 * p.Evidence.OverlapScore
+		if got := RankKey(p, DefaultRankOptions()); got != want {
+			t.Errorf("RankKey = %v, want %v (exact t*t form)", got, want)
+		}
+	}
+	a, _ := SortForReport(append([]SimilarPair(nil), pairs...), 0, 0)
+	b, _ := SortForReportWith(append([]SimilarPair(nil), pairs...), 0, 0, DefaultRankOptions())
+	for i := range a {
+		if a[i].AIdx != b[i].AIdx || a[i].BIdx != b[i].BIdx {
+			t.Fatalf("orders differ at %d", i)
+		}
+	}
+	// A different power reorders: with power 1 the high-trophic pair no
+	// longer out-keys the high-mass one by as much.
+	if k1, k2 := RankKey(pairs[1], RankOptions{TrophicPower: 1, TestCallDiscount: true}), RankKey(pairs[1], DefaultRankOptions()); k1 <= k2 {
+		t.Errorf("power 1 should key higher than power 2 for trophic < 1: %v vs %v", k1, k2)
+	}
+	if RankKey(SimilarPair{}, DefaultRankOptions()) != 0 {
+		t.Error("nil Retrieval must key 0")
+	}
+}

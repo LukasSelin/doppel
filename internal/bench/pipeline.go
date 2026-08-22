@@ -216,13 +216,20 @@ func (r *Run) Rescore(onto *ontology.Ontology) {
 }
 
 // RankKey is the corroborated-evidence ordering quantity SortForReport uses,
-// recomputed here so a scorecard can print it. Ranking itself stays in
-// analyzer; this must track it.
+// so a scorecard can print it. One definition lives in analyzer; this is a
+// call, not a copy, so the two cannot drift.
 func RankKey(p analyzer.SimilarPair) float64 {
-	t := p.Retrieval.TrophicSim
-	k := p.Retrieval.Total * p.Evidence.OverlapScore * p.Score * t * t
-	if isTest(p.A) && isTest(p.B) {
-		k *= p.Retrieval.CallSim
-	}
-	return k
+	return analyzer.RankKey(p, analyzer.DefaultRankOptions())
+}
+
+// Reretrieve re-runs the retrieval-sensitive tail — retrieval, pair
+// materialization and comparison — under different retriever options,
+// reusing tags, IC, the call graph and the concept docs. Exact: nothing in
+// Options reaches those stages. This is what makes a sweep over retrieval
+// knobs or fingerprint weights cost retrieve+compare per variant rather than
+// a pipeline.
+func (r *Run) Reretrieve(opt retriever.Options) {
+	r.StageRetrieve(opt)
+	r.StagePairs()
+	r.StageCompare()
 }
