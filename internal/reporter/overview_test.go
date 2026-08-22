@@ -185,3 +185,29 @@ func TestSortHabitatsBounds(t *testing.T) {
 		t.Errorf("got %d rows and %d dropped, want %d and 5", len(got), more, maxOverviewNodes)
 	}
 }
+
+// The habitat tail is four optional clauses. Appending each with its own
+// trailing space left a double space wherever a middle one was skipped, which
+// is exactly what happens on a corpus whose misfits are all excused.
+func TestHabitatTailJoinsCleanly(t *testing.T) {
+	ov := sampleOverview()
+	ov.Misfits = 0
+	ov.MisfitsExcused = 7
+	ov.HabitatsMore = 0
+
+	var b strings.Builder
+	PrintMarkdownOverview(&b, ov)
+	out := b.String()
+
+	if strings.Contains(out, "`).  A further") {
+		t.Errorf("double space between clauses:\n%s", out)
+	}
+	// Zero misfits and seven excused is a different codebase from neither, and
+	// the bare count cannot say so.
+	if !strings.Contains(out, "A further 7 fit poorly in their package but match the wider subsystem") {
+		t.Errorf("excused misfits not disclosed:\n%s", out)
+	}
+	if strings.Contains(out, "0 functions are alien") {
+		t.Errorf("an empty misfit clause was rendered:\n%s", out)
+	}
+}

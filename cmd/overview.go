@@ -131,6 +131,7 @@ func overviewCulture(ov *reporter.Overview, res Result, pkgFuncs map[string]int)
 	}
 	cs := res.Culture.Stats()
 	ov.Misfits = cs.HabitatMisfits
+	ov.MisfitsExcused = cs.MisfitsExcused
 	ov.ConceptsModeled = cs.ConceptsModeled
 	ov.Unusual = cs.UnusualRealizations
 	ov.MostUniform, ov.MostUniformNorm = cs.MostUniformHabitat, cs.MostUniformNorm

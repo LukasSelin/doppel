@@ -9,7 +9,7 @@ static site generator; a large monolith with heavy template and resource subsyst
 | Corpus | [hugo](https://github.com/gohugoio/hugo) |
 | Pinned at | `v0.165.0` (`76a5e1880ab46688155b02e99bab9be2a6134492`) |
 | Project since | 2013 |
-| doppel | `b730816` |
+| doppel | `043c993` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -36,6 +36,292 @@ Families: 306 over 480 components, 939 functions in a family, 623 edges complete
 # Code Similarity Report
 
 **Functions analyzed:** 5438 | **Threshold:** 0.60 | **Pairs found:** 10
+
+---
+
+## What doppel sees
+
+**5438 functions** across **161 packages** — test functions excluded. Structural roles: 3526 leaf, 860 orchestrator, 253 passthrough, 799 utility.
+
+### Concepts
+
+doppel reads intent from the AST into a fixed vocabulary and reasons over the tree, so two functions that share a *branch* score partial credit rather than nothing. Leaf counts below are this corpus.
+
+```mermaid
+flowchart LR
+    c0(["concept"])
+    c1(["io_operation"])
+    c2(["remote_io"])
+    c3["http_call<br/>3"]
+    c4["grpc_call<br/>absent"]
+    c5(["data_store_access"])
+    c6["db_access<br/>absent"]
+    c7["caching<br/>201"]
+    c8["transaction<br/>2"]
+    c9["file_io<br/>87"]
+    c10["logging<br/>75"]
+    c11(["data_transformation"])
+    c12["mapping<br/>165"]
+    c13["validation<br/>86"]
+    c14["serialization<br/>54"]
+    c15(["control_flow"])
+    c16["concurrency<br/>232"]
+    c17(["fault_tolerance"])
+    c18["retry<br/>2"]
+    c19["circuit_breaker<br/>absent"]
+    c20(["error_handling"])
+    c21["error_wrapping<br/>125"]
+    c0 --> c1
+    c1 --> c2
+    c2 --> c3
+    c2 --> c4
+    c1 --> c5
+    c5 --> c6
+    c5 --> c7
+    c5 --> c8
+    c1 --> c9
+    c1 --> c10
+    c0 --> c11
+    c11 --> c12
+    c11 --> c13
+    c11 --> c14
+    c0 --> c15
+    c15 --> c16
+    c15 --> c17
+    c17 --> c18
+    c17 --> c19
+    c0 --> c20
+    c20 --> c21
+    classDef good fill:#d7ecd9,color:#1b3d20
+    classDef warn fill:#fbeecb,color:#4a3a12
+    classDef hot fill:#f7d6d6,color:#4a1c1c
+    class c4,c6,c19 hot
+```
+
+**Nothing here is tagged** `circuit_breaker`, `db_access`, `grpc_call`. That is a direct answer to "does this codebase already do X" — for those concepts, it does not.
+
+| Concept | Functions | Convention |
+|---|---:|---|
+| `concurrency` | 232 | `0.60` (settled) |
+| `caching` | 201 | `0.61` (settled) |
+| `mapping` | 165 | `0.63` (settled) |
+| `error_wrapping` | 125 | `0.64` (settled) |
+| `file_io` | 87 | `0.54` (settled) |
+| `validation` | 86 | `0.59` (settled) |
+| `logging` | 75 | `0.52` (settled) |
+| `serialization` | 54 | `0.52` (settled) |
+| `http_call` | 3 | — |
+| `retry` | 2 | — |
+| `transaction` | 2 | — |
+
+Convention is how uniformly this corpus realizes a concept: `1.00` means every function carrying the tag does it the same way, and a low number means the tag covers several unrelated habits. A concept with fewer than five members is not modeled.
+
+### Where the duplication is
+
+Merge-worthy pairs folded up to their packages. An edge means two packages keep solving the same problem separately; a count on a node means the repetition is inside one package.
+
+```mermaid
+flowchart LR
+    p0["babel"]
+    p1["cssjs<br/>3 internal"]
+    p0 ---|"6"| p1
+    p2["navigation<br/>1 internal"]
+    p3["page<br/>106 internal"]
+    p2 ---|"6"| p3
+    p4["langs<br/>5 internal"]
+    p5["roles"]
+    p4 ---|"5"| p5
+    p6["versions"]
+    p4 ---|"5"| p6
+    p5 ---|"5"| p6
+    p7["commands<br/>46 internal"]
+    p8["hugolib<br/>182 internal"]
+    p7 ---|"4"| p8
+    p9["dartsass"]
+    p1 ---|"4"| p9
+    p10["js<br/>1 internal"]
+    p1 ---|"4"| p10
+    p11["minifier"]
+    p1 ---|"4"| p11
+    p12["filecache<br/>40 internal"]
+    p13["template<br/>121 internal"]
+    p12 ---|"4"| p13
+    p8 ---|"4"| p3
+    p14["allconfig"]
+    p14 ---|"3"| p7
+```
+
+_279 further package pairs are connected by merge-worthy duplication and are not drawn._
+
+### How settled each package is
+
+A package with at least five functions gets a habitat model: doppel learns what is normal there and measures how surprising each member is against it. **Norm** is how uniform the package's practice is. A **misfit** is a function alien to its package *and* to the wider subsystem around it — one that fits its neighbours a directory up is normal for this codebase and is not reported.
+
+```mermaid
+flowchart TD
+    h0["page<br/>468 functions · norm 0.61<br/>140 misfits"]
+    h1["sitesmatrix<br/>107 functions · norm 0.61<br/>39 misfits"]
+    h2["parse<br/>208 functions · norm 0.62<br/>92 misfits"]
+    h3["hugofs<br/>195 functions · norm 0.63<br/>81 misfits"]
+    h4["versions<br/>12 functions · norm 0.63<br/>5 misfits"]
+    h5["warpc<br/>54 functions · norm 0.65<br/>19 misfits"]
+    h6["blockquotes<br/>12 functions · norm 0.65"]
+    h7["identity<br/>55 functions · norm 0.65<br/>20 misfits"]
+    h8["allconfig<br/>93 functions · norm 0.66<br/>29 misfits"]
+    h9["langs<br/>31 functions · norm 0.66<br/>11 misfits"]
+    h10["roles<br/>12 functions · norm 0.67<br/>4 misfits"]
+    h11["navigation<br/>32 functions · norm 0.69<br/>10 misfits"]
+    classDef good fill:#d7ecd9,color:#1b3d20
+    classDef warn fill:#fbeecb,color:#4a3a12
+    classDef hot fill:#f7d6d6,color:#4a1c1c
+    class h0,h1,h2,h3,h4,h5,h6,h7,h8,h9,h10,h11 warn
+```
+
+_114 further packages are modeled and not drawn._ Most uniform is `partials` (norm `0.98`); most varied is `page` (norm `0.61`). 538 functions are alien to their package and to the subsystem around it. A further 121 fit poorly in their package but match the wider subsystem, so they are not reported.
+
+### How these candidates were found
+
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **13753 candidate pairs** (shape 2195, concept 4057, call 8265), of which 55% arrived on call evidence alone and 28% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+
+Each function is also an arena where its candidate concepts compete for its evidence. 1997 functions reached an equilibrium: **1408** settled on a single concept, **589** on a coalition, **0** hold concepts this corpus says do not go together.
+
+---
+
+## Local practice
+
+The vocabulary above says what a concept *is*. This says what one looks like when **this** codebase writes it — learned from the corpus, so it describes the house style rather than a rule from anywhere else.
+
+### How this codebase writes each concept
+
+Of the functions carrying each tag, how many do each thing. Weights are how much a channel counts toward whether a member looks normal — calls 40, control flow 20, co-occurring tags 15, role 15, package 10.
+
+**`concurrency`** — 232 functions
+
+| Channel | Feature | | Members |
+|---|---|---|---|
+| flow ×20 | `return` | `███████···` | 168 of 232 |
+|  | `defer` | `██████····` | 142 of 232 |
+|  | `if` | `██████····` | 133 of 232 |
+| role ×15 | `leaf` | `██████····` | 136 of 232 |
+
+**`caching`** — 201 functions
+
+| Channel | Feature | | Members |
+|---|---|---|---|
+| flow ×20 | `return` | `██████████` | 191 of 201 |
+|  | `if` | `███████···` | 138 of 201 |
+
+**`mapping`** — 165 functions
+
+| Channel | Feature | | Members |
+|---|---|---|---|
+| flow ×20 | `return` | `██████████` | 158 of 165 |
+|  | `if` | `███████···` | 109 of 165 |
+
+**`error_wrapping`** — 125 functions
+
+| Channel | Feature | | Members |
+|---|---|---|---|
+| calls ×40 | `fmt.Errorf` | `██████████` | 124 of 125 |
+| flow ×20 | `if` | `██████████` | 125 of 125 |
+|  | `return` | `██████████` | 123 of 125 |
+| role ×15 | `orchestrator` | `█████·····` | 66 of 125 |
+
+**`file_io`** — 87 functions
+
+| Channel | Feature | | Members |
+|---|---|---|---|
+| flow ×20 | `if` | `██████████` | 84 of 87 |
+|  | `return` | `██████████` | 83 of 87 |
+|  | `defer` | `█████·····` | 47 of 87 |
+| role ×15 | `orchestrator` | `█████·····` | 44 of 87 |
+
+**`validation`** — 86 functions
+
+| Channel | Feature | | Members |
+|---|---|---|---|
+| flow ×20 | `return` | `██████████` | 83 of 86 |
+|  | `if` | `█████████·` | 80 of 86 |
+
+_2 further concepts are modeled and not described._
+
+### Which concepts share a function
+
+`++` at least four times chance, `+` at least twice, `−` at most half, `never` not once. A blank cell is ordinary company — near chance, which is not culture.
+
+| | `caching` | `concurrency` | `error_wrapping` | `file_io` | `http_call` | `logging` | `mapping` | `retry` | `serialization` | `transaction` |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **`concurrency`** |  | | | | | | | | | |
+| **`error_wrapping`** | ++ |  | | | | | | | | |
+| **`file_io`** | ++ | + | ++ | | | | | | | |
+| **`http_call`** |  |  |  |  | | | | | | |
+| **`logging`** | + | + | ++ | ++ |  | | | | | |
+| **`mapping`** | + |  | + | + |  |  | | | | |
+| **`retry`** |  |  |  |  |  |  |  | | | |
+| **`serialization`** | ++ |  | ++ | ++ |  |  | + |  | | |
+| **`transaction`** |  |  |  |  |  |  |  |  |  | |
+| **`validation`** |  | + | + |  |  | + | + |  |  |  |
+
+### What travels with what
+
+Co-occurrence measured against chance across every function. Only relationships at least twice — or at most half — as common as chance are reported; near-chance company is not culture. Each kind is listed separately, because there are far more call tokens than concepts and one shared list is all calls. Within a kind, strongest first means lift weighted by how many functions carry it — a 100× relationship holding for three functions is a weaker finding than a 30× one holding for thirty.
+
+**Together more than chance — tag~tag**
+
+- 15 of 87 `file_io` functions also `error_wrapping` — 7.5× chance
+- 11 of 75 `logging` functions also `file_io` — 9.2× chance
+- 18 of 87 `file_io` functions also `caching` — 5.6× chance
+- 19 of 125 `error_wrapping` functions also `caching` — 4.1× chance
+- 8 of 54 `serialization` functions also `error_wrapping` — 6.4× chance
+- 10 of 54 `serialization` functions also `caching` — 5.0× chance
+- _13 more not listed_
+
+**Together more than chance — tag~role**
+
+- 66 of 125 `error_wrapping` functions also `orchestrator` — 3.3× chance
+- 44 of 87 `file_io` functions also `orchestrator` — 3.2× chance
+- 36 of 75 `logging` functions also `orchestrator` — 3.0× chance
+- 74 of 201 `caching` functions also `orchestrator` — 2.3× chance
+- 57 of 165 `mapping` functions also `orchestrator` — 2.2× chance
+- 21 of 165 `mapping` functions also `passthrough` — 2.7× chance
+- _6 more not listed_
+
+**Together more than chance — tag~call**
+
+- 23 of 54 `serialization` functions also `encoding/json.Marshal` — 101× chance
+- 19 of 54 `serialization` functions also `encoding/json.Unmarshal` — 101× chance
+- 27 of 87 `file_io` functions also `io.Copy` — 63× chance
+- 25 of 87 `file_io` functions also `io.ReadAll` — 63× chance
+- 11 of 75 `logging` functions also `log.Fatal` — 73× chance
+- 9 of 54 `serialization` functions also `encoding/json.NewEncoder` — 101× chance
+- _308 more not listed_
+
+**Apart more than chance — tag~role**
+
+- 37 of 125 `error_wrapping` functions also `leaf` — 0.5× chance
+- 27 of 87 `file_io` functions also `leaf` — 0.5× chance
+- 6 of 125 `error_wrapping` functions also `utility` — 0.3× chance
+- 2 of 54 `serialization` functions also `utility` — 0.3× chance
+- 5 of 75 `logging` functions also `utility` — 0.5× chance
+
+### Functions drifting from their own concept
+
+These carry a tag but look nothing like the other functions carrying it. Typicality is measured against the concept's own median, so a genuinely varied concept lowers its own bar and a tight one can flag nobody.
+
+| Function | Concept | Typicality | Concept median |
+|---|---|---:|---:|
+| `commands.*hugoBuilder.newWatcher` <br/>`commands/hugobuilder.go:314` | `concurrency` | `0.08` | `0.35` |
+| `hugolib.NewHugoSites` <br/>`hugolib/site.go:199` | `concurrency` | `0.09` | `0.35` |
+| `hugolib.*Site.renderPages` <br/>`hugolib/site_render.go:71` | `concurrency` | `0.10` | `0.35` |
+| `hugolib.*IntegrationTestBuilder.initBuilder` <br/>`hugolib/integrationtest_builder.go:874` | `concurrency` | `0.10` | `0.35` |
+| `hugolib.*pageContentOutput.initRenderHooks` <br/>`hugolib/page__per_output.go:227` | `concurrency` | `0.11` | `0.35` |
+| `deploy.*Deployer.Deploy` <br/>`deploy/deploy.go:120` | `concurrency` | `0.11` | `0.35` |
+| `collections.*Namespace.Sort` <br/>`tpl/collections/sort.go:31` | `concurrency` | `0.12` | `0.35` |
+| `warpc.newDispatcher` <br/>`internal/warpc/warpc.go:585` | `concurrency` | `0.12` | `0.35` |
+| `loggers.New` <br/>`common/loggers/logger.go:51` | `concurrency` | `0.12` | `0.35` |
+| `commands.*serverCommand.serve` <br/>`commands/server.go:868` | `concurrency` | `0.12` | `0.35` |
+
+_47 more unusual realizations not listed._
 
 ---
 
@@ -436,6 +722,8 @@ Families: 306 over 480 components, 939 functions in a family, 623 edges complete
 
 ### Family 1 — 27 members, every pair `>= 0.61` code-shape, evidence `102861`  (195 edges scored here)
 
+_Not drawn: 27 members is 351 connections. Every one of them holds — that is what makes this a family._
+
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
 | `tpl/cast/init.go:25` | `cast.init` | `()` | — |
@@ -452,6 +740,8 @@ Families: 306 over 480 components, 939 functions in a family, 623 edges complete
 _17 more members not listed._
 
 ### Family 2 — 24 members, every pair `>= 0.61` code-shape, evidence `99661`  (139 edges scored here)
+
+_Not drawn: 24 members is 276 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
@@ -470,6 +760,8 @@ _14 more members not listed._
 
 ### Family 3 — 27 members, every pair `>= 0.61` code-shape, evidence `98543`  (197 edges scored here)
 
+_Not drawn: 27 members is 351 connections. Every one of them holds — that is what makes this a family._
+
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
 | `tpl/cast/init.go:25` | `cast.init` | `()` | — |
@@ -487,6 +779,8 @@ _17 more members not listed._
 
 ### Family 4 — 27 members, every pair `>= 0.61` code-shape, evidence `92704`  (202 edges scored here)
 
+_Not drawn: 27 members is 351 connections. Every one of them holds — that is what makes this a family._
+
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
 | `tpl/cast/init.go:25` | `cast.init` | `()` | — |
@@ -503,6 +797,8 @@ _17 more members not listed._
 _17 more members not listed._
 
 ### Family 5 — 27 members, every pair `>= 0.61` code-shape, evidence `88027`  (204 edges scored here)
+
+_Not drawn: 27 members is 351 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|

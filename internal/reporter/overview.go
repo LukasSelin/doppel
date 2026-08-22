@@ -38,6 +38,10 @@ type Overview struct {
 	Habitats     []HabitatRow // packages with a habitat model, norm asc (worst first)
 	HabitatsMore int          // habitats beyond the rendered bound
 	Misfits      int
+	// MisfitsExcused are package misfits that match their wider subsystem and so
+	// are not reported. Counting them separately keeps "0 misfits" honest: it
+	// can mean nothing was odd, or that everything odd was odd in company.
+	MisfitsExcused int
 
 	MostUniform, MostDiverse         string
 	MostUniformNorm, MostDiverseNorm float64
@@ -379,8 +383,9 @@ func overviewHabitats(w io.Writer, ov *Overview) {
 	fmt.Fprintf(w, "### How settled each package is\n\n")
 	fmt.Fprintf(w, "A package with at least five functions gets a habitat model: doppel learns what is "+
 		"normal there and measures how surprising each member is against it. **Norm** is how uniform "+
-		"the package's practice is; a **misfit** is a function far enough outside its own package's "+
-		"tolerance to be worth a look.\n\n")
+		"the package's practice is. A **misfit** is a function alien to its package *and* to the "+
+		"wider subsystem around it — one that fits its neighbours a directory up is normal for this "+
+		"codebase and is not reported.\n\n")
 
 	fmt.Fprintf(w, "```mermaid\nflowchart TD\n")
 	for i, h := range ov.Habitats {
@@ -407,16 +412,27 @@ func overviewHabitats(w io.Writer, ov *Overview) {
 	}
 	fmt.Fprintf(w, "```\n\n")
 
+	// Joined rather than concatenated: each clause is optional, and appending
+	// them with their own trailing spaces left a double space wherever one in
+	// the middle was skipped.
+	var tail []string
 	if ov.HabitatsMore > 0 {
-		fmt.Fprintf(w, "_%d further packages are modeled and not drawn._ ", ov.HabitatsMore)
+		tail = append(tail, fmt.Sprintf("_%d further packages are modeled and not drawn._", ov.HabitatsMore))
 	}
 	if ov.MostUniform != "" {
-		fmt.Fprintf(w, "Most uniform is `%s` (norm `%.2f`); most varied is `%s` (norm `%.2f`). ",
-			mdEscape(ov.MostUniform), ov.MostUniformNorm, mdEscape(ov.MostDiverse), ov.MostDiverseNorm)
+		tail = append(tail, fmt.Sprintf("Most uniform is `%s` (norm `%.2f`); most varied is `%s` (norm `%.2f`).",
+			mdEscape(ov.MostUniform), ov.MostUniformNorm, mdEscape(ov.MostDiverse), ov.MostDiverseNorm))
 	}
 	if ov.Misfits > 0 {
-		fmt.Fprintf(w, "%d functions sit outside their own package's norm.", ov.Misfits)
+		tail = append(tail, fmt.Sprintf("%d functions are alien to their package and to the subsystem around it.", ov.Misfits))
 	}
+	// The excused count earns a clause of its own: a corpus with no misfits and
+	// seven excused ones is a different codebase from one with neither, and a
+	// bare "0" cannot tell them apart.
+	if ov.MisfitsExcused > 0 {
+		tail = append(tail, fmt.Sprintf("A further %d fit poorly in their package but match the wider subsystem, so they are not reported.", ov.MisfitsExcused))
+	}
+	fmt.Fprint(w, strings.Join(tail, " "))
 	fmt.Fprintf(w, "\n\n")
 }
 
