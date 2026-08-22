@@ -44,6 +44,10 @@ jobs:
       - name: Mirror .github/wiki into the wiki checkout
         run: |
           set -euo pipefail
+          # Without this an empty source directory makes the loop below iterate
+          # the literal glob and die inside cp, which reads as a broken job
+          # rather than as the thing that actually happened.
+          shopt -s nullglob
 
           # Wiki page names are flat, so nested sources would silently collide
           # (a/page.md and b/page.md becoming one page). Fail loudly instead.
@@ -53,15 +57,38 @@ jobs:
             exit 1
           fi
 
-          # An exact mirror: dropping the existing pages first is what makes a
-          # deletion in the repo delete the page.
-          find wiki -maxdepth 1 -name '*.md' -delete
+          sources=(.github/wiki/*.md)
+          # Emptying the wiki entirely is almost always an accident, and it is
+          # not reversible from the wiki UI. Refuse rather than guess.
+          if [ ${#sources[@]} -eq 0 ]; then
+            echo "::error::.github/wiki contains no markdown — refusing to empty the wiki." >&2
+            exit 1
+          fi
 
-          for src in .github/wiki/*.md; do
+          # An exact mirror: dropping the existing pages first is what makes a
+          # deletion in the repo delete the page. Underscore-prefixed pages are
+          # GitHub's own furniture (_Sidebar, _Footer) rather than content, so
+          # they survive unless the repo itself supplies one below.
+          find wiki -maxdepth 1 -name '*.md' ! -name '_*' -delete
+
+          # Collisions are tracked here rather than by probing the filesystem,
+          # because a repo-supplied _Sidebar.md legitimately lands on a page the
+          # wipe above preserved.
+          declare -A seen=()
+
+          for src in "${sources[@]}"; do
             base="$(basename "$src" .md)"
             # how-it-works.md -> How-it-works.md, which GitHub titles
             # "How it works" and serves at /wiki/How-it-works.
             page="$(printf '%s' "${base%"${base#?}"}" | tr '[:lower:]' '[:upper:]')${base#?}"
+            # Only the first letter is upper-cased, so two sources can still map
+            # onto one page (foo.md and Foo.md). Silently keeping the last one
+            # is the same class of quiet wrong answer as the nesting check.
+            if [ -n "${seen[$page]:-}" ]; then
+              echo "::error::${src} and ${seen[$page]} both map to page '${page}'." >&2
+              exit 1
+            fi
+            seen[$page]="$src"
             cp "$src" "wiki/${page}.md"
             echo "$src -> ${page}.md"
           done
@@ -83,4 +110,6 @@ jobs:
           # Name the source commit so a wiki change is traceable back to what
           # caused it.
           git commit -m "docs(wiki): sync from ${GITHUB_SHA:0:7}"
-          git push
+          # Explicit refspec: immune to whether the wiki checkout landed on a
+          # branch or a detached HEAD.
+          git push origin HEAD:master

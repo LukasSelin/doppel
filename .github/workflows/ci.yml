@@ -6,6 +6,16 @@ on:
   pull_request:
     branches: [master]
 
+permissions:
+  contents: read
+
+# Superseded PR runs are pure latency: three pushes in a row otherwise leave two
+# stale 3-OS matrices occupying runners ahead of the one whose result you want.
+# The wiki job deliberately does the opposite — see wiki.yml.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     # Release archives ship linux, darwin and windows binaries, so the test
@@ -30,6 +40,19 @@ jobs:
 
       - name: Vet
         run: go vet ./...
+
+      # The pre-commit hook checks this too, but only after `task setup`, which
+      # nothing enforces — so formatting drift reaches master without it.
+      # One leg is enough: gofmt's output does not vary by platform.
+      - name: Gofmt
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "::error::gofmt would rewrite these files — run 'task fmt'." >&2
+            echo "$unformatted" >&2
+            exit 1
+          fi
 
       - name: Test
         run: go test ./...

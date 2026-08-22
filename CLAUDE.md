@@ -175,11 +175,15 @@ doppel ontology --defs                                # print the vocabulary and
   The determinism and hook-entry-point steps are guarded `if: matrix.os == 'ubuntu-latest'` — they
   assume `/tmp`, `printf` and `diff`, and determinism is platform-independent, so proving it once
   is enough. Go version comes from `go-version-file: go.mod` (currently `1.25.0`).
-- **CI does not check gofmt** — only the local hook does. This is why formatting drift is possible.
+- **CI checks gofmt** on the Linux leg, so formatting drift no longer reaches `master` when the
+  local hook is inactive (it only exists after `task setup`, which nothing enforces).
 - `.github/workflows/release.yml` fires on a `v*` tag push and runs GoReleaser (pinned `v2.17.1`)
   over `.goreleaser.yaml`. It **re-declares** vet/test/determinism in a `verify` job rather than
   reusing `ci.yml`: a tag push matches neither of `ci.yml`'s triggers, so `needs:` cannot reach it
-  and `workflow_run` never fires. `contents: write` is scoped to the release job alone.
+  and `workflow_run` never fires. `contents: write` is scoped to the release job alone. `verify`
+  also asserts that `-X …/cmd.version=$GITHUB_REF_NAME` actually reaches `doppel version`, because
+  a binary shipping an unstamped identity degrades every comparability check silently instead of
+  failing — that assertion and `.goreleaser.yaml`'s ldflags line must move together.
 - The release build stamps `-X …/cmd.version=v{{ .Version }}`, **not** `{{ .Tag }}` — under
   `--snapshot` the latter resolves to the *previous* tag, so every local build of every tree would
   claim one identity, which is the stale-baseline-passes-comparability failure the check exists to

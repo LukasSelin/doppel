@@ -37,6 +37,22 @@ jobs:
           go run . analyze . --format json > /tmp/b.json
           diff /tmp/a.json /tmp/b.json
 
+      # The whole release rests on cmd.version being stamped: snapshot/diff.go
+      # discards a baseline when it changes, so a binary shipping "(devel)"
+      # degrades every comparability check silently rather than failing. Assert
+      # the ldflags path still works *before* anything is published — this
+      # mirrors what .goreleaser.yaml does, so editing one without the other
+      # fails here instead of six archives later.
+      - name: Version stamping works
+        run: |
+          go build -ldflags "-X github.com/LukasSelin/doppel/cmd.version=${GITHUB_REF_NAME}" -o /tmp/doppel .
+          stamped="$(/tmp/doppel version)"
+          if [ "$stamped" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::stamped version is '$stamped', expected '${GITHUB_REF_NAME}'" >&2
+            exit 1
+          fi
+          echo "stamped as $stamped"
+
   release:
     needs: verify
     runs-on: ubuntu-latest
