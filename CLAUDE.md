@@ -988,6 +988,18 @@ shell and behaves identically on Windows and Unix, and which is also the only fo
     = defaults; cmd never sets it), `analyzer.RankOptions{TrophicPower, TestCallDiscount}` /
     `SortForReportWith` (power 2 uses `t*t`, not `math.Pow`, so the default key is byte-identical),
     and `ontology.WithWeights`. Options and arguments, never package globals.
+  - `TestSelfWeight` (guard `DOPPEL_BENCH_SELFWEIGHT=1`) is the label-free weighting experiment:
+    `comparator.SignalVector` (the twelve graded signals in `ScoredRelations` order; pinned to
+    reproduce `OverlapScore` exactly) over the candidate set versus a null sample
+    (`calibrate.SamplePairs`, cross test/prod dropped), Fisher ratio per signal normalized to
+    weights, an entropy variant for contrast, each scored via `Rescore(WithWeights)`. **Measured
+    on cobra and not adopted:** Fisher loads 0.37 on `shares_neighborhood` and 0.29 on `calls`
+    and cuts `exhibits` to 0.05, and the labels get worse (merge 5.5 / refactor 20.0 against
+    5.2 / 16.1; entropy 5.3 / 19.6). The contrast is confounded: what separates *retrieved* pairs
+    from random pairs is largely call-graph adjacency, which retrieval selected for — the
+    experiment measures what retrieval wants, not what a reviewer judges. Label-free weighting
+    from this corpus alone cannot replace the hand-set table; the harness that could is the
+    labeled fitter, once more corpora are labeled.
   - `TestMinIDF` and `TestMinIDFLadder` (guard `DOPPEL_BENCH_MINIDF=1`) measure the information
     floor against the absolute df caps: derived caps, union size, suppressed functions and
     surviving patterns per floor on every fetched corpus, plus the labeled rankings where labels
