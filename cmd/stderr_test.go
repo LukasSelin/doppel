@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/LukasSelin/doppel/internal/calibrate"
 	"github.com/LukasSelin/doppel/internal/culture"
 )
 
@@ -71,6 +72,27 @@ func TestPrintHabitatSummaryWithSubsystems(t *testing.T) {
 		MostDiverseNorm:    0.61,
 	})
 	want := "Habitats: 126 modeled, 88 misfits (571 excused by subsystem), 23 subsystems; most uniform partials (norm 0.98), most diverse page (norm 0.61)\n"
+	if got := b.String(); got != want {
+		t.Errorf("got  %q\nwant %q", got, want)
+	}
+}
+
+func TestPrintCalibration(t *testing.T) {
+	var b strings.Builder
+	printCalibration(&b, calibrate.Result{Rate: 0.01, ShapePairs: 20000, OverlapPairs: 20000, Threshold: 0.63, StructMin: 0.37})
+	want := "Calibration: rate 0.01 over 20000 null pairs -> threshold 0.63, struct-min 0.37, family-min 0.63\n"
+	if got := b.String(); got != want {
+		t.Errorf("got  %q\nwant %q", got, want)
+	}
+	b.Reset()
+	printCalibration(&b, calibrate.Result{Rate: 0.01, ShapePairs: 17578, OverlapPairs: 20000, Threshold: 0.53, StructMin: 0.44})
+	want = "Calibration: rate 0.01 over 17578 shape / 20000 overlap null pairs -> threshold 0.53, struct-min 0.44, family-min 0.53\n"
+	if got := b.String(); got != want {
+		t.Errorf("got  %q\nwant %q", got, want)
+	}
+	b.Reset()
+	printCalibration(&b, calibrate.Result{Rate: 0.01, ShapePairs: 780, Declined: "only 780 eligible shape null pairs (need 1000)"})
+	want = "Calibration: rate 0.01 declined (only 780 eligible shape null pairs (need 1000)); defaults kept\n"
 	if got := b.String(); got != want {
 		t.Errorf("got  %q\nwant %q", got, want)
 	}

@@ -60,7 +60,14 @@ type KindNote struct {
 // is an interface implementation and a fork — the fork is the more specific
 // claim, and the one a reader acts on.
 func ClassifyPair(a, b parser.CodeUnit, score float64) *KindNote {
-	if k := Fork(a, b, score); k != nil {
+	return ClassifyPairWith(a, b, score, ForkShapeFloor)
+}
+
+// ClassifyPairWith is ClassifyPair under an explicit fork floor — the
+// calibrated code-shape threshold when --calibrate is on, so the fork rule
+// and the family edge cut move together.
+func ClassifyPairWith(a, b parser.CodeUnit, score, forkFloor float64) *KindNote {
+	if k := forkAt(a, b, score, forkFloor); k != nil {
 		return k
 	}
 	return InterfaceImpl(a, b)
@@ -104,7 +111,11 @@ func InterfaceImpl(a, b parser.CodeUnit) *KindNote {
 // that share a stem (*Appender.append / *AppenderV2.append), or stem-sharing
 // methods on one receiver (*state.evalCall / *state.evalCallOld).
 func Fork(a, b parser.CodeUnit, score float64) *KindNote {
-	if score < ForkShapeFloor || a.Name == b.Name {
+	return forkAt(a, b, score, ForkShapeFloor)
+}
+
+func forkAt(a, b parser.CodeUnit, score, floor float64) *KindNote {
+	if score < floor || a.Name == b.Name {
 		return nil
 	}
 	rel := relation(a, b)

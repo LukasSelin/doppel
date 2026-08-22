@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/LukasSelin/doppel/internal/analyzer"
+	"github.com/LukasSelin/doppel/internal/calibrate"
 	"github.com/LukasSelin/doppel/internal/culture"
 	"github.com/LukasSelin/doppel/internal/parser"
 	"github.com/LukasSelin/doppel/internal/reporter"
@@ -16,19 +17,20 @@ import (
 )
 
 var (
-	threshold  float64
-	topN       int
-	minNodes   int
-	outputFile string
-	configFile string
-	structMin  float64
-	channelK   int
-	debugFlag  bool
-	maxPerFunc int
-	testsMode  string
-	genMode    string
-	familiesN  int
-	familyMin  float64
+	threshold     float64
+	topN          int
+	minNodes      int
+	outputFile    string
+	configFile    string
+	structMin     float64
+	channelK      int
+	debugFlag     bool
+	maxPerFunc    int
+	testsMode     string
+	genMode       string
+	calibrateRate float64
+	familiesN     int
+	familyMin     float64
 
 	outputFormat string
 )
@@ -82,6 +84,7 @@ func init() {
 	analyzeCmd.Flags().IntVar(&maxPerFunc, "max-per-func", 2, "Maximum pairs any one function may appear in in the final report (0 = no cap)")
 	analyzeCmd.Flags().StringVar(&testsMode, "tests", "exclude", "Test-function population: include, exclude, or only. Tests are conventionally similar, so the default models production code; cross test/prod pairs are never reported.")
 	analyzeCmd.Flags().StringVar(&genMode, "generated", "exclude", "Generated-file population: include, exclude, or only. Files carrying Go's \"Code generated ... DO NOT EDIT.\" marker are near-identical by construction and unactionable, so the default models hand-written code.")
+	analyzeCmd.Flags().Float64Var(&calibrateRate, "calibrate", 0, "Set --threshold and --struct-min from the corpus: admit this fraction of random unrelated pairs (e.g. 0.01). Overrides both flags and sets --family-min to the same code-shape floor; 0 = off")
 	analyzeCmd.Flags().StringVar(&outputFormat, "format", formatText, "Stdout format: text or json")
 	analyzeCmd.Flags().IntVar(&familiesN, "families", 5, "Near-duplicate families to show in the report (0 = no families section)")
 	analyzeCmd.Flags().Float64Var(&familyMin, "family-min", 0.60, "Minimum code-shape between every two members of a family (0.0–1.0)")
@@ -98,6 +101,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		MaxPerFunc: maxPerFunc,
 		TestsMode:  testsMode,
 		Generated:  genMode,
+		Calibrate:  calibrateRate,
 		Debug:      debugFlag,
 	}
 
@@ -312,6 +316,22 @@ func printArenaSummary(w io.Writer, s culture.Stats) {
 	}
 	fmt.Fprintf(w, "Ecosystems: %d profiled (%d dominance, %d coalition, %d conflict, %d weak)\n",
 		s.ArenaProfiled, s.ArenaDominance, s.ArenaCoalition, s.ArenaConflict, s.ArenaWeak)
+}
+
+// printCalibration reports a null calibration: the derived thresholds, or
+// why the corpus was too small to derive them. Printed only when
+// --calibrate is on, so the default stderr stays byte-identical.
+func printCalibration(w io.Writer, r calibrate.Result) {
+	if r.Declined != "" {
+		fmt.Fprintf(w, "Calibration: rate %g declined (%s); defaults kept\n", r.Rate, r.Declined)
+		return
+	}
+	pairs := fmt.Sprintf("%d", r.ShapePairs)
+	if r.OverlapPairs != r.ShapePairs {
+		pairs = fmt.Sprintf("%d shape / %d overlap", r.ShapePairs, r.OverlapPairs)
+	}
+	fmt.Fprintf(w, "Calibration: rate %g over %s null pairs -> threshold %.2f, struct-min %.2f, family-min %.2f\n",
+		r.Rate, pairs, r.Threshold, r.StructMin, r.Threshold)
 }
 
 // printHabitatSummary emits the habitat and convention stderr lines in human

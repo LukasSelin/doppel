@@ -716,6 +716,7 @@ rules land where intended: hugo's `evalCall`/`evalField` pairs read `diverged co
   "max-per-func": 2,
   "tests": "exclude",
   "generated": "exclude",
+  "calibrate": 0,
   "families": 5,
   "family-min": 0.60,
   "hook-notify": "agent"
@@ -733,7 +734,10 @@ must reach — both presentation, so neither is in `Params` and neither can inva
 pick the population (`include`/`exclude`/`only` each, both defaulting `exclude`) before any
 statistic is computed — tests because they are conventionally similar by design, generated files
 (Go's "Code generated ... DO NOT EDIT." marker, detected via `ast.IsGenerated` at parse time)
-because they are near-identical by construction and unactionable.
+because they are near-identical by construction and unactionable. `--calibrate <rate>` (config
+key `calibrate`, default 0 = off) derives `--threshold` and `--struct-min` from the corpus's own
+null distribution and sets the family edge cut and fork floor to the same code-shape value — see
+*Calibration*; it overrides both flags outright.
 
 `hook-notify` (`agent` | `user` | `off`) is read only by `doppel hook stop` and has no flag — there
 is no CLI surface a hook setting would belong to. `format` (`text` or `json`) is a key like any
@@ -741,6 +745,45 @@ other. Every functional flag except `--config` has a
 config key. Precedence: `applyConfig` only calls
 `Flags().Set` when `!Flags().Changed(name)`, so explicit CLI flags always win over the file.
 Unknown keys are ignored rather than rejected, so a stale config file does not break a run.
+
+## Calibration
+
+`internal/calibrate` answers "what does a random, unrelated pair score *here*", so a threshold can
+be stated as a rate instead of a number. `--threshold 0.60` is loose on a corpus of 81 functions
+and strict on one of 8000; "admit 1% of random pairs" means the same thing on both. Measured at
+rate 0.01: the calibrated code-shape threshold is **0.45 on moby, 0.53 on cobra, 0.50 on this
+repo, 0.85 on conc** (where random pool methods genuinely look alike) against the fixed 0.60, and
+struct-min lands between 0.33 and 0.51 against the fixed 0.40 merge gate.
+
+Mechanics, all deterministic by construction: units are put in a canonical order (`package.name`,
+file, line) so walk order cannot matter; the seed is FNV-1a over those names; a 64-bit LCG draws
+up to 20 000 distinct unordered pairs (enumerated outright when the population is smaller),
+rejecting cross test/production pairs like the pipeline does; pairs are scored in ascending index
+order. The **code-shape null** is drawn over `--min-nodes`-eligible units — the shape channel's own
+gate — and scored with `fingerprint.SimilarityWith`; the **overlap null** is drawn over all units
+and scored with the run's own corpus-weighted comparator. Each threshold is the nearest-rank upper
+quantile at `1 − rate` (a score some null pair actually had, never an interpolation), **rounded up
+to 0.01** so the printed value is the used value and the admitted null fraction is at most the
+rate. Below 1 000 eligible null pairs the calibration is **declined** and the defaults are kept —
+eight samples above a 1% cut is not a calibration — and stderr says so.
+
+When applied, `p.Threshold` and `p.StructMin` are replaced and the fork floor
+(`analyzer.ClassifyPairWith`) and family edge cut (`familyMinFor`) follow the calibrated
+code-shape value, so every "alike enough" in the run is one number. The effective values travel in
+`Params` and therefore in `snapshot.Params` (which also records the rate, `calibrate`): a snapshot
+compares on what was actually used, and a calibrated run against an uncalibrated baseline is
+incomparable, correctly. Calibration **replaces both thresholds unconditionally** — `applyConfig`
+sets flags through `Flags().Set`, which marks them Changed, so "explicit flag wins" is not
+honestly implementable once a config has applied, and a half-calibrated run is the mixed question
+Params equality exists to forbid. The stderr line is printed only when the flag is on, so the
+default output stays byte-identical. `doppel query` does not calibrate (it stops at `index()`).
+
+On cobra's golden labels calibration is neutral at every rate from 0.005 to 0.05: the retrieved
+set grows from 816 to 1 029 candidates and the overlap gate keeps between 83 and 384 of them,
+without a single labeled pair changing rank (`TestCalibrate`, guard `DOPPEL_BENCH_CALIBRATE=1`).
+That is the evidence that calibration changes *what is admitted and shown*, not the ordering —
+and why it stays opt-in until gin/chi labels can say whether the corpus-relative operating point
+finds merges the fixed one misses.
 
 ## Impact measurement and the Claude Code plugin
 
@@ -929,6 +972,9 @@ shell and behaves identically on Windows and Unix, and which is also the only fo
     = defaults; cmd never sets it), `analyzer.RankOptions{TrophicPower, TestCallDiscount}` /
     `SortForReportWith` (power 2 uses `t*t`, not `math.Pow`, so the default key is byte-identical),
     and `ontology.WithWeights`. Options and arguments, never package globals.
+  - `TestCalibrate` (guard `DOPPEL_BENCH_CALIBRATE=1`) scores null calibration at rates 0.005,
+    0.01, 0.02 and 0.05: re-retrieves at the calibrated threshold and scores both the candidate set
+    and the struct-min-filtered view, listing the labels that moved. Asserts nothing.
   - `TestSweep` (guard `DOPPEL_BENCH_SWEEP=1`) is the sensitivity sweep: each hand-set constant
     varied one at a time (±50% or the natural alternatives), only the stages it reaches re-run,
     and the labeled rankings reported with a verdict — `inert` (no label moved), `moves`,
@@ -1039,6 +1085,12 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   deliberate: the alternative is path/name heuristics, which the tagger and retriever refuse
   everywhere else. Narrowing to a subtree remains the answer for focus (`prometheus/tsdb`
   reports the float/int histogram duplication by itself).
+- **A calibrated threshold can drift a hook baseline.** The Stop hook recalibrates every turn, so
+  editing code moves the null distribution and the derived threshold can cross a 0.01 boundary
+  mid-session, making the baseline incomparable through no pair's fault. Rounding to 0.01 is the
+  mitigation, not a cure; under `--tests include` the null is also a two-population mixture (cross
+  pairs are rejected, but test and production bodies are drawn together). Both are why
+  `calibrate` defaults to off.
 - **Committed examples drift silently.** `examples/*.md` is real output from a pinned tree, but
   nothing verifies it: any ranking change makes every file stale until somebody runs
   `task examples`. Regenerating is cheap (~10s for all seven) — do it in the same change that

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/LukasSelin/doppel/internal/analyzer"
+	"github.com/LukasSelin/doppel/internal/calibrate"
 	"github.com/LukasSelin/doppel/internal/comparator"
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/culture"
@@ -32,7 +33,8 @@ type Params struct {
 	ChannelK   int
 	MaxPerFunc int
 	TestsMode  string
-	Generated  string // generated-file population: include, exclude, or only
+	Generated  string  // generated-file population: include, exclude, or only
+	Calibrate  float64 // null admission rate; > 0 derives Threshold and StructMin from the corpus
 	Debug      bool
 }
 
@@ -47,16 +49,17 @@ type Params struct {
 // (top-N and per-function diversity), and a snapshot taken for diffing wants
 // the pre-cap set while the report wants the capped one.
 type Result struct {
-	Root      string
-	Params    Params
-	Units     []parser.CodeUnit
-	Docs      []concepter.ConceptDoc
-	Graph     *concepter.Graph
-	Culture   *culture.Model
-	TagCounts map[ontology.TermID]int
-	Onto      *ontology.Ontology
-	IC        *ontology.IC
-	Pairs     []analyzer.SimilarPair
+	Root        string
+	Params      Params
+	Units       []parser.CodeUnit
+	Docs        []concepter.ConceptDoc
+	Graph       *concepter.Graph
+	Culture     *culture.Model
+	Calibration *calibrate.Result // nil unless Params.Calibrate > 0
+	TagCounts   map[ontology.TermID]int
+	Onto        *ontology.Ontology
+	IC          *ontology.IC
+	Pairs       []analyzer.SimilarPair
 }
 
 // analyze runs the pipeline over root and returns everything downstream stages
@@ -201,6 +204,25 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 	printHabitatSummary(progress, cs)
 	printArenaSummary(progress, cs)
 
+	// Null calibration, when asked for: derive the code-shape and overlap
+	// thresholds from what random unrelated pairs score in this corpus. It
+	// runs before retrieval because retrieval reads the threshold, and it
+	// replaces --threshold and --struct-min outright — a half-calibrated run
+	// would be the mixed question Params equality exists to forbid. The
+	// effective values travel in Params so a snapshot compares on what was
+	// actually used.
+	forkFloor := analyzer.ForkShapeFloor
+	if p.Calibrate > 0 {
+		r := calibrate.Run(units, docs, comp, calibrate.DefaultOptions(p.Calibrate, p.MinNodes))
+		res.Calibration = &r
+		printCalibration(progress, r)
+		if r.Applied() {
+			p.Threshold, p.StructMin = r.Threshold, r.StructMin
+			forkFloor = r.Threshold
+		}
+	}
+	res.Params = p
+
 	// Multi-channel candidate retrieval: structural shape, shared concepts,
 	// and shared resolved calls each retrieve per-function top-K neighbors
 	// weighted by corpus rarity; the union goes to the expensive comparator.
@@ -268,7 +290,7 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 			pairs[i].A.Patterns, pairs[i].B.Patterns)
 		pairs[i].Habitat = habitatNotes(cult, pairs[i].AIdx, pairs[i].BIdx,
 			pairs[i].A.Package, pairs[i].B.Package)
-		pairs[i].Kind = analyzer.ClassifyPair(pairs[i].A, pairs[i].B, pairs[i].Score)
+		pairs[i].Kind = analyzer.ClassifyPairWith(pairs[i].A, pairs[i].B, pairs[i].Score, forkFloor)
 		pairs[i].Profile = profileNotes(cult, pairs[i].AIdx, pairs[i].BIdx,
 			pairs[i].A.Patterns, pairs[i].B.Patterns)
 	}
@@ -324,5 +346,6 @@ func snapshotOf(res Result, pairs []analyzer.SimilarPair) snapshot.Snapshot {
 			MaxPerFunc: res.Params.MaxPerFunc,
 			TestsMode:  res.Params.TestsMode,
 			Generated:  res.Params.Generated,
+			Calibrate:  res.Params.Calibrate,
 		})
 }

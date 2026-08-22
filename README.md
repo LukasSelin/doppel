@@ -165,6 +165,7 @@ inline; `doppel families` is the whole census, with `--format json` for a machin
 | `--format`          | `text`  | Stdout format: `text` or `json`. The JSON form is a deterministic snapshot of the whole run — every function, its concept tags and role, and every reported pair |
 | `--families`        | `5`     | Near-duplicate families to show after the pair list (`0` removes the section) |
 | `--family-min`      | `0.60`  | Code similarity every two members of a family must reach                    |
+| `--calibrate`       | `0`     | Derive `--threshold` and `--struct-min` from this repo: admit this fraction of random unrelated pairs (try `0.01`). Overrides both flags and moves `--family-min` with them; `0` = off |
 | `--config`          | `.doppel.json` if present | Path to a JSON config file                                |
 
 ### Configuration

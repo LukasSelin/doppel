@@ -25,6 +25,7 @@ type AnalysisConfig struct {
 	MaxPerFunc *int     `json:"max-per-func,omitempty"`
 	Tests      *string  `json:"tests,omitempty"`
 	Generated  *string  `json:"generated,omitempty"`
+	Calibrate  *float64 `json:"calibrate,omitempty"`
 	Format     *string  `json:"format,omitempty"`
 	Families   *int     `json:"families,omitempty"`
 	FamilyMin  *float64 `json:"family-min,omitempty"`
@@ -117,6 +118,9 @@ func applyConfig(cmd *cobra.Command, cfg *AnalysisConfig) {
 	if cfg.Generated != nil {
 		set("generated", *cfg.Generated)
 	}
+	if cfg.Calibrate != nil {
+		set("calibrate", strconv.FormatFloat(*cfg.Calibrate, 'f', -1, 64))
+	}
 	if cfg.Format != nil {
 		set("format", *cfg.Format)
 	}
@@ -172,6 +176,9 @@ func hookParams(root string) (Params, error) {
 	}
 	if cfg.Generated != nil {
 		p.Generated = *cfg.Generated
+	}
+	if cfg.Calibrate != nil {
+		p.Calibrate = *cfg.Calibrate
 	}
 	if err := validateTestsMode(p.TestsMode); err != nil {
 		return p, err
