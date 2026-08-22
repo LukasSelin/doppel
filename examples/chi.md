@@ -9,7 +9,7 @@ HTTP router; a narrow core with a middleware package beside it
 | Corpus | [chi](https://github.com/go-chi/chi) |
 | Pinned at | `v5.3.2` (`38939062c5df4d3e8814aad1a488983112627ced`) |
 | Project since | 2015 |
-| doppel | `b730816` |
+| doppel | `e53d59d` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -36,6 +36,113 @@ Families: 9 over 18 components, 32 functions in a family, 21 edges completed
 # Code Similarity Report
 
 **Functions analyzed:** 183 | **Threshold:** 0.60 | **Pairs found:** 10
+
+---
+
+## What doppel sees
+
+**183 functions** across **2 packages** — test functions excluded. Structural roles: 126 leaf, 27 orchestrator, 3 passthrough, 27 utility.
+
+### Concepts
+
+doppel reads intent from the AST into a fixed vocabulary and reasons over the tree, so two functions that share a *branch* score partial credit rather than nothing. Leaf counts below are this corpus.
+
+```mermaid
+flowchart LR
+    c0(["concept"])
+    c1(["io_operation"])
+    c2(["remote_io"])
+    c3["http_call<br/>absent"]
+    c4["grpc_call<br/>absent"]
+    c5(["data_store_access"])
+    c6["db_access<br/>absent"]
+    c7["caching<br/>2"]
+    c8["transaction<br/>absent"]
+    c9["file_io<br/>1"]
+    c10["logging<br/>absent"]
+    c11(["data_transformation"])
+    c12["mapping<br/>absent"]
+    c13["validation<br/>2"]
+    c14["serialization<br/>absent"]
+    c15(["control_flow"])
+    c16["concurrency<br/>1"]
+    c17(["fault_tolerance"])
+    c18["retry<br/>2"]
+    c19["circuit_breaker<br/>absent"]
+    c20(["error_handling"])
+    c21["error_wrapping<br/>absent"]
+    c0 --> c1
+    c1 --> c2
+    c2 --> c3
+    c2 --> c4
+    c1 --> c5
+    c5 --> c6
+    c5 --> c7
+    c5 --> c8
+    c1 --> c9
+    c1 --> c10
+    c0 --> c11
+    c11 --> c12
+    c11 --> c13
+    c11 --> c14
+    c0 --> c15
+    c15 --> c16
+    c15 --> c17
+    c17 --> c18
+    c17 --> c19
+    c0 --> c20
+    c20 --> c21
+    classDef good fill:#d7ecd9,color:#1b3d20
+    classDef warn fill:#fbeecb,color:#4a3a12
+    classDef hot fill:#f7d6d6,color:#4a1c1c
+    class c3,c4,c6,c8,c10,c12,c14,c19,c21 hot
+```
+
+**Nothing here is tagged** `circuit_breaker`, `db_access`, `error_wrapping`, `grpc_call`, `http_call`, `logging`, `mapping`, `serialization`, `transaction`. That is a direct answer to "does this codebase already do X" — for those concepts, it does not.
+
+| Concept | Functions | Convention |
+|---|---:|---|
+| `caching` | 2 | — |
+| `retry` | 2 | — |
+| `validation` | 2 | — |
+| `concurrency` | 1 | — |
+| `file_io` | 1 | — |
+
+Convention is how uniformly this corpus realizes a concept: `1.00` means every function carrying the tag does it the same way, and a low number means the tag covers several unrelated habits. A concept with fewer than five members is not modeled.
+
+### Where the duplication is
+
+Merge-worthy pairs folded up to their packages. An edge means two packages keep solving the same problem separately; a count on a node means the repetition is inside one package.
+
+### How settled each package is
+
+A package with at least five functions gets a habitat model: doppel learns what is normal there and measures how surprising each member is against it. **Norm** is how uniform the package's practice is. A **misfit** is a function alien to its package *and* to the wider subsystem around it — one that fits its neighbours a directory up is normal for this codebase and is not reported.
+
+```mermaid
+flowchart TD
+    h0["middleware<br/>106 functions · norm 0.87<br/>1 misfit"]
+    h1["chi<br/>77 functions · norm 0.91"]
+    classDef good fill:#d7ecd9,color:#1b3d20
+    classDef warn fill:#fbeecb,color:#4a3a12
+    classDef hot fill:#f7d6d6,color:#4a1c1c
+    class h0,h1 good
+```
+
+Most uniform is `chi` (norm `0.91`); most varied is `middleware` (norm `0.87`). 1 functions are alien to their package and to the subsystem around it.
+
+### How these candidates were found
+
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **397 candidate pairs** (shape 50, concept 5, call 357), of which 86% arrived on call evidence alone and 1% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+
+Each function is also an arena where its candidate concepts compete for its evidence. 7 functions reached an equilibrium: **7** settled on a single concept, **0** on a coalition, **0** hold concepts this corpus says do not go together.
+
+_1 further pairs were held back so no single function fills the report._
+
+---
+
+## Local practice
+
+The vocabulary above says what a concept *is*. This says what one looks like when **this** codebase writes it — learned from the corpus, so it describes the house style rather than a rule from anywhere else.
 
 ---
 
@@ -347,9 +454,28 @@ Families: 9 over 18 components, 32 functions in a family, 21 edges completed
 
 ## Families
 
-9 families, 32 functions in a family, largest 5 members; 21 edges scored here that retrieval never proposed
+9 families, 32 functions in a family, largest 10 members; 21 edges scored here that retrieval never proposed
 
 ### Family 1 — 5 members, every pair `>= 0.60` code-shape, evidence `2060`
+
+```mermaid
+flowchart LR
+    m0["middleware.CleanPath"]
+    m1["middleware.GetHead"]
+    m2["middleware.StripSlashes"]
+    m3["middleware.RedirectSlashes"]
+    m4["middleware.URLFormat"]
+    m0 --- m1
+    m0 --- m2
+    m0 --- m3
+    m0 --- m4
+    m1 --- m2
+    m1 --- m3
+    m1 --- m4
+    m2 --- m3
+    m2 --- m4
+    m3 --- m4
+```
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
@@ -361,6 +487,20 @@ Families: 9 over 18 components, 32 functions in a family, 21 edges completed
 
 ### Family 2 — 4 members, every pair `>= 1.00` code-shape, evidence `488`, interface implementations of `Flush()`, in package `middleware`
 
+```mermaid
+flowchart LR
+    m0["middleware.*flushWriter.Flush"]
+    m1["middleware.*flushHijackWriter.Flush"]
+    m2["middleware.*httpFancyWriter.Flush"]
+    m3["middleware.*http2FancyWriter.Flush"]
+    m0 --- m1
+    m0 --- m2
+    m0 --- m3
+    m1 --- m2
+    m1 --- m3
+    m2 --- m3
+```
+
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
 | `middleware/wrap_writer.go:147` | `middleware.*flushWriter.Flush` | `()` | — |
@@ -370,6 +510,16 @@ Families: 9 over 18 components, 32 functions in a family, 21 edges completed
 
 ### Family 3 — 3 members, every pair `>= 0.60` code-shape, evidence `437`
 
+```mermaid
+flowchart LR
+    m0["middleware.CleanPath"]
+    m1["middleware.GetHead"]
+    m2["middleware.RequestID"]
+    m0 --- m1
+    m0 --- m2
+    m1 --- m2
+```
+
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
 | `middleware/clean_path.go:12` | `middleware.CleanPath` | `(http.Handler) (http.Handler)` | — |
@@ -377,6 +527,20 @@ Families: 9 over 18 components, 32 functions in a family, 21 edges completed
 | `middleware/request_id.go:67` | `middleware.RequestID` | `(http.Handler) (http.Handler)` | — |
 
 ### Family 4 — 4 members, every pair `>= 0.62` code-shape, evidence `418`
+
+```mermaid
+flowchart LR
+    m0["middleware.SetHeader"]
+    m1["middleware.New"]
+    m2["middleware.PageRoute"]
+    m3["middleware.PathRewrite"]
+    m0 --- m1
+    m0 --- m2
+    m0 --- m3
+    m1 --- m2
+    m1 --- m3
+    m2 --- m3
+```
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
@@ -386,6 +550,16 @@ Families: 9 over 18 components, 32 functions in a family, 21 edges completed
 | `middleware/path_rewrite.go:9` | `middleware.PathRewrite` | `(string, string) (func(http.Handler) http.Handler)` | — |
 
 ### Family 5 — 3 members, every pair `>= 0.62` code-shape, evidence `322`
+
+```mermaid
+flowchart LR
+    m0["middleware.SetHeader"]
+    m1["middleware.Heartbeat"]
+    m2["middleware.PageRoute"]
+    m0 --- m1
+    m0 --- m2
+    m1 --- m2
+```
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|

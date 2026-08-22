@@ -92,12 +92,14 @@ type Stats struct {
 type Model struct {
 	opt           Options
 	associations  []Association
-	concepts      map[string]*conceptModel // keyed by tag; only prototyped concepts
-	habitats      map[string]*habitatModel // keyed by package; only modeled habitats
-	habitatByUnit map[int]*habitatModel    // modeled members only
-	subsystems    map[string]*habitatModel // keyed by subsystem directory; only modeled
-	subsysByUnit  map[int]*habitatModel    // modeled subsystem members only
-	arenas        map[int]ArenaProfile     // units with a non-empty candidate set only
+	concepts      map[string]*conceptModel  // keyed by tag; only prototyped concepts
+	habitats      map[string]*habitatModel  // keyed by package; only modeled habitats
+	habitatByUnit map[int]*habitatModel     // modeled members only
+	subsystems    map[string]*habitatModel  // keyed by subsystem directory; only modeled
+	subsysByUnit  map[int]*habitatModel     // modeled subsystem members only
+	arenas        map[int]ArenaProfile      // units with a non-empty candidate set only
+	base          map[string]map[string]int // channel -> feature -> units carrying it, corpus-wide
+	baseN         int
 	stats         Stats
 }
 
@@ -144,6 +146,7 @@ func Build(units []parser.CodeUnit, docs []concepter.ConceptDoc,
 		subsysByUnit:  make(map[int]*habitatModel),
 		arenas:        make(map[int]ArenaProfile),
 	}
+	buildBaseRates(m, units, docs, uf)
 	m.associations = buildAssociations(units, docs, uf.tokens, opt)
 	m.stats.AssociationCount = len(m.associations)
 	buildPrototypes(m, units, docs, uf, opt)
@@ -216,6 +219,59 @@ func (m *Model) Prototype(tag string) (Prototype, bool) {
 		return Prototype{}, false
 	}
 	return c.prototype, true
+}
+
+// buildBaseRates counts, per prototype channel, how much of the whole corpus
+// carries each feature.
+//
+// A prototype says what fraction of a concept's members do something; on its
+// own that is not house style. Nearly every Go function contains a return and
+// an if, so "533 of 533 error_wrapping functions return" is a fact about Go,
+// not about this codebase. The base rate is what turns the prototype into a
+// claim: a feature is characteristic of a concept only when its members carry
+// it *more* than the corpus does.
+func buildBaseRates(m *Model, units []parser.CodeUnit, docs []concepter.ConceptDoc, uf *unitFeatures) {
+	m.baseN = len(units)
+	m.base = map[string]map[string]int{
+		"calls": {}, "flow": {}, "cotags": {}, "role": {}, "package": {},
+	}
+	add := func(channel, feature string) {
+		if feature == "" {
+			return
+		}
+		m.base[channel][feature]++
+	}
+	for i := range units {
+		// Each unit contributes at most once per feature, matching the
+		// prototype's own presence counting.
+		for _, t := range uf.tokens[i] {
+			add("calls", t)
+		}
+		for _, f := range uf.flowFeats[i] {
+			add("flow", f)
+		}
+		for _, t := range uf.sortedPatterns[i] {
+			add("cotags", t)
+		}
+		if i < len(docs) {
+			add("role", docs[i].Role)
+		}
+		add("package", units[i].Package)
+	}
+}
+
+// BaseRate is the fraction of the whole corpus carrying one feature in one
+// channel, and reports false for a channel it does not model.
+//
+// Callers use it to discount a prototype feature by how ordinary it is. The
+// map lookup is a point query, so no iteration order is involved and the
+// result is as deterministic as the counts behind it.
+func (m *Model) BaseRate(channel, feature string) (float64, bool) {
+	ch, ok := m.base[channel]
+	if !ok || m.baseN == 0 {
+		return 0, false
+	}
+	return float64(ch[feature]) / float64(m.baseN), true
 }
 
 // Stats returns the build summary.

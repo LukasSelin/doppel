@@ -66,6 +66,8 @@ cmd/            CLI commands (Cobra).
   root.go       rootCmd, Execute()
   analyze.go    Pipeline orchestrator; all flag registration
   families.go   doppel families: the census view, plus analyze's family stage
+  overview.go   Queries the corpus model (culture, ontology, call graph) into reporter.Overview
+  htmlreport.go Assembles reporter.HTMLReport; strips.go derives the declaration-span strip view
   pipeline.go   index() + finishAnalyze(): the pipeline split into corpus-building prefix and reporting tail; filterByOverlap; snapshotOf
   query.go      doppel query: check a proposed function (a snippet on stdin) against the corpus, locality-weighted
   config.go     .doppel.json loading (AnalysisConfig), flag precedence, hookParams
@@ -86,6 +88,8 @@ internal/
   family/       Near-duplicate families: components + edge completion + maximal cliques over the pair graph
   snapshot/     One analysis run as comparable plain data: schema + Build, and Diff over two of them
   reporter/     Plain-text (stdout), Markdown (--output), JSON (--format json), and the two hook digests
+                overview.go + mermaid.go render the corpus model into the markdown report only
+                html.go + html_template.go + broadsheet.css: the visual report (--output *.html)
   bench/        Measurement harness: golden-ranking scorer, the pinned public corpus ladder, per-stage benchmarks, example generator
 examples/       Committed real reports for each corpus rung, plus labels/ (committed golden reviews) — see examples/README.md
 ```
@@ -327,8 +331,10 @@ tag~role, tag~call (resolved call tokens, df ∈ [2, 50]). `PMI = ln(N·c(a,b)/(
 Reported only when informative: positives need `count >= 3` and `PMI >= ln 2`; negatives need
 `expected >= 3` and `count <= expected/2` (count 0 stores `PMI = -Inf`, rendered as "never" if
 ever rendered). Ordering: positives by PMI desc, negatives by PMI asc, ties on (Kind, A, B).
-**Associations are computed and pin-tested but deliberately unsurfaced per-pair** — an
-association annotates the corpus, not a pair; a future `doppel culture` command is their home.
+**Associations are still deliberately unsurfaced per-pair** — an association annotates the corpus,
+not a pair. That argument is what decided where they *do* belong: the markdown report's **Local
+practice** section, which is corpus-level by construction. A `doppel culture` command would be the
+next home for the full list, which the report bounds.
 
 **Prototypes + typicality** — for each tag with **≥ 5 members**, five feature channels with
 integer-percent weights (sum pinned at exactly 100): calls 40 (resolved call tokens, no df cap —
@@ -714,6 +720,126 @@ the F-line, in the markdown heading, and as `kind`/`kindLabel` in `doppel famili
 rules land where intended: hugo's `evalCall`/`evalField` pairs read `diverged copy`, conc's pool
 `WithContext`/`Wait`, gin's `Render`, chi's `Flush` and moby's 11-member `UnmarshalJSON` family read
 `interface implementations`.
+## The report overview
+
+The markdown report (`--output`) opens with a **What doppel sees** section: the concept vocabulary
+and which concepts are *absent*, a package duplication map, per-package habitat norms, the arena
+ecosystem split, and the retrieval channel mix. Four mermaid diagrams carry it.
+
+The point is that all of this was already computed and then discarded. `culture.Stats`,
+`retriever.Stats` and `family.Stats` went to stderr and died there; `Model.HabitatNorm`,
+`HabitatTemperature` and `ConventionStrength` had no non-test caller at all outside the per-pair
+notes. `internal/bench/examples_test.go` had been pasting the stderr block into every committed
+example under `## Run diagnostics` to compensate, which is the clearest evidence the information
+belonged in the document.
+
+Rules that hold it together:
+
+- **Markdown only.** `Meta.Overview` is nil for the text report and for `--format json`, and a nil
+  overview renders **nothing** — a report without one is byte-identical to one written before the
+  section existed. Mermaid is meaningless in a terminal, and the JSON payload is a snapshot with a
+  documented shape.
+- **`reporter` never learns about `culture`.** `cmd/overview.go` queries the model and fills a
+  struct of plain presorted rows. `Overview` carries no maps that decide an order.
+- **What crosses over.** A fact belongs in the report if it changes how a reader weighs the
+  findings, and on stderr if it only helps someone tuning doppel. The channel mix crosses;
+  `Suppressed`, `LargeBuckets`, `SurvivingPatterns` and parse warnings do not. Both surfaces keep
+  their lines — stderr is unchanged, because the hook and the examples wrapper read it.
+- **`retriever.Stats` now rides on `Result`.** It was created, printed and dropped; the report
+  explains its own pair list with it.
+- **Escaping is not `mdEscape`.** That helper turns `|` into `\|`, and `|` is mermaid's edge-label
+  delimiter. `mermaidLabel` emits HTML entities (`#quot;`, `#35;`) because a quoted mermaid label
+  has no escape character, and `mermaidID` is positional rather than a mangled name — `a.b` and
+  `a_b` would otherwise collide. Escape the identifier, *then* compose with `<br/>`: escaping a
+  finished label renders the line break as a visible `#lt;br/#gt;`.
+- **Diagrams departing from the wiki's unstyled house style is deliberate**, and only on `classDef`.
+  A hand-authored diagram explains a mechanism; these encode a measured value, and colour is the
+  only channel mermaid offers for one.
+- **Every diagram is bounded and says so.** Package diagrams cap at `maxOverviewNodes` (12 — moby
+  has 168 habitats); family diagrams cap at 8 members, because the picture must draw every edge to
+  show the clique property and 55 members is 1485 edges.
+
+A second section, **Local practice**, describes how the corpus *writes* things rather than what it
+contains, from the two models that had no caller outside their own tests:
+
+- **How each concept is written here** — the prototype as a table of counts with a proportion bar,
+  never percentages: a concept qualifies at five members, and "83%" of six is more digits than
+  evidence where "5 of 6" is what was counted.
+
+  **Prevalence alone is not house style, and filtering on it produced a section that said nothing.**
+  Nearly every Go function has a `return` and an `if`, so an unfiltered prototype reported "533 of
+  533 error_wrapping functions return" — a fact about the language. A feature now earns its row by
+  **lift over the corpus base rate**: carried by the concept's members at least twice as often as
+  by the corpus at large, the same `ln 2` the ecology uses to decide an association is beyond
+  chance. `culture.BaseRate(channel, feature)` supplies the denominator, counted in `Build` from
+  the same `unitFeatures` the prototypes use, so the two cannot drift. The presence floor dropped
+  to 0.25 in exchange: a feature in a third of a concept's members that is nearly absent elsewhere
+  says more than one in two thirds that is everywhere. Rows sort by lift, not prevalence.
+
+  On moby this is the difference between `return` and `github.com/pkg/errors.Wrap` at 14× — the
+  second is a real fact about how that codebase wraps errors. A concept with **no** distinctive
+  feature says so explicitly rather than rendering an empty table: the tag groups its members, but
+  no shared way of writing them exists, and that is a finding about the tag.
+- **Which concepts share a function** — the tag~tag grid, and the one table in the report that is
+  **not** a sample: a fixed concept vocabulary means it is bounded by construction, so it shows every
+  cell including the ordinary ones. `never` cells are the layering signal. An all-blank grid
+  renders nothing, which is what doppel's own corpus produces.
+- **What travels with what** — the PMI ecology, both directions, **grouped by kind**. Grouping is
+  not cosmetic: there are far more call tokens than concepts, so on one shared list the tag~call
+  rows crowd out every tag~tag row — this report showed zero concept-to-concept associations until
+  each kind got its own budget. Each line leads with the conditional rather than the lift, because
+  "13 of 15 `http_call` functions also call `NewRequest`" is what a reader acts on where "416×
+  chance" only says why it is worth printing. For a tag~tag pair the *smaller* population is the
+  denominator: "16 of 33 retry" beats "16 of 436 concurrency" for the same fact. Count 0 has no
+  finite ratio and renders as the word, honouring `ecology.go`'s own contract.
+- **Ranking within a kind is lift weighted by evidence** (`ln(lift) · ln(1+count)`), not lift
+  alone, which put a 126× finding on three functions above a 31× one on six. Presentation only —
+  `culture`'s own ordering contract is untouched — and stated in the section, because a list whose
+  displayed lifts are not monotonic otherwise reads as a bug.
+- **Functions drifting from their own concept** — named, not counted, which closes a gap the tool
+  carried: a drifting function in a reported pair got a culture note, and one in *no* pair was a
+  stderr tally and nothing else. Those are the more interesting ones, so they sort first and carry
+  a marker. The marker column is emitted only when something is marked.
+
+`practiceWeight` in `cmd/overview.go` duplicates the four prototype channel weights, which live
+unexported in `culture`. Four integers were cheaper than widening that package's API — but the
+table has to track it.
+
+The derived `RoleThresholds`, computed in `mapper` and discarded, stay unsurfaced.
+
+## The visual report
+
+`--output report.html` writes the **Similarity Report**: one self-contained page, no script, no
+fetch, opening from `file://`. Any other extension still writes markdown. The format is chosen by
+extension rather than by `--format`, because `--format` selects what goes to *stdout* and a page of
+markup there helps nobody.
+
+It implements a design built in Claude Design (project `6a2b7669`, `Similarity Report.dc.html`) on
+the **Broadsheet** system. The canvas version is a prototype — its runtime interprets the template
+in the browser and it `fetch`es a hand-written `doppel-run.json`. This renders the same page from a
+real run, server-side, with `html/template` doing the escaping (the repo's first use of it, and of
+`//go:embed`; both stdlib, so the Cobra-only rule holds).
+
+- **`broadsheet.css` is vendored and must not be hand-edited** — re-sync from the design project.
+  It is a deliberate *subset*: tokens, base type, and the four component groups the page emits
+  (`.cmyk-num`, `.card`, `.tag`, `.table`). The form, nav, dialog and image-separation groups are
+  dropped because a generated report never renders them and the file is inlined into every report
+  written. Kept rules are byte-identical, so a re-sync is a diff rather than a merge.
+- **The design's editorial columns are not something doppel can write.** The mockup's `what repeats`
+  column reads "HTTP diagnostic handlers"; the tool has no way to produce that. It carries the pair
+  **kind** instead (`interface implementations`, `diverged copy`) and renders an empty cell when a
+  family has no kind, rather than inventing a description. Each strip's note is generated from its
+  own counts on the same principle.
+- **The strip view is the one piece of new data.** A bar is the gap from one declaration to the
+  next *in the same file*, so strips exist only for families whose members share a file — the rest
+  are still in the census with no silhouette to draw. It is derived, not measured: the gap includes
+  comments and blank lines, and the last declaration in a file has no successor and so no bar. The
+  page says this itself, in the closing note. `stripFullSpan` (70) is a fixed full-width scale
+  rather than a per-strip normalisation, so one family's bars can be read against another's.
+- **The canvas's three props** (`stripSort`, `showPairEvidence`, `driftRows`) are editor controls,
+  not report options, and are not implemented.
+
+One naming trap: the design's `components.nesting` is `fingerprint.Breakdown.**Depth**`.
 
 ## Configuration
 
@@ -1082,11 +1208,18 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   predictable each practice is across members, not how many distinct whole realizations exist.
   Habitat fit and misfit notes are corpus-relative like roles and typicality — a function's fit
   can move when unrelated code shifts its package.
-- **Culture associations are computed but unsurfaced.** The ecology model (PMI associations) is
-  built, tested, and reported only as a stderr count — per-pair surfacing was deliberately
-  deferred because an association annotates the corpus, not a pair. A `doppel culture` command is
-  the natural next home. Relatedly, an unusual realization on a function that appears in *no*
-  retrieved pair is invisible in the report (stderr count only).
+- **A distinctive call token can carry a false name.** The call channel inherits the resolver's
+  imprecision: a variable-receiver method call resolves only when the method name is unique
+  corpus-wide, so on moby every `mu.Unlock()` resolves to `sdjournal.noCopy.Unlock`, the one
+  declaration of that name. The lift is real — concurrency functions do unlock far more than the
+  corpus does — but the label names one arbitrary declaration rather than the practice. Fixing it
+  needs `go/types`; the practice section is now the most visible place this shows.
+- **The practice section is bounded by row count, not by importance.** Six concepts, eight
+  associations per direction, ten drifting functions — and on prometheus that is 8 of 371
+  associations and 10 of 32 unusual realizations. Strongest-first is a good proxy and not the same
+  thing as most-relevant: a weak association between two subsystems that should never touch may
+  matter more than a strong one inside a package. The full lists remain reachable only through the
+  library.
 - **Typicality is corpus-relative, like roles.** A function's typicality — and whether a pair
   carries a culture note — can change when unrelated code shifts the concept's membership or the
   corpus norm. That is what "normal for this repo" means; same caveat as the role thresholds.
@@ -1139,6 +1272,12 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   in the same way roles and typicality are — the pair graph moves when unrelated code moves — and it
   is bounded by the same retrieval recall the pair list is, except inside a component, where edge
   completion repairs it.
+- **The report overview is bounded by node count, not by importance.** The package diagrams show
+  the twelve least uniform habitats and the twelve heaviest duplication links, and count the rest.
+  On a wide corpus that is a sample, not a summary — the thirteenth link may matter more than the
+  first if it crosses a subsystem boundary the tool cannot see. Family diagrams stop at 8 members
+  for the same arithmetic reason, so the largest families — exactly the ones a census exists to
+  surface — are the ones shown only as prose.
 - **SUT-aware test discounting is only as good as call resolution.** A test pair with zero
   informative call tokens keys to zero even when genuinely duplicated (mock-heavy tests whose
   every call is variable-receiver read CallSim 0 — harsh but honest: no call evidence, no SUT

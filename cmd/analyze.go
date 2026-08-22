@@ -76,7 +76,7 @@ func init() {
 	analyzeCmd.Flags().Float64VarP(&threshold, "threshold", "t", 0.60, "Minimum code-shape score for structural-channel candidates (0.0–1.0)")
 	analyzeCmd.Flags().IntVarP(&topN, "top", "n", 20, "Maximum number of pairs in the final report")
 	analyzeCmd.Flags().IntVar(&minNodes, "min-nodes", 12, "Exclude functions with fewer body AST nodes from structural retrieval")
-	analyzeCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write report as markdown to this file (e.g. report.md). Stdout text report is still printed.")
+	analyzeCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write a report to this file. A .html path renders the full visual report; any other extension writes markdown. Stdout text report is still printed.")
 	analyzeCmd.Flags().StringVar(&configFile, "config", "", "Path to JSON config file (default: .doppel.json if present)")
 	analyzeCmd.Flags().Float64Var(&structMin, "struct-min", 0.0, "Minimum structural overlap score (0.0–1.0) to keep a pair")
 	analyzeCmd.Flags().IntVar(&channelK, "channel-k", 5, "Candidates each function keeps per retrieval channel")
@@ -130,6 +130,15 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(cmd.ErrOrStderr(), "  %d pairs suppressed by max-per-func=%d\n", suppressed, maxPerFunc)
 	}
 
+	// One Meta for both renderers. They used to build their own literals, which
+	// is how a new field ends up set on one surface and forgotten on the other.
+	// The overview rides on it and is markdown-only: the text report has no way
+	// to draw a diagram, and the terminal already gets these numbers on stderr.
+	meta := reporter.Meta{Threshold: threshold, TotalFuncs: len(res.Units), Debug: debugFlag}
+	if outputFile != "" {
+		meta.Overview = buildOverview(res, suppressed)
+	}
+
 	if outputFormat == formatJSON {
 		// The snapshot describes what this run reports, so it carries the same
 		// ranked pair set the text report shows. A snapshot meant for diffing
@@ -138,7 +147,6 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		meta := reporter.Meta{Threshold: threshold, TotalFuncs: len(res.Units), Debug: debugFlag}
 		reporter.Print(cmd.OutOrStdout(), pairs, meta)
 		reporter.PrintFamilies(cmd.OutOrStdout(), fams, famStats, res.Units, familiesN)
 	}
@@ -149,17 +157,33 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("create output file: %w", err)
 		}
 		defer f.Close()
-		reporter.PrintMarkdown(f, pairs, reporter.Meta{Threshold: threshold, TotalFuncs: len(res.Units), Debug: debugFlag})
-		reporter.PrintMarkdownFamilies(f, fams, famStats, res.Units, familiesN)
-		fmt.Fprintf(cmd.ErrOrStderr(), "Markdown report written to %s\n", outputFile)
+		// The extension picks the format. HTML is deliberately not a --format
+		// value: --format selects what goes to stdout, and a page of markup on
+		// stdout helps nobody — the file is the only place it makes sense.
+		if isHTMLPath(outputFile) {
+			r := buildHTMLReport(res, meta.Overview, fams, famStats, pairs, suppressed)
+			if err := reporter.PrintHTML(f, r); err != nil {
+				return fmt.Errorf("write html report: %w", err)
+			}
+			fmt.Fprintf(cmd.ErrOrStderr(), "HTML report written to %s\n", outputFile)
+		} else {
+			reporter.PrintMarkdown(f, pairs, meta)
+			reporter.PrintMarkdownFamilies(f, fams, famStats, res.Units, familiesN)
+			fmt.Fprintf(cmd.ErrOrStderr(), "Markdown report written to %s\n", outputFile)
+		}
 	}
 
 	return nil
 }
 
 // printRetrievalStats summarizes one retrieval run on stderr: how much each
-// channel contributed and how much trivial idiom mass was suppressed. This is
-// diagnostic output for tuning and evaluation, never part of the report.
+// channel contributed and how much trivial idiom mass was suppressed.
+//
+// The channel mix also reaches the markdown report now, because it answers
+// "why these pairs and not others" and a reader needs that to weigh the list.
+// The tuning counters below it — suppressed functions, large buckets,
+// surviving patterns — stay here: they help someone calibrating doppel and
+// mean nothing to someone reading about their own code.
 func printRetrievalStats(w io.Writer, s retriever.Stats) {
 	fmt.Fprintf(w, "Retrieval: shape %d, concept %d, call %d -> %d unique pairs\n",
 		s.ShapePairs, s.ConceptPairs, s.CallPairs, s.Union)

@@ -60,6 +60,11 @@ type Result struct {
 	Onto        *ontology.Ontology
 	IC          *ontology.IC
 	Pairs       []analyzer.SimilarPair
+
+	// Retrieval is how the candidate set was found — which channels admitted
+	// how much. It rides on Result because the report explains its own pair
+	// list with it; before that it was computed, printed to stderr and dropped.
+	Retrieval retriever.Stats
 }
 
 // analyze runs the pipeline over root and returns everything downstream stages
@@ -235,6 +240,7 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 		opts.ChainTopN = 20 // the "full list", bounded
 	}
 	cands, stats := retriever.Retrieve(units, cg, onto, ic, opts)
+	res.Retrieval = stats
 	printRetrievalStats(progress, stats)
 
 	pairs := make([]analyzer.SimilarPair, 0, len(cands))

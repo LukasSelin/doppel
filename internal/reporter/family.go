@@ -78,6 +78,7 @@ func PrintMarkdownFamilies(w io.Writer, fams []family.Family, stats family.Stats
 	for i, f := range shown {
 		fmt.Fprintf(w, "### Family %d — %d members, every pair `>= %.2f` code-shape, evidence `%.0f`%s%s\n\n",
 			i+1, len(f.Members), f.MinEdge, f.Evidence, completedNote(f.Completed), familyKindNote(f, true))
+		mdFamilyDiagram(w, f, units)
 		fmt.Fprintf(w, "| Location | Function | Signature | Patterns |\n")
 		fmt.Fprintf(w, "|---|---|---|---|\n")
 		listed := memberLimit(f, show)
@@ -118,17 +119,24 @@ func familySummary(fams []family.Family, stats family.Stats) string {
 	if len(fams) == 1 {
 		noun = "family"
 	}
+	// Scanned, not read off the head of the list. The census is ordered by
+	// retrieval evidence, so the first family is the most corroborated one and
+	// need not be the biggest — taking fams[0] here silently understated the
+	// largest family the moment that ordering changed.
+	largest := 0
+	for _, f := range fams {
+		if len(f.Members) > largest {
+			largest = len(f.Members)
+		}
+	}
 	s := fmt.Sprintf("%d %s, %d functions in a family, largest %d members",
-		len(fams), noun, stats.Members, len(fams[0].Members))
+		len(fams), noun, stats.Members, largest)
 	if stats.Completed > 0 {
 		s += fmt.Sprintf("; %d edges scored here that retrieval never proposed", stats.Completed)
 	}
 	return s
 }
 
-// completedNote names the edges this stage scored itself. Without it a reader
-// checking a family against the pair list finds members with no pair between
-// them and concludes the family was invented.
 // familyKindNote is the F-line / heading suffix for a labeled family.
 func familyKindNote(f family.Family, md bool) string {
 	if f.Kind == nil {
@@ -140,6 +148,9 @@ func familyKindNote(f family.Family, md bool) string {
 	return "   kind: " + kindClause(f.Kind, true, false)
 }
 
+// completedNote names the edges this stage scored itself. Without it a reader
+// checking a family against the pair list finds members with no pair between
+// them and concludes the family was invented.
 func completedNote(n int) string {
 	switch {
 	case n == 0:
@@ -175,6 +186,49 @@ func printFamilyMember(w io.Writer, u parser.CodeUnit) {
 		name = u.Package + "." + name
 	}
 	fmt.Fprintf(w, "      %-46s  %s:%d\n", name, filepath.ToSlash(u.File), u.StartLine)
+}
+
+// maxFamilyDiagram is the largest family drawn as a graph.
+//
+// The picture exists to show the one property the prose claims — that this is a
+// clique and not a chain — so it has to draw every edge, and edges grow as
+// n(n-1)/2. Eight members is 28 edges, which still reads. Prometheus has a
+// 55-member family: 1485 edges, which renders as a black disc and tells a
+// reader strictly less than the sentence above it.
+const maxFamilyDiagram = 8
+
+// mdFamilyDiagram draws the family as the complete graph it is.
+//
+// Every member connected to every other member is the whole claim. A star or a
+// chain would be easier to draw and would depict the failure mode this feature
+// exists to avoid, so the diagram is all-pairs or nothing.
+func mdFamilyDiagram(w io.Writer, f family.Family, units []parser.CodeUnit) {
+	if len(f.Members) > maxFamilyDiagram {
+		fmt.Fprintf(w, "_Not drawn: %d members is %d connections. Every one of them holds — that is what makes this a family._\n\n",
+			len(f.Members), len(f.Members)*(len(f.Members)-1)/2)
+		return
+	}
+	if len(f.Members) < 2 {
+		return
+	}
+	fmt.Fprintf(w, "```mermaid\nflowchart LR\n")
+	for i, m := range f.Members {
+		name := "?"
+		if m >= 0 && m < len(units) {
+			u := units[m]
+			name = u.Name
+			if u.Package != "" {
+				name = u.Package + "." + u.Name
+			}
+		}
+		fmt.Fprintf(w, "    %s[\"%s\"]\n", mermaidID("m", i), mermaidLabel(name))
+	}
+	for i := range f.Members {
+		for j := i + 1; j < len(f.Members); j++ {
+			fmt.Fprintf(w, "    %s --- %s\n", mermaidID("m", i), mermaidID("m", j))
+		}
+	}
+	fmt.Fprintf(w, "```\n\n")
 }
 
 func mdFamilyRow(w io.Writer, u parser.CodeUnit) {

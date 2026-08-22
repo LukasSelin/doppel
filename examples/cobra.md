@@ -9,7 +9,7 @@ CLI framework; one dominant type with a long method set, plus shell-completion g
 | Corpus | [cobra](https://github.com/spf13/cobra) |
 | Pinned at | `v1.10.2` (`88b30ab89da2d0d0abb153818746c5a2d30eccec`) |
 | Project since | 2015 |
-| doppel | `b730816` |
+| doppel | `e53d59d` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -36,6 +36,163 @@ Families: 18 over 43 components, 63 functions in a family, 3 edges completed
 # Code Similarity Report
 
 **Functions analyzed:** 269 | **Threshold:** 0.60 | **Pairs found:** 10
+
+---
+
+## What doppel sees
+
+**269 functions** across **2 packages** — test functions excluded. Structural roles: 120 leaf, 63 orchestrator, 36 passthrough, 50 utility.
+
+### Concepts
+
+doppel reads intent from the AST into a fixed vocabulary and reasons over the tree, so two functions that share a *branch* score partial credit rather than nothing. Leaf counts below are this corpus.
+
+```mermaid
+flowchart LR
+    c0(["concept"])
+    c1(["io_operation"])
+    c2(["remote_io"])
+    c3["http_call<br/>absent"]
+    c4["grpc_call<br/>absent"]
+    c5(["data_store_access"])
+    c6["db_access<br/>absent"]
+    c7["caching<br/>absent"]
+    c8["transaction<br/>absent"]
+    c9["file_io<br/>10"]
+    c10["logging<br/>absent"]
+    c11(["data_transformation"])
+    c12["mapping<br/>absent"]
+    c13["validation<br/>12"]
+    c14["serialization<br/>1"]
+    c15(["control_flow"])
+    c16["concurrency<br/>1"]
+    c17(["fault_tolerance"])
+    c18["retry<br/>absent"]
+    c19["circuit_breaker<br/>absent"]
+    c20(["error_handling"])
+    c21["error_wrapping<br/>absent"]
+    c0 --> c1
+    c1 --> c2
+    c2 --> c3
+    c2 --> c4
+    c1 --> c5
+    c5 --> c6
+    c5 --> c7
+    c5 --> c8
+    c1 --> c9
+    c1 --> c10
+    c0 --> c11
+    c11 --> c12
+    c11 --> c13
+    c11 --> c14
+    c0 --> c15
+    c15 --> c16
+    c15 --> c17
+    c17 --> c18
+    c17 --> c19
+    c0 --> c20
+    c20 --> c21
+    classDef good fill:#d7ecd9,color:#1b3d20
+    classDef warn fill:#fbeecb,color:#4a3a12
+    classDef hot fill:#f7d6d6,color:#4a1c1c
+    class c3,c4,c6,c7,c8,c10,c12,c18,c19,c21 hot
+```
+
+**Nothing here is tagged** `caching`, `circuit_breaker`, `db_access`, `error_wrapping`, `grpc_call`, `http_call`, `logging`, `mapping`, `retry`, `transaction`. That is a direct answer to "does this codebase already do X" — for those concepts, it does not.
+
+| Concept | Functions | Convention |
+|---|---:|---|
+| `validation` | 12 | `0.44` (loose) |
+| `file_io` | 10 | `0.42` (loose) |
+| `concurrency` | 1 | — |
+| `serialization` | 1 | — |
+
+Convention is how uniformly this corpus realizes a concept: `1.00` means every function carrying the tag does it the same way, and a low number means the tag covers several unrelated habits. A concept with fewer than five members is not modeled.
+
+### Where the duplication is
+
+Merge-worthy pairs folded up to their packages. An edge means two packages keep solving the same problem separately; a count on a node means the repetition is inside one package.
+
+```mermaid
+flowchart LR
+    p0["cobra<br/>134 internal"]
+    p1["doc<br/>14 internal"]
+    p0 ---|"1"| p1
+```
+
+### How settled each package is
+
+A package with at least five functions gets a habitat model: doppel learns what is normal there and measures how surprising each member is against it. **Norm** is how uniform the package's practice is. A **misfit** is a function alien to its package *and* to the wider subsystem around it — one that fits its neighbours a directory up is normal for this codebase and is not reported.
+
+```mermaid
+flowchart TD
+    h0["cobra<br/>239 functions · norm 0.91"]
+    h1["doc<br/>30 functions · norm 0.93"]
+    classDef good fill:#d7ecd9,color:#1b3d20
+    classDef warn fill:#fbeecb,color:#4a3a12
+    classDef hot fill:#f7d6d6,color:#4a1c1c
+    class h0,h1 good
+```
+
+Most uniform is `doc` (norm `0.93`); most varied is `cobra` (norm `0.91`).
+
+### How these candidates were found
+
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **826 candidate pairs** (shape 117, concept 85, call 712), of which 77% arrived on call evidence alone and 7% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+
+Each function is also an arena where its candidate concepts compete for its evidence. 125 functions reached an equilibrium: **125** settled on a single concept, **0** on a coalition, **0** hold concepts this corpus says do not go together.
+
+---
+
+## Local practice
+
+The vocabulary above says what a concept *is*. This says what one looks like when **this** codebase writes it — learned from the corpus, so it describes the house style rather than a rule from anywhere else.
+
+### How this codebase writes each concept
+
+Only what is **distinctive**. A feature earns a row by being carried by this concept's members at least twice as often as by the corpus at large — nearly every Go function has a `return` and an `if`, so prevalence alone would describe the language rather than this codebase. Weights are how much a channel counts toward whether a member looks normal — calls 40, control flow 20, co-occurring tags 15, role 15, package 10.
+
+**`validation`** — 12 functions
+
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| calls ×40 | `cobra.sortedKeys` | `███·······` | 3 of 12 | 22× |
+|  | `sort.Strings` | `███·······` | 3 of 12 | 9.6× |
+|  | `strings.Join` | `███·······` | 3 of 12 | 8.4× |
+|  | `fmt.Errorf` | `████······` | 5 of 12 | 7.5× |
+|  | `cobra.*Command.Flags` | `████······` | 5 of 12 | 4.0× |
+| flow ×20 | `range` | `█████·····` | 6 of 12 | 2.4× |
+| role ×15 | `orchestrator` | `█████·····` | 6 of 12 | 2.1× |
+
+**`file_io`** — 10 functions
+
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| calls ×40 | `os.Create` | `█████████·` | 9 of 10 | 27× |
+|  | `path/filepath.Join` | `████······` | 4 of 10 | 27× |
+|  | `io.WriteString` | `███·······` | 3 of 10 | 27× |
+|  | `cobra.*Command.IsAdditionalHelpTopicCommand` | `████······` | 4 of 10 | 9.8× |
+|  | `strings.ReplaceAll` | `████······` | 4 of 10 | 9.0× |
+| flow ×20 | `defer` | `██████████` | 10 of 10 | 19× |
+| package ×10 | `doc` | `████······` | 4 of 10 | 3.6× |
+
+### What travels with what
+
+Co-occurrence measured against chance across every function. Only relationships at least twice — or at most half — as common as chance are reported; near-chance company is not culture. Each kind is listed separately, because there are far more call tokens than concepts and one shared list is all calls. Within a kind, strongest first means lift weighted by how many functions carry it — a 100× relationship holding for three functions is a weaker finding than a 30× one holding for thirty.
+
+**Together more than chance — tag~role**
+
+- 6 of 12 `validation` functions also `orchestrator` — 2.1× chance
+
+**Together more than chance — tag~call**
+
+- 9 of 10 `file_io` functions also `os.Create` — 27× chance
+- 4 of 10 `file_io` functions also `path/filepath.Join` — 27× chance
+- 3 of 10 `file_io` functions also `io.WriteString` — 27× chance
+- 3 of 12 `validation` functions also `cobra.sortedKeys` — 22× chance
+- 4 of 10 `file_io` functions also `cobra.*Command.IsAdditionalHelpTopicCommand` — 9.8× chance
+- 5 of 12 `validation` functions also `fmt.Errorf` — 7.5× chance
+- _8 more not listed_
 
 ---
 
@@ -401,6 +558,8 @@ Families: 18 over 43 components, 63 functions in a family, 3 edges completed
 
 ### Family 1 — 9 members, every pair `>= 0.63` code-shape, evidence `2579`
 
+_Not drawn: 9 members is 36 connections. Every one of them holds — that is what makes this a family._
+
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
 | `command.go:412` | `cobra.*Command.getOut` | `(io.Writer) (io.Writer)` | — |
@@ -415,6 +574,16 @@ Families: 18 over 43 components, 63 functions in a family, 3 edges completed
 
 ### Family 2 — 3 members, every pair `>= 0.84` code-shape, evidence `1891`
 
+```mermaid
+flowchart LR
+    m0["doc.GenMarkdownTreeCustom"]
+    m1["doc.GenReSTTreeCustom"]
+    m2["doc.GenYamlTreeCustom"]
+    m0 --- m1
+    m0 --- m2
+    m1 --- m2
+```
+
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
 | `doc/md_docs.go:133` | `doc.GenMarkdownTreeCustom` | `(*cobra.Command, string, func(string) string, func(string) string) (error)` | file_io |
@@ -422,6 +591,20 @@ Families: 18 over 43 components, 63 functions in a family, 3 edges completed
 | `doc/yaml_docs.go:60` | `doc.GenYamlTreeCustom` | `(*cobra.Command, string, func(string) string, func(string) string) (error)` | file_io |
 
 ### Family 3 — 4 members, every pair `>= 0.64` code-shape, evidence `1702`
+
+```mermaid
+flowchart LR
+    m0["cobra.*Command.Flags"]
+    m1["cobra.*Command.LocalFlags"]
+    m2["cobra.*Command.InheritedFlags"]
+    m3["cobra.*Command.PersistentFlags"]
+    m0 --- m1
+    m0 --- m2
+    m0 --- m3
+    m1 --- m2
+    m1 --- m3
+    m2 --- m3
+```
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
@@ -432,6 +615,25 @@ Families: 18 over 43 components, 63 functions in a family, 3 edges completed
 
 ### Family 4 — 5 members, every pair `>= 0.81` code-shape, evidence `1244`
 
+```mermaid
+flowchart LR
+    m0["cobra.*Command.GenBashCompletionFile"]
+    m1["cobra.*Command.GenBashCompletionFileV2"]
+    m2["cobra.*Command.GenFishCompletionFile"]
+    m3["cobra.*Command.genPowerShellCompletionFile"]
+    m4["cobra.*Command.genZshCompletionFile"]
+    m0 --- m1
+    m0 --- m2
+    m0 --- m3
+    m0 --- m4
+    m1 --- m2
+    m1 --- m3
+    m1 --- m4
+    m2 --- m3
+    m2 --- m4
+    m3 --- m4
+```
+
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
 | `bash_completions.go:701` | `cobra.*Command.GenBashCompletionFile` | `(string) (error)` | file_io |
@@ -441,6 +643,16 @@ Families: 18 over 43 components, 63 functions in a family, 3 edges completed
 | `zsh_completions.go:70` | `cobra.*Command.genZshCompletionFile` | `(string, bool) (error)` | file_io |
 
 ### Family 5 — 3 members, every pair `>= 1.00` code-shape, evidence `1228`
+
+```mermaid
+flowchart LR
+    m0["cobra.*Command.MarkFlagsRequiredTogether"]
+    m1["cobra.*Command.MarkFlagsOneRequired"]
+    m2["cobra.*Command.MarkFlagsMutuallyExclusive"]
+    m0 --- m1
+    m0 --- m2
+    m1 --- m2
+```
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|

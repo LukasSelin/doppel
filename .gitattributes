@@ -9,6 +9,13 @@ go.sum text eol=lf
 # Shell scripts: always LF (critical for Git Bash on Windows)
 *.sh text eol=lf
 
+# Embedded assets: LF. broadsheet.css is //go:embed-ed into every HTML report,
+# so a CRLF checkout would make the same run emit different bytes on Windows
+# than on Linux — the byte-identical invariant is cross-platform or it is
+# nothing.
+*.css text eol=lf
+*.html text eol=lf
+
 # Markdown and config: LF
 *.md text eol=lf
 *.yml text eol=lf
