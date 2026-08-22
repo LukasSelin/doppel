@@ -67,6 +67,7 @@ cmd/            CLI commands (Cobra).
   analyze.go    Pipeline orchestrator; all flag registration
   families.go   doppel families: the census view, plus analyze's family stage
   overview.go   Queries the corpus model (culture, ontology, call graph) into reporter.Overview
+  htmlreport.go Assembles reporter.HTMLReport; strips.go derives the declaration-span strip view
   pipeline.go   index() + finishAnalyze(): the pipeline split into corpus-building prefix and reporting tail; filterByOverlap; snapshotOf
   query.go      doppel query: check a proposed function (a snippet on stdin) against the corpus, locality-weighted
   config.go     .doppel.json loading (AnalysisConfig), flag precedence, hookParams
@@ -88,6 +89,7 @@ internal/
   snapshot/     One analysis run as comparable plain data: schema + Build, and Diff over two of them
   reporter/     Plain-text (stdout), Markdown (--output), JSON (--format json), and the two hook digests
                 overview.go + mermaid.go render the corpus model into the markdown report only
+                html.go + html_template.go + broadsheet.css: the visual report (--output *.html)
   bench/        Measurement harness: golden-ranking scorer, the pinned public corpus ladder, per-stage benchmarks, example generator
 examples/       Committed real reports for each corpus rung, plus labels/ (committed golden reviews) — see examples/README.md
 ```
@@ -804,6 +806,40 @@ unexported in `culture`. Four integers were cheaper than widening that package's
 table has to track it.
 
 The derived `RoleThresholds`, computed in `mapper` and discarded, stay unsurfaced.
+
+## The visual report
+
+`--output report.html` writes the **Similarity Report**: one self-contained page, no script, no
+fetch, opening from `file://`. Any other extension still writes markdown. The format is chosen by
+extension rather than by `--format`, because `--format` selects what goes to *stdout* and a page of
+markup there helps nobody.
+
+It implements a design built in Claude Design (project `6a2b7669`, `Similarity Report.dc.html`) on
+the **Broadsheet** system. The canvas version is a prototype — its runtime interprets the template
+in the browser and it `fetch`es a hand-written `doppel-run.json`. This renders the same page from a
+real run, server-side, with `html/template` doing the escaping (the repo's first use of it, and of
+`//go:embed`; both stdlib, so the Cobra-only rule holds).
+
+- **`broadsheet.css` is vendored and must not be hand-edited** — re-sync from the design project.
+  It is a deliberate *subset*: tokens, base type, and the four component groups the page emits
+  (`.cmyk-num`, `.card`, `.tag`, `.table`). The form, nav, dialog and image-separation groups are
+  dropped because a generated report never renders them and the file is inlined into every report
+  written. Kept rules are byte-identical, so a re-sync is a diff rather than a merge.
+- **The design's editorial columns are not something doppel can write.** The mockup's `what repeats`
+  column reads "HTTP diagnostic handlers"; the tool has no way to produce that. It carries the pair
+  **kind** instead (`interface implementations`, `diverged copy`) and renders an empty cell when a
+  family has no kind, rather than inventing a description. Each strip's note is generated from its
+  own counts on the same principle.
+- **The strip view is the one piece of new data.** A bar is the gap from one declaration to the
+  next *in the same file*, so strips exist only for families whose members share a file — the rest
+  are still in the census with no silhouette to draw. It is derived, not measured: the gap includes
+  comments and blank lines, and the last declaration in a file has no successor and so no bar. The
+  page says this itself, in the closing note. `stripFullSpan` (70) is a fixed full-width scale
+  rather than a per-strip normalisation, so one family's bars can be read against another's.
+- **The canvas's three props** (`stripSort`, `showPairEvidence`, `driftRows`) are editor controls,
+  not report options, and are not implemented.
+
+One naming trap: the design's `components.nesting` is `fingerprint.Breakdown.**Depth**`.
 
 ## Configuration
 

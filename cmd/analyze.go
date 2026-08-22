@@ -76,7 +76,7 @@ func init() {
 	analyzeCmd.Flags().Float64VarP(&threshold, "threshold", "t", 0.60, "Minimum code-shape score for structural-channel candidates (0.0–1.0)")
 	analyzeCmd.Flags().IntVarP(&topN, "top", "n", 20, "Maximum number of pairs in the final report")
 	analyzeCmd.Flags().IntVar(&minNodes, "min-nodes", 12, "Exclude functions with fewer body AST nodes from structural retrieval")
-	analyzeCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write report as markdown to this file (e.g. report.md). Stdout text report is still printed.")
+	analyzeCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write a report to this file. A .html path renders the full visual report; any other extension writes markdown. Stdout text report is still printed.")
 	analyzeCmd.Flags().StringVar(&configFile, "config", "", "Path to JSON config file (default: .doppel.json if present)")
 	analyzeCmd.Flags().Float64Var(&structMin, "struct-min", 0.0, "Minimum structural overlap score (0.0–1.0) to keep a pair")
 	analyzeCmd.Flags().IntVar(&channelK, "channel-k", 5, "Candidates each function keeps per retrieval channel")
@@ -157,9 +157,20 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("create output file: %w", err)
 		}
 		defer f.Close()
-		reporter.PrintMarkdown(f, pairs, meta)
-		reporter.PrintMarkdownFamilies(f, fams, famStats, res.Units, familiesN)
-		fmt.Fprintf(cmd.ErrOrStderr(), "Markdown report written to %s\n", outputFile)
+		// The extension picks the format. HTML is deliberately not a --format
+		// value: --format selects what goes to stdout, and a page of markup on
+		// stdout helps nobody — the file is the only place it makes sense.
+		if isHTMLPath(outputFile) {
+			r := buildHTMLReport(res, meta.Overview, fams, famStats, pairs, suppressed)
+			if err := reporter.PrintHTML(f, r); err != nil {
+				return fmt.Errorf("write html report: %w", err)
+			}
+			fmt.Fprintf(cmd.ErrOrStderr(), "HTML report written to %s\n", outputFile)
+		} else {
+			reporter.PrintMarkdown(f, pairs, meta)
+			reporter.PrintMarkdownFamilies(f, fams, famStats, res.Units, familiesN)
+			fmt.Fprintf(cmd.ErrOrStderr(), "Markdown report written to %s\n", outputFile)
+		}
 	}
 
 	return nil
