@@ -171,6 +171,27 @@ func printRetrievalStats(w io.Writer, s retriever.Stats) {
 	}
 	fmt.Fprintf(w, "  concept-only %.1f%%  call-only %.1f%%  suppressed-shape functions: %d  large identity buckets: %d  surviving patterns: %d\n",
 		pct(s.OnlyConcept), pct(s.OnlyCall), s.Suppressed, s.LargeBuckets, s.SurvivingPatterns)
+	// Only when a nats floor derived the caps: the absolute caps are the
+	// documented constants and need no line.
+	if s.CapsDerived {
+		fmt.Fprintf(w, "  caps: pattern df<=%d, call df<=%d%s\n", s.PatternCap, s.CallCap, emptyChannels(s))
+	}
+}
+
+// emptyChannels names channels whose derived cap fell below 2 — no feature
+// can both pair and meet the floor there.
+func emptyChannels(s retriever.Stats) string {
+	var out []string
+	if s.PatternCap < 2 {
+		out = append(out, "pattern")
+	}
+	if s.CallCap < 2 {
+		out = append(out, "call")
+	}
+	if len(out) == 0 {
+		return ""
+	}
+	return " (" + strings.Join(out, ", ") + " channel empty)"
 }
 
 // sharedChains bridges retriever chain explanations into the analyzer's

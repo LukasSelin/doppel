@@ -10,6 +10,7 @@
 package retriever
 
 import (
+	"math"
 	"sort"
 
 	"github.com/LukasSelin/doppel/internal/concepter"
@@ -35,6 +36,15 @@ type Options struct {
 	MaxCallDF    int     // call tokens present in more units than this carry no evidence
 	MaxConceptDF int     // concept postings larger than this are skipped for enumeration
 	ChainTopN    int     // shared-structure explanations kept per pair
+
+	// MinIDF, when > 0, replaces the absolute pattern and call df caps with an
+	// information floor in nats: a feature counts only if ln(N/df) >= MinIDF,
+	// i.e. cap = floor(N·e^-MinIDF) with each channel's own N (shape-eligible
+	// units for patterns, all units for calls). A cap of 50 is 62% of conc's
+	// functions and 0.6% of moby's; one floor means one thing everywhere. A
+	// derived cap below 2 is not clamped up — it means nothing in that channel
+	// both pairs and carries the floor, and Stats says so. 0 = absolute caps.
+	MinIDF float64
 
 	// Weights is the fingerprint blend the exact code-shape score uses. The
 	// zero value means fingerprint.DefaultWeights — the production path never
@@ -96,6 +106,20 @@ type Stats struct {
 	Suppressed        int // shape-eligible units whose every pattern was df-capped out
 	LargeBuckets      int // exact pattern-multiset identity buckets with > largeBucketSize members
 	SurvivingPatterns int // distinct structural patterns carrying evidence
+
+	PatternCap  int  // the df cap the shape channel used (derived or absolute)
+	CallCap     int  // the df cap the call channel used
+	CapsDerived bool // true when MinIDF derived the caps
+}
+
+// effectiveCap is the df cap a channel uses: the absolute one, or with a
+// MinIDF floor the largest df still carrying that many nats over n — never
+// clamped, so a floor no feature can meet reads as the empty channel it is.
+func effectiveCap(absolute, n int, minIDF float64) (cap int, derived bool) {
+	if minIDF <= 0 {
+		return absolute, false
+	}
+	return int(math.Floor(float64(n) * math.Exp(-minIDF))), true
 }
 
 // pairKey orders a pair as (min, max) so both admission directions collide.
@@ -161,6 +185,7 @@ func Retrieve(units []parser.CodeUnit, g *concepter.Graph,
 	stats.Suppressed = shapes.suppressed
 	stats.LargeBuckets = shapes.largeBuckets
 	stats.SurvivingPatterns = len(shapes.idf)
+	stats.PatternCap, stats.CallCap, stats.CapsDerived = shapes.cap, calls.cap, opt.MinIDF > 0
 
 	cands := evaluate(admitted, shapes, concepts, calls, sim, opt, &stats)
 	return cands, stats
@@ -210,6 +235,7 @@ func Probe(units []parser.CodeUnit, probeIdx int, g *concepter.Graph,
 	stats.ShapePairs = admitOne(shapes.admitFor(probeIdx, sim, opt), func(a *admission) *bool { return &a.shape })
 	stats.ConceptPairs = admitOne(concepts.admitFor(probeIdx, opt), func(a *admission) *bool { return &a.concept })
 	stats.CallPairs = admitOne(calls.admitFor(probeIdx, opt), func(a *admission) *bool { return &a.call })
+	stats.PatternCap, stats.CallCap, stats.CapsDerived = shapes.cap, calls.cap, opt.MinIDF > 0
 	stats.Union = len(admitted)
 	stats.Suppressed = shapes.suppressed
 	stats.LargeBuckets = shapes.largeBuckets

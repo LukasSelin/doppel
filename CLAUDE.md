@@ -245,6 +245,22 @@ over the same corpus of N functions — do not normalize the components before s
 
 Consequences worth knowing:
 
+- **The absolute caps are not one number in nats, and that was measured and kept.** A cap of
+  50 is `ln(N/50)` nats of required information: ≈1.5 on cobra, ≈5 on moby. `Options.MinIDF`
+  replaces both caps with one floor — `cap = ⌊N·e^−MinIDF⌋` with each channel's own N
+  (shape-eligible units for patterns, all units for calls; a derived cap below 2 is not clamped,
+  the channel is honestly empty and `Stats` says so) — and `TestMinIDF`/`TestMinIDFLadder`
+  (guard `DOPPEL_BENCH_MINIDF=1`) measured it. Small corpora reproduce the fixed caps at 1–1.5
+  nats (cobra: 826 candidates either way; a 1.0 floor reads merge 5.0 / fp 40.7 against the fixed
+  5.2 / 40.0). The large corpora do not: a 1.0 floor derives caps of 2158/2812 on moby, grows its
+  union 17 471 → 25 813 (+48%; prometheus +37%, hugo +17%), suppresses nobody, and reshuffles the
+  top ten — no junk enters, but prometheus's `jaroWinkler` and `addBuckets` pairs leave its top
+  eight — at half again the compare cost, with no label able to certify it as better. **Not
+  adopted**: `MinIDF` is an Options-only measurement seam (no flag, default 0), and the absolute
+  caps stay because what they do on the large rungs is visibly load-bearing and unlabeled. The
+  adoption rule, should gin/chi labels arrive: golden green on every labeled corpus, cobra merge
+  mean not worse and FP mean not lower, no corpus suppressing > 2× more functions than fixed, and
+  the large-corpus top-20s reading at least as well.
 - A pattern/token in *every* unit has `idf = ln(N/N) = 0`; zero-mass neighbors are never admitted.
   The 130-clone `Error()` bucket exceeds the df cap entirely — those functions contribute no
   structural candidates and can only enter via concept/call evidence, which is the intended
@@ -972,6 +988,11 @@ shell and behaves identically on Windows and Unix, and which is also the only fo
     = defaults; cmd never sets it), `analyzer.RankOptions{TrophicPower, TestCallDiscount}` /
     `SortForReportWith` (power 2 uses `t*t`, not `math.Pow`, so the default key is byte-identical),
     and `ontology.WithWeights`. Options and arguments, never package globals.
+  - `TestMinIDF` and `TestMinIDFLadder` (guard `DOPPEL_BENCH_MINIDF=1`) measure the information
+    floor against the absolute df caps: derived caps, union size, suppressed functions and
+    surviving patterns per floor on every fetched corpus, plus the labeled rankings where labels
+    exist. Asserts nothing; see *Candidate retrieval* for the measured result and why the caps
+    stayed absolute.
   - `TestCalibrate` (guard `DOPPEL_BENCH_CALIBRATE=1`) scores null calibration at rates 0.005,
     0.01, 0.02 and 0.05: re-retrieves at the calibrated threshold and scores both the candidate set
     and the struct-min-filtered view, listing the labels that moved. Asserts nothing.
