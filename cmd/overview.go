@@ -402,9 +402,9 @@ func assocRank(a reporter.AssocRow) float64 {
 
 // practiceMatrix builds the concept-to-concept co-occurrence grid.
 //
-// Unlike every other list in this section it is not a sample: the vocabulary
-// has nine concrete concepts, so the grid is bounded by construction and can
-// show every cell — including the blank ones, which are the ordinary company
+// Unlike every other list in this section it is not a sample: the vocabulary is
+// a fixed, small set of concrete concepts, so the grid is bounded by
+// construction and can show every cell — including the blank ones, which are the ordinary company
 // that a ranked list never has room to mention.
 func practiceMatrix(ov *reporter.Overview, res Result) {
 	tags := make([]string, 0, len(ov.Concepts))

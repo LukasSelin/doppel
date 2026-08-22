@@ -102,9 +102,9 @@ func bar(p float64) string {
 
 // practiceMatrix renders the whole concept-to-concept co-occurrence structure.
 //
-// This is the one table in the report that is not a sample. The vocabulary has
-// nine concrete concepts, so the grid is bounded by construction and can show
-// every cell — including the empty ones, which is the point. A `never` cell
+// This is the one table in the report that is not a sample. The vocabulary is a
+// fixed, small set of concrete concepts, so the grid is bounded by construction
+// and can show every cell — including the empty ones, which is the point. A `never` cell
 // says two concepts this corpus uses are never written by the same function,
 // and that is a statement about layering no ranked list would surface.
 func practiceMatrix(w io.Writer, ov *Overview) {

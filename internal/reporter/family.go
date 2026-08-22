@@ -119,8 +119,18 @@ func familySummary(fams []family.Family, stats family.Stats) string {
 	if len(fams) == 1 {
 		noun = "family"
 	}
+	// Scanned, not read off the head of the list. The census is ordered by
+	// retrieval evidence, so the first family is the most corroborated one and
+	// need not be the biggest — taking fams[0] here silently understated the
+	// largest family the moment that ordering changed.
+	largest := 0
+	for _, f := range fams {
+		if len(f.Members) > largest {
+			largest = len(f.Members)
+		}
+	}
 	s := fmt.Sprintf("%d %s, %d functions in a family, largest %d members",
-		len(fams), noun, stats.Members, len(fams[0].Members))
+		len(fams), noun, stats.Members, largest)
 	if stats.Completed > 0 {
 		s += fmt.Sprintf("; %d edges scored here that retrieval never proposed", stats.Completed)
 	}

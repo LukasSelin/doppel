@@ -80,9 +80,10 @@ type AssocGroup struct {
 
 // ConceptMatrix is the whole concept-to-concept co-occurrence structure.
 //
-// It is bounded by construction — the vocabulary has nine concrete concepts and
-// a corpus uses some subset — so unlike every other list here it can show
-// everything rather than a strongest-first sample. Cells[i][j] is meaningful
+// It is bounded by construction — the vocabulary is a fixed, small set of
+// concrete concepts and a corpus uses some subset — so unlike every other list
+// here it can show everything rather than a strongest-first sample. Widening the
+// taxonomy widens this table; it does not turn it into a sample. Cells[i][j] is meaningful
 // for i > j: the lower triangle, since co-occurrence is symmetric.
 type ConceptMatrix struct {
 	Tags  []string

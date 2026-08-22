@@ -105,8 +105,8 @@ func TestNeverCoOccurringRendersAsAWord(t *testing.T) {
 	}
 }
 
-// The matrix is the one table here that is not a sample: nine concepts, bounded
-// by construction, so it can show every cell including the ordinary ones.
+// The matrix is the one table here that is not a sample: a fixed vocabulary,
+// bounded by construction, so it can show every cell including the ordinary ones.
 func TestConceptMatrixRendersTheLowerTriangle(t *testing.T) {
 	var b strings.Builder
 	PrintMarkdownPractice(&b, samplePractice())

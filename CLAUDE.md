@@ -765,7 +765,7 @@ contains, from the two models that had no caller outside their own tests:
   evidence where "5 of 6" is what was counted. Features below half the members are dropped — below
   that it is one person's habit, not house style, and the calls channel has a long tail.
 - **Which concepts share a function** — the tag~tag grid, and the one table in the report that is
-  **not** a sample: nine concrete concepts means it is bounded by construction, so it shows every
+  **not** a sample: a fixed concept vocabulary means it is bounded by construction, so it shows every
   cell including the ordinary ones. `never` cells are the layering signal. An all-blank grid
   renders nothing, which is what doppel's own corpus produces.
 - **What travels with what** — the PMI ecology, both directions, **grouped by kind**. Grouping is
