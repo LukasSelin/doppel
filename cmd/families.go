@@ -59,10 +59,10 @@ functions.`,
 		default:
 			return fmt.Errorf("invalid --format %q: want %q or %q", familiesFormat, formatText, formatJSON)
 		}
-		if err := validateTestsMode(familiesTests); err != nil {
+		if err := validateMode("tests", familiesTests); err != nil {
 			return err
 		}
-		return validateGeneratedMode(familiesGenerated)
+		return validateMode("generated", familiesGenerated)
 	},
 	RunE: runFamilies,
 }

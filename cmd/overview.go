@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"math"
-	"path/filepath"
 	"sort"
 
 	"github.com/LukasSelin/doppel/internal/concepter"
@@ -10,6 +9,7 @@ import (
 	"github.com/LukasSelin/doppel/internal/ontology"
 	"github.com/LukasSelin/doppel/internal/parser"
 	"github.com/LukasSelin/doppel/internal/reporter"
+	"github.com/LukasSelin/doppel/internal/snapshot"
 )
 
 // buildOverview assembles what doppel understands about the corpus.
@@ -504,7 +504,7 @@ func practiceDrift(ov *reporter.Overview, res Result) {
 			med, _ := res.Culture.Median(tag)
 			rows = append(rows, reporter.DriftRow{
 				Name:       concepter.QualifiedName(u),
-				File:       relSlash(res.Root, u.File),
+				File:       snapshot.RelSlash(res.Root, u.File),
 				Line:       u.StartLine,
 				Tag:        tag,
 				Typicality: typ,
@@ -538,16 +538,3 @@ func practiceDrift(ov *reporter.Overview, res Result) {
 
 // maxDriftRows matches the renderer's table cap.
 const maxDriftRows = 10
-
-// relSlash mirrors the snapshot's path rule so a report rooted at an absolute
-// cwd reads the same as one run at ".".
-func relSlash(root, path string) string {
-	if root == "" {
-		return filepath.ToSlash(path)
-	}
-	rel, err := filepath.Rel(root, path)
-	if err != nil {
-		return filepath.ToSlash(path)
-	}
-	return filepath.ToSlash(rel)
-}

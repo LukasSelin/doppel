@@ -132,14 +132,15 @@ func fieldTypes(fields *ast.FieldList) string {
 	return strings.Join(parts, ", ")
 }
 
-// printTypeExpr renders a type expression with go/printer and collapses
-// internal whitespace, so a multi-line struct or func type is one token.
+// printTypeExpr renders a type expression for the signature text. The
+// rendering itself is fingerprint.PrintType — the two were byte-identical
+// clones — and the only difference stays here: a signature prints "?" for an
+// unrenderable type rather than dropping it silently.
 func printTypeExpr(expr ast.Expr) string {
-	var buf bytes.Buffer
-	if err := printer.Fprint(&buf, token.NewFileSet(), expr); err != nil {
-		return "?"
+	if s := fingerprint.PrintType(expr); s != "" {
+		return s
 	}
-	return strings.Join(strings.Fields(buf.String()), " ")
+	return "?"
 }
 
 // extractSource returns the source text of the node.

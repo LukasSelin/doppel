@@ -64,10 +64,10 @@ var analyzeCmd = &cobra.Command{
 		default:
 			return fmt.Errorf("invalid --format %q: want %q or %q", outputFormat, formatText, formatJSON)
 		}
-		if err := validateTestsMode(testsMode); err != nil {
+		if err := validateMode("tests", testsMode); err != nil {
 			return err
 		}
-		return validateGeneratedMode(genMode)
+		return validateMode("generated", genMode)
 	},
 	RunE: runAnalyze,
 }
@@ -446,18 +446,4 @@ func filterGeneratedUnits(units []parser.CodeUnit, mode string) []parser.CodeUni
 		}
 	}
 	return kept
-}
-
-// shouldSkipDir skips what the go tool itself ignores — directories whose
-// name starts with "." or "_" (which is what keeps _examples/ demo trees out
-// of a library's population) — plus vendor, testdata and build.
-func shouldSkipDir(name string) bool {
-	if name != "" && (name[0] == '.' || name[0] == '_') {
-		return true
-	}
-	switch name {
-	case "vendor", "testdata", "build":
-		return true
-	}
-	return false
 }

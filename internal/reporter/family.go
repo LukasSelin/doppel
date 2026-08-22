@@ -9,6 +9,7 @@ import (
 
 	"github.com/LukasSelin/doppel/internal/family"
 	"github.com/LukasSelin/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/snapshot"
 )
 
 // maxFamilyMembers bounds how many members a *bounded* family listing prints.
@@ -314,7 +315,7 @@ func PrintFamiliesJSON(w io.Writer, fams []family.Family, stats family.Stats, un
 			}
 			fj.Members = append(fj.Members, MemberJSON{
 				Key:  name,
-				File: relSlashPath(root, u.File),
+				File: snapshot.RelSlash(root, u.File),
 				Line: u.StartLine,
 			})
 		}
@@ -328,18 +329,4 @@ func PrintFamiliesJSON(w io.Writer, fams []family.Family, stats family.Stats, un
 		out.Families = append(out.Families, fj)
 	}
 	return encodeJSON(w, out)
-}
-
-// relSlashPath mirrors the snapshot's path rule: relative to the analysis
-// root and slash-separated, so a census taken at an absolute cwd reads the
-// same as one taken at ".".
-func relSlashPath(root, path string) string {
-	if root == "" {
-		return filepath.ToSlash(path)
-	}
-	rel, err := filepath.Rel(root, path)
-	if err != nil {
-		return filepath.ToSlash(path)
-	}
-	return filepath.ToSlash(rel)
 }

@@ -31,13 +31,13 @@ func TestFilterGeneratedUnits(t *testing.T) {
 // at the call site).
 func TestShouldSkipDirMatchesGoToolRule(t *testing.T) {
 	for _, name := range []string{".git", ".claude", ".idea", "_examples", "_tools", "vendor", "testdata", "build"} {
-		if !shouldSkipDir(name) {
-			t.Errorf("shouldSkipDir(%q) = false, want true", name)
+		if !parser.ShouldSkipDir(name) {
+			t.Errorf("parser.ShouldSkipDir(%q) = false, want true", name)
 		}
 	}
 	for _, name := range []string{"internal", "cmd", "examples", "builder", "x_y"} {
-		if shouldSkipDir(name) {
-			t.Errorf("shouldSkipDir(%q) = true, want false", name)
+		if parser.ShouldSkipDir(name) {
+			t.Errorf("parser.ShouldSkipDir(%q) = true, want false", name)
 		}
 	}
 }
