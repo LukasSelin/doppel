@@ -152,7 +152,7 @@ func TestIndexAppendsExtrasToTheCorpus(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	p := Params{Threshold: 0.6, MinNodes: 12, ChannelK: 5, TestsMode: "exclude"}
+	p := Params{Threshold: 0.6, MinNodes: 12, ChannelK: 5, TestsMode: "exclude", Generated: "exclude"}
 	res, err := index(dir, p, nil, probe)
 	if err != nil {
 		t.Fatalf("index: %v", err)

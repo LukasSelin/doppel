@@ -306,3 +306,23 @@ func TestPrintEmpty(t *testing.T) {
 		t.Errorf("empty report missing message:\n%s", b.String())
 	}
 }
+
+// A confirmed misfit with a modeled subsystem shows the subsystem fit inside
+// the parentheses; without one the line is exactly as before.
+func TestPrintHabitatNoteWithSubsystem(t *testing.T) {
+	note := habitatNote()
+	note.Subsystem, note.SubsystemFit = "tpl/", 0.30
+	p := samplePair(nil)
+	p.Habitat = []analyzer.HabitatNote{note}
+
+	var b strings.Builder
+	Print(&b, []analyzer.SimilarPair{p}, Meta{})
+	if want := "  habitat: B fits poorly in queue (fit 0.21, package norm 0.84; subsystem tpl/ fit 0.30)\n"; !strings.Contains(b.String(), want) {
+		t.Errorf("missing %q in:\n%s", want, b.String())
+	}
+	b.Reset()
+	PrintMarkdown(&b, []analyzer.SimilarPair{p}, Meta{})
+	if want := "**Habitat:** B fits poorly in `queue` (fit 0.21, package norm 0.84; subsystem `tpl/` fit 0.30)\n\n"; !strings.Contains(b.String(), want) {
+		t.Errorf("missing %q in:\n%s", want, b.String())
+	}
+}

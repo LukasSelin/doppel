@@ -81,7 +81,7 @@ internal/
   mapper/       Where enrichment actually happens: callers, role classification, aggregated patterns/packages
   retriever/    Multi-channel candidate retrieval: shape.go / concept.go / calls.go inverted indexes, retriever.go union + evidence
   culture/      Corpus-culture model: ecology.go (PMI), prototype.go (prototypes + typicality), habitat.go (fit), convention.go
-  analyzer/     SimilarPair + Retrieval types; FindSimilar (library API); SortByEvidence (final ranking)
+  analyzer/     SimilarPair + Retrieval types; FindSimilar (library API); SortByEvidence (final ranking); kind.go + stem.go (pair kinds)
   comparator/   Weighted structural overlap scoring (9 signals → 0.0–1.0 composite)
   family/       Near-duplicate families: components + edge completion + maximal cliques over the pair graph
   snapshot/     One analysis run as comparable plain data: schema + Build, and Diff over two of them
@@ -195,7 +195,12 @@ doppel ontology --defs                                # print the vocabulary and
 
 - **CodeUnit** (`internal/parser/parser.go`) — one function/method from the AST: `Name`, `File`,
   `StartLine`, `Body`, `Signature`, `Package`, `Patterns`, `DocComment`, `Exported`, `ReceiverType`,
-  `Callees`, `Fingerprint`. Methods are named `"*Server.Start"` — the receiver keeps its star.
+  `Callees`, `Fingerprint`, `Generated`. Methods are named `"*Server.Start"` — the receiver keeps its
+  star; `parser.MethodName` strips it back off. `Signature` is rendered text — `([]int) (int)`,
+  types in order, names dropped, one entry per declared name — and is what the `sig:` line and the
+  interface-implementation kind read; `Fingerprint.Types` (the sorted `in:`/`out:` type *set*) is
+  what the similarity score reads. (For a long time `Signature` was empty on every unit: the old
+  extractor handed an `*ast.FieldList` to `go/printer`, which rejects it silently.)
 - **Fingerprint** (`internal/fingerprint/fingerprint.go`) — `Shingles` (sorted, deduped 3-gram
   hashes), `Flow` (control-flow histogram), `Types` (normalized param/result types), `Nodes`, and
   `Patterns` (the multi-level trophic pattern multiset — see *Trophic structural energy*).
@@ -240,6 +245,22 @@ over the same corpus of N functions — do not normalize the components before s
 
 Consequences worth knowing:
 
+- **The absolute caps are not one number in nats, and that was measured and kept.** A cap of
+  50 is `ln(N/50)` nats of required information: ≈1.5 on cobra, ≈5 on moby. `Options.MinIDF`
+  replaces both caps with one floor — `cap = ⌊N·e^−MinIDF⌋` with each channel's own N
+  (shape-eligible units for patterns, all units for calls; a derived cap below 2 is not clamped,
+  the channel is honestly empty and `Stats` says so) — and `TestMinIDF`/`TestMinIDFLadder`
+  (guard `DOPPEL_BENCH_MINIDF=1`) measured it. Small corpora reproduce the fixed caps at 1–1.5
+  nats (cobra: 826 candidates either way; a 1.0 floor reads merge 5.0 / fp 40.7 against the fixed
+  5.2 / 40.0). The large corpora do not: a 1.0 floor derives caps of 2158/2812 on moby, grows its
+  union 17 471 → 25 813 (+48%; prometheus +37%, hugo +17%), suppresses nobody, and reshuffles the
+  top ten — no junk enters, but prometheus's `jaroWinkler` and `addBuckets` pairs leave its top
+  eight — at half again the compare cost, with no label able to certify it as better. **Not
+  adopted**: `MinIDF` is an Options-only measurement seam (no flag, default 0), and the absolute
+  caps stay because what they do on the large rungs is visibly load-bearing and unlabeled. The
+  adoption rule, should gin/chi labels arrive: golden green on every labeled corpus, cobra merge
+  mean not worse and FP mean not lower, no corpus suppressing > 2× more functions than fixed, and
+  the large-corpus top-20s reading at least as well.
 - A pattern/token in *every* unit has `idf = ln(N/N) = 0`; zero-mass neighbors are never admitted.
   The 130-clone `Error()` bucket exceeds the df cap entirely — those functions contribute no
   structural candidates and can only enter via concept/call evidence, which is the intended
@@ -348,6 +369,19 @@ a member never certifies its own normality beyond the pseudo-count.
   fit 0.0 — branch order keeps all-identical habitats at 1.0.
 - **Misfit** ⇔ strain > `MisfitFactor` (2.0) × T, or any positive strain when T = 0. At factor
   2.0 this is fit < e⁻¹. Only misfits produce `habitat:` report lines.
+- **Subsystem rollup.** With `Options.Root` set (the pipeline passes the analysis root; tests
+  leave it empty and see no subsystems), a second partition models **subsystems** — the parent
+  of each file's directory, slash-relative with a trailing slash (`tpl/`, `internal/`;
+  `subsystemKey`) — with the same features, weights and math (`buildHabitatModel` is
+  partition-agnostic; a coarser habitat just has a larger m). A unit is a **Misfit** only when it
+  is alien at every level that can judge it: a package misfit whose subsystem (when modeled)
+  says it fits is **excused** — drift across a directory, not a function out of place. `Stats`
+  carries `SubsystemsModeled` and `MisfitsExcused`; the stderr line becomes `Habitats: 126
+  modeled, 538 misfits (121 excused by subsystem), 31 subsystems; …` and stays byte-identical
+  to the old form when no subsystem is modeled; a confirmed misfit's report line adds `;
+  subsystem tpl/ fit 0.30`. Package-level superlatives and every package pin are unchanged.
+  `PackageMisfit` is the raw rule for diagnostics. On the ladder: hugo 659 → 538, prometheus
+  340 → 195, moby 253 → 101.
 - **Norm** = mean member fit — the `package norm` contrast number and the stderr superlative
   ranking (median fit would be ≈ 1.0 always; the mean is dragged by outliers, which is the
   signal).
@@ -628,6 +662,13 @@ component small enough to complete but pathologically dense). A tripped guard re
 size in `Stats.Skipped` and emits **no** families for it, rather than presenting a partial
 enumeration as the answer.
 
+**The census ranks by evidence, not size.** `Family.Evidence` sums `Retrieval.Total` over the
+clique edges retrieval proposed (completed edges contribute zero — an edge retrieval never found
+informative enough to propose adds shape to the guarantee but no energy to the rank), and
+`sortFamilies` orders by it first. Ranked by member count, every large corpus led with its biggest
+*idiom* family — moby's was 44 mutex-guarded getters, mostly stitched by completion. Under
+evidence the family section and the pair list rank in the same currency and tell one story.
+
 **Where it runs is load-bearing.** The family stage lives in the `cmd` command functions, never in
 `finishAnalyze`: `cmd/hook.go` calls `analyze()` directly and snapshots `res.Pairs`, so a stage
 inside the pipeline would change every baseline and delta. It reads `res.Pairs` — the full
@@ -638,6 +679,41 @@ would never show. `analyze` renders `--families N` (default 5) of them after the
 
 Families are deliberately **not** in `snapshot`: only what a consumer reads is stored, and the Stop
 hook rewrites that file every turn. `analyze --format json` remains the snapshot exactly as before.
+
+## Pair kinds
+
+`internal/analyzer/kind.go` labels what a pair *is* when a naming rule can say so, because two
+classes of finding crowded every wide corpus without the report being able to explain them. A
+kind annotates: it never filters, never enters ranking, and is not in the snapshot (hook digests
+never see it) — the same contract as culture, habitat and profile notes. No kind, no line.
+
+- **`interface implementations`** — both sides are methods with the same bare method name
+  (`parser.MethodName`), the same `Signature` text, on different types (receiver names differ, or
+  the same receiver name in different packages — moby's `ipvlan` and `macvlan` each implement
+  `Join` on their own `*driver`; pointer and value receivers normalize to one name and never pass).
+  Proving interface satisfaction needs `go/types`; this is the honest middle ground, and the label
+  states the package relation (`in package x`, `sibling packages x and y`, `packages x and y`)
+  because the same method across unrelated packages is the weaker claim.
+- **`diverged copy`** — code-shape `>= ForkShapeFloor` (0.60, pinned equal to the family edge
+  cut), same or sibling package, and names that agree once version markers are stripped:
+  `evalCallOld`/`evalCall`, `scrapeLoopAppenderV2.append`/`scrapeLoopAppender.append`. Methods
+  fork on either axis — same method on stem-sharing receivers, or stem-sharing methods on one
+  receiver. The stem rule (`stem.go`) strips, to a fixed point, a trailing `_`, a trailing bare
+  digit run, a trailing `v2`/`V3`, and the markers `Original Deprecated Legacy Orig Copy Old New`
+  as suffix or prefix — with three guards that keep the near-misses apart: both names ending in
+  *differing* bare digit runs are a numbered series, never a fork (`sha256`/`sha512`); a marker
+  strips only at a token boundary (`evalCallOld` and `foo_old` yes, `Threshold` and `Newton` no);
+  every strip must leave `>= 3` characters (`GoOld`/`Go` is nothing). `decodeToml`/`decodeYAML` and
+  `loadWAL`/`loadWBL` have no marker and stay merge candidates.
+
+Precedence: fork first. The v1/v2 appenders satisfy both rules, and the fork is the claim a reader
+acts on. `ClassifyFamily` applies the same rules to every member pair of a family — one shared stem,
+or one method and signature on pairwise-distinct types — and the census renders it as a suffix on
+the F-line, in the markdown heading, and as `kind`/`kindLabel` in `doppel families --format json`
+(families are not in the snapshot, so the JSON is their machine-readable home). On the ladder the
+rules land where intended: hugo's `evalCall`/`evalField` pairs read `diverged copy`, conc's pool
+`WithContext`/`Wait`, gin's `Render`, chi's `Flush` and moby's 11-member `UnmarshalJSON` family read
+`interface implementations`.
 
 ## Configuration
 
@@ -655,6 +731,8 @@ hook rewrites that file every turn. `analyze --format json` remains the snapshot
   "debug": false,
   "max-per-func": 2,
   "tests": "exclude",
+  "generated": "exclude",
+  "calibrate": 0,
   "families": 5,
   "family-min": 0.60,
   "hook-notify": "agent"
@@ -668,8 +746,14 @@ Flag semantics after the retrieval redesign: `--threshold` floors code-shape for
 top-K; `--debug` adds retrieval provenance lines to the report; `--max-per-func` caps how many
 final-report pairs any one function may appear in (0 disables); `--families` bounds the report's
 family section (0 removes it) and `--family-min` is the code-shape every two members of a family
-must reach — both presentation, so neither is in `Params` and neither can invalidate a baseline; `--tests` picks the population
-(`include`/`exclude`/`only`, default `exclude`) before any statistic is computed.
+must reach — both presentation, so neither is in `Params` and neither can invalidate a baseline; `--tests` and `--generated`
+pick the population (`include`/`exclude`/`only` each, both defaulting `exclude`) before any
+statistic is computed — tests because they are conventionally similar by design, generated files
+(Go's "Code generated ... DO NOT EDIT." marker, detected via `ast.IsGenerated` at parse time)
+because they are near-identical by construction and unactionable. `--calibrate <rate>` (config
+key `calibrate`, default 0 = off) derives `--threshold` and `--struct-min` from the corpus's own
+null distribution and sets the family edge cut and fork floor to the same code-shape value — see
+*Calibration*; it overrides both flags outright.
 
 `hook-notify` (`agent` | `user` | `off`) is read only by `doppel hook stop` and has no flag — there
 is no CLI surface a hook setting would belong to. `format` (`text` or `json`) is a key like any
@@ -677,6 +761,45 @@ other. Every functional flag except `--config` has a
 config key. Precedence: `applyConfig` only calls
 `Flags().Set` when `!Flags().Changed(name)`, so explicit CLI flags always win over the file.
 Unknown keys are ignored rather than rejected, so a stale config file does not break a run.
+
+## Calibration
+
+`internal/calibrate` answers "what does a random, unrelated pair score *here*", so a threshold can
+be stated as a rate instead of a number. `--threshold 0.60` is loose on a corpus of 81 functions
+and strict on one of 8000; "admit 1% of random pairs" means the same thing on both. Measured at
+rate 0.01: the calibrated code-shape threshold is **0.45 on moby, 0.53 on cobra, 0.50 on this
+repo, 0.85 on conc** (where random pool methods genuinely look alike) against the fixed 0.60, and
+struct-min lands between 0.33 and 0.51 against the fixed 0.40 merge gate.
+
+Mechanics, all deterministic by construction: units are put in a canonical order (`package.name`,
+file, line) so walk order cannot matter; the seed is FNV-1a over those names; a 64-bit LCG draws
+up to 20 000 distinct unordered pairs (enumerated outright when the population is smaller),
+rejecting cross test/production pairs like the pipeline does; pairs are scored in ascending index
+order. The **code-shape null** is drawn over `--min-nodes`-eligible units — the shape channel's own
+gate — and scored with `fingerprint.SimilarityWith`; the **overlap null** is drawn over all units
+and scored with the run's own corpus-weighted comparator. Each threshold is the nearest-rank upper
+quantile at `1 − rate` (a score some null pair actually had, never an interpolation), **rounded up
+to 0.01** so the printed value is the used value and the admitted null fraction is at most the
+rate. Below 1 000 eligible null pairs the calibration is **declined** and the defaults are kept —
+eight samples above a 1% cut is not a calibration — and stderr says so.
+
+When applied, `p.Threshold` and `p.StructMin` are replaced and the fork floor
+(`analyzer.ClassifyPairWith`) and family edge cut (`familyMinFor`) follow the calibrated
+code-shape value, so every "alike enough" in the run is one number. The effective values travel in
+`Params` and therefore in `snapshot.Params` (which also records the rate, `calibrate`): a snapshot
+compares on what was actually used, and a calibrated run against an uncalibrated baseline is
+incomparable, correctly. Calibration **replaces both thresholds unconditionally** — `applyConfig`
+sets flags through `Flags().Set`, which marks them Changed, so "explicit flag wins" is not
+honestly implementable once a config has applied, and a half-calibrated run is the mixed question
+Params equality exists to forbid. The stderr line is printed only when the flag is on, so the
+default output stays byte-identical. `doppel query` does not calibrate (it stops at `index()`).
+
+On cobra's golden labels calibration is neutral at every rate from 0.005 to 0.05: the retrieved
+set grows from 816 to 1 029 candidates and the overlap gate keeps between 83 and 384 of them,
+without a single labeled pair changing rank (`TestCalibrate`, guard `DOPPEL_BENCH_CALIBRATE=1`).
+That is the evidence that calibration changes *what is admitted and shown*, not the ordering —
+and why it stays opt-in until gin/chi labels can say whether the corpus-relative operating point
+finds merges the fixed one misses.
 
 ## Impact measurement and the Claude Code plugin
 
@@ -702,7 +825,7 @@ to rewrite on every turn:
   shift the moment a file is added, which would reorder the whole pair list in a diff for no reason
   anyone caused.
 - **Hooks diff the full candidate set.** `hookParams` honours the `.doppel.json` keys that define the
-  *corpus* (`threshold`, `min-nodes`, `channel-k`, `tests`) and overrides the ones that only decide
+  *corpus* (`threshold`, `min-nodes`, `channel-k`, `tests`, `generated`) and overrides the ones that only decide
   what gets *shown* (`top`, `max-per-func`, `struct-min`). A pair that fell past rank 20 has not
   changed; reporting it as a session's impact would be a lie.
 - **Only what a consumer reads is stored.** `Schema` 2 dropped every field nothing read back:
@@ -813,7 +936,10 @@ shell and behaves identically on Windows and Unix, and which is also the only fo
   yourself adding a second state file, or reading this one to skip work, that is a design change,
   not an optimization. (`--format json` and `--output` write reports, not state.)
 - Cobra is the only direct dependency. Keep it that way unless there is a strong reason.
-- Skipped directories: `.git`, `.claude`, `vendor`, `testdata`, `build`, `.idea`, `.vscode`.
+- Skipped directories: anything dot- or underscore-prefixed (the go tool's own ignore rule, so
+  `_examples/` demo trees never join the population), plus `vendor`, `testdata`, `build`. The
+  walk root itself is exempt — `doppel analyze .` hands the walker a directory named `.`, and a
+  user pointing doppel at `_examples/` directly has already made the call.
   `_test.go` files are always parsed; **`--tests` decides the population** (default `exclude`).
   Tests are conventionally similar by design, so they form their own population: `exclude`
   models production practice, `only` is test-suite hygiene mode, `include` mixes both but
@@ -851,8 +977,51 @@ shell and behaves identically on Windows and Unix, and which is also the only fo
     manifest.
   - `pipeline.go` is the ranking-relevant pipeline as a library (`Load` + `Run` stages +
     `Analyze` + `RankKey`), shared by the golden scorer and `BenchmarkCorpus`. Culture, habitats
-    and arenas are deliberately absent: they annotate, they never rank. `RankKey` duplicates
-    `SortForReport`'s ordering quantity so a scorecard can print it — it must track it.
+    and arenas are deliberately absent: they annotate, they never rank. `bench.RankKey` is a
+    call to `analyzer.RankKey(p, DefaultRankOptions())` — one definition, so the scorecard's
+    printed key cannot drift from the ranking. `Reretrieve(opt)` re-runs retrieval → pairs →
+    compare under different `retriever.Options`, reusing tags, IC, graph and docs (exact: none of
+    Options reaches them); `Rescore(onto)` re-runs compare alone.
+  - **Measurement seams**, all no-ops at defaults and pinned as such: `fingerprint.Weights` /
+    `SimilarityWith` (the production path is `Similarity` = `DefaultWeights()`; the blend is the
+    same four-term sum in the same order, bit-identical), `retriever.Options.Weights` (zero value
+    = defaults; cmd never sets it), `analyzer.RankOptions{TrophicPower, TestCallDiscount}` /
+    `SortForReportWith` (power 2 uses `t*t`, not `math.Pow`, so the default key is byte-identical),
+    and `ontology.WithWeights`. Options and arguments, never package globals.
+  - `TestSelfWeight` (guard `DOPPEL_BENCH_SELFWEIGHT=1`) is the label-free weighting experiment:
+    `comparator.SignalVector` (the twelve graded signals in `ScoredRelations` order; pinned to
+    reproduce `OverlapScore` exactly) over the candidate set versus a null sample
+    (`calibrate.SamplePairs`, cross test/prod dropped), Fisher ratio per signal normalized to
+    weights, an entropy variant for contrast, each scored via `Rescore(WithWeights)`. **Measured
+    on cobra and not adopted:** Fisher loads 0.37 on `shares_neighborhood` and 0.29 on `calls`
+    and cuts `exhibits` to 0.05, and the labels get worse (merge 5.5 / refactor 20.0 against
+    5.2 / 16.1; entropy 5.3 / 19.6). The contrast is confounded: what separates *retrieved* pairs
+    from random pairs is largely call-graph adjacency, which retrieval selected for — the
+    experiment measures what retrieval wants, not what a reviewer judges. Label-free weighting
+    from this corpus alone cannot replace the hand-set table; the harness that could is the
+    labeled fitter, once more corpora are labeled.
+  - `TestMinIDF` and `TestMinIDFLadder` (guard `DOPPEL_BENCH_MINIDF=1`) measure the information
+    floor against the absolute df caps: derived caps, union size, suppressed functions and
+    surviving patterns per floor on every fetched corpus, plus the labeled rankings where labels
+    exist. Asserts nothing; see *Candidate retrieval* for the measured result and why the caps
+    stayed absolute.
+  - `TestCalibrate` (guard `DOPPEL_BENCH_CALIBRATE=1`) scores null calibration at rates 0.005,
+    0.01, 0.02 and 0.05: re-retrieves at the calibrated threshold and scores both the candidate set
+    and the struct-min-filtered view, listing the labels that moved. Asserts nothing.
+  - `TestSweep` (guard `DOPPEL_BENCH_SWEEP=1`) is the sensitivity sweep: each hand-set constant
+    varied one at a time (±50% or the natural alternatives), only the stages it reaches re-run,
+    and the labeled rankings reported with a verdict — `inert` (no label moved), `moves`,
+    `load-bearing` (a violation, a presence change, or a merge-mean shift ≥ 1.0) — plus the labels
+    that moved. It asserts nothing. **Measured on cobra (18 labels):** the merge pairs never move
+    under any variant; every sensitivity is in the refactor/false-positive tail. Inert in both
+    directions: `MaxConceptDF`, `fp.Depth`. Inert in one: `ChannelK`→8, `Threshold`→0.30,
+    `MaxCallDF`→100, `calls_into_concept`×0.5, `shares_neighborhood`×0.5,
+    `calls_into_package`×0.5, `called_from_concept`×2; `TestCallDiscount` (no test pairs under
+    `exclude`). Load-bearing: `MinNodes`→18 (drops a labeled pair from retrieval). Largest movers:
+    `fp.AST`, `MaxPatternDF`, `calls`, `exhibits`, `TrophicPower`. Not swept: `ChainTopN`
+    (explanation only), `struct-min`/`family-min` (no bench analogue / census only),
+    `ForkShapeFloor` (annotation). One corpus is a direction, not a verdict; the gin/chi labels
+    are what would make it one.
   - `TestGenerateExamples` (guard `DOPPEL_BENCH_EXAMPLES=1`) regenerates `examples/<name>.md` by
     running the **built binary** with `cmd.Dir` set to the corpus — not the library — so the
     committed reports are what the documented command actually prints, culture/habitat/arena
@@ -901,10 +1070,13 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   candidate carries ≥ ln 2 evidence by construction, so the weak floor rarely triggers).
   Function-vs-function niches, invasion/speciation/overcrowding, dominant-set clustering, and
   Potts-style domains are named future work.
-- **Habitat = package is crude.** One Go package can host several micro-habitats (handlers next
-  to helpers next to tests — test functions in a production package legitimately read as
-  misfits). Directory- or subsystem-level habitat rollup is future work, as are all the delta
-  quantities: Δentropy/fragmentation, phase transitions, chemical potential (marginal duplication
+- **Habitat = package is crude, and the subsystem rollup is one level deep.** One Go package can
+  host several micro-habitats (handlers next to helpers), and the rollup excuses in only one
+  direction — up to the parent directory. A package directly under the root has no parent and
+  can never be excused (most of hugo's misfits live in `hugolib`, `resources`, …, which is why
+  hugo drops least), and a repo whose packages all sit under one umbrella (`internal/`, `pkg/`)
+  gets that umbrella as its only subsystem, which is generous. The delta quantities remain future
+  work: Δentropy/fragmentation, phase transitions, chemical potential (marginal duplication
   pressure), git-derived heat, inter-package JS divergence, free energy.
 - **Convention entropy is a dispersion proxy, not realization clustering.** It measures how
   predictable each practice is across members, not how many distinct whole realizations exist.
@@ -937,13 +1109,21 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   watches exactly this. Trophic² also discounts non-identical true clones somewhat (the
   production clone sits mid-top-50, not top-20, in the full-population view) — the price of
   demoting skeleton siblings.
-- **Generated code owns the top of a large old corpus.** moby's entire top ten is `.pb.go`
-  protobuf `Unmarshal`/`skipX` methods, and half of prometheus's is; the pairs are factually
-  near-identical and completely unactionable. doppel has no exclusion flag and no notion of
-  "this directory is not the library" (chi's `_examples/` demo `main`s are the small-corpus
-  version of the same problem), so the only answer today is pointing it at a hand-written
-  subtree — `prometheus/tsdb` reports the real float/int histogram duplication instead. A
-  generated-file or path-exclusion filter is the obvious fix and is deliberately not built.
+- **Generated-code and demo-tree suppression is convention-deep only.** The two historical
+  dominators are fixed by the ecosystem's own declarations — `--generated exclude` (default)
+  filters files carrying Go's "Code generated ... DO NOT EDIT." marker, and the walker skips
+  dot-/underscore-prefixed directories exactly as the go tool does, which is what removed moby's
+  all-`.pb.go` top ten and chi's `_examples/` `main`s. But a generator that omits the marker, or
+  a demo tree named `examples/` without the underscore, is invisible to both rules, and that is
+  deliberate: the alternative is path/name heuristics, which the tagger and retriever refuse
+  everywhere else. Narrowing to a subtree remains the answer for focus (`prometheus/tsdb`
+  reports the float/int histogram duplication by itself).
+- **A calibrated threshold can drift a hook baseline.** The Stop hook recalibrates every turn, so
+  editing code moves the null distribution and the derived threshold can cross a 0.01 boundary
+  mid-session, making the baseline incomparable through no pair's fault. Rounding to 0.01 is the
+  mitigation, not a cure; under `--tests include` the null is also a two-population mixture (cross
+  pairs are rejected, but test and production bodies are drawn together). Both are why
+  `calibrate` defaults to off.
 - **Committed examples drift silently.** `examples/*.md` is real output from a pinned tree, but
   nothing verifies it: any ranking change makes every file stale until somebody runs
   `task examples`. Regenerating is cheap (~10s for all seven) — do it in the same change that
@@ -1004,10 +1184,16 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   one level (`a.b.c.Do` records `c.Do`, never `b.c`), and the tag remains deliberately not
   import-based (servers import `net/http` too).
 
-- **Interface implementations dominate merge-worthy output.** Methods satisfying a shared interface
-  across sibling packages — a `Validate` per provider, say — are near-identical by construction and
-  completely unactionable, and on a wide corpus they crowd the top of the list the same way
-  generated code does. Recognising one needs `go/types`, which is out of proportion here, and a
-  name-or-signature heuristic is exactly the kind of rule the tagger and retriever avoid
-  everywhere else. The digest orders what it *shows* by merge-worthiness and overlap, which helps
-  a six-line hook report and does nothing for a full `analyze` run.
+- **Interface implementations are labeled, not filtered.** Methods satisfying a shared interface
+  across sibling packages — a `Validate` per provider — are near-identical by construction and
+  unactionable, and on a wide corpus they still crowd the list. The `interface implementations`
+  kind names them by a naming rule (same method, same signature, different types), which is
+  acceptable as an *annotation* precisely because it cannot be wrong about what it claims (both
+  sides do implement that method) while it can be wrong about whether an interface exists — that
+  needs `go/types`. Filtering or demoting on the same rule would be the name heuristic the tagger
+  and retriever refuse everywhere else, and is deliberately not done.
+- **Fork stems are lexical.** `diverged copy` reads version markers in names, nothing else: a fork
+  that kept the same name in two packages, or renamed freely, is invisible; `NewClient`/`newClient`
+  at high shape is labeled (the rule strips `New`, case falls out); numbered series (`sha256`/
+  `sha512`) are excluded by design; lower-case markers inside a word (`Threshold`) are not markers.
+  The 0.60 shape floor and the same/sibling-package locality bound the damage.

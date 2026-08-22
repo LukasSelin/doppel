@@ -41,8 +41,8 @@ func PrintFamilies(w io.Writer, fams []family.Family, stats family.Stats, units 
 		shown = shown[:show]
 	}
 	for i, f := range shown {
-		fmt.Fprintf(w, "F%-3d  %d members   every pair >= %.2f code-shape%s\n",
-			i+1, len(f.Members), f.MinEdge, completedNote(f.Completed))
+		fmt.Fprintf(w, "F%-3d  %d members   every pair >= %.2f code-shape   evidence %.0f%s%s\n",
+			i+1, len(f.Members), f.MinEdge, f.Evidence, completedNote(f.Completed), familyKindNote(f, false))
 		listed := memberLimit(f, show)
 		for _, m := range f.Members[:listed] {
 			if m < 0 || m >= len(units) {
@@ -76,8 +76,8 @@ func PrintMarkdownFamilies(w io.Writer, fams []family.Family, stats family.Stats
 		shown = shown[:show]
 	}
 	for i, f := range shown {
-		fmt.Fprintf(w, "### Family %d — %d members, every pair `>= %.2f` code-shape%s\n\n",
-			i+1, len(f.Members), f.MinEdge, completedNote(f.Completed))
+		fmt.Fprintf(w, "### Family %d — %d members, every pair `>= %.2f` code-shape, evidence `%.0f`%s%s\n\n",
+			i+1, len(f.Members), f.MinEdge, f.Evidence, completedNote(f.Completed), familyKindNote(f, true))
 		fmt.Fprintf(w, "| Location | Function | Signature | Patterns |\n")
 		fmt.Fprintf(w, "|---|---|---|---|\n")
 		listed := memberLimit(f, show)
@@ -129,6 +129,17 @@ func familySummary(fams []family.Family, stats family.Stats) string {
 // completedNote names the edges this stage scored itself. Without it a reader
 // checking a family against the pair list finds members with no pair between
 // them and concludes the family was invented.
+// familyKindNote is the F-line / heading suffix for a labeled family.
+func familyKindNote(f family.Family, md bool) string {
+	if f.Kind == nil {
+		return ""
+	}
+	if md {
+		return ", " + kindClause(f.Kind, true, true)
+	}
+	return "   kind: " + kindClause(f.Kind, true, false)
+}
+
 func completedNote(n int) string {
 	switch {
 	case n == 0:
@@ -202,8 +213,11 @@ type FamilyJSON struct {
 	Size      int          `json:"size"`
 	MinEdge   float64      `json:"minEdge"`
 	MeanEdge  float64      `json:"meanEdge"`
+	Evidence  float64      `json:"evidence"` // Σ retrieval evidence mass over retrieved edges; the census's rank key
 	Completed int          `json:"completed"`
-	Members   []MemberJSON `json:"members"` // sorted by key
+	Kind      string       `json:"kind,omitempty"`      // analyzer.KindInterfaceImpl or KindFork; absent when unlabeled
+	KindLabel string       `json:"kindLabel,omitempty"` // the rendered clause, as the text report prints it
+	Members   []MemberJSON `json:"members"`             // sorted by key
 }
 
 // MemberJSON locates one member for a human reading the JSON.
@@ -227,8 +241,13 @@ func PrintFamiliesJSON(w io.Writer, fams []family.Family, stats family.Stats, un
 			Size:      len(f.Members),
 			MinEdge:   f.MinEdge,
 			MeanEdge:  f.MeanEdge,
+			Evidence:  f.Evidence,
 			Completed: f.Completed,
 			Members:   make([]MemberJSON, 0, len(f.Members)),
+		}
+		if f.Kind != nil {
+			fj.Kind = f.Kind.Kind
+			fj.KindLabel = kindClause(f.Kind, true, false)
 		}
 		for _, m := range f.Members {
 			if m < 0 || m >= len(units) {

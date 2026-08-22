@@ -2,6 +2,7 @@ package retriever
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"testing"
 )
@@ -186,5 +187,72 @@ func Common%d(xs []int) int {
 	}
 	if rare.Total <= common.Total {
 		t.Errorf("rare pair total %.3f should outrank common pair total %.3f", rare.Total, common.Total)
+	}
+}
+
+func TestEffectiveCap(t *testing.T) {
+	if c, d := effectiveCap(50, 1000, 0); c != 50 || d {
+		t.Errorf("floor off: got %d derived=%v, want absolute 50", c, d)
+	}
+	// ln(1000/50) = 2.9957…: a floor just under it reproduces the cap.
+	if c, _ := effectiveCap(50, 1000, math.Log(1000.0/50)-1e-9); c != 50 {
+		t.Errorf("floor at ln(N/50) should derive 50, got %d", c)
+	}
+	if c, d := effectiveCap(50, 81, 2.0); !d || c != int(math.Floor(81*math.Exp(-2))) {
+		t.Errorf("derived cap on 81 units at 2 nats = %d (derived %v)", c, d)
+	}
+	// Honest emptiness: a floor no df>=2 feature can carry derives < 2.
+	if c, _ := effectiveCap(50, 10, 3.0); c >= 2 {
+		t.Errorf("10 units at 3 nats should derive an empty channel, got cap %d", c)
+	}
+}
+
+// A MinIDF set to exactly the absolute caps' information level reproduces
+// the fixed-cap retrieval: same candidates, same masses.
+func TestMinIDFReproducesAbsoluteCaps(t *testing.T) {
+	var b strings.Builder
+	b.WriteString("package fix\n")
+	b.WriteString(strings.ReplaceAll(trophicScanLoop, "ReadIDs", "ReadA"))
+	b.WriteString(strings.NewReplacer(
+		"ReadIDs", "ReadB", "path", "fname", "file", "fh",
+		"ids", "nums", "scanner", "sc", "line", "text", "id", "n",
+	).Replace(trophicScanLoop))
+	b.WriteString(`
+func Filler(m map[string]int) string {
+	best := ""
+	for k, v := range m {
+		switch {
+		case v > 10:
+			best = k
+		case k == "":
+			best = "none"
+		}
+	}
+	return best
+}
+`)
+	units := parseUnits(t, "fix.go", b.String())
+	fixed := DefaultOptions()
+	fixed.MinNodes = 8
+	fixed.MaxPatternDF, fixed.MaxCallDF = 2, 2
+	cFixed, sFixed := retrieveAll(t, units, fixed)
+
+	// Three eligible units, three units: ln(3/2) is the information of df 2.
+	floored := fixed
+	floored.MinIDF = math.Log(3.0/2) - 1e-9
+	cFloor, sFloor := retrieveAll(t, units, floored)
+	if !sFloor.CapsDerived || sFloor.PatternCap != 2 || sFloor.CallCap != 2 {
+		t.Fatalf("derived caps = %d/%d (derived %v), want 2/2", sFloor.PatternCap, sFloor.CallCap, sFloor.CapsDerived)
+	}
+	if len(cFixed) != len(cFloor) {
+		t.Fatalf("candidate count differs: fixed %d, floored %d", len(cFixed), len(cFloor))
+	}
+	for i := range cFixed {
+		if cFixed[i].AIdx != cFloor[i].AIdx || cFixed[i].BIdx != cFloor[i].BIdx || cFixed[i].Total != cFloor[i].Total {
+			t.Fatalf("candidate %d differs: %+v vs %+v", i, cFixed[i], cFloor[i])
+		}
+	}
+	if sFixed.Suppressed != sFloor.Suppressed || sFixed.SurvivingPatterns != sFloor.SurvivingPatterns {
+		t.Errorf("stats differ: %+v vs %+v", sFixed, sFloor)
 	}
 }

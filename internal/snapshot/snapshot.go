@@ -101,6 +101,8 @@ type Params struct {
 	ChannelK   int     `json:"channelK"`
 	MaxPerFunc int     `json:"maxPerFunc"`
 	TestsMode  string  `json:"testsMode"`
+	Generated  string  `json:"generated"` // generated-file population: include, exclude, or only
+	Calibrate  float64 `json:"calibrate"` // null admission rate the thresholds were derived at; 0 = fixed thresholds
 }
 
 // TagCount is one concept tag and how many units carry it.

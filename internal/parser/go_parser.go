@@ -30,6 +30,12 @@ func parseGoSource(path string, src []byte) ([]CodeUnit, error) {
 	}
 
 	pkg := f.Name.Name
+	// Go's own convention (https://go.dev/s/generatedcode), checked by the
+	// stdlib: a "// Code generated ... DO NOT EDIT." line before the first
+	// non-comment text. Recorded per unit so --generated can pick the
+	// population the same way --tests does — a convention the ecosystem
+	// already declares, not a path or name heuristic.
+	generated := ast.IsGenerated(f)
 	var units []CodeUnit
 	for _, decl := range f.Decls {
 		fd, ok := decl.(*ast.FuncDecl)
@@ -41,7 +47,7 @@ func parseGoSource(path string, src []byte) ([]CodeUnit, error) {
 		name := funcName(fd, recvType)
 		startLine := fset.Position(fd.Pos()).Line
 		body := extractSource(fset, fd, src)
-		sig := extractSignature(fset, fd)
+		sig := extractSignature(fd)
 
 		var docComment string
 		if fd.Doc != nil {
@@ -61,6 +67,7 @@ func parseGoSource(path string, src []byte) ([]CodeUnit, error) {
 			Callees:      extractCallees(fd),
 			Fingerprint:  fingerprint.Build(fd),
 			Signals:      extractSignals(fd, f),
+			Generated:    generated,
 		})
 	}
 	return units, nil
@@ -84,15 +91,55 @@ func extractReceiverType(fd *ast.FuncDecl) string {
 	return buf.String()
 }
 
-// extractSignature returns "(params) (results)" for a function declaration.
-func extractSignature(fset *token.FileSet, fd *ast.FuncDecl) string {
-	var buf bytes.Buffer
-	printer.Fprint(&buf, fset, fd.Type.Params)
-	if fd.Type.Results != nil && len(fd.Type.Results.List) > 0 {
-		buf.WriteByte(' ')
-		printer.Fprint(&buf, fset, fd.Type.Results)
+// extractSignature returns "(params) (results)" for a function declaration:
+// parameter and result types in declaration order, names dropped, one entry
+// per declared name ("a, b int" is "int, int"), results parenthesized whenever
+// any exist — "([]int) (int)", "(context.Context) (error)", "()".
+//
+// It prints each field's Type expression individually. The earlier version
+// handed the whole *ast.FieldList to go/printer, which accepts only Expr,
+// Stmt, Decl, Spec and File nodes and silently wrote nothing — so every unit
+// carried an empty signature and every report's Signature column was blank.
+// This string is rendered text only; fingerprint.Types is what scores.
+func extractSignature(fd *ast.FuncDecl) string {
+	if fd.Type == nil {
+		return "()"
 	}
-	return buf.String()
+	sig := "(" + fieldTypes(fd.Type.Params) + ")"
+	if fd.Type.Results != nil && len(fd.Type.Results.List) > 0 {
+		sig += " (" + fieldTypes(fd.Type.Results) + ")"
+	}
+	return sig
+}
+
+// fieldTypes renders a field list's types, comma-separated, repeating a type
+// once per declared name so arity survives.
+func fieldTypes(fields *ast.FieldList) string {
+	if fields == nil {
+		return ""
+	}
+	var parts []string
+	for _, field := range fields.List {
+		t := printTypeExpr(field.Type)
+		n := len(field.Names)
+		if n == 0 {
+			n = 1
+		}
+		for i := 0; i < n; i++ {
+			parts = append(parts, t)
+		}
+	}
+	return strings.Join(parts, ", ")
+}
+
+// printTypeExpr renders a type expression with go/printer and collapses
+// internal whitespace, so a multi-line struct or func type is one token.
+func printTypeExpr(expr ast.Expr) string {
+	var buf bytes.Buffer
+	if err := printer.Fprint(&buf, token.NewFileSet(), expr); err != nil {
+		return "?"
+	}
+	return strings.Join(strings.Fields(buf.String()), " ")
 }
 
 // extractSource returns the source text of the node.

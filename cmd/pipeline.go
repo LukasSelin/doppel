@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/LukasSelin/doppel/internal/analyzer"
+	"github.com/LukasSelin/doppel/internal/calibrate"
 	"github.com/LukasSelin/doppel/internal/comparator"
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/culture"
@@ -32,6 +33,8 @@ type Params struct {
 	ChannelK   int
 	MaxPerFunc int
 	TestsMode  string
+	Generated  string  // generated-file population: include, exclude, or only
+	Calibrate  float64 // null admission rate; > 0 derives Threshold and StructMin from the corpus
 	Debug      bool
 }
 
@@ -46,16 +49,17 @@ type Params struct {
 // (top-N and per-function diversity), and a snapshot taken for diffing wants
 // the pre-cap set while the report wants the capped one.
 type Result struct {
-	Root      string
-	Params    Params
-	Units     []parser.CodeUnit
-	Docs      []concepter.ConceptDoc
-	Graph     *concepter.Graph
-	Culture   *culture.Model
-	TagCounts map[ontology.TermID]int
-	Onto      *ontology.Ontology
-	IC        *ontology.IC
-	Pairs     []analyzer.SimilarPair
+	Root        string
+	Params      Params
+	Units       []parser.CodeUnit
+	Docs        []concepter.ConceptDoc
+	Graph       *concepter.Graph
+	Culture     *culture.Model
+	Calibration *calibrate.Result // nil unless Params.Calibrate > 0
+	TagCounts   map[ontology.TermID]int
+	Onto        *ontology.Ontology
+	IC          *ontology.IC
+	Pairs       []analyzer.SimilarPair
 }
 
 // analyze runs the pipeline over root and returns everything downstream stages
@@ -98,6 +102,9 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 	if err := validateTestsMode(p.TestsMode); err != nil {
 		return res, err
 	}
+	if err := validateGeneratedMode(p.Generated); err != nil {
+		return res, err
+	}
 
 	fmt.Fprintf(progress, "Scanning %s ...\n", root)
 	var units []parser.CodeUnit
@@ -105,7 +112,10 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 		if err != nil {
 			return nil // skip unreadable entries
 		}
-		if d.IsDir() && shouldSkipDir(d.Name()) {
+		// The root itself is exempt from the skip rules: `doppel analyze .`
+		// hands the walker a directory literally named ".", and a user who
+		// points doppel at _examples/ or .config/ has already made the call.
+		if d.IsDir() && path != root && shouldSkipDir(d.Name()) {
 			return filepath.SkipDir
 		}
 		if d.IsDir() {
@@ -123,11 +133,14 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 		return res, fmt.Errorf("walk %s: %w", root, err)
 	}
 
-	// Population filter, applied before any corpus statistic exists: IC,
+	// Population filters, applied before any corpus statistic exists: IC,
 	// dfs, culture, habitats, and arenas all model exactly the population
 	// the report describes. Tests are conventionally similar by design, so
-	// they form their own population rather than diluting production's.
+	// they form their own population rather than diluting production's;
+	// generated files are near-identical by construction and, by default,
+	// not part of the code anyone maintains by hand.
 	units = filterTestUnits(units, p.TestsMode)
+	units = filterGeneratedUnits(units, p.Generated)
 	// Extras join after the population filter: a probe is part of whatever
 	// population was chosen, not a reason to change it.
 	units = append(units, extra...)
@@ -180,13 +193,35 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 
 	// Model the corpus's own conceptual practice: which concepts/roles/calls
 	// co-occur beyond chance, and how each concept is normally realized here.
-	cult := culture.Build(units, docs, cg, culture.DefaultOptions())
+	// Root lets habitats roll up into subsystems (parent directories).
+	cultOpts := culture.DefaultOptions()
+	cultOpts.Root = res.Root
+	cult := culture.Build(units, docs, cg, cultOpts)
 	res.Culture = cult
 	cs := cult.Stats()
 	fmt.Fprintf(progress, "Culture: %d concepts modeled, %d associations, %d unusual realizations\n",
 		cs.ConceptsModeled, cs.AssociationCount, cs.UnusualRealizations)
 	printHabitatSummary(progress, cs)
 	printArenaSummary(progress, cs)
+
+	// Null calibration, when asked for: derive the code-shape and overlap
+	// thresholds from what random unrelated pairs score in this corpus. It
+	// runs before retrieval because retrieval reads the threshold, and it
+	// replaces --threshold and --struct-min outright — a half-calibrated run
+	// would be the mixed question Params equality exists to forbid. The
+	// effective values travel in Params so a snapshot compares on what was
+	// actually used.
+	forkFloor := analyzer.ForkShapeFloor
+	if p.Calibrate > 0 {
+		r := calibrate.Run(units, docs, comp, calibrate.DefaultOptions(p.Calibrate, p.MinNodes))
+		res.Calibration = &r
+		printCalibration(progress, r)
+		if r.Applied() {
+			p.Threshold, p.StructMin = r.Threshold, r.StructMin
+			forkFloor = r.Threshold
+		}
+	}
+	res.Params = p
 
 	// Multi-channel candidate retrieval: structural shape, shared concepts,
 	// and shared resolved calls each retrieve per-function top-K neighbors
@@ -255,6 +290,7 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 			pairs[i].A.Patterns, pairs[i].B.Patterns)
 		pairs[i].Habitat = habitatNotes(cult, pairs[i].AIdx, pairs[i].BIdx,
 			pairs[i].A.Package, pairs[i].B.Package)
+		pairs[i].Kind = analyzer.ClassifyPairWith(pairs[i].A, pairs[i].B, pairs[i].Score, forkFloor)
 		pairs[i].Profile = profileNotes(cult, pairs[i].AIdx, pairs[i].BIdx,
 			pairs[i].A.Patterns, pairs[i].B.Patterns)
 	}
@@ -269,6 +305,14 @@ func validateTestsMode(mode string) error {
 		return nil
 	}
 	return fmt.Errorf("invalid --tests value %q: want include, exclude, or only", mode)
+}
+
+func validateGeneratedMode(mode string) error {
+	switch mode {
+	case "include", "exclude", "only":
+		return nil
+	}
+	return fmt.Errorf("invalid --generated value %q: want include, exclude, or only", mode)
 }
 
 // filterByOverlap drops pairs below the structural overlap threshold. A
@@ -301,5 +345,7 @@ func snapshotOf(res Result, pairs []analyzer.SimilarPair) snapshot.Snapshot {
 			ChannelK:   res.Params.ChannelK,
 			MaxPerFunc: res.Params.MaxPerFunc,
 			TestsMode:  res.Params.TestsMode,
+			Generated:  res.Params.Generated,
+			Calibrate:  res.Params.Calibrate,
 		})
 }

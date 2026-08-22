@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/LukasSelin/doppel/internal/analyzer"
+	"github.com/LukasSelin/doppel/internal/calibrate"
 	"github.com/LukasSelin/doppel/internal/culture"
 	"github.com/LukasSelin/doppel/internal/parser"
 	"github.com/LukasSelin/doppel/internal/reporter"
@@ -16,18 +17,20 @@ import (
 )
 
 var (
-	threshold  float64
-	topN       int
-	minNodes   int
-	outputFile string
-	configFile string
-	structMin  float64
-	channelK   int
-	debugFlag  bool
-	maxPerFunc int
-	testsMode  string
-	familiesN  int
-	familyMin  float64
+	threshold     float64
+	topN          int
+	minNodes      int
+	outputFile    string
+	configFile    string
+	structMin     float64
+	channelK      int
+	debugFlag     bool
+	maxPerFunc    int
+	testsMode     string
+	genMode       string
+	calibrateRate float64
+	familiesN     int
+	familyMin     float64
 
 	outputFormat string
 )
@@ -61,7 +64,10 @@ var analyzeCmd = &cobra.Command{
 		default:
 			return fmt.Errorf("invalid --format %q: want %q or %q", outputFormat, formatText, formatJSON)
 		}
-		return validateTestsMode(testsMode)
+		if err := validateTestsMode(testsMode); err != nil {
+			return err
+		}
+		return validateGeneratedMode(genMode)
 	},
 	RunE: runAnalyze,
 }
@@ -77,6 +83,8 @@ func init() {
 	analyzeCmd.Flags().BoolVar(&debugFlag, "debug", false, "Show per-pair retrieval provenance in the report")
 	analyzeCmd.Flags().IntVar(&maxPerFunc, "max-per-func", 2, "Maximum pairs any one function may appear in in the final report (0 = no cap)")
 	analyzeCmd.Flags().StringVar(&testsMode, "tests", "exclude", "Test-function population: include, exclude, or only. Tests are conventionally similar, so the default models production code; cross test/prod pairs are never reported.")
+	analyzeCmd.Flags().StringVar(&genMode, "generated", "exclude", "Generated-file population: include, exclude, or only. Files carrying Go's \"Code generated ... DO NOT EDIT.\" marker are near-identical by construction and unactionable, so the default models hand-written code.")
+	analyzeCmd.Flags().Float64Var(&calibrateRate, "calibrate", 0, "Set --threshold and --struct-min from the corpus: admit this fraction of random unrelated pairs (e.g. 0.01). Overrides both flags and sets --family-min to the same code-shape floor; 0 = off")
 	analyzeCmd.Flags().StringVar(&outputFormat, "format", formatText, "Stdout format: text or json")
 	analyzeCmd.Flags().IntVar(&familiesN, "families", 5, "Near-duplicate families to show in the report (0 = no families section)")
 	analyzeCmd.Flags().Float64Var(&familyMin, "family-min", 0.60, "Minimum code-shape between every two members of a family (0.0–1.0)")
@@ -92,6 +100,8 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		ChannelK:   channelK,
 		MaxPerFunc: maxPerFunc,
 		TestsMode:  testsMode,
+		Generated:  genMode,
+		Calibrate:  calibrateRate,
 		Debug:      debugFlag,
 	}
 
@@ -161,6 +171,27 @@ func printRetrievalStats(w io.Writer, s retriever.Stats) {
 	}
 	fmt.Fprintf(w, "  concept-only %.1f%%  call-only %.1f%%  suppressed-shape functions: %d  large identity buckets: %d  surviving patterns: %d\n",
 		pct(s.OnlyConcept), pct(s.OnlyCall), s.Suppressed, s.LargeBuckets, s.SurvivingPatterns)
+	// Only when a nats floor derived the caps: the absolute caps are the
+	// documented constants and need no line.
+	if s.CapsDerived {
+		fmt.Fprintf(w, "  caps: pattern df<=%d, call df<=%d%s\n", s.PatternCap, s.CallCap, emptyChannels(s))
+	}
+}
+
+// emptyChannels names channels whose derived cap fell below 2 — no feature
+// can both pair and meet the floor there.
+func emptyChannels(s retriever.Stats) string {
+	var out []string
+	if s.PatternCap < 2 {
+		out = append(out, "pattern")
+	}
+	if s.CallCap < 2 {
+		out = append(out, "call")
+	}
+	if len(out) == 0 {
+		return ""
+	}
+	return " (" + strings.Join(out, ", ") + " channel empty)"
 }
 
 // sharedChains bridges retriever chain explanations into the analyzer's
@@ -248,6 +279,11 @@ func habitatNotes(cult *culture.Model, aIdx, bIdx int, aPkg, bPkg string) []anal
 			Fit:         fit,
 			PackageNorm: norm,
 		}
+		// A confirmed misfit with a modeled subsystem was alien there too;
+		// the note says so, with the subsystem fit for contrast.
+		if key, sfit, ok := cult.SubsystemFit(side.idx); ok {
+			note.Subsystem, note.SubsystemFit = key, sfit
+		}
 		for _, ch := range cult.ChannelSurprise(side.idx) {
 			note.Channels = append(note.Channels, analyzer.HabitatChannel{
 				Name: ch.Name, Surprise: ch.Surprise,
@@ -303,14 +339,39 @@ func printArenaSummary(w io.Writer, s culture.Stats) {
 		s.ArenaProfiled, s.ArenaDominance, s.ArenaCoalition, s.ArenaConflict, s.ArenaWeak)
 }
 
+// printCalibration reports a null calibration: the derived thresholds, or
+// why the corpus was too small to derive them. Printed only when
+// --calibrate is on, so the default stderr stays byte-identical.
+func printCalibration(w io.Writer, r calibrate.Result) {
+	if r.Declined != "" {
+		fmt.Fprintf(w, "Calibration: rate %g declined (%s); defaults kept\n", r.Rate, r.Declined)
+		return
+	}
+	pairs := fmt.Sprintf("%d", r.ShapePairs)
+	if r.OverlapPairs != r.ShapePairs {
+		pairs = fmt.Sprintf("%d shape / %d overlap", r.ShapePairs, r.OverlapPairs)
+	}
+	fmt.Fprintf(w, "Calibration: rate %g over %s null pairs -> threshold %.2f, struct-min %.2f, family-min %.2f\n",
+		r.Rate, pairs, r.Threshold, r.StructMin, r.Threshold)
+}
+
 // printHabitatSummary emits the habitat and convention stderr lines in human
 // vocabulary. Superlatives are omitted entirely when nothing is modeled.
 func printHabitatSummary(w io.Writer, s culture.Stats) {
-	if s.HabitatsModeled == 0 {
+	switch {
+	case s.HabitatsModeled == 0:
 		fmt.Fprintf(w, "Habitats: 0 modeled\n")
-	} else {
+	case s.SubsystemsModeled == 0:
 		fmt.Fprintf(w, "Habitats: %d modeled, %d misfits; most uniform %s (norm %.2f), most diverse %s (norm %.2f)\n",
 			s.HabitatsModeled, s.HabitatMisfits,
+			s.MostUniformHabitat, s.MostUniformNorm,
+			s.MostDiverseHabitat, s.MostDiverseNorm)
+	default:
+		// With subsystems modeled, a package misfit that fits its parent
+		// directory is excused rather than reported; the count keeps the
+		// excuse visible.
+		fmt.Fprintf(w, "Habitats: %d modeled, %d misfits (%d excused by subsystem), %d subsystems; most uniform %s (norm %.2f), most diverse %s (norm %.2f)\n",
+			s.HabitatsModeled, s.HabitatMisfits, s.MisfitsExcused, s.SubsystemsModeled,
 			s.MostUniformHabitat, s.MostUniformNorm,
 			s.MostDiverseHabitat, s.MostDiverseNorm)
 	}
@@ -343,11 +404,36 @@ func filterTestUnits(units []parser.CodeUnit, mode string) []parser.CodeUnit {
 	return kept
 }
 
-func shouldSkipDir(name string) bool {
-	skip := map[string]bool{
-		".git": true, ".claude": true, "vendor": true,
-		"testdata": true, "build": true,
-		".idea": true, ".vscode": true,
+// filterGeneratedUnits applies the --generated population policy, keyed on
+// Go's own "Code generated ... DO NOT EDIT." convention detected at parse
+// time. Same shape as filterTestUnits and run in the same place — before any
+// corpus statistic — because generated code is near-identical by construction
+// and, left in, owns the top of every large corpus's report (moby's entire
+// top ten was protobuf Unmarshal methods).
+func filterGeneratedUnits(units []parser.CodeUnit, mode string) []parser.CodeUnit {
+	if mode == "include" {
+		return units
 	}
-	return skip[name]
+	keepGenerated := mode == "only"
+	kept := units[:0]
+	for _, u := range units {
+		if u.Generated == keepGenerated {
+			kept = append(kept, u)
+		}
+	}
+	return kept
+}
+
+// shouldSkipDir skips what the go tool itself ignores — directories whose
+// name starts with "." or "_" (which is what keeps _examples/ demo trees out
+// of a library's population) — plus vendor, testdata and build.
+func shouldSkipDir(name string) bool {
+	if name != "" && (name[0] == '.' || name[0] == '_') {
+		return true
+	}
+	switch name {
+	case "vendor", "testdata", "build":
+		return true
+	}
+	return false
 }

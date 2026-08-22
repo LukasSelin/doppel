@@ -22,6 +22,7 @@ var (
 	queryMinNodes  int
 	queryChannelK  int
 	queryTests     string
+	queryGenerated string
 	queryConfig    string
 )
 
@@ -61,7 +62,10 @@ sit in this corpus, not how the corpus looked without it.`,
 		if cfg != nil {
 			applyConfig(cmd, cfg)
 		}
-		return validateTestsMode(queryTests)
+		if err := validateTestsMode(queryTests); err != nil {
+			return err
+		}
+		return validateGeneratedMode(queryGenerated)
 	},
 	RunE: runQuery,
 }
@@ -77,6 +81,7 @@ func init() {
 	// cut on an index tie-break, which is how the nearest match goes missing.
 	queryCmd.Flags().IntVar(&queryChannelK, "channel-k", 10, "Candidates each function keeps per retrieval channel")
 	queryCmd.Flags().StringVar(&queryTests, "tests", "exclude", "Test-function population: include, exclude, or only")
+	queryCmd.Flags().StringVar(&queryGenerated, "generated", "exclude", "Generated-file population: include, exclude, or only")
 	queryCmd.Flags().StringVar(&queryConfig, "config", "", "Path to JSON config file (default: .doppel.json if present)")
 	rootCmd.AddCommand(queryCmd)
 }
@@ -128,6 +133,7 @@ func runQuery(cmd *cobra.Command, args []string) error {
 		MinNodes:  queryMinNodes,
 		ChannelK:  queryChannelK,
 		TestsMode: queryTests,
+		Generated: queryGenerated,
 	}
 	res, err := index(args[0], p, cmd.ErrOrStderr(), probes)
 	if err != nil {

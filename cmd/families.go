@@ -14,6 +14,8 @@ var (
 	familiesMinNodes  int
 	familiesChannelK  int
 	familiesTests     string
+	familiesGenerated string
+	familiesCalibrate float64
 	familiesMin       float64
 	familiesConfig    string
 	familiesFormat    string
@@ -57,7 +59,10 @@ functions.`,
 		default:
 			return fmt.Errorf("invalid --format %q: want %q or %q", familiesFormat, formatText, formatJSON)
 		}
-		return validateTestsMode(familiesTests)
+		if err := validateTestsMode(familiesTests); err != nil {
+			return err
+		}
+		return validateGeneratedMode(familiesGenerated)
 	},
 	RunE: runFamilies,
 }
@@ -67,6 +72,8 @@ func init() {
 	familiesCmd.Flags().IntVar(&familiesMinNodes, "min-nodes", 12, "Exclude functions with fewer body AST nodes from structural retrieval")
 	familiesCmd.Flags().IntVar(&familiesChannelK, "channel-k", 5, "Candidates each function keeps per retrieval channel")
 	familiesCmd.Flags().StringVar(&familiesTests, "tests", "exclude", "Test-function population: include, exclude, or only")
+	familiesCmd.Flags().StringVar(&familiesGenerated, "generated", "exclude", "Generated-file population: include, exclude, or only")
+	familiesCmd.Flags().Float64Var(&familiesCalibrate, "calibrate", 0, "Derive --threshold and --family-min from the corpus at this null admission rate; 0 = off")
 	familiesCmd.Flags().Float64Var(&familiesMin, "family-min", 0.60, "Minimum code-shape between every two members of a family (0.0–1.0)")
 	familiesCmd.Flags().StringVar(&familiesConfig, "config", "", "Path to JSON config file (default: .doppel.json if present)")
 	familiesCmd.Flags().StringVar(&familiesFormat, "format", formatText, "Stdout format: text or json")
@@ -82,6 +89,8 @@ func runFamilies(cmd *cobra.Command, args []string) error {
 		MinNodes:  familiesMinNodes,
 		ChannelK:  familiesChannelK,
 		TestsMode: familiesTests,
+		Generated: familiesGenerated,
+		Calibrate: familiesCalibrate,
 	}
 
 	res, err := analyze(args[0], p, cmd.ErrOrStderr())
@@ -94,7 +103,7 @@ func runFamilies(cmd *cobra.Command, args []string) error {
 	}
 
 	o := family.DefaultOptions()
-	o.Min = familiesMin
+	o.Min = familyMinFor(res, familiesMin)
 	fams, stats := family.Build(res.Units, res.Pairs, o)
 	printFamilyStats(cmd.ErrOrStderr(), stats)
 
@@ -116,6 +125,15 @@ func runFamilies(cmd *cobra.Command, args []string) error {
 // Skipped entirely when the section is off, because the completion pass costs
 // a fingerprint comparison per unscored pair inside every component and
 // nothing should pay for output it disabled.
+// familyMinFor is the family edge cut: the flag, unless the run calibrated
+// its code-shape threshold, in which case the census moves with it.
+func familyMinFor(res Result, flag float64) float64 {
+	if res.Calibration != nil && res.Calibration.Applied() {
+		return res.Calibration.Threshold
+	}
+	return flag
+}
+
 func buildFamilies(res Result, progress io.Writer) ([]family.Family, family.Stats) {
 	if familiesN <= 0 || outputFormat == formatJSON {
 		// --format json marshals the snapshot, which families are deliberately
@@ -124,7 +142,7 @@ func buildFamilies(res Result, progress io.Writer) ([]family.Family, family.Stat
 		return nil, family.Stats{}
 	}
 	o := family.DefaultOptions()
-	o.Min = familyMin
+	o.Min = familyMinFor(res, familyMin)
 	fams, stats := family.Build(res.Units, res.Pairs, o)
 	printFamilyStats(progress, stats)
 	return fams, stats

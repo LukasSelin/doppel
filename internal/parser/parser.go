@@ -2,6 +2,7 @@ package parser
 
 import (
 	"path/filepath"
+	"strings"
 
 	"github.com/LukasSelin/doppel/internal/fingerprint"
 )
@@ -21,6 +22,18 @@ type CodeUnit struct {
 	Callees      []string                // AST-derived outgoing call names
 	Fingerprint  fingerprint.Fingerprint // deterministic static summary of the body
 	Signals      TagSignals              // AST-level evidence channels the tagger reads
+	Generated    bool                    // the file carries Go's "Code generated ... DO NOT EDIT." marker
+}
+
+// MethodName returns the bare method name of a method unit ("Start" for
+// "*Server.Start") and the plain name of a function. The one place to split a
+// unit name at its receiver: the receiver can carry dots of its own in a
+// generic instantiation, so "last dot" is not a safe rule anywhere else.
+func MethodName(u CodeUnit) string {
+	if u.ReceiverType == "" {
+		return u.Name
+	}
+	return strings.TrimPrefix(u.Name, u.ReceiverType+".")
 }
 
 // Parse extracts all CodeUnits from the Go file at the given path.

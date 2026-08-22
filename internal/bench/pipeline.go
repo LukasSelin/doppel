@@ -35,11 +35,15 @@ func (p Population) valid() bool {
 	return false
 }
 
-// skipDir mirrors the walker's skip list. Kept here rather than imported so
-// the harness never depends on cmd.
+// skipDir mirrors the walker's skip rule — dot- and underscore-prefixed
+// directories exactly as the go tool ignores them, plus vendor/testdata/build.
+// Kept here rather than imported so the harness never depends on cmd.
 func skipDir(name string) bool {
+	if name != "" && (name[0] == '.' || name[0] == '_') {
+		return true
+	}
 	switch name {
-	case ".git", ".claude", "vendor", "testdata", "build", ".idea", ".vscode":
+	case "vendor", "testdata", "build":
 		return true
 	}
 	return false
@@ -57,7 +61,10 @@ func qualifiedName(u parser.CodeUnit) string {
 }
 
 // Load walks a corpus and returns its functions under the given population.
-// Unreadable files and parse errors are skipped, as in the pipeline.
+// Unreadable files and parse errors are skipped, as in the pipeline. Generated
+// files are always excluded, mirroring the pipeline's --generated default:
+// the labels the harness scores were reviewed against hand-written code, and
+// generated clones would drown exactly the rankings they certify.
 func Load(root string, pop Population) ([]parser.CodeUnit, error) {
 	if !pop.valid() {
 		return nil, fmt.Errorf("invalid population %q", pop)
@@ -68,7 +75,7 @@ func Load(root string, pop Population) ([]parser.CodeUnit, error) {
 			return nil
 		}
 		if d.IsDir() {
-			if skipDir(d.Name()) {
+			if path != root && skipDir(d.Name()) {
 				return filepath.SkipDir
 			}
 			return nil
@@ -83,17 +90,18 @@ func Load(root string, pop Population) ([]parser.CodeUnit, error) {
 	if err != nil {
 		return nil, err
 	}
-	if pop != PopInclude {
-		keepTests := pop == PopOnly
-		kept := units[:0]
-		for _, u := range units {
-			if isTest(u) == keepTests {
-				kept = append(kept, u)
-			}
+	kept := units[:0]
+	keepTests := pop == PopOnly
+	for _, u := range units {
+		if u.Generated {
+			continue
 		}
-		units = kept
+		if pop != PopInclude && isTest(u) != keepTests {
+			continue
+		}
+		kept = append(kept, u)
 	}
-	return units, nil
+	return kept, nil
 }
 
 // Run holds one corpus's intermediate pipeline state. Every field is filled
@@ -208,13 +216,20 @@ func (r *Run) Rescore(onto *ontology.Ontology) {
 }
 
 // RankKey is the corroborated-evidence ordering quantity SortForReport uses,
-// recomputed here so a scorecard can print it. Ranking itself stays in
-// analyzer; this must track it.
+// so a scorecard can print it. One definition lives in analyzer; this is a
+// call, not a copy, so the two cannot drift.
 func RankKey(p analyzer.SimilarPair) float64 {
-	t := p.Retrieval.TrophicSim
-	k := p.Retrieval.Total * p.Evidence.OverlapScore * p.Score * t * t
-	if isTest(p.A) && isTest(p.B) {
-		k *= p.Retrieval.CallSim
-	}
-	return k
+	return analyzer.RankKey(p, analyzer.DefaultRankOptions())
+}
+
+// Reretrieve re-runs the retrieval-sensitive tail — retrieval, pair
+// materialization and comparison — under different retriever options,
+// reusing tags, IC, the call graph and the concept docs. Exact: nothing in
+// Options reaches those stages. This is what makes a sweep over retrieval
+// knobs or fingerprint weights cost retrieve+compare per variant rather than
+// a pipeline.
+func (r *Run) Reretrieve(opt retriever.Options) {
+	r.StageRetrieve(opt)
+	r.StagePairs()
+	r.StageCompare()
 }

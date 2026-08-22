@@ -23,6 +23,7 @@ type graph struct {
 	n         int
 	adj       []map[int]bool
 	weight    map[edge]float64
+	evidence  map[edge]float64 // retrieval evidence mass (nats); 0 for completed edges
 	completed map[edge]bool
 }
 
@@ -31,13 +32,18 @@ func newGraph(n int) *graph {
 		n:         n,
 		adj:       make([]map[int]bool, n),
 		weight:    make(map[edge]float64),
+		evidence:  make(map[edge]float64),
 		completed: make(map[edge]bool),
 	}
 }
 
-// add records an undirected edge. The heaviest weight wins if a pair somehow
-// arrives twice, so the stored weight is never worse than what was observed.
-func (g *graph) add(a, b int, w float64) {
+// add records an undirected edge. The heaviest weight and evidence win if a
+// pair somehow arrives twice, so the stored values are never worse than what
+// was observed. ev is the pair's retrieval evidence mass; completion-scored
+// edges carry zero, which is the point — an edge retrieval never proposed
+// contributes shape to a family's guarantee but no informative energy to its
+// rank.
+func (g *graph) add(a, b int, w, ev float64) {
 	if a == b || a < 0 || b < 0 || a >= g.n || b >= g.n {
 		return
 	}
@@ -52,6 +58,9 @@ func (g *graph) add(a, b int, w float64) {
 	k := key(a, b)
 	if w > g.weight[k] {
 		g.weight[k] = w
+	}
+	if ev > g.evidence[k] {
+		g.evidence[k] = ev
 	}
 }
 
@@ -127,6 +136,7 @@ func (g *graph) describe(members []int) Family {
 			if g.completed[k] {
 				f.Completed++
 			}
+			f.Evidence += g.evidence[k]
 		}
 	}
 	if count > 0 {

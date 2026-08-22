@@ -33,6 +33,7 @@ type shapeIndex struct {
 	meta         map[uint64]chainMeta // level>=2 surviving patterns: render for explanations
 	suppressed   int
 	largeBuckets int
+	cap          int // the df cap actually applied
 }
 
 type survPattern struct {
@@ -87,6 +88,7 @@ func buildShapeIndex(units []parser.CodeUnit, opt Options) *shapeIndex {
 		}
 	}
 
+	x.cap, _ = effectiveCap(opt.MaxPatternDF, nEligible, opt.MinIDF)
 	df := make(map[uint64]int)
 	buckets := make(map[uint64]int)
 	for i := range units {
@@ -111,7 +113,7 @@ func buildShapeIndex(units []parser.CodeUnit, opt Options) *shapeIndex {
 		patterns := units[i].Fingerprint.Patterns
 		var surv []survPattern
 		for _, p := range patterns {
-			if n := df[p.Hash]; n >= 2 && n <= opt.MaxPatternDF {
+			if n := df[p.Hash]; n >= 2 && n <= x.cap {
 				surv = append(surv, survPattern{hash: p.Hash, count: p.Count})
 				x.postings[p.Hash] = append(x.postings[p.Hash], posting{idx: i, count: p.Count})
 				if p.Level >= fingerprint.LevelAction && p.Render != "" {
@@ -127,7 +129,7 @@ func buildShapeIndex(units []parser.CodeUnit, opt Options) *shapeIndex {
 		}
 	}
 	for h, n := range df {
-		if n >= 2 && n <= opt.MaxPatternDF {
+		if n >= 2 && n <= x.cap {
 			x.idf[h] = math.Log(float64(nEligible) / float64(n))
 		}
 	}

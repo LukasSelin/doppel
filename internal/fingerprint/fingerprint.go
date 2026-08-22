@@ -97,9 +97,57 @@ func Build(fd *ast.FuncDecl) Fingerprint {
 	}
 }
 
+// Weights blends the four Breakdown components into Score. The production
+// path always uses DefaultWeights; the type exists so the bench harness can
+// measure the blend (a sensitivity sweep) without a package-level mutable —
+// the same seam idiom as ontology.WithWeights.
+type Weights struct {
+	AST, Flow, Depth, Signature float64
+}
+
+// DefaultWeights returns the shipped blend: 0.60 / 0.20 / 0.05 / 0.15.
+func DefaultWeights() Weights {
+	return Weights{AST: weightAST, Flow: weightFlow, Depth: weightDepth, Signature: weightSignature}
+}
+
+// Sum is the blend total, 1.00 for the defaults.
+func (w Weights) Sum() float64 { return w.AST + w.Flow + w.Depth + w.Signature }
+
+// Scaled multiplies component i (0 AST, 1 Flow, 2 Depth, 3 Signature) by f
+// and renormalizes the other three uniformly so the sum stays what it was —
+// the ontology.WithWeights idiom, so a sweep moves one knob at a time.
+func (w Weights) Scaled(i int, f float64) Weights {
+	c := [4]float64{w.AST, w.Flow, w.Depth, w.Signature}
+	total := w.Sum()
+	c[i] *= f
+	rest := total - c[i]
+	var restNow float64
+	for j := range c {
+		if j != i {
+			restNow += c[j]
+		}
+	}
+	if restNow > 0 && rest > 0 {
+		for j := range c {
+			if j != i {
+				c[j] *= rest / restNow
+			}
+		}
+	}
+	return Weights{AST: c[0], Flow: c[1], Depth: c[2], Signature: c[3]}
+}
+
 // Similarity scores two Fingerprints. It is symmetric, and returns the zero
 // Breakdown when either side has no body.
 func Similarity(a, b Fingerprint) Breakdown {
+	return SimilarityWith(a, b, DefaultWeights())
+}
+
+// SimilarityWith is Similarity under an explicit blend. With DefaultWeights
+// it is bit-identical to Similarity: the same four-term sum in the same
+// order, which is what keeps every pinned score and every baseline digest
+// where it is.
+func SimilarityWith(a, b Fingerprint, w Weights) Breakdown {
 	if a.Nodes == 0 || b.Nodes == 0 {
 		return Breakdown{}
 	}
@@ -110,7 +158,7 @@ func Similarity(a, b Fingerprint) Breakdown {
 		Signature: jaccardStrings(a.Types, b.Types),
 		SizeRatio: ratio(a.Nodes, b.Nodes),
 	}
-	bd.Score = weightAST*bd.AST + weightFlow*bd.Flow + weightDepth*bd.Depth + weightSignature*bd.Signature
+	bd.Score = w.AST*bd.AST + w.Flow*bd.Flow + w.Depth*bd.Depth + w.Signature*bd.Signature
 	if bd.Score > 1.0 {
 		bd.Score = 1.0
 	}

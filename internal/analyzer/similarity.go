@@ -19,6 +19,7 @@ type SimilarPair struct {
 	Culture    []CultureNote                  // unusual concept realizations; nil when none — set by the pipeline
 	Habitat    []HabitatNote                  // habitat misfits; nil when neither side misfits — set by the pipeline
 	Profile    []ProfileNote                  // equilibrium concept profiles; nil when neither side qualifies
+	Kind       *KindNote                      // what the pair is — interface implementations, a diverged copy; nil when unlabeled
 }
 
 // MergeWorthy is the whole merge verdict, and SimilarPair is the only type
@@ -52,11 +53,13 @@ type ProfileMass struct {
 // package: its features are far more surprising there than the package's
 // norm tolerates. Habitat annotates; it never affects ranking.
 type HabitatNote struct {
-	Side        string           // "A" or "B"
-	Package     string           // the unit's habitat
-	Fit         float64          // 0-1, excess-strain Boltzmann factor
-	PackageNorm float64          // the habitat's mean member fit, for contrast
-	Channels    []HabitatChannel // per-channel surprise; rendered only under --debug
+	Side         string           // "A" or "B"
+	Package      string           // the unit's habitat
+	Fit          float64          // 0-1, excess-strain Boltzmann factor
+	PackageNorm  float64          // the habitat's mean member fit, for contrast
+	Subsystem    string           // the parent-directory subsystem the unit was also a misfit in; "" when none is modeled
+	SubsystemFit float64          // the unit's fit in that subsystem; meaningful only when Subsystem != ""
+	Channels     []HabitatChannel // per-channel surprise; rendered only under --debug
 }
 
 // HabitatChannel is one channel's contribution to a HabitatNote's strain.

@@ -2,7 +2,10 @@ package culture
 
 import (
 	"math"
+	"path"
+	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/parser"
@@ -44,16 +47,30 @@ type habitatModel struct {
 // so a member never certifies its own normality beyond the pseudo-count, no
 // surprisal is ever infinite (P >= 1/m), and everything reduces to integer
 // counts over one denominator — order-independent by construction.
+//
+// A second partition models subsystems — the parent directory of each file's
+// directory, when Options.Root is set — with the same features and the same
+// math; a coarser habitat simply has a larger m. A package misfit that fits
+// its subsystem is excused rather than reported: it is alien to its package
+// but typical of the code around it, which is drift across a directory, not
+// a function out of place. Only a unit alien at every level that can judge
+// it is a Misfit. Package-level superlatives are unchanged by the rollup.
 func buildHabitats(m *Model, units []parser.CodeUnit, docs []concepter.ConceptDoc,
 	uf *unitFeatures, opt Options) {
 
 	byPkg := make(map[string][]int)
+	bySub := make(map[string][]int)
 	for i := range units {
 		// Units without a package clause have no meaningful habitat.
 		if units[i].Package == "" {
 			continue
 		}
 		byPkg[units[i].Package] = append(byPkg[units[i].Package], i) // ascending
+		if opt.Root != "" {
+			if key := subsystemKey(opt.Root, units[i].File); key != "" {
+				bySub[key] = append(bySub[key], i)
+			}
+		}
 	}
 
 	features := func(i, ch int) []string {
@@ -71,78 +88,42 @@ func buildHabitats(m *Model, units []parser.CodeUnit, docs []concepter.ConceptDo
 	}
 
 	for _, pkg := range sortedCountKeysInt(byPkg) {
-		members := byPkg[pkg]
-		mm := len(members)
-		if mm < opt.MinHabitatMembers {
+		hm := buildHabitatModel(pkg, byPkg[pkg], features, opt)
+		if hm == nil {
 			continue
 		}
-		hm := &habitatModel{
-			pkg:      pkg,
-			members:  members,
-			strain:   make(map[int]float64, mm),
-			chStrain: make(map[int][]float64, mm),
-		}
-
-		for ch := range habitatChannelNames {
-			cnt := make(map[string]int)
-			emptyCnt := 0
-			for _, i := range members {
-				f := features(i, ch)
-				if len(f) == 0 {
-					emptyCnt++
-				}
-				for _, x := range f {
-					cnt[x]++
-				}
-			}
-			// Mean surprisal per feature, so feature-rich functions are not
-			// penalized for richness. An empty feature set is scored as the
-			// empty-set event — doing nothing can be the norm — so every
-			// channel is always defined and no weight renormalization exists.
-			for _, i := range members {
-				f := features(i, ch)
-				var e float64
-				if len(f) == 0 {
-					e = -math.Log(float64(emptyCnt) / float64(mm))
-				} else {
-					for _, x := range f { // sorted: fixed float order
-						e += -math.Log(float64(cnt[x]) / float64(mm))
-					}
-					e /= float64(len(f))
-				}
-				hm.chStrain[i] = append(hm.chStrain[i], e)
-			}
-		}
-
-		strains := make([]float64, 0, mm)
-		for _, i := range members {
-			var total float64
-			for ch := range habitatChannelNames {
-				total += float64(habitatChannelWeightPct[ch]) * hm.chStrain[i][ch]
-			}
-			total /= 100
-			hm.strain[i] = total
-			strains = append(strains, total)
-		}
-		sort.Float64s(strains)
-		if mm%2 == 1 {
-			hm.temperature = strains[mm/2]
-		} else {
-			hm.temperature = (strains[mm/2-1] + strains[mm/2]) / 2
-		}
-
-		var fitSum float64
-		for _, i := range members {
-			fitSum += fitOf(hm.strain[i], hm.temperature)
-			if misfitOf(hm.strain[i], hm.temperature, opt.MisfitFactor) {
-				m.stats.HabitatMisfits++
-			}
+		for _, i := range hm.members {
 			m.habitatByUnit[i] = hm
 		}
-		hm.norm = fitSum / float64(mm)
-
 		m.habitats[pkg] = hm
 		m.stats.HabitatsModeled++
+	}
+	for _, key := range sortedCountKeysInt(bySub) {
+		hm := buildHabitatModel(key, bySub[key], features, opt)
+		if hm == nil {
+			continue
+		}
+		for _, i := range hm.members {
+			m.subsysByUnit[i] = hm
+		}
+		m.subsystems[key] = hm
+		m.stats.SubsystemsModeled++
+	}
+
+	// Misfit accounting after both partitions exist: a package misfit is
+	// confirmed unless a modeled subsystem says it fits there.
+	for _, pkg := range sortedHabitatKeys(m.habitats) {
+		hm := m.habitats[pkg]
+		for _, i := range hm.members {
+			if !misfitOf(hm.strain[i], hm.temperature, opt.MisfitFactor) {
+				continue
+			}
+			if sub := m.subsysByUnit[i]; sub != nil && !misfitOf(sub.strain[i], sub.temperature, opt.MisfitFactor) {
+				m.stats.MisfitsExcused++
+				continue
+			}
+			m.stats.HabitatMisfits++
+		}
 	}
 
 	// Superlatives for the stderr summary: strict comparisons over
@@ -164,6 +145,106 @@ func buildHabitats(m *Model, units []parser.CodeUnit, docs []concepter.ConceptDo
 			m.stats.MostDiverseHabitat, m.stats.MostDiverseNorm = pkg, norm
 		}
 	}
+}
+
+// buildHabitatModel models one habitat — any group of members, whatever
+// partition produced it — or returns nil below the member floor. It writes
+// no statistics; the caller decides what the model means.
+func buildHabitatModel(key string, members []int, features func(i, ch int) []string, opt Options) *habitatModel {
+	mm := len(members)
+	if mm < opt.MinHabitatMembers {
+		return nil
+	}
+	hm := &habitatModel{
+		pkg:      key,
+		members:  members,
+		strain:   make(map[int]float64, mm),
+		chStrain: make(map[int][]float64, mm),
+	}
+
+	for ch := range habitatChannelNames {
+		cnt := make(map[string]int)
+		emptyCnt := 0
+		for _, i := range members {
+			f := features(i, ch)
+			if len(f) == 0 {
+				emptyCnt++
+			}
+			for _, x := range f {
+				cnt[x]++
+			}
+		}
+		// Mean surprisal per feature, so feature-rich functions are not
+		// penalized for richness. An empty feature set is scored as the
+		// empty-set event — doing nothing can be the norm — so every
+		// channel is always defined and no weight renormalization exists.
+		for _, i := range members {
+			f := features(i, ch)
+			var e float64
+			if len(f) == 0 {
+				e = -math.Log(float64(emptyCnt) / float64(mm))
+			} else {
+				for _, x := range f { // sorted: fixed float order
+					e += -math.Log(float64(cnt[x]) / float64(mm))
+				}
+				e /= float64(len(f))
+			}
+			hm.chStrain[i] = append(hm.chStrain[i], e)
+		}
+	}
+
+	strains := make([]float64, 0, mm)
+	for _, i := range members {
+		var total float64
+		for ch := range habitatChannelNames {
+			total += float64(habitatChannelWeightPct[ch]) * hm.chStrain[i][ch]
+		}
+		total /= 100
+		hm.strain[i] = total
+		strains = append(strains, total)
+	}
+	sort.Float64s(strains)
+	if mm%2 == 1 {
+		hm.temperature = strains[mm/2]
+	} else {
+		hm.temperature = (strains[mm/2-1] + strains[mm/2]) / 2
+	}
+
+	var fitSum float64
+	for _, i := range members {
+		fitSum += fitOf(hm.strain[i], hm.temperature)
+	}
+	hm.norm = fitSum / float64(mm)
+	return hm
+}
+
+// subsystemKey names the subsystem a file belongs to: the parent of its
+// directory, slash-separated and relative to root, with a trailing slash
+// ("tpl/", "internal/"). A file whose directory sits directly under the root
+// has no parent to roll into and returns "", as does anything root cannot
+// explain. On a repo whose packages all live under one umbrella such as
+// internal/, the subsystem is that umbrella — crude, and documented.
+func subsystemKey(root, file string) string {
+	if root == "" || file == "" {
+		return ""
+	}
+	rel, err := filepath.Rel(root, file)
+	if err != nil {
+		return ""
+	}
+	rel = filepath.ToSlash(rel)
+	if strings.HasPrefix(rel, "../") || rel == ".." {
+		return ""
+	}
+	dir := path.Dir(rel)
+	if dir == "." {
+		return ""
+	}
+	parent := path.Dir(dir)
+	if parent == "." {
+		return ""
+	}
+	return parent + "/"
 }
 
 // fitOf is the excess-energy Boltzmann factor: strain at or below the
@@ -240,13 +321,39 @@ func (m *Model) HabitatNorm(pkg string) (float64, bool) {
 	return hm.norm, true
 }
 
-// Misfit reports whether unit idx is notably out of place in its package.
+// Misfit reports whether unit idx is notably out of place where it lives:
+// a misfit in its package and, when its subsystem is modeled, a misfit there
+// too. Alien at every level that can judge it.
 func (m *Model) Misfit(idx int) bool {
+	if !m.PackageMisfit(idx) {
+		return false
+	}
+	sub := m.subsysByUnit[idx]
+	if sub == nil {
+		return true
+	}
+	return misfitOf(sub.strain[idx], sub.temperature, m.opt.MisfitFactor)
+}
+
+// PackageMisfit is the package-level rule alone, before any subsystem can
+// excuse it.
+func (m *Model) PackageMisfit(idx int) bool {
 	hm := m.habitatByUnit[idx]
 	if hm == nil {
 		return false
 	}
 	return misfitOf(hm.strain[idx], hm.temperature, m.opt.MisfitFactor)
+}
+
+// SubsystemFit reports unit idx's subsystem and its fit there, in [0,1]. ok
+// is false when no subsystem is modeled for the unit (no Root, a top-level
+// package, or too few members).
+func (m *Model) SubsystemFit(idx int) (key string, fit float64, ok bool) {
+	sub := m.subsysByUnit[idx]
+	if sub == nil {
+		return "", 0, false
+	}
+	return sub.pkg, fitOf(sub.strain[idx], sub.temperature), true
 }
 
 // ChannelSurprise returns the per-channel strain behind HabitatStrain, in

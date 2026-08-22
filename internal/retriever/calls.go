@@ -25,6 +25,7 @@ type callIndex struct {
 	idf       map[string]float64 // ln(nUnits / df) for surviving tokens
 	postings  map[string][]int   // surviving token → unit indices, ascending
 	energy    []float64          // per unit: Σ idf over surviving tokens (informative call energy)
+	cap       int                // the df cap actually applied
 }
 
 func buildCallIndex(units []parser.CodeUnit, g *concepter.Graph, opt Options) *callIndex {
@@ -45,10 +46,11 @@ func buildCallIndex(units []parser.CodeUnit, g *concepter.Graph, opt Options) *c
 		}
 	}
 
+	x.cap, _ = effectiveCap(opt.MaxCallDF, len(units), opt.MinIDF)
 	for i := range units {
 		var surv []string
 		for _, t := range tokens[i] {
-			if n := df[t]; n >= 2 && n <= opt.MaxCallDF {
+			if n := df[t]; n >= 2 && n <= x.cap {
 				surv = append(surv, t)
 				x.postings[t] = append(x.postings[t], i)
 			}
@@ -56,7 +58,7 @@ func buildCallIndex(units []parser.CodeUnit, g *concepter.Graph, opt Options) *c
 		x.surviving[i] = surv
 	}
 	for t, n := range df {
-		if n >= 2 && n <= opt.MaxCallDF {
+		if n >= 2 && n <= x.cap {
 			x.idf[t] = math.Log(float64(len(units)) / float64(n))
 		}
 	}
