@@ -119,6 +119,10 @@ type PracticeFeature struct {
 	// members. P is kept for the bar, which needs the fraction.
 	Count int
 	P     float64
+	// Lift is how much more this concept's members carry the feature than the
+	// corpus at large does. It is what separates house style from the ambient
+	// properties of Go — a return in every member is lift 1 and says nothing.
+	Lift float64
 }
 
 // AssocRow is one corpus association: two features that co-occur far more, or

@@ -59,9 +59,11 @@ func practiceConcepts(w io.Writer, ov *Overview) {
 		return
 	}
 	fmt.Fprintf(w, "### How this codebase writes each concept\n\n")
-	fmt.Fprintf(w, "Of the functions carrying each tag, how many do each thing. Weights are how much "+
-		"a channel counts toward whether a member looks normal — calls 40, control flow 20, "+
-		"co-occurring tags 15, role 15, package 10.\n\n")
+	fmt.Fprintf(w, "Only what is **distinctive**. A feature earns a row by being carried by this "+
+		"concept's members at least twice as often as by the corpus at large — nearly every Go "+
+		"function has a `return` and an `if`, so prevalence alone would describe the language "+
+		"rather than this codebase. Weights are how much a channel counts toward whether a member "+
+		"looks normal — calls 40, control flow 20, co-occurring tags 15, role 15, package 10.\n\n")
 
 	shown := ov.Practice
 	if len(shown) > maxPractice {
@@ -69,15 +71,23 @@ func practiceConcepts(w io.Writer, ov *Overview) {
 	}
 	for _, p := range shown {
 		fmt.Fprintf(w, "**`%s`** — %s\n\n", mdEscape(p.Tag), plural(p.Members, "function"))
-		fmt.Fprintf(w, "| Channel | Feature | | Members |\n|---|---|---|---|\n")
+		if len(p.Channels) == 0 {
+			// Not an omission — a result. A concept whose members do nothing
+			// the rest of the corpus does not is a tag without a practice
+			// behind it, and dropping it silently would hide that.
+			fmt.Fprintf(w, "Nothing distinctive: its members do what the rest of the corpus does. "+
+				"The tag groups them; a shared way of writing them does not.\n\n")
+			continue
+		}
+		fmt.Fprintf(w, "| Channel | Feature | | Members | vs corpus |\n|---|---|---|---|---|\n")
 		for _, ch := range p.Channels {
 			for i, f := range ch.Features {
 				channel := ""
 				if i == 0 {
 					channel = fmt.Sprintf("%s ×%d", ch.Name, ch.Weight)
 				}
-				fmt.Fprintf(w, "| %s | `%s` | %s | %d of %d |\n",
-					channel, mdEscape(f.Name), bar(f.P), f.Count, p.Members)
+				fmt.Fprintf(w, "| %s | `%s` | %s | %d of %d | %s |\n",
+					channel, mdEscape(f.Name), bar(f.P), f.Count, p.Members, lift(f.Lift))
 			}
 		}
 		fmt.Fprintln(w)

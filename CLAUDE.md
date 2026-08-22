@@ -762,8 +762,22 @@ contains, from the two models that had no caller outside their own tests:
 
 - **How each concept is written here** — the prototype as a table of counts with a proportion bar,
   never percentages: a concept qualifies at five members, and "83%" of six is more digits than
-  evidence where "5 of 6" is what was counted. Features below half the members are dropped — below
-  that it is one person's habit, not house style, and the calls channel has a long tail.
+  evidence where "5 of 6" is what was counted.
+
+  **Prevalence alone is not house style, and filtering on it produced a section that said nothing.**
+  Nearly every Go function has a `return` and an `if`, so an unfiltered prototype reported "533 of
+  533 error_wrapping functions return" — a fact about the language. A feature now earns its row by
+  **lift over the corpus base rate**: carried by the concept's members at least twice as often as
+  by the corpus at large, the same `ln 2` the ecology uses to decide an association is beyond
+  chance. `culture.BaseRate(channel, feature)` supplies the denominator, counted in `Build` from
+  the same `unitFeatures` the prototypes use, so the two cannot drift. The presence floor dropped
+  to 0.25 in exchange: a feature in a third of a concept's members that is nearly absent elsewhere
+  says more than one in two thirds that is everywhere. Rows sort by lift, not prevalence.
+
+  On moby this is the difference between `return` and `github.com/pkg/errors.Wrap` at 14× — the
+  second is a real fact about how that codebase wraps errors. A concept with **no** distinctive
+  feature says so explicitly rather than rendering an empty table: the tag groups its members, but
+  no shared way of writing them exists, and that is a finding about the tag.
 - **Which concepts share a function** — the tag~tag grid, and the one table in the report that is
   **not** a sample: a fixed concept vocabulary means it is bounded by construction, so it shows every
   cell including the ordinary ones. `never` cells are the layering signal. An all-blank grid
@@ -1158,6 +1172,12 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   predictable each practice is across members, not how many distinct whole realizations exist.
   Habitat fit and misfit notes are corpus-relative like roles and typicality — a function's fit
   can move when unrelated code shifts its package.
+- **A distinctive call token can carry a false name.** The call channel inherits the resolver's
+  imprecision: a variable-receiver method call resolves only when the method name is unique
+  corpus-wide, so on moby every `mu.Unlock()` resolves to `sdjournal.noCopy.Unlock`, the one
+  declaration of that name. The lift is real — concurrency functions do unlock far more than the
+  corpus does — but the label names one arbitrary declaration rather than the practice. Fixing it
+  needs `go/types`; the practice section is now the most visible place this shows.
 - **The practice section is bounded by row count, not by importance.** Six concepts, eight
   associations per direction, ten drifting functions — and on prometheus that is 8 of 371
   associations and 10 of 32 unusual realizations. Strongest-first is a good proxy and not the same

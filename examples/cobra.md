@@ -9,7 +9,7 @@ CLI framework; one dominant type with a long method set, plus shell-completion g
 | Corpus | [cobra](https://github.com/spf13/cobra) |
 | Pinned at | `v1.10.2` (`88b30ab89da2d0d0abb153818746c5a2d30eccec`) |
 | Project since | 2015 |
-| doppel | `043c993` |
+| doppel | `e53d59d` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -150,27 +150,31 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 ### How this codebase writes each concept
 
-Of the functions carrying each tag, how many do each thing. Weights are how much a channel counts toward whether a member looks normal — calls 40, control flow 20, co-occurring tags 15, role 15, package 10.
+Only what is **distinctive**. A feature earns a row by being carried by this concept's members at least twice as often as by the corpus at large — nearly every Go function has a `return` and an `if`, so prevalence alone would describe the language rather than this codebase. Weights are how much a channel counts toward whether a member looks normal — calls 40, control flow 20, co-occurring tags 15, role 15, package 10.
 
 **`validation`** — 12 functions
 
-| Channel | Feature | | Members |
-|---|---|---|---|
-| flow ×20 | `if` | `████████··` | 10 of 12 |
-|  | `return` | `███████···` | 8 of 12 |
-|  | `range` | `█████·····` | 6 of 12 |
-| role ×15 | `orchestrator` | `█████·····` | 6 of 12 |
-| package ×10 | `cobra` | `██████████` | 12 of 12 |
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| calls ×40 | `cobra.sortedKeys` | `███·······` | 3 of 12 | 22× |
+|  | `sort.Strings` | `███·······` | 3 of 12 | 9.6× |
+|  | `strings.Join` | `███·······` | 3 of 12 | 8.4× |
+|  | `fmt.Errorf` | `████······` | 5 of 12 | 7.5× |
+|  | `cobra.*Command.Flags` | `████······` | 5 of 12 | 4.0× |
+| flow ×20 | `range` | `█████·····` | 6 of 12 | 2.4× |
+| role ×15 | `orchestrator` | `█████·····` | 6 of 12 | 2.1× |
 
 **`file_io`** — 10 functions
 
-| Channel | Feature | | Members |
-|---|---|---|---|
-| calls ×40 | `os.Create` | `█████████·` | 9 of 10 |
-| flow ×20 | `defer` | `██████████` | 10 of 10 |
-|  | `if` | `██████████` | 10 of 10 |
-|  | `return` | `█████████·` | 9 of 10 |
-| package ×10 | `cobra` | `██████····` | 6 of 10 |
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| calls ×40 | `os.Create` | `█████████·` | 9 of 10 | 27× |
+|  | `path/filepath.Join` | `████······` | 4 of 10 | 27× |
+|  | `io.WriteString` | `███·······` | 3 of 10 | 27× |
+|  | `cobra.*Command.IsAdditionalHelpTopicCommand` | `████······` | 4 of 10 | 9.8× |
+|  | `strings.ReplaceAll` | `████······` | 4 of 10 | 9.0× |
+| flow ×20 | `defer` | `██████████` | 10 of 10 | 19× |
+| package ×10 | `doc` | `████······` | 4 of 10 | 3.6× |
 
 ### What travels with what
 

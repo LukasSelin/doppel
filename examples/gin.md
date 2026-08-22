@@ -9,7 +9,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `043c993` |
+| doppel | `e53d59d` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -158,51 +158,47 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 ### How this codebase writes each concept
 
-Of the functions carrying each tag, how many do each thing. Weights are how much a channel counts toward whether a member looks normal — calls 40, control flow 20, co-occurring tags 15, role 15, package 10.
+Only what is **distinctive**. A feature earns a row by being carried by this concept's members at least twice as often as by the corpus at large — nearly every Go function has a `return` and an `if`, so prevalence alone would describe the language rather than this codebase. Weights are how much a channel counts toward whether a member looks normal — calls 40, control flow 20, co-occurring tags 15, role 15, package 10.
 
 **`serialization`** — 28 functions
 
-| Channel | Feature | | Members |
-|---|---|---|---|
-| flow ×20 | `return` | `██████████` | 28 of 28 |
-| role ×15 | `leaf` | `█████████·` | 26 of 28 |
-| package ×10 | `json` | `███████···` | 20 of 28 |
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| package ×10 | `json` | `███████···` | 20 of 28 | 15× |
 
 **`validation`** — 24 functions
 
-| Channel | Feature | | Members |
-|---|---|---|---|
-| flow ×20 | `return` | `██████████` | 23 of 24 |
-|  | `if` | `█████████·` | 21 of 24 |
-| role ×15 | `leaf` | `█████·····` | 12 of 24 |
-| package ×10 | `binding` | `████████··` | 18 of 24 |
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| flow ×20 | `if` | `█████████·` | 21 of 24 | 2.4× |
+| role ×15 | `utility` | `███·······` | 6 of 24 | 2.0× |
+| package ×10 | `binding` | `████████··` | 18 of 24 | 4.7× |
 
 **`file_io`** — 9 functions
 
-| Channel | Feature | | Members |
-|---|---|---|---|
-| calls ×40 | `io.ReadAll` | `██████····` | 5 of 9 |
-| flow ×20 | `if` | `██████████` | 9 of 9 |
-|  | `return` | `██████████` | 9 of 9 |
-| role ×15 | `leaf` | `████████··` | 7 of 9 |
-| package ×10 | `gin` | `██████····` | 5 of 9 |
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| calls ×40 | `io.ReadAll` | `██████····` | 5 of 9 | 55× |
+| flow ×20 | `defer` | `███·······` | 3 of 9 | 13× |
+|  | `if` | `██████████` | 9 of 9 | 2.7× |
+| package ×10 | `binding` | `███·······` | 3 of 9 | 2.1× |
 
 **`caching`** — 7 functions
 
-| Channel | Feature | | Members |
-|---|---|---|---|
-| flow ×20 | `return` | `██████····` | 4 of 7 |
-| role ×15 | `utility` | `██████····` | 4 of 7 |
-| package ×10 | `gin` | `██████████` | 7 of 7 |
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| calls ×40 | `gin.*Context.initFormCache` | `███·······` | 2 of 7 | 71× |
+|  | `gin.*Context.initQueryCache` | `███·······` | 2 of 7 | 71× |
+|  | `gin.getMapFromFormData` | `███·······` | 2 of 7 | 71× |
+| role ×15 | `utility` | `██████····` | 4 of 7 | 4.6× |
+|  | `orchestrator` | `███·······` | 2 of 7 | 2.5× |
 
 **`concurrency`** — 7 functions
 
-| Channel | Feature | | Members |
-|---|---|---|---|
-| flow ×20 | `if` | `███████···` | 5 of 7 |
-|  | `return` | `██████····` | 4 of 7 |
-| role ×15 | `leaf` | `██████····` | 4 of 7 |
-| package ×10 | `gin` | `██████████` | 7 of 7 |
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| flow ×20 | `defer` | `███·······` | 2 of 7 | 11× |
+| role ×15 | `utility` | `███·······` | 2 of 7 | 2.3× |
 
 ### What travels with what
 

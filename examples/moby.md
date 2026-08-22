@@ -9,7 +9,7 @@ container engine; a decade of accretion across daemon, API, and plugin layers
 | Corpus | [moby](https://github.com/moby/moby) |
 | Pinned at | `v28.5.2` (`89c5e8fd66634b6128fc4c0e6f1236e2540e46e0`) |
 | Project since | 2013 |
-| doppel | `043c993` |
+| doppel | `e53d59d` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -195,52 +195,56 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 ### How this codebase writes each concept
 
-Of the functions carrying each tag, how many do each thing. Weights are how much a channel counts toward whether a member looks normal — calls 40, control flow 20, co-occurring tags 15, role 15, package 10.
+Only what is **distinctive**. A feature earns a row by being carried by this concept's members at least twice as often as by the corpus at large — nearly every Go function has a `return` and an `if`, so prevalence alone would describe the language rather than this codebase. Weights are how much a channel counts toward whether a member looks normal — calls 40, control flow 20, co-occurring tags 15, role 15, package 10.
 
 **`concurrency`** — 932 functions
 
-| Channel | Feature | | Members |
-|---|---|---|---|
-| calls ×40 | `sdjournal.noCopy.Unlock` | `███████···` | 635 of 932 |
-| flow ×20 | `return` | `████████··` | 766 of 932 |
-|  | `if` | `███████···` | 670 of 932 |
-|  | `defer` | `██████····` | 530 of 932 |
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| calls ×40 | `sdjournal.noCopy.Unlock` | `███████···` | 635 of 932 | 7.9× |
+|  | `github.com/containerd/log.G` | `███·······` | 242 of 932 | 2.3× |
+| flow ×20 | `defer` | `██████····` | 530 of 932 | 4.2× |
 
 **`error_wrapping`** — 533 functions
 
-| Channel | Feature | | Members |
-|---|---|---|---|
-| flow ×20 | `return` | `██████████` | 533 of 533 |
-|  | `if` | `██████████` | 525 of 533 |
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| calls ×40 | `github.com/pkg/errors.Wrap` | `████······` | 203 of 533 | 14× |
+|  | `github.com/pkg/errors.Wrapf` | `███·······` | 174 of 533 | 14× |
+|  | `fmt.Errorf` | `████······` | 207 of 533 | 3.7× |
+| flow ×20 | `funclit` | `███·······` | 137 of 533 | 2.0× |
+| role ×15 | `orchestrator` | `█████·····` | 260 of 533 | 2.0× |
 
 **`validation`** — 410 functions
 
-| Channel | Feature | | Members |
-|---|---|---|---|
-| flow ×20 | `return` | `█████████·` | 360 of 410 |
-|  | `if` | `███████···` | 295 of 410 |
+Nothing distinctive: its members do what the rest of the corpus does. The tag groups them; a shared way of writing them does not.
 
 **`file_io`** — 352 functions
 
-| Channel | Feature | | Members |
-|---|---|---|---|
-| flow ×20 | `return` | `█████████·` | 328 of 352 |
-|  | `if` | `█████████·` | 324 of 352 |
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| calls ×40 | `path/filepath.Join` | `███·······` | 112 of 352 | 10× |
+| flow ×20 | `defer` | `████······` | 151 of 352 | 3.2× |
+|  | `funclit` | `███·······` | 99 of 352 | 2.2× |
 
 **`serialization`** — 312 functions
 
-| Channel | Feature | | Members |
-|---|---|---|---|
-| flow ×20 | `return` | `██████████` | 308 of 312 |
-|  | `if` | `█████████·` | 287 of 312 |
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| calls ×40 | `encoding/json.Marshal` | `████······` | 110 of 312 | 25× |
+|  | `encoding/json.Unmarshal` | `███·······` | 97 of 312 | 25× |
+|  | `encoding/json.NewDecoder` | `███·······` | 84 of 312 | 24× |
+| flow ×20 | `defer` | `███·······` | 107 of 312 | 2.5× |
 
 **`logging`** — 146 functions
 
-| Channel | Feature | | Members |
-|---|---|---|---|
-| flow ×20 | `if` | `█████████·` | 128 of 146 |
-|  | `return` | `████████··` | 118 of 146 |
-| role ×15 | `orchestrator` | `██████····` | 90 of 146 |
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| calls ×40 | `github.com/containerd/log.G` | `███·······` | 38 of 146 | 2.3× |
+| flow ×20 | `defer` | `███·······` | 47 of 146 | 2.4× |
+|  | `funclit` | `███·······` | 39 of 146 | 2.1× |
+| cotags ×15 | `concurrency` | `███·······` | 45 of 146 | 2.5× |
+| role ×15 | `orchestrator` | `██████····` | 90 of 146 | 2.6× |
 
 _6 further concepts are modeled and not described._
 

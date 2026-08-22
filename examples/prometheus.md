@@ -9,7 +9,7 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `043c993` |
+| doppel | `e53d59d` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -195,55 +195,66 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 ### How this codebase writes each concept
 
-Of the functions carrying each tag, how many do each thing. Weights are how much a channel counts toward whether a member looks normal — calls 40, control flow 20, co-occurring tags 15, role 15, package 10.
+Only what is **distinctive**. A feature earns a row by being carried by this concept's members at least twice as often as by the corpus at large — nearly every Go function has a `return` and an `if`, so prevalence alone would describe the language rather than this codebase. Weights are how much a channel counts toward whether a member looks normal — calls 40, control flow 20, co-occurring tags 15, role 15, package 10.
 
 **`concurrency`** — 436 functions
 
-| Channel | Feature | | Members |
-|---|---|---|---|
-| calls ×40 | `tsdbutil.*DirLocker.Lock` | `██████····` | 279 of 436 |
-| flow ×20 | `return` | `████████··` | 337 of 436 |
-|  | `if` | `███████···` | 290 of 436 |
-|  | `defer` | `██████····` | 262 of 436 |
-| role ×15 | `orchestrator` | `█████·····` | 218 of 436 |
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| calls ×40 | `tsdbutil.*DirLocker.Lock` | `██████····` | 279 of 436 | 12× |
+| flow ×20 | `defer` | `██████····` | 262 of 436 | 7.2× |
+|  | `range` | `████······` | 165 of 436 | 2.0× |
+| role ×15 | `orchestrator` | `█████·····` | 218 of 436 | 2.4× |
 
 **`error_wrapping`** — 352 functions
 
-| Channel | Feature | | Members |
-|---|---|---|---|
-| calls ×40 | `fmt.Errorf` | `██████████` | 352 of 352 |
-| flow ×20 | `return` | `██████████` | 352 of 352 |
-|  | `if` | `█████████·` | 331 of 352 |
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| calls ×40 | `fmt.Errorf` | `██████████` | 352 of 352 | 9.5× |
+| flow ×20 | `funclit` | `███·······` | 103 of 352 | 3.2× |
+|  | `range` | `█████·····` | 160 of 352 | 2.4× |
+| role ×15 | `orchestrator` | `████······` | 157 of 352 | 2.2× |
 
 **`logging`** — 250 functions
 
-| Channel | Feature | | Members |
-|---|---|---|---|
-| flow ×20 | `if` | `█████████·` | 235 of 250 |
-|  | `return` | `█████████·` | 221 of 250 |
-| role ×15 | `orchestrator` | `██████····` | 141 of 250 |
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| calls ×40 | `fmt.Errorf` | `███·······` | 79 of 250 | 3.0× |
+| flow ×20 | `defer` | `████······` | 99 of 250 | 4.8× |
+|  | `funclit` | `████······` | 95 of 250 | 4.2× |
+|  | `range` | `█████·····` | 123 of 250 | 2.6× |
+| cotags ×15 | `concurrency` | `████······` | 98 of 250 | 4.9× |
+|  | `error_wrapping` | `███·······` | 69 of 250 | 4.3× |
+| role ×15 | `orchestrator` | `██████····` | 141 of 250 | 2.7× |
 
 **`validation`** — 154 functions
 
-| Channel | Feature | | Members |
-|---|---|---|---|
-| flow ×20 | `return` | `██████████` | 153 of 154 |
-|  | `if` | `██████████` | 150 of 154 |
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| calls ×40 | `errors.New` | `███·······` | 51 of 154 | 7.7× |
+|  | `fmt.Errorf` | `████······` | 69 of 154 | 4.3× |
+|  | `tsdb.*memChunk.len` | `████······` | 65 of 154 | 2.1× |
+| flow ×20 | `if` | `██████████` | 150 of 154 | 2.0× |
 
 **`caching`** — 139 functions
 
-| Channel | Feature | | Members |
-|---|---|---|---|
-| flow ×20 | `return` | `█████████·` | 122 of 139 |
-|  | `if` | `████████··` | 107 of 139 |
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| flow ×20 | `funclit` | `████······` | 49 of 139 | 3.9× |
+| cotags ×15 | `concurrency` | `███·······` | 39 of 139 | 3.5× |
+| package ×10 | `kubernetes` | `███·······` | 42 of 139 | 14× |
 
 **`file_io`** — 128 functions
 
-| Channel | Feature | | Members |
-|---|---|---|---|
-| calls ×40 | `fmt.Errorf` | `██████····` | 73 of 128 |
-| flow ×20 | `if` | `██████████` | 125 of 128 |
-|  | `return` | `██████████` | 125 of 128 |
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| calls ×40 | `path/filepath.Join` | `███·······` | 39 of 128 | 29× |
+|  | `fmt.Errorf` | `██████····` | 73 of 128 | 5.4× |
+| flow ×20 | `defer` | `████······` | 46 of 128 | 4.3× |
+|  | `funclit` | `████······` | 45 of 128 | 3.9× |
+|  | `range` | `████······` | 57 of 128 | 2.4× |
+|  | `if` | `██████████` | 125 of 128 | 2.0× |
+| cotags ×15 | `error_wrapping` | `████······` | 54 of 128 | 6.6× |
 
 _6 further concepts are modeled and not described._
 

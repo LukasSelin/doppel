@@ -13,11 +13,11 @@ func samplePractice() *Overview {
 			Members: 6,
 			Channels: []PracticeChannel{
 				{Name: "calls", Weight: 40, Features: []PracticeFeature{
-					{Name: "tx.Commit", Count: 6, P: 1.0},
-					{Name: "tx.Rollback", Count: 5, P: 0.8333},
+					{Name: "tx.Commit", Count: 6, P: 1.0, Lift: 24.0},
+					{Name: "tx.Rollback", Count: 5, P: 0.8333, Lift: 3.4},
 				}},
 				{Name: "package", Weight: 10, Features: []PracticeFeature{
-					{Name: "store", Count: 4, P: 0.6667},
+					{Name: "store", Count: 4, P: 0.6667, Lift: 3.2},
 				}},
 			},
 		}},
@@ -58,10 +58,10 @@ func TestPrototypeRendersCountsNotPercentages(t *testing.T) {
 	PrintMarkdownPractice(&b, samplePractice())
 	out := b.String()
 
-	if !strings.Contains(out, "| calls ×40 | `tx.Commit` | `██████████` | 6 of 6 |") {
+	if !strings.Contains(out, "| calls ×40 | `tx.Commit` | `██████████` | 6 of 6 | 24× |") {
 		t.Errorf("prototype row missing or malformed:\n%s", out)
 	}
-	if !strings.Contains(out, "| `tx.Rollback` | `████████··` | 5 of 6 |") {
+	if !strings.Contains(out, "| `tx.Rollback` | `████████··` | 5 of 6 | 3.4× |") {
 		t.Errorf("bar did not track the proportion:\n%s", out)
 	}
 	if strings.Contains(out, "83%") || strings.Contains(out, "67%") {
@@ -232,5 +232,44 @@ func TestLiftKeepsADecimalUnderTen(t *testing.T) {
 	}
 	if got := lift(416.3); got != "416×" {
 		t.Errorf("lift(416.3) = %q, want 416×", got)
+	}
+}
+
+// A concept whose members do nothing the rest of the corpus does not is a
+// result, not an omission: the tag groups them, but no shared way of writing
+// them exists. Dropping it silently would hide that.
+func TestConceptWithNothingDistinctiveSaysSo(t *testing.T) {
+	ov := samplePractice()
+	ov.Practice = []ConceptPractice{{Tag: "validation", Members: 410}}
+
+	var b strings.Builder
+	PrintMarkdownPractice(&b, ov)
+	out := b.String()
+
+	if !strings.Contains(out, "**`validation`** — 410 functions") {
+		t.Errorf("concept header missing:\n%s", out)
+	}
+	if !strings.Contains(out, "Nothing distinctive: its members do what the rest of the corpus does.") {
+		t.Errorf("the empty result was not stated:\n%s", out)
+	}
+	// No table at all — an empty one reads as missing data.
+	if strings.Contains(out, "| Channel | Feature |") {
+		t.Errorf("an empty table was rendered:\n%s", out)
+	}
+}
+
+// The lift column is the whole point of the section: without it "533 of 533
+// error_wrapping functions return" reads as house style when it is a fact
+// about Go.
+func TestPrototypeShowsLiftOverTheCorpus(t *testing.T) {
+	var b strings.Builder
+	PrintMarkdownPractice(&b, samplePractice())
+	out := b.String()
+
+	if !strings.Contains(out, "| Channel | Feature | | Members | vs corpus |") {
+		t.Errorf("lift column missing from the header:\n%s", out)
+	}
+	if !strings.Contains(out, "at least twice as often as by the corpus at large") {
+		t.Errorf("the selection rule is not explained:\n%s", out)
 	}
 }

@@ -9,7 +9,7 @@ structured concurrency library; generics-heavy, one idea, written recently and a
 | Corpus | [conc](https://github.com/sourcegraph/conc) |
 | Pinned at | `v0.3.0` (`7b8c8f2875cb861bb61844c9bcaa1aed070adbd4`) |
 | Project since | 2023 |
-| doppel | `043c993` |
+| doppel | `e53d59d` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -153,16 +153,17 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 ### How this codebase writes each concept
 
-Of the functions carrying each tag, how many do each thing. Weights are how much a channel counts toward whether a member looks normal — calls 40, control flow 20, co-occurring tags 15, role 15, package 10.
+Only what is **distinctive**. A feature earns a row by being carried by this concept's members at least twice as often as by the corpus at large — nearly every Go function has a `return` and an `if`, so prevalence alone would describe the language rather than this codebase. Weights are how much a channel counts toward whether a member looks normal — calls 40, control flow 20, co-occurring tags 15, role 15, package 10.
 
 **`concurrency`** — 8 functions
 
-| Channel | Feature | | Members |
-|---|---|---|---|
-| flow ×20 | `funclit` | `██████····` | 5 of 8 |
-|  | `if` | `█████·····` | 4 of 8 |
-| role ×15 | `leaf` | `████████··` | 6 of 8 |
-| package ×10 | `pool` | `█████·····` | 4 of 8 |
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| calls ×40 | `github.com/sourcegraph/conc/internal/multierror.Join` | `███·······` | 2 of 8 | 10× |
+| flow ×20 | `funclit` | `██████····` | 5 of 8 | 3.6× |
+|  | `if` | `█████·····` | 4 of 8 | 2.7× |
+| role ×15 | `utility` | `███·······` | 2 of 8 | 2.9× |
+| package ×10 | `iter` | `███·······` | 2 of 8 | 2.2× |
 
 ---
 

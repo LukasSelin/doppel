@@ -218,6 +218,25 @@ func packageOf(u parser.CodeUnit) string {
 // are the house style and the tail is noise.
 const maxPracticeFeatures = 5
 
+// minPracticeP and minPracticeLift decide what counts as house style.
+//
+// Presence alone does not: nearly every Go function has a return and an if, so
+// a prototype unfiltered reports "533 of 533 error_wrapping functions return",
+// which is a fact about Go rather than about this codebase. A feature has to be
+// carried by a real share of the concept's members *and* carried more than the
+// corpus at large carries it.
+//
+// The lift floor mirrors the ecology's own cutoff — twice the base rate, the
+// same ln 2 that decides whether an association is worth reporting — so the two
+// halves of this section agree on what "beyond chance" means. The presence
+// floor is lower than the old half-the-members rule, because a feature in a
+// third of a concept's members that is almost absent elsewhere is a sharper
+// observation than one in two thirds that is everywhere.
+const (
+	minPracticeP    = 0.25
+	minPracticeLift = 2.0
+)
+
 // buildPractice fills in how this corpus writes things, from the two models
 // that had no caller outside their own tests.
 //
@@ -251,13 +270,13 @@ func practiceConcepts(ov *reporter.Overview, res Result) {
 		for _, ch := range proto.Channels {
 			pc := reporter.PracticeChannel{Name: ch.Name, Weight: practiceWeight(ch.Name)}
 			for _, f := range ch.Features { // sorted (P desc, Name asc) by culture
-				if len(pc.Features) == maxPracticeFeatures {
-					break
+				base, ok := res.Culture.BaseRate(ch.Name, f.Name)
+				if !ok || base <= 0 {
+					continue
 				}
-				// Below half the members it is not the house style, it is one
-				// person's habit.
-				if f.P < 0.5 {
-					break
+				lift := f.P / base
+				if f.P < minPracticeP || lift < minPracticeLift {
+					continue
 				}
 				// P is an exact k/m over the concept's members, so rounding
 				// recovers k without drift.
@@ -265,15 +284,27 @@ func practiceConcepts(ov *reporter.Overview, res Result) {
 					Name:  f.Name,
 					Count: int(math.Round(f.P * float64(row.Count))),
 					P:     f.P,
+					Lift:  lift,
 				})
+			}
+			// Most distinctive first: the ordering culture supplies is by
+			// prevalence, which is the thing the base rate exists to discount.
+			sort.SliceStable(pc.Features, func(i, j int) bool {
+				if pc.Features[i].Lift != pc.Features[j].Lift {
+					return pc.Features[i].Lift > pc.Features[j].Lift
+				}
+				return pc.Features[i].Name < pc.Features[j].Name
+			})
+			if len(pc.Features) > maxPracticeFeatures {
+				pc.Features = pc.Features[:maxPracticeFeatures]
 			}
 			if len(pc.Features) > 0 {
 				cp.Channels = append(cp.Channels, pc)
 			}
 		}
-		if len(cp.Channels) > 0 {
-			ov.Practice = append(ov.Practice, cp)
-		}
+		// A concept whose members do nothing the rest of the corpus does not is
+		// itself the finding, and a silently omitted concept cannot say it.
+		ov.Practice = append(ov.Practice, cp)
 	}
 }
 
