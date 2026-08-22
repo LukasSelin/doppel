@@ -329,8 +329,10 @@ tag~role, tag~call (resolved call tokens, df ∈ [2, 50]). `PMI = ln(N·c(a,b)/(
 Reported only when informative: positives need `count >= 3` and `PMI >= ln 2`; negatives need
 `expected >= 3` and `count <= expected/2` (count 0 stores `PMI = -Inf`, rendered as "never" if
 ever rendered). Ordering: positives by PMI desc, negatives by PMI asc, ties on (Kind, A, B).
-**Associations are computed and pin-tested but deliberately unsurfaced per-pair** — an
-association annotates the corpus, not a pair; a future `doppel culture` command is their home.
+**Associations are still deliberately unsurfaced per-pair** — an association annotates the corpus,
+not a pair. That argument is what decided where they *do* belong: the markdown report's **Local
+practice** section, which is corpus-level by construction. A `doppel culture` command would be the
+next home for the full list, which the report bounds.
 
 **Prototypes + typicality** — for each tag with **≥ 5 members**, five feature channels with
 integer-percent weights (sum pinned at exactly 100): calls 40 (resolved call tokens, no df cap —
@@ -755,8 +757,39 @@ Rules that hold it together:
   has 168 habitats); family diagrams cap at 8 members, because the picture must draw every edge to
   show the clique property and 55 members is 1485 edges.
 
-PMI associations, per-concept prototypes and the derived `RoleThresholds` stay unsurfaced — see the
-rough edges.
+A second section, **Local practice**, describes how the corpus *writes* things rather than what it
+contains, from the two models that had no caller outside their own tests:
+
+- **How each concept is written here** — the prototype as a table of counts with a proportion bar,
+  never percentages: a concept qualifies at five members, and "83%" of six is more digits than
+  evidence where "5 of 6" is what was counted. Features below half the members are dropped — below
+  that it is one person's habit, not house style, and the calls channel has a long tail.
+- **Which concepts share a function** — the tag~tag grid, and the one table in the report that is
+  **not** a sample: nine concrete concepts means it is bounded by construction, so it shows every
+  cell including the ordinary ones. `never` cells are the layering signal. An all-blank grid
+  renders nothing, which is what doppel's own corpus produces.
+- **What travels with what** — the PMI ecology, both directions, **grouped by kind**. Grouping is
+  not cosmetic: there are far more call tokens than concepts, so on one shared list the tag~call
+  rows crowd out every tag~tag row — this report showed zero concept-to-concept associations until
+  each kind got its own budget. Each line leads with the conditional rather than the lift, because
+  "13 of 15 `http_call` functions also call `NewRequest`" is what a reader acts on where "416×
+  chance" only says why it is worth printing. For a tag~tag pair the *smaller* population is the
+  denominator: "16 of 33 retry" beats "16 of 436 concurrency" for the same fact. Count 0 has no
+  finite ratio and renders as the word, honouring `ecology.go`'s own contract.
+- **Ranking within a kind is lift weighted by evidence** (`ln(lift) · ln(1+count)`), not lift
+  alone, which put a 126× finding on three functions above a 31× one on six. Presentation only —
+  `culture`'s own ordering contract is untouched — and stated in the section, because a list whose
+  displayed lifts are not monotonic otherwise reads as a bug.
+- **Functions drifting from their own concept** — named, not counted, which closes a gap the tool
+  carried: a drifting function in a reported pair got a culture note, and one in *no* pair was a
+  stderr tally and nothing else. Those are the more interesting ones, so they sort first and carry
+  a marker. The marker column is emitted only when something is marked.
+
+`practiceWeight` in `cmd/overview.go` duplicates the four prototype channel weights, which live
+unexported in `culture`. Four integers were cheaper than widening that package's API — but the
+table has to track it.
+
+The derived `RoleThresholds`, computed in `mapper` and discarded, stay unsurfaced.
 
 ## Configuration
 
@@ -1125,11 +1158,12 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   predictable each practice is across members, not how many distinct whole realizations exist.
   Habitat fit and misfit notes are corpus-relative like roles and typicality — a function's fit
   can move when unrelated code shifts its package.
-- **Culture associations are computed but unsurfaced.** The ecology model (PMI associations) is
-  built, tested, and reported only as a stderr count — per-pair surfacing was deliberately
-  deferred because an association annotates the corpus, not a pair. A `doppel culture` command is
-  the natural next home. Relatedly, an unusual realization on a function that appears in *no*
-  retrieved pair is invisible in the report (stderr count only).
+- **The practice section is bounded by row count, not by importance.** Six concepts, eight
+  associations per direction, ten drifting functions — and on prometheus that is 8 of 371
+  associations and 10 of 32 unusual realizations. Strongest-first is a good proxy and not the same
+  thing as most-relevant: a weak association between two subsystems that should never touch may
+  matter more than a strong one inside a package. The full lists remain reachable only through the
+  library.
 - **Typicality is corpus-relative, like roles.** A function's typicality — and whether a pair
   carries a culture note — can change when unrelated code shifts the concept's membership or the
   corpus norm. That is what "normal for this repo" means; same caveat as the role thresholds.

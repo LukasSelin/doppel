@@ -103,6 +103,7 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 	// The corpus before the findings: a reader weighing a list of pairs needs to
 	// know what kind of codebase produced it.
 	PrintMarkdownOverview(w, meta.Overview)
+	PrintMarkdownPractice(w, meta.Overview)
 
 	if len(pairs) == 0 {
 		fmt.Fprintf(w, "_No similar function pairs found._\n")

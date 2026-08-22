@@ -257,6 +257,23 @@ That last one matters more than it sounds. Recall is bounded by the three channe
 no rare structure, no concept and no resolved call is never compared, however alike it is. A reader
 weighing the list is entitled to know which channel did the work.
 
+Then a second section describes local practice — not what the codebase contains, but how it writes
+things. Three findings, all learned from the corpus rather than imposed on it:
+
+**What a concept looks like here.** For every concept with enough members to model, the fraction of
+them doing each thing: which calls, which control flow, which package. "A `transaction` in this
+corpus calls `tx.Commit` in every case and defers a `Rollback` in five of six" is house style
+stated as a measurement.
+
+**What travels with what.** Which concepts, roles and calls co-occur far more — or far less — than
+chance. The negative direction is often the sharper finding, because "these two never appear
+together here" says something about how the system is layered that no positive association does.
+
+**Who is drifting.** Functions that carry a concept and then realize it unlike every other member.
+The ones that appear in no reported pair come first: a function that drifts *and* has a
+near-duplicate is usually one half of a copy, while a function that drifts alone is a decision
+somebody made on their own, and nothing else in the report will mention it.
+
 The stdout report is unchanged — a terminal cannot draw a diagram — and so is `--format json`,
 which is a snapshot with a documented shape.
 

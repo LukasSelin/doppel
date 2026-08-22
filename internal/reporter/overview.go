@@ -55,6 +55,98 @@ type Overview struct {
 	Links     []PackageLink // merge-worthy duplication between packages
 	LinksMore int
 	SelfDup   map[string]int // package -> merge-worthy pairs wholly inside it
+
+	// Local practice: not what the corpus contains, but how it writes things.
+	Practice  []ConceptPractice // how each modeled concept is realized here
+	Matrix    *ConceptMatrix    // concept-to-concept co-occurrence, whole and bounded
+	Travels   []AssocGroup      // co-occur beyond chance, grouped by kind
+	Avoids    []AssocGroup      // co-occur far less than chance, grouped by kind
+	Drift     []DriftRow        // functions realizing a concept unlike their peers
+	DriftMore int
+}
+
+// AssocGroup is one kind of association, bounded on its own.
+//
+// Grouping is not cosmetic. There are far more call tokens than concepts, so on
+// a single PMI-ordered list the tag~call rows crowd out every tag~tag row —
+// doppel's own report showed zero concept-to-concept associations, not because
+// it has none but because none reached the cut. Each kind now gets its own
+// budget.
+type AssocGroup struct {
+	Kind string // tag~tag, tag~role, tag~call
+	Rows []AssocRow
+	More int
+}
+
+// ConceptMatrix is the whole concept-to-concept co-occurrence structure.
+//
+// It is bounded by construction — the vocabulary has nine concrete concepts and
+// a corpus uses some subset — so unlike every other list here it can show
+// everything rather than a strongest-first sample. Cells[i][j] is meaningful
+// for i > j: the lower triangle, since co-occurrence is symmetric.
+type ConceptMatrix struct {
+	Tags  []string
+	Cells [][]string // "", "+", "++", "-", "never"
+}
+
+// ConceptPractice is how this corpus normally realizes one concept — the
+// prototype, rendered. It is the most direct answer doppel can give to "what
+// does a transaction look like around here".
+type ConceptPractice struct {
+	Tag      string
+	Members  int
+	Channels []PracticeChannel
+}
+
+// PracticeChannel is one evidence channel of a prototype, with the weight it
+// carries so a reader knows which lines to believe.
+type PracticeChannel struct {
+	Name     string
+	Weight   int // percent of the typicality score
+	Features []PracticeFeature
+}
+
+// PracticeFeature is one thing members of a concept do, and how many of them
+// do it.
+type PracticeFeature struct {
+	Name string
+	// Count over P: "4 of 6" is honest where "67%" is false precision on six
+	// members. P is kept for the bar, which needs the fraction.
+	Count int
+	P     float64
+}
+
+// AssocRow is one corpus association: two features that co-occur far more, or
+// far less, than chance would give.
+type AssocRow struct {
+	Kind  string // tag~tag, tag~role, tag~call
+	A, B  string
+	Count int
+	// AOf is how many functions carry A at all, which turns a lift into a
+	// conditional: "13 of 14 http_call functions call NewRequest" is what a
+	// reader acts on, where "416x chance" only says why it is notable.
+	// A is always the tag — see culture's buildAssociations.
+	AOf int
+	// BOf is B's own population when B is a tag too. For a tag~tag pair either
+	// side could be the denominator, and the smaller one is the sharper
+	// statement: "16 of 33 retry functions" beats "16 of 436 concurrency
+	// functions" for the same fact. Zero when B is a role or a call token.
+	BOf     int
+	Ratio   float64 // exp(PMI): how many times chance
+	Never   bool    // the two never co-occur here at all
+	Missing float64 // expected count, for the negative case
+}
+
+// DriftRow is one function that carries a concept but realizes it unlike
+// every other member.
+type DriftRow struct {
+	Name       string
+	File       string
+	Line       int
+	Tag        string
+	Typicality float64
+	Median     float64
+	Unpaired   bool // in no reported pair: drift with no duplicate to explain it
 }
 
 // TagRow is one concept the corpus uses, with how settled its practice is.
