@@ -63,6 +63,15 @@ func parseGoSource(path string, src []byte) ([]CodeUnit, error) {
 		// internal/canon proves it over every function in this repo.
 		canonical := canon.Canonicalize(fd)
 
+		// The Weisfeiler-Lehman bag is the one fingerprint component built
+		// from the canonical tree rather than from fd. That is the point of
+		// it: the bag is a shape key, so it should not carry the incidental
+		// choices canon exists to remove. Everything else on the
+		// Fingerprint keeps measuring the code as written, which is what
+		// leaves every existing score byte-identical.
+		fp := fingerprint.Build(fd)
+		fp.WL = fingerprint.WLBag(canonical.Decl)
+
 		units = append(units, CodeUnit{
 			Name:         name,
 			File:         path,
@@ -74,7 +83,7 @@ func parseGoSource(path string, src []byte) ([]CodeUnit, error) {
 			Exported:     fd.Name.IsExported(),
 			ReceiverType: recvType,
 			Callees:      extractCallees(fd),
-			Fingerprint:  fingerprint.Build(fd),
+			Fingerprint:  fp,
 			Signals:      extractSignals(fd, f),
 			Generated:    generated,
 			Canonical:    canonical.Decl,

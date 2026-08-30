@@ -11,6 +11,7 @@ import (
 	"github.com/LukasSelin/doppel/internal/comparator"
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/culture"
+	"github.com/LukasSelin/doppel/internal/fingerprint"
 	"github.com/LukasSelin/doppel/internal/mapper"
 	"github.com/LukasSelin/doppel/internal/ontology"
 	"github.com/LukasSelin/doppel/internal/parser"
@@ -60,6 +61,13 @@ type Result struct {
 	Onto        *ontology.Ontology
 	IC          *ontology.IC
 	Pairs       []analyzer.SimilarPair
+
+	// WL is the corpus surprisal of every Weisfeiler-Lehman structural
+	// label, counted over exactly the population above. It is a corpus
+	// statistic like TagCounts and IC and is built in the same place, for
+	// the same reason: it must model the population the report describes.
+	// nil for an empty corpus. Nothing consumes it yet.
+	WL *fingerprint.LabelIDF
 
 	// Retrieval is how the candidate set was found — which channels admitted
 	// how much. It rides on Result because the report explains its own pair
@@ -157,6 +165,19 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 		// JSON report emits an empty snapshot, the hook stays silent.
 		return res, nil
 	}
+
+	// Corpus surprisal of the Weisfeiler-Lehman structural labels: ln(N/df)
+	// over presence df, the same information measure and the same unit
+	// (nats) the retrieval channels use. It is computed here, with the other
+	// corpus statistics and after the population filter, so that it models
+	// exactly the population the report describes — and so that a query
+	// probe, which joins the corpus just above, is counted like everyone
+	// else. Nothing consumes it yet.
+	bags := make([]map[uint64]int, len(units))
+	for i := range units {
+		bags[i] = units[i].Fingerprint.WL
+	}
+	res.WL = fingerprint.LabelWeights(bags)
 
 	// Tag every unit, counting tag occurrences as we go: the counts become
 	// the corpus statistics that weight concept matching. A tag most units

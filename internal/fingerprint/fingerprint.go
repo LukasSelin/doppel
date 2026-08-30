@@ -1,6 +1,30 @@
 // Package fingerprint builds deterministic static summaries of Go function
 // bodies and scores how similar two of them are. No network, no model, no
 // cache: the same source always yields the same fingerprint and the same score.
+//
+// # Weisfeiler-Lehman labels
+//
+// Alongside the token shingles and the multi-level pattern multiset, wl.go
+// computes a Weisfeiler-Lehman label bag over a function's tree (WLBag), and
+// LabelWeights turns a population of bags into the ln(N/df) surprisal of each
+// label. The parser builds the bag from canon's canonical tree; nothing
+// scores or retrieves on it yet.
+//
+// One choice in it is worth stating up front, because it decides what the
+// whole bag can mean: label_0 collapses every identifier to a single ID
+// label, keeping no name. A call is the one exception — it keeps its selector
+// name, exactly as the token stream does, because that name is intent.
+//
+// The alternative was to label an identifier by its text. On a canonical tree
+// that text is one of two things and neither should be a label. A bound
+// identifier has been alpha-renamed to x0, x1, ... in binding order, so
+// labelling by it would put binding order into every label above it and two
+// functions that declare the same two locals in the other order would share
+// nothing. A free identifier keeps its source name, but that vocabulary is
+// already carried where it is intent-bearing — on the call labels — and
+// admitting type names, package qualifiers and field names besides would make
+// the bag a lexical index rather than a structural one, which is what this
+// tool refuses to be everywhere else.
 package fingerprint
 
 import (
@@ -68,6 +92,20 @@ type Fingerprint struct {
 	Types    []string  // sorted, deduped normalized param + result types
 	Nodes    int       // AST node count of the body (size / triviality guard)
 	Patterns []Pattern // multi-level structural pattern multiset, sorted by hash
+
+	// WL is the Weisfeiler-Lehman label multiset of the body, rounds 0..3
+	// merged — see WLBag. It is the one field Build does not produce: the
+	// parser fills it from canon's canonical tree, because a shape key
+	// should not carry the incidental choices canonicalization removes.
+	//
+	// A map, deliberately: it is a multiset with no useful order, every
+	// consumer looks labels up rather than iterating, and the two places
+	// that must iterate — LabelWeights, which only increments, and
+	// LabelIDF.Labels, which sorts — are both order-independent by
+	// construction. Nothing serialises it; snapshot.Digest reads named
+	// fields and does not read this one, which is why adding it leaves
+	// every baseline where it is.
+	WL map[uint64]int
 }
 
 // Breakdown is the per-component result of comparing two Fingerprints.
