@@ -29,14 +29,10 @@ func TestPrintMarkdownRendersExplain(t *testing.T) {
 	}
 }
 
-func TestHTMLPairCardRendersExplain(t *testing.T) {
-	r := sampleHTMLReport()
-	r.Strips[0].Pairs[0].Explain = "differs by one extra defer, two extra if"
-	out := renderHTML(t, r)
-	if !strings.Contains(out, "differs by one extra defer, two extra if") {
-		t.Errorf("pair card missing the explain sentence:\n%s", firstMatch(out, "Match #1"))
-	}
-}
+// The HTML half of this file's coverage used to live here, against the
+// broadsheet report's pair card. That report was replaced by the dashboard,
+// which reporter does not render — the equivalent assertion is
+// TestDashboardCarriesContainmentAndExplain in package cmd.
 
 // A pair the pipeline never annotated renders nothing, so a report written
 // before explanations existed is byte-identical to one written now.

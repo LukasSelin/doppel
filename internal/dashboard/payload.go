@@ -89,6 +89,23 @@ type Facts struct {
 	Misfits        int `json:"misfits"`
 	MisfitsExcused int `json:"misfitsExcused"`
 
+	// The two corpus-health numbers, carried on the page for the same reason
+	// they are carried in the markdown preamble and the JSON snapshot: they
+	// describe the corpus the findings were drawn from, and a reader weighing
+	// a pair list is entitled to know how repetitive the corpus is at all.
+	// Neither ever moved a pair, a score or a rank.
+	//
+	// Compression is canonical AST nodes over distinct subtree shapes — 1.0
+	// would be a corpus with no repeated structure anywhere. NNP50/NNP90 are
+	// nearest-rank percentiles of each function's best code-shape score, over
+	// the NNScored functions retrieval actually paired: a recall-bounded
+	// population, not an exhaustive nearest-neighbour search, which is why
+	// NNScored is carried beside them rather than assumed to be Functions.
+	Compression float64 `json:"compression"`
+	NNScored    int     `json:"nnScored"`
+	NNP50       float64 `json:"nnP50"`
+	NNP90       float64 `json:"nnP90"`
+
 	ArenaProfiled  int `json:"arenaProfiled"`
 	ArenaDominance int `json:"arenaDominance"`
 	ArenaCoalition int `json:"arenaCoalition"`

@@ -105,6 +105,15 @@
       pct(facts.onlyConcept || 0, facts.candidatePairs || 0) + "% concept-only"));
     host.appendChild(fact(fixed(facts.threshold), "threshold",
       "struct-min " + fixed(facts.structMin) + (facts.calibrate > 0 ? " · calibrated" : "")));
+    /* How repetitive the corpus is at all, and how close a typical function
+       already sits to its nearest scored neighbour. Neither number moved a
+       pair; they say what the pair list was drawn out of. The percentile is
+       over the functions retrieval actually paired, which is why the label
+       says so rather than implying every function was measured. */
+    host.appendChild(fact(fixed(facts.compression, 2) + "×", "compression",
+      "canonical nodes per distinct subtree"));
+    host.appendChild(fact(fixed(facts.nnP50), "median nearest",
+      "p90 " + fixed(facts.nnP90) + " · over " + comma(facts.nnScored || 0) + " paired"));
   }
 
   function renderColophon() {

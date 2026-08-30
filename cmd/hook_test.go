@@ -384,7 +384,7 @@ func TestPinThresholdsWithoutABaselineDerives(t *testing.T) {
 // question. This is the property the whole pinning mechanism exists for.
 func TestPinnedRunStaysComparableToItsBaseline(t *testing.T) {
 	base := snapshot.Params{
-		Threshold: 0.48, MinNodes: 12, ChannelK: 5,
+		Threshold: 0.48, MinNodes: defaultMinNodes, ChannelK: 5,
 		TestsMode: "exclude", Generated: "exclude", Calibrate: 0.01,
 	}
 	p, err := hookParams(t.TempDir())

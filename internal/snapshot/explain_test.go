@@ -10,7 +10,7 @@ import (
 func TestBuildCarriesExplain(t *testing.T) {
 	u, d, p, c := sampleInputs()
 	p[0].Explain = "identical after rename, commutative-reorder"
-	s := Build(u, d, p, c, "", "test", Params{Threshold: 0.6, MinNodes: 12, TestsMode: "exclude"}, CorpusMetrics{})
+	s := Build(u, d, p, c, nil, "", "test", Params{Threshold: 0.6, MinNodes: 12, TestsMode: "exclude"}, CorpusMetrics{})
 
 	if len(s.Pairs) != 1 {
 		t.Fatalf("want 1 pair, got %d", len(s.Pairs))
@@ -29,9 +29,9 @@ func TestDiffIgnoresExplain(t *testing.T) {
 	params := Params{Threshold: 0.6, MinNodes: 12, TestsMode: "exclude"}
 
 	p[0].Explain = "identical after rename"
-	before := Build(u, d, p, c, "", "test", params, CorpusMetrics{})
+	before := Build(u, d, p, c, nil, "", "test", params, CorpusMetrics{})
 	p[0].Explain = "differs by one extra defer"
-	after := Build(u, d, p, c, "", "test", params, CorpusMetrics{})
+	after := Build(u, d, p, c, nil, "", "test", params, CorpusMetrics{})
 
 	delta := Diff(before, after)
 	if !delta.Comparable {

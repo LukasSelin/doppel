@@ -425,6 +425,14 @@ func dashboardFacts(res Result, ov *reporter.Overview, famStats family.Stats,
 		FamilyFuncs:   famStats.Members,
 		FamilyLargest: largestFamily(fams),
 		EdgesAdded:    famStats.Completed,
+
+		// From Result directly, not from the Overview: these are corpus
+		// statistics index() computed, and they exist on a run whose caller
+		// asked for no overview at all.
+		Compression: round4(res.ConsStats.Ratio()),
+		NNScored:    res.NN.Scored,
+		NNP50:       round4(res.NN.P50),
+		NNP90:       round4(res.NN.P90),
 	}
 	if ov == nil {
 		return f
