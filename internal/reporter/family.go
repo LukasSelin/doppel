@@ -242,11 +242,7 @@ func mdFamilyRow(w io.Writer, u parser.CodeUnit) {
 	if sig == "" {
 		sig = "—"
 	}
-	patterns := "—"
-	if len(u.Patterns) > 0 {
-		patterns = strings.Join(u.Patterns, ", ")
-	}
-	fmt.Fprintf(w, "| %s | `%s` | `%s` | %s |\n", loc, mdEscape(name), mdEscape(sig), patterns)
+	fmt.Fprintf(w, "| %s | `%s` | `%s` | %s |\n", loc, mdEscape(name), mdEscape(sig), conceptCell(u.Concepts))
 }
 
 // FamiliesJSON is the machine-readable census: doppel families --format json.

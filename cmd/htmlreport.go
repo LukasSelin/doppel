@@ -247,8 +247,8 @@ func dominantTag(res Result, f family.Family) string {
 		if m < 0 || m >= len(res.Units) {
 			continue
 		}
-		for _, t := range res.Units[m].Patterns {
-			counts[t]++
+		for _, c := range res.Units[m].Concepts {
+			counts[c.ID]++
 		}
 	}
 	tags := make([]string, 0, len(counts))

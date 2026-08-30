@@ -65,7 +65,7 @@ func buildAssociations(units []parser.CodeUnit, docs []concepter.ConceptDoc,
 	pairTagCall := make(map[[2]string]int)
 
 	for i := range units {
-		tags := sortedUniqueTags(units[i].Patterns)
+		tags := sortedUniqueTags(parser.ConceptIDs(units[i].Concepts))
 		for _, t := range tags {
 			tagCount[t]++
 		}

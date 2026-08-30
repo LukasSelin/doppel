@@ -1,6 +1,7 @@
 package concepter
 
 import (
+	"github.com/LukasSelin/doppel/internal/ontology"
 	"github.com/LukasSelin/doppel/internal/parser"
 )
 
@@ -17,12 +18,18 @@ type ConceptDoc struct {
 	Callees         []string // AST-derived outgoing call edges, raw strings incl. stdlib
 	ResolvedCallees []string // qualified names of repo-internal callees; from call graph
 	Neighborhood    []string // depth-2 call-graph ball, qualified names, self excluded
-	Patterns        []string // tagger tags
 	Role            string   // structural role: leaf, utility, orchestrator, passthrough
-	CallerPatterns  []string // aggregated intent tags from caller functions
-	CalleePatterns  []string // aggregated intent tags from callee functions
 	CallerPackages  []string // packages of caller functions
 	CalleePackages  []string // packages of callee functions
+
+	// Concepts is the unit's own learned concept memberships, ascending by ID.
+	// CallerConcepts and CalleeConcepts aggregate the same from the resolved
+	// call edges, each concept keeping the strongest confidence any neighbour
+	// asserted — a context signal is about what the neighbourhood does at all,
+	// so the surest neighbour is the one that speaks for it.
+	Concepts       []parser.Concept
+	CallerConcepts []parser.Concept
+	CalleeConcepts []parser.Concept
 }
 
 // Concepter generates ConceptDocs for CodeUnits using static analysis.
@@ -41,6 +48,25 @@ func (c *Concepter) Generate(unit parser.CodeUnit) ConceptDoc {
 		Exported:     unit.Exported,
 		ReceiverType: unit.ReceiverType,
 		Callees:      append([]string(nil), unit.Callees...),
-		Patterns:     append([]string(nil), unit.Patterns...),
+		Concepts:     append([]parser.Concept(nil), unit.Concepts...),
 	}
+}
+
+// Graded converts learned concept memberships into the weighted terms the
+// ontology scorer reasons over. Confidence travels with the concept: two
+// functions each barely carrying one share less evidence than two that
+// unmistakably do, which the bare-tag era could not express.
+//
+// It lives here, rather than in each caller, because the comparator and the
+// retriever both need it and doppel does not keep two copies of a conversion —
+// it found four of its own and consolidated them.
+func Graded(cs []parser.Concept) []ontology.WeightedTerm {
+	if len(cs) == 0 {
+		return nil
+	}
+	out := make([]ontology.WeightedTerm, len(cs))
+	for i, c := range cs {
+		out[i] = ontology.WeightedTerm{ID: ontology.TermID(c.ID), Weight: c.Confidence}
+	}
+	return out
 }

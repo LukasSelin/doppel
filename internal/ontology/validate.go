@@ -31,9 +31,19 @@ func (o *Ontology) Validate() []error {
 		errs = append(errs, fmt.Errorf(format, args...))
 	}
 
-	// Axiom 1: IDs are unique, non-empty and snake_case. Uniqueness across all
-	// Kinds is already enforced by the ID-keyed map, so a collision shows up as
-	// a term that is missing rather than duplicated; count instead.
+	// Axiom 1: IDs are unique, non-empty and — where the vocabulary declares
+	// them by hand — snake_case. Uniqueness across all Kinds is already
+	// enforced by the ID-keyed map, so a collision shows up as a term that is
+	// missing rather than duplicated; count instead.
+	//
+	// Concrete concept leaves are exempt from the spelling rule, and the
+	// exemption is the point rather than a loophole. They are no longer
+	// authored: internal/lexicon derives them from the corpus and names them
+	// after the evidence that produced them ("sql.Open+QueryRow"), so a
+	// spelling convention meant to keep a hand-written vocabulary tidy would
+	// only force those names to be mangled into something a reader cannot match
+	// against the code. Everything still declared by hand — every abstract
+	// term, and every entity, relation and role — keeps the rule.
 	if len(o.order) != len(o.terms) {
 		add("axiom 1: %d declared terms collapsed to %d unique IDs", len(o.order), len(o.terms))
 	}
@@ -41,6 +51,10 @@ func (o *Ontology) Validate() []error {
 		if id == "" {
 			add("axiom 1: a term has an empty ID")
 			continue
+		}
+		t := o.terms[id]
+		if t.Kind == KindConcept && !t.Abstract {
+			continue // corpus-derived name; see above
 		}
 		if !snakeCase.MatchString(string(id)) {
 			add("axiom 1: term %q is not snake_case", id)

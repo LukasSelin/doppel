@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/LukasSelin/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 func TestCompare(t *testing.T) {
@@ -23,7 +24,7 @@ func TestCompare(t *testing.T) {
 				Role:     "utility",
 				Callees:  []string{"bar", "baz"},
 				Callers:  []string{"main"},
-				Patterns: []string{"retry", "http_call"},
+				Concepts: parser.Certain("retry", "http_call"),
 			},
 			b: concepter.ConceptDoc{
 				Name:     "foo2",
@@ -32,7 +33,7 @@ func TestCompare(t *testing.T) {
 				Role:     "utility",
 				Callees:  []string{"bar", "baz"},
 				Callers:  []string{"main"},
-				Patterns: []string{"retry", "http_call"},
+				Concepts: parser.Certain("retry", "http_call"),
 			},
 			wantMerge:   true,
 			wantMinOver: 0.8,
@@ -46,7 +47,7 @@ func TestCompare(t *testing.T) {
 				Exported: true,
 				Role:     "leaf",
 				Callees:  []string{"x"},
-				Patterns: []string{"retry"},
+				Concepts: parser.Certain("retry"),
 			},
 			b: concepter.ConceptDoc{
 				Name:     "beta",
@@ -54,7 +55,7 @@ func TestCompare(t *testing.T) {
 				Exported: false,
 				Role:     "orchestrator",
 				Callees:  []string{"y"},
-				Patterns: []string{"db_access"},
+				Concepts: parser.Certain("db_access"),
 			},
 			wantMerge:   false,
 			wantMinOver: 0.0,
@@ -68,7 +69,7 @@ func TestCompare(t *testing.T) {
 				Exported: true,
 				Role:     "orchestrator",
 				Callees:  []string{"validate", "save", "notify"},
-				Patterns: []string{"validation", "db_access"},
+				Concepts: parser.Certain("validation", "db_access"),
 			},
 			b: concepter.ConceptDoc{
 				Name:     "handler2",
@@ -76,7 +77,7 @@ func TestCompare(t *testing.T) {
 				Exported: true,
 				Role:     "utility",
 				Callees:  []string{"validate", "save", "log"},
-				Patterns: []string{"validation"},
+				Concepts: parser.Certain("validation"),
 			},
 			wantMerge:   true, // shared callees + shared patterns + same package = 3 signals
 			wantMinOver: 0.3,
@@ -107,7 +108,7 @@ func TestCompare(t *testing.T) {
 				ReceiverType: "*Server",
 				Role:         "orchestrator",
 				Callees:      []string{"listen", "serve"},
-				Patterns:     []string{"concurrency"},
+				Concepts:     parser.Certain("concurrency"),
 			},
 			b: concepter.ConceptDoc{
 				Name:         "Server.Stop",
@@ -116,7 +117,7 @@ func TestCompare(t *testing.T) {
 				ReceiverType: "*Server",
 				Role:         "orchestrator",
 				Callees:      []string{"shutdown", "serve"},
-				Patterns:     []string{"concurrency"},
+				Concepts:     parser.Certain("concurrency"),
 			},
 			wantMerge:   true,
 			wantMinOver: 0.4,

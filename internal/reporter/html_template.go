@@ -162,7 +162,7 @@ var htmlTemplate = template.Must(template.New("report").Funcs(template.FuncMap{
       {{ end }}
       </div>
       {{ if .Report.AbsentConcepts }}
-      <p style="font-size:14px; line-height:1.6; max-width:32em; margin:0; color:var(--color-neutral-900)">Carried by nothing at all — {{ range $i, $c := .Report.AbsentConcepts }}{{ if $i }}, {{ end }}<span class="mono">{{ $c }}</span>{{ end }}. That is a direct answer to "does this codebase already do X": it does not.</p>
+      <p style="font-size:14px; line-height:1.6; max-width:32em; margin:0; color:var(--color-neutral-900)">No practice here for — {{ range $i, $c := .Report.AbsentConcepts }}{{ if $i }}, {{ end }}<span class="mono">{{ $c }}</span>{{ end }}. These are the seeds the search started from that grew no concept: a direct answer to "does this codebase already do X".</p>
       {{ end }}
     </div>
 

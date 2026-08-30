@@ -95,17 +95,17 @@ doppel families .
 ### Querying before you write
 
 `doppel query` reads a Go snippet — the function you are about to write — and reports the corpus
-functions most related to it by structure, concept tags and calls:
+functions most related to it by structure, learned concepts and calls:
 
 ```
-query: cmd.validateHookSetup — tags: validation
+query: cmd.validateHookSetup — concepts: validateMode+fmt.Errorf 0.71
   role: orchestrator   resolved calls: 3
 
 Corpus: 304 functions. 5 related functions:
 
 #1  cmd.hookParams  cmd/config.go:130
     evidence: 69.7 nats (shape 59.1, concept 1.4, call 9.2)  code-shape: 0.49  locality: 1.00
-    tags: validation   role: orchestrator
+    concepts: validateMode+fmt.Errorf 0.64   role: orchestrator
 ```
 
 Matches are ranked by evidence boosted with **locality** — the fraction of the snippet's resolved
@@ -120,7 +120,13 @@ import that binds them is present.
 Every reported pair carries two independent numbers:
 
 - **Code similarity** (`Score`, gated by `--threshold`) — how alike the two bodies are, from the AST fingerprint. The report breaks it into its components: `ast` (3-gram shingle overlap), `flow` (control-flow shape), `sig` (parameter and result types), and `size` (relative body size, shown for context but not scored).
-- **Structural overlap** (gated by `--struct-min`) — how much architectural context the two share: callees, callers, intent patterns, role, package, and what their own callers and callees do. Intent patterns, roles and receiver types are matched through a concept hierarchy rather than compared as strings, so two functions doing related work — one hitting a database, the other a cache — score partial credit instead of zero. Every graded match comes with an evidence line saying which ancestor relates the two and how strongly.
+- **Structural overlap** (gated by `--struct-min`) — how much architectural context the two share: callees, callers, concepts, role, package, and what their own callers and callees do. Concepts, roles and receiver types are matched through a concept hierarchy rather than compared as strings, so two functions doing related work — one hitting a database, the other a cache — score partial credit instead of zero. Every graded match comes with an evidence line saying which ancestor relates the two and how strongly.
+
+  The concepts themselves are **learned from your codebase**, not read off a fixed list. doppel finds
+  the groups of functions that share a way of being written, names each after the evidence that
+  identified it — `store.Get+store.Decode`, `json.Marshal+Unmarshal` — and reports membership as a
+  confidence rather than a yes or no. That is why a repository whose database wrapper is called
+  `store` gets a concept for it with no rule anywhere naming `store`.
 
 A high code score with low structural overlap means two lookalike bodies in unrelated parts of the system. High on both is the real merge candidate.
 
@@ -162,7 +168,7 @@ inline; `doppel families` is the whole census, with `--format json` for a machin
 | `--struct-min`      | `0.0`   | Minimum structural overlap score (0.0–1.0) to keep a pair                   |
 | `--min-nodes`       | `12`    | Skip functions whose body has fewer than this many AST nodes. Guards against one-line accessors, which match each other perfectly and would otherwise flood the report |
 | `-o`, `--output`    | *(disabled)* | Write a report to this file. **A `.html` path renders the full visual report** — one self-contained page, no scripts, opens from `file://`. Any other extension writes Markdown, which opens with what doppel understands about the corpus — concept vocabulary, duplication map, package habitats — as mermaid diagrams, then how this codebase *writes* things. The stdout report is still printed |
-| `--format`          | `text`  | Stdout format: `text` or `json`. The JSON form is a deterministic snapshot of the whole run — every function, its concept tags and role, and every reported pair |
+| `--format`          | `text`  | Stdout format: `text` or `json`. The JSON form is a deterministic snapshot of the whole run — every function, its concepts with confidence, its role, and every reported pair |
 | `--families`        | `5`     | Near-duplicate families to show after the pair list (`0` removes the section) |
 | `--family-min`      | `0.60`  | Code similarity every two members of a family must reach                    |
 | `--calibrate`       | `0`     | Derive `--threshold` and `--struct-min` from this repo: admit this fraction of random unrelated pairs (try `0.01`). Overrides both flags and moves `--family-min` with them; `0` = off |
@@ -211,8 +217,8 @@ claude plugin install doppel@doppel
 
 Four hooks, placed by when a fact can still change what gets written:
 
-- **SessionStart** — the corpus inventory: which concept tags the repo carries, which it has none
-  of, the role distribution.
+- **SessionStart** — the corpus inventory: the concepts doppel learned from this repo and how many
+  functions carry each, the kinds of work it found no practice for, the role distribution.
 - **UserPromptSubmit** — the duplication facts for the packages your message mentions, and nothing
   else. Silent when it recognises none.
 - **PreToolUse** on `Edit`/`Write` — immediately before a file changes, the merge-worthy twins of

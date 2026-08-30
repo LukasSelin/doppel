@@ -38,7 +38,7 @@ func retrieveAll(t *testing.T, units []parser.CodeUnit, opt Options) ([]Candidat
 	onto := ontology.Default()
 	counts := make(map[ontology.TermID]int)
 	for i := range units {
-		for _, tag := range units[i].Patterns {
+		for _, tag := range parser.ConceptIDs(units[i].Concepts) {
 			counts[ontology.TermID(tag)]++
 		}
 	}
@@ -166,9 +166,9 @@ func GammaWalk(zs []int) int {
 }
 `
 	units := parseUnits(t, "fix.go", src)
-	units[0].Patterns = []string{"db_access"}
-	units[1].Patterns = []string{"db_access"}
-	units[2].Patterns = []string{"db_access"}
+	units[0].Concepts = parser.Certain("db_access")
+	units[1].Concepts = parser.Certain("db_access")
+	units[2].Concepts = parser.Certain("db_access")
 
 	opt := DefaultOptions()
 	opt.MinNodes = 8

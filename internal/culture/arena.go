@@ -126,6 +126,7 @@ func buildArenas(m *Model, units []parser.CodeUnit, docs []concepter.ConceptDoc,
 		return inter[[2]string{c, d}]
 	}
 
+	var scratch []float64 // interaction matrix, reused across units
 	for i := range units {
 		// Candidate set: own tags plus concepts positively associated with
 		// the unit's call tokens or role. Empty set = silence.
@@ -146,8 +147,12 @@ func buildArenas(m *Model, units []parser.CodeUnit, docs []concepter.ConceptDoc,
 			continue
 		}
 
-		// Evidence per candidate, fixed component order: direct tag IC,
-		// then call support, then role support.
+		// Evidence per candidate, fixed component order: direct concept IC
+		// scaled by how strongly the unit carries it, then call support, then
+		// role support. Scaling only the direct term is deliberate: the
+		// association terms are facts about the corpus, not about this unit's
+		// membership, and discounting them would let one uncertain membership
+		// quiet evidence that never depended on it.
 		evidence := make([]float64, len(candidates))
 		hasTag := make(map[string]bool, len(uf.sortedPatterns[i]))
 		for _, t := range uf.sortedPatterns[i] {
@@ -156,7 +161,7 @@ func buildArenas(m *Model, units []parser.CodeUnit, docs []concepter.ConceptDoc,
 		for ci, c := range candidates {
 			var e float64
 			if hasTag[c] {
-				e += math.Log(float64(n) / float64(tagDF[c]))
+				e += uf.conf[i][c] * math.Log(float64(n)/float64(tagDF[c]))
 			}
 			for _, tok := range uf.tokens[i] {
 				for _, tp := range posCallTag[tok] {
@@ -177,7 +182,7 @@ func buildArenas(m *Model, units []parser.CodeUnit, docs []concepter.ConceptDoc,
 			totalEvidence += e
 		}
 
-		profile := runReplicator(candidates, evidence, interactionOf)
+		profile := runReplicator(candidates, evidence, interactionOf, &scratch)
 		profile.TotalEvidence = totalEvidence
 		profile.classify(interactionOf, opt)
 
@@ -201,12 +206,32 @@ func buildArenas(m *Model, units []parser.CodeUnit, docs []concepter.ConceptDoc,
 // softmax shift is a max, so its value is scan-order independent, and after
 // the shift every exponent is <= 0, so overflow is impossible.
 func runReplicator(candidates []string, evidence []float64,
-	interactionOf func(c, d string) float64) ArenaProfile {
+	interactionOf func(c, d string) float64, scratch *[]float64) ArenaProfile {
 
 	k := len(candidates)
 	x := make([]float64, k)
 	for i := range x {
 		x[i] = 1 / float64(k)
+	}
+
+	// Materialize the interaction matrix once. The dynamics read it k² times
+	// per round for up to arenaMaxRounds rounds, and interactionOf is a map
+	// lookup on a [2]string key — cheap once, ruinous 64k² times. It cost 90%
+	// of a prometheus run when concepts stopped being a fixed fourteen and
+	// candidate sets grew with the learned vocabulary. Same values, same
+	// order, read instead of recomputed.
+	//
+	// The buffer is the caller's and is fully overwritten below, so reuse
+	// across units is invisible to the result; allocating k² floats per unit
+	// was itself a fifth of the pass.
+	if cap(*scratch) < k*k {
+		*scratch = make([]float64, k*k)
+	}
+	m := (*scratch)[:k*k]
+	for ci := range candidates {
+		for di := range candidates {
+			m[ci*k+di] = interactionOf(candidates[ci], candidates[di])
+		}
 	}
 
 	fitness := make([]float64, k)
@@ -217,8 +242,9 @@ func runReplicator(candidates []string, evidence []float64,
 		rounds++
 		for ci := range candidates {
 			f := evidence[ci]
+			row := m[ci*k : ci*k+k]
 			for di := range candidates {
-				f += interactionOf(candidates[ci], candidates[di]) * x[di]
+				f += row[di] * x[di]
 			}
 			fitness[ci] = f
 		}

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/LukasSelin/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 func approx(got, want float64) bool { return math.Abs(got-want) < 1e-9 }
@@ -30,25 +31,25 @@ func TestCompareExactScores(t *testing.T) {
 		{
 			name: "identical docs",
 			a: concepter.ConceptDoc{Name: "foo", Package: "pkg", Exported: true, Role: "utility",
-				Callees: []string{"bar", "baz"}, Callers: []string{"main"}, Patterns: []string{"retry", "http_call"}},
+				Callees: []string{"bar", "baz"}, Callers: []string{"main"}, Concepts: parser.Certain("retry", "http_call")},
 			b: concepter.ConceptDoc{Name: "foo2", Package: "pkg", Exported: true, Role: "utility",
-				Callees: []string{"bar", "baz"}, Callers: []string{"main"}, Patterns: []string{"retry", "http_call"}},
+				Callees: []string{"bar", "baz"}, Callers: []string{"main"}, Concepts: parser.Certain("retry", "http_call")},
 			want: 0.825, // was 0.950, then 0.855
 		},
 		{
 			name: "completely disjoint",
 			a: concepter.ConceptDoc{Name: "alpha", Package: "pkgA", Exported: true, Role: "leaf",
-				Callees: []string{"x"}, Patterns: []string{"retry"}},
+				Callees: []string{"x"}, Concepts: parser.Certain("retry")},
 			b: concepter.ConceptDoc{Name: "beta", Package: "pkgB", Exported: false, Role: "orchestrator",
-				Callees: []string{"y"}, Patterns: []string{"db_access"}},
+				Callees: []string{"y"}, Concepts: parser.Certain("db_access")},
 			want: 0.045, // was 0.050; no calls/called_by contribution, so both carves leave it
 		},
 		{
 			name: "partial overlap",
 			a: concepter.ConceptDoc{Name: "handler1", Package: "api", Exported: true, Role: "orchestrator",
-				Callees: []string{"validate", "save", "notify"}, Patterns: []string{"validation", "db_access"}},
+				Callees: []string{"validate", "save", "notify"}, Concepts: parser.Certain("validation", "db_access")},
 			b: concepter.ConceptDoc{Name: "handler2", Package: "api", Exported: true, Role: "utility",
-				Callees: []string{"validate", "save", "log"}, Patterns: []string{"validation"}},
+				Callees: []string{"validate", "save", "log"}, Concepts: parser.Certain("validation")},
 			want: 0.410, // was 0.4667, then 0.420; still clears the 0.4 merge threshold, now with 0.010 slack
 		},
 		{
@@ -60,9 +61,9 @@ func TestCompareExactScores(t *testing.T) {
 		{
 			name: "same receiver type methods",
 			a: concepter.ConceptDoc{Name: "Server.Start", Package: "http", Exported: true, ReceiverType: "*Server",
-				Role: "orchestrator", Callees: []string{"listen", "serve"}, Patterns: []string{"concurrency"}},
+				Role: "orchestrator", Callees: []string{"listen", "serve"}, Concepts: parser.Certain("concurrency")},
 			b: concepter.ConceptDoc{Name: "Server.Stop", Package: "http", Exported: true, ReceiverType: "*Server",
-				Role: "orchestrator", Callees: []string{"shutdown", "serve"}, Patterns: []string{"concurrency"}},
+				Role: "orchestrator", Callees: []string{"shutdown", "serve"}, Concepts: parser.Certain("concurrency")},
 			want: 0.600, // was 0.675, then 0.6075
 		},
 	}
@@ -80,7 +81,7 @@ func TestCompareExactScores(t *testing.T) {
 // nothing in common.
 func TestCompareGradedConcepts(t *testing.T) {
 	doc := func(name, pattern string) concepter.ConceptDoc {
-		return concepter.ConceptDoc{Name: name, Package: "store", Role: "utility", Patterns: []string{pattern}}
+		return concepter.ConceptDoc{Name: name, Package: "store", Role: "utility", Concepts: parser.Certain(pattern)}
 	}
 	tests := []struct {
 		name            string
@@ -138,10 +139,10 @@ func TestCompareGradedConcepts(t *testing.T) {
 // evidence section, so every graded signal has to be able to speak.
 func TestGradedSignalsAlwaysProduceAReason(t *testing.T) {
 	ev := Compare(
-		concepter.ConceptDoc{Name: "a", Package: "p", Role: "utility", Patterns: []string{"db_access"},
-			CallerPatterns: []string{"http_call"}, CalleePatterns: []string{"transaction"}},
-		concepter.ConceptDoc{Name: "b", Package: "p", Role: "passthrough", Patterns: []string{"caching"},
-			CallerPatterns: []string{"http_call"}, CalleePatterns: []string{"db_access"}},
+		concepter.ConceptDoc{Name: "a", Package: "p", Role: "utility", Concepts: parser.Certain("db_access"),
+			CallerConcepts: parser.Certain("http_call"), CalleeConcepts: parser.Certain("transaction")},
+		concepter.ConceptDoc{Name: "b", Package: "p", Role: "passthrough", Concepts: parser.Certain("caching"),
+			CallerConcepts: parser.Certain("http_call"), CalleeConcepts: parser.Certain("db_access")},
 	)
 	for _, want := range []string{
 		"related patterns:",
@@ -233,8 +234,8 @@ func TestCompareScoresCallerAndCalleeConcepts(t *testing.T) {
 	bare := concepter.ConceptDoc{Name: "a", Package: "p", Role: "leaf"}
 	withContext := func(caller, callee string) concepter.ConceptDoc {
 		d := bare
-		d.CallerPatterns = []string{caller}
-		d.CalleePatterns = []string{callee}
+		d.CallerConcepts = parser.Certain(caller)
+		d.CalleeConcepts = parser.Certain(callee)
 		return d
 	}
 
@@ -265,9 +266,9 @@ func TestCompareScoresCallerAndCalleeConcepts(t *testing.T) {
 // would drop this pair's signal count at an unchanged score.
 func TestPatternSignalJudgesTheBestMatchNotTheAverage(t *testing.T) {
 	a := concepter.ConceptDoc{Name: "a", Package: "pkgA", Role: "leaf",
-		Patterns: []string{"http_call", "concurrency", "error_wrapping"}}
+		Concepts: parser.Certain("http_call", "concurrency", "error_wrapping")}
 	b := concepter.ConceptDoc{Name: "b", Package: "pkgB", Role: "orchestrator",
-		Patterns: []string{"http_call", "mapping", "validation"}}
+		Concepts: parser.Certain("http_call", "mapping", "validation")}
 
 	ev := Compare(a, b)
 	if ev.PatternRelatedness > 0.5 {
@@ -289,13 +290,13 @@ func TestPatternSignalJudgesTheBestMatchNotTheAverage(t *testing.T) {
 func TestCompareIsDeterministic(t *testing.T) {
 	a := concepter.ConceptDoc{Name: "a", Package: "svc", Exported: true, ReceiverType: "*Server",
 		Role: "passthrough", Callees: []string{"save", "log", "emit"}, Callers: []string{"main", "run"},
-		Patterns:       []string{"db_access", "error_wrapping", "concurrency"},
-		CallerPatterns: []string{"http_call", "validation"}, CalleePatterns: []string{"transaction", "mapping"},
+		Concepts:       parser.Certain("db_access", "error_wrapping", "concurrency"),
+		CallerConcepts: parser.Certain("http_call", "validation"), CalleeConcepts: parser.Certain("transaction", "mapping"),
 		CallerPackages: []string{"api", "cmd"}, CalleePackages: []string{"store"}}
 	b := concepter.ConceptDoc{Name: "b", Package: "svc", Exported: true, ReceiverType: "*Client",
 		Role: "utility", Callees: []string{"save", "emit", "flush"}, Callers: []string{"main", "serve"},
-		Patterns:       []string{"caching", "error_wrapping", "retry"},
-		CallerPatterns: []string{"db_access", "validation"}, CalleePatterns: []string{"caching", "mapping"},
+		Concepts:       parser.Certain("caching", "error_wrapping", "retry"),
+		CallerConcepts: parser.Certain("db_access", "validation"), CalleeConcepts: parser.Certain("caching", "mapping"),
 		CallerPackages: []string{"api", "web"}, CalleePackages: []string{"store", "cache"}}
 
 	first := Compare(a, b)
@@ -318,11 +319,11 @@ func TestCompareIsDeterministic(t *testing.T) {
 // matcher has to keep it that way.
 func TestCompareIsSymmetric(t *testing.T) {
 	a := concepter.ConceptDoc{Name: "a", Package: "p", Exported: true, Role: "utility",
-		Callees: []string{"x", "y"}, Patterns: []string{"caching", "transaction"},
-		CallerPatterns: []string{"http_call"}}
+		Callees: []string{"x", "y"}, Concepts: parser.Certain("caching", "transaction"),
+		CallerConcepts: parser.Certain("http_call")}
 	b := concepter.ConceptDoc{Name: "b", Package: "p", Exported: true, Role: "passthrough",
-		Callees: []string{"y", "z"}, Patterns: []string{"mapping", "transaction"},
-		CallerPatterns: []string{"db_access"}}
+		Callees: []string{"y", "z"}, Concepts: parser.Certain("mapping", "transaction"),
+		CallerConcepts: parser.Certain("db_access")}
 
 	ab, ba := Compare(a, b), Compare(b, a)
 	if ab.OverlapScore != ba.OverlapScore {

@@ -9,7 +9,7 @@ structured concurrency library; generics-heavy, one idea, written recently and a
 | Corpus | [conc](https://github.com/sourcegraph/conc) |
 | Pinned at | `v0.3.0` (`7b8c8f2875cb861bb61844c9bcaa1aed070adbd4`) |
 | Project since | 2023 |
-| doppel | `e53d59d` |
+| doppel | `c2e717b` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -21,15 +21,17 @@ The corpus-level models doppel builds before ranking anything, as printed to std
 
 ```
 Scanning . ...
+Learning concept vocabulary...
+Lexicon: 6 concepts (1 seeded, 5 emergent), 196/428 features above 29 df, 44 functions unlabeled
 Generating concept documents...
-Culture: 1 concepts modeled, 0 associations, 0 unusual realizations
-Habitats: 4 modeled, 16 misfits; most uniform panics (norm 0.94), most diverse pool (norm 0.60)
-Conventions: strongest concurrency (0.37), loosest concurrency (0.37)
-Ecosystems: 8 profiled (8 dominance, 0 coalition, 0 conflict, 0 weak)
+Culture: 6 concepts modeled, 1 associations, 4 unusual realizations
+Habitats: 4 modeled, 15 misfits; most uniform iter (norm 0.95), most diverse stream (norm 0.71)
+Conventions: strongest p.pool+multierror (0.53), loosest lock+unlock (0.33)
+Ecosystems: 38 profiled (36 dominance, 2 coalition, 0 conflict, 0 weak)
 Found 81 functions. Retrieving candidates...
-Retrieval: shape 43, concept 25, call 15 -> 79 unique pairs
-  concept-only 29.1%  call-only 15.2%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 448
-Running structural comparison on 79 pairs...
+Retrieval: shape 43, concept 117, call 15 -> 170 unique pairs
+  concept-only 67.1%  call-only 7.1%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 448
+Running structural comparison on 170 pairs...
 Families: 7 over 8 components, 20 functions in a family
   6 pairs suppressed by max-per-func=2
 ```
@@ -46,64 +48,49 @@ Families: 7 over 8 components, 20 functions in a family
 
 ### Concepts
 
-doppel reads intent from the AST into a fixed vocabulary and reasons over the tree, so two functions that share a *branch* score partial credit rather than nothing. Leaf counts below are this corpus.
+These concepts were **learned from this corpus**, not read off a fixed list: each one is a group of functions that share a way of being written, named after the evidence that identified it. They hang from an authored interior, so two functions under the same *branch* score partial credit rather than nothing. Counts below are members; membership is graded, and a function can carry several.
 
 ```mermaid
 flowchart LR
     c0(["concept"])
     c1(["io_operation"])
     c2(["remote_io"])
-    c3["http_call<br/>absent"]
-    c4["grpc_call<br/>absent"]
-    c5(["data_store_access"])
-    c6["db_access<br/>absent"]
-    c7["caching<br/>absent"]
-    c8["transaction<br/>absent"]
-    c9["file_io<br/>absent"]
-    c10["logging<br/>absent"]
-    c11(["data_transformation"])
-    c12["mapping<br/>absent"]
-    c13["validation<br/>absent"]
-    c14["serialization<br/>absent"]
-    c15(["control_flow"])
-    c16["concurrency<br/>8"]
-    c17(["fault_tolerance"])
-    c18["retry<br/>absent"]
-    c19["circuit_breaker<br/>absent"]
-    c20(["error_handling"])
-    c21["error_wrapping<br/>absent"]
+    c3(["data_store_access"])
+    c4(["data_transformation"])
+    c5(["control_flow"])
+    c6(["fault_tolerance"])
+    c7(["error_handling"])
+    c8["fmt+debug<br/>11"]
+    c9["lock+unlock<br/>11"]
+    c10["p.limiter+conc<br/>5"]
+    c11["p.pool+multierror<br/>5"]
+    c12["p.tasks+conc<br/>5"]
+    c13["s.pool+s.queue<br/>7"]
     c0 --> c1
     c1 --> c2
-    c2 --> c3
-    c2 --> c4
-    c1 --> c5
+    c1 --> c3
+    c0 --> c4
+    c0 --> c5
     c5 --> c6
-    c5 --> c7
-    c5 --> c8
-    c1 --> c9
-    c1 --> c10
+    c0 --> c7
+    c0 --> c8
+    c5 --> c9
+    c0 --> c10
     c0 --> c11
-    c11 --> c12
-    c11 --> c13
-    c11 --> c14
-    c0 --> c15
-    c15 --> c16
-    c15 --> c17
-    c17 --> c18
-    c17 --> c19
-    c0 --> c20
-    c20 --> c21
-    classDef good fill:#d7ecd9,color:#1b3d20
-    classDef warn fill:#fbeecb,color:#4a3a12
-    classDef hot fill:#f7d6d6,color:#4a1c1c
-    class c3,c4,c6,c7,c8,c9,c10,c12,c13,c14,c18,c19,c21 hot
+    c5 --> c12
+    c5 --> c13
 ```
 
-**Nothing here is tagged** `caching`, `circuit_breaker`, `db_access`, `error_wrapping`, `file_io`, `grpc_call`, `http_call`, `logging`, `mapping`, `retry`, `serialization`, `transaction`, `validation`. That is a direct answer to "does this codebase already do X" — for those concepts, it does not.
+**No practice here for** `caching`, `circuit_breaker`, `db_access`, `error_wrapping`, `file_io`, `grpc_call`, `http_call`, `logging`, `mapping`, `retry`, `serialization`, `transaction`, `validation`. Concepts are learned from this corpus, so one can never be absent — it exists because functions carry it. These are the *seeds* the search started from that grew nothing: a direct answer to "does this codebase already do X".
 
 | Concept | Functions | Convention |
 |---|---:|---|
-| `concurrency` | 8 | `0.37` (loose) |
+| `fmt+debug` | 11 | `0.36` (loose) |
+| `lock+unlock` | 11 | `0.33` (loose) |
+| `s.pool+s.queue` | 7 | `0.37` (loose) |
+| `p.limiter+conc` | 5 | `0.42` (loose) |
+| `p.pool+multierror` | 5 | `0.53` (settled) |
+| `p.tasks+conc` | 5 | `0.41` (loose) |
 
 Convention is how uniformly this corpus realizes a concept: `1.00` means every function carrying the tag does it the same way, and a low number means the tag covers several unrelated habits. A concept with fewer than five members is not modeled.
 
@@ -113,7 +100,7 @@ Merge-worthy pairs folded up to their packages. An edge means two packages keep 
 
 ```mermaid
 flowchart LR
-    p0["pool<br/>38 internal"]
+    p0["pool<br/>40 internal"]
     p1["stream"]
     p0 ---|"1"| p1
 ```
@@ -124,24 +111,24 @@ A package with at least five functions gets a habitat model: doppel learns what 
 
 ```mermaid
 flowchart TD
-    h0["pool<br/>50 functions · norm 0.60<br/>15 misfits"]
-    h1["stream<br/>8 functions · norm 0.79<br/>1 misfit"]
-    h2["iter<br/>9 functions · norm 0.93"]
-    h3["panics<br/>10 functions · norm 0.94"]
+    h0["stream<br/>8 functions · norm 0.71<br/>3 misfits"]
+    h1["pool<br/>50 functions · norm 0.72<br/>12 misfits"]
+    h2["panics<br/>10 functions · norm 0.91"]
+    h3["iter<br/>9 functions · norm 0.95"]
     classDef good fill:#d7ecd9,color:#1b3d20
     classDef warn fill:#fbeecb,color:#4a3a12
     classDef hot fill:#f7d6d6,color:#4a1c1c
-    class h1,h2,h3 good
-    class h0 warn
+    class h2,h3 good
+    class h0,h1 warn
 ```
 
-Most uniform is `panics` (norm `0.94`); most varied is `pool` (norm `0.60`). 16 functions are alien to their package and to the subsystem around it.
+Most uniform is `iter` (norm `0.95`); most varied is `stream` (norm `0.71`). 15 functions are alien to their package and to the subsystem around it.
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **79 candidate pairs** (shape 43, concept 25, call 15), of which 15% arrived on call evidence alone and 29% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **170 candidate pairs** (shape 43, concept 117, call 15), of which 7% arrived on call evidence alone and 67% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
-Each function is also an arena where its candidate concepts compete for its evidence. 8 functions reached an equilibrium: **8** settled on a single concept, **0** on a coalition, **0** hold concepts this corpus says do not go together.
+Each function is also an arena where its candidate concepts compete for its evidence. 38 functions reached an equilibrium: **36** settled on a single concept, **2** on a coalition, **0** hold concepts this corpus says do not go together.
 
 _6 further pairs were held back so no single function fills the report._
 
@@ -155,15 +142,68 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 Only what is **distinctive**. A feature earns a row by being carried by this concept's members at least twice as often as by the corpus at large — nearly every Go function has a `return` and an `if`, so prevalence alone would describe the language rather than this codebase. Weights are how much a channel counts toward whether a member looks normal — calls 40, control flow 20, co-occurring tags 15, role 15, package 10.
 
-**`concurrency`** — 8 functions
+**`fmt+debug`** — 11 functions
 
 | Channel | Feature | | Members | vs corpus |
 |---|---|---|---|---|
-| calls ×40 | `github.com/sourcegraph/conc/internal/multierror.Join` | `███·······` | 2 of 8 | 10× |
-| flow ×20 | `funclit` | `██████····` | 5 of 8 | 3.6× |
-|  | `if` | `█████·····` | 4 of 8 | 2.7× |
-| role ×15 | `utility` | `███·······` | 2 of 8 | 2.9× |
-| package ×10 | `iter` | `███·······` | 2 of 8 | 2.2× |
+| flow ×20 | `if` | `█████·····` | 5 of 11 | 2.5× |
+| role ×15 | `utility` | `████······` | 4 of 11 | 4.2× |
+| package ×10 | `panics` | `███████···` | 8 of 11 | 5.9× |
+|  | `iter` | `███·······` | 3 of 11 | 2.5× |
+
+**`lock+unlock`** — 11 functions
+
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| flow ×20 | `funclit` | `███████···` | 8 of 11 | 4.2× |
+|  | `if` | `███████···` | 8 of 11 | 3.9× |
+
+**`s.pool+s.queue`** — 7 functions
+
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| flow ×20 | `defer` | `████······` | 3 of 7 | 4.3× |
+|  | `funclit` | `████······` | 3 of 7 | 2.5× |
+| cotags ×15 | `lock+unlock` | `███·······` | 2 of 7 | 2.1× |
+| package ×10 | `stream` | `██████████` | 7 of 7 | 10× |
+
+**`p.limiter+conc`** — 5 functions
+
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| flow ×20 | `if` | `████······` | 2 of 5 | 2.2× |
+| cotags ×15 | `p.tasks+conc` | `████······` | 2 of 5 | 6.5× |
+
+**`p.pool+multierror`** — 5 functions
+
+Nothing distinctive: its members do what the rest of the corpus does. The tag groups them; a shared way of writing them does not.
+
+**`p.tasks+conc`** — 5 functions
+
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| flow ×20 | `if` | `████······` | 2 of 5 | 2.2× |
+| cotags ×15 | `p.limiter+conc` | `████······` | 2 of 5 | 6.5× |
+|  | `lock+unlock` | `████······` | 2 of 5 | 2.9× |
+
+### What travels with what
+
+Co-occurrence measured against chance across every function. Only relationships at least twice — or at most half — as common as chance are reported; near-chance company is not culture. Each kind is listed separately, because there are far more call tokens than concepts and one shared list is all calls. Within a kind, strongest first means lift weighted by how many functions carry it — a 100× relationship holding for three functions is a weaker finding than a 30× one holding for thirty.
+
+**Together more than chance — tag~role**
+
+- 4 of 11 `fmt+debug` functions also `utility` — 4.2× chance
+
+### Functions drifting from their own concept
+
+These carry a tag but look nothing like the other functions carrying it. Typicality is measured against the concept's own median, so a genuinely varied concept lowers its own bar and a tight one can flag nobody.
+
+| Function | Concept | Typicality | Concept median |
+|---|---|---:|---:|
+| `stream.*Stream.callbacker` <br/>`stream/stream.go:121` | `s.pool+s.queue` | `0.23` | `0.59` |
+| `pool.*Pool.worker` <br/>`pool/pool.go:148` | `p.tasks+conc` | `0.29` | `0.59` |
+| `stream.*Stream.Go` <br/>`stream/stream.go:62` | `s.pool+s.queue` | `0.29` | `0.59` |
+| `iter.Iterator[T].ForEachIdx` <br/>`iter/iter.go:59` | `fmt+debug` | `0.14` | `0.38` |
 
 ---
 
@@ -171,12 +211,16 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `pool/result_context_pool.go:22` | `pool.*ResultContextPool[T].Go` | `(func(context.Context) (T, error))` | — |
-| **B** | `pool/result_error_pool.go:25` | `pool.*ResultErrorPool[T].Go` | `(func() (T, error))` | — |
+| **A** | `pool/result_context_pool.go:22` | `pool.*ResultContextPool[T].Go` | `(func(context.Context) (T, error))` | lock+unlock 0.47 |
+| **B** | `pool/result_error_pool.go:25` | `pool.*ResultErrorPool[T].Go` | `(func() (T, error))` | lock+unlock 0.47 |
+
+**Profile A:** `lock+unlock` 1.00 (dominance)
+
+**Profile B:** `lock+unlock` 1.00 (dominance)
 
 **Code similarity:** `ast 0.79  flow 1.00  nesting 1.00  sig 0.00  size 0.87`
 
-**Evidence:** `146.48` (shape 143.19, concept 0.00, call 3.30)
+**Evidence:** `147.15` (shape 143.19, concept 0.66, call 3.30)
 
 **Trophic:** `0.94`
 
@@ -186,17 +230,18 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 - `3.42` — `seq[ if(bin:\|\|(bin,sel)) ; return(id) ]`
 - `3.42` — `if(bin:\|\|(bin,sel))`
 
-**Habitat:** A fits poorly in `pool` (fit 0.01, package norm 0.60)
+**Habitat:** A fits poorly in `pool` (fit 0.11, package norm 0.72)
 
-**Habitat:** B fits poorly in `pool` (fit 0.01, package norm 0.60)
+**Habitat:** B fits poorly in `pool` (fit 0.11, package norm 0.72)
 
-**Structural overlap:** `0.60` (merge-worthy)
+**Structural overlap:** `0.79` (merge-worthy)
 
 - share 3 callees: [Go, add, f]
 - overlapping call-graph neighborhoods (1.00): 2 shared
+- share patterns: [lock+unlock]
 - both are leaf functions
 - same package
-- callees do related work (1.00): [concurrency]
+- callees do related work (1.00): [lock+unlock]
 - same visibility
 - both are methods, on *ResultContextPool[T] and *ResultErrorPool[T]
 - call into same packages: [pool]
@@ -255,9 +300,9 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 - `3.42` — `seq[ do(call:panicIfInitialized) ; assign:=(call:WithCancel) ]`
 - `3.42` — `assign:=(call:WithCancel)`
 
-**Habitat:** A fits poorly in `pool` (fit 0.01, package norm 0.60)
+**Habitat:** A fits poorly in `pool` (fit 0.18, package norm 0.72)
 
-**Habitat:** B fits poorly in `pool` (fit 0.01, package norm 0.60)
+**Habitat:** B fits poorly in `pool` (fit 0.18, package norm 0.72)
 
 **Structural overlap:** `0.40` (not merge-worthy)
 
@@ -305,9 +350,9 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
 | **A** | `iter/map.go:27` | `iter.Mapper[T, R].Map` | `([]T, func(*T) R) ([]R)` | — |
-| **B** | `iter/map.go:48` | `iter.Mapper[T, R].MapErr` | `([]T, func(*T) (R, error)) ([]R, error)` | concurrency |
+| **B** | `iter/map.go:48` | `iter.Mapper[T, R].MapErr` | `([]T, func(*T) (R, error)) ([]R, error)` | lock+unlock 0.76 |
 
-**Profile B:** `concurrency` 1.00 (dominance)
+**Profile B:** `lock+unlock` 1.00 (dominance)
 
 **Code similarity:** `ast 0.53  flow 0.82  nesting 0.89  sig 0.40  size 0.50`
 
@@ -321,12 +366,13 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 - `3.42` — `flow:call:make→return`
 - `3.01` — `do(call:ForEachIdx)`
 
-**Structural overlap:** `0.49` (merge-worthy)
+**Structural overlap:** `0.54` (merge-worthy)
 
 - share 4 callees: [ForEachIdx, f, len, make]
 - overlapping call-graph neighborhoods (1.00): 1 shared
 - both are leaf functions
 - same package
+- callees do related work (1.00): [fmt+debug]
 - same visibility
 - same receiver type: Mapper[T, R]
 - call into same packages: [iter]
@@ -338,7 +384,9 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
 | **A** | `pool/context_pool.go:86` | `pool.*ContextPool.WithMaxGoroutines` | `(int) (*ContextPool)` | — |
-| **B** | `pool/error_pool.go:65` | `pool.*ErrorPool.WithMaxGoroutines` | `(int) (*ErrorPool)` | — |
+| **B** | `pool/error_pool.go:65` | `pool.*ErrorPool.WithMaxGoroutines` | `(int) (*ErrorPool)` | p.pool+multierror 0.50 |
+
+**Profile B:** `p.pool+multierror` 1.00 (dominance)
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
 
@@ -395,8 +443,10 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `pool/error_pool.go:65` | `pool.*ErrorPool.WithMaxGoroutines` | `(int) (*ErrorPool)` | — |
+| **A** | `pool/error_pool.go:65` | `pool.*ErrorPool.WithMaxGoroutines` | `(int) (*ErrorPool)` | p.pool+multierror 0.50 |
 | **B** | `pool/result_context_pool.go:67` | `pool.*ResultContextPool[T].WithMaxGoroutines` | `(int) (*ResultContextPool[T])` | — |
+
+**Profile A:** `p.pool+multierror` 1.00 (dominance)
 
 **Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
 
@@ -506,7 +556,7 @@ flowchart LR
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
 | `pool/context_pool.go:86` | `pool.*ContextPool.WithMaxGoroutines` | `(int) (*ContextPool)` | — |
-| `pool/error_pool.go:65` | `pool.*ErrorPool.WithMaxGoroutines` | `(int) (*ErrorPool)` | — |
+| `pool/error_pool.go:65` | `pool.*ErrorPool.WithMaxGoroutines` | `(int) (*ErrorPool)` | p.pool+multierror 0.50 |
 | `pool/result_context_pool.go:67` | `pool.*ResultContextPool[T].WithMaxGoroutines` | `(int) (*ResultContextPool[T])` | — |
 | `pool/result_error_pool.go:72` | `pool.*ResultErrorPool[T].WithMaxGoroutines` | `(int) (*ResultErrorPool[T])` | — |
 | `pool/result_pool.go:72` | `pool.*ResultPool[T].WithMaxGoroutines` | `(int) (*ResultPool[T])` | — |
@@ -570,7 +620,7 @@ flowchart LR
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `pool/error_pool.go:36` | `pool.*ErrorPool.Wait` | `() (error)` | — |
+| `pool/error_pool.go:36` | `pool.*ErrorPool.Wait` | `() (error)` | p.pool+multierror 0.50 |
 | `pool/result_context_pool.go:34` | `pool.*ResultContextPool[T].Wait` | `() ([]T, error)` | — |
 | `pool/result_error_pool.go:37` | `pool.*ResultErrorPool[T].Wait` | `() ([]T, error)` | — |
 | `pool/result_pool.go:40` | `pool.*ResultPool[T].Wait` | `() ([]T)` | — |

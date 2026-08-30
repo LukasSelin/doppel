@@ -26,7 +26,7 @@ func TestHabitatChannelWeightsSum(t *testing.T) {
 // sharing every feature and one alien sharing almost none.
 func habitatCloneAlienFixture() ([]parser.CodeUnit, []concepter.ConceptDoc) {
 	sqlCaller := func(nm string, flow []int, tags ...string) parser.CodeUnit {
-		u := parser.CodeUnit{Name: nm, Package: "store", Patterns: tags}
+		u := parser.CodeUnit{Name: nm, Package: "store", Concepts: parser.Certain(tags...)}
 		u.Fingerprint.Flow = flow
 		u.Callees = []string{"sql.Open"}
 		u.Signals = parser.TagSignals{PackageRefs: []parser.PackageRef{{Local: "sql", Path: "database/sql"}}}
@@ -38,7 +38,7 @@ func habitatCloneAlienFixture() ([]parser.CodeUnit, []concepter.ConceptDoc) {
 		units = append(units, sqlCaller(name("clone", i), flowOf(0, 6), "db_access", "error_wrapping"))
 		docs = append(docs, concepter.ConceptDoc{Role: "leaf"})
 	}
-	alien := parser.CodeUnit{Name: "alien", Package: "store", Patterns: []string{"db_access"}}
+	alien := parser.CodeUnit{Name: "alien", Package: "store", Concepts: parser.Certain("db_access")}
 	alien.Fingerprint.Flow = flowOf(5, 8) // select + go: unique flow features
 	units = append(units, alien)
 	docs = append(docs, concepter.ConceptDoc{Role: "orchestrator"})

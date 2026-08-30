@@ -19,7 +19,7 @@ sort), and `analyzer.SortByEvidence`).
 ## Pipeline
 
 The pipeline lives in `cmd/pipeline.go`, split in two: `index()` is the corpus-building prefix
-(walk → parse → filter → tag → IC → call graph → mapper), `finishAnalyze()` is the reporting tail
+(walk → parse → filter → call graph → learn concepts → IC → mapper), `finishAnalyze()` is the reporting tail
 (culture, retrieval, comparison, annotation), and `analyze()` is exactly the two in sequence — the
 split is a pure refactoring, verified byte-identical on `--format json`. `runAnalyze` in
 `cmd/analyze.go` is the CLI wrapper that supplies flags and renders, and `cmd/hook.go` is the other
@@ -45,8 +45,8 @@ directly: a hook must stay silent, since stderr from a SessionStart hook surface
 broken-tool notice. Stages in execution order:
 
 1. **Walk & parse** — `filepath.WalkDir` + `shouldSkipDir`, then `parser.Parse` per `.go` file → `[]CodeUnit`. Unreadable files and parse errors are warned and skipped, never fatal. `fingerprint.Build` and `extractSignals` (the tagger's AST evidence) both run here, while the AST is still in hand.
-2. **Tag** — `tagger.Tag(unit)` sets `unit.Patterns` (14 intent tags matched against the unit's AST signals — selectors, imports, string-literal contents, identifiers, node kinds — never against raw source text). Tag counts feed the corpus IC in the same loop.
-3. **Build call graph** — `concepter.BuildCallGraph(units)` → `concepter.Graph`, both directions over **qualified names** (`package.Name`, methods keeping their receiver: `comparator.*Comparator.Compare`). A resolver maps each raw callee string to at most one unit: import-qualified selectors through the file's recorded import bindings (aliases included), variable-receiver method calls only when the method name is unique corpus-wide, bare names to the same-package function. Ambiguity drops the edge; recursion is excluded; only repo-internal edges exist. Happens *before* concept docs, because docs need caller lists.
+2. **Build call graph** — `concepter.BuildCallGraph(units)` → `concepter.Graph`, both directions over **qualified names** (`package.Name`, methods keeping their receiver: `comparator.*Comparator.Compare`). A resolver maps each raw callee string to at most one unit: import-qualified selectors through the file's recorded import bindings (aliases included), variable-receiver method calls only when the method name is unique corpus-wide, bare names to the same-package function. Ambiguity drops the edge; recursion is excluded; only repo-internal edges exist. It runs **before** concepts now, because resolved calls are one of the channels a concept is learned from — and still before concept docs, which need caller lists.
+3. **Learn concepts** — `lexicon.Build(units, cg, seeds, …)` fills `unit.Concepts`: corpus-derived concepts with graded membership (see *The learned lexicon*). `tagger.Tag` still runs, but only to produce `seeds` — which functions a concept search starts from, and nothing else. Member counts and summed confidence feed the corpus IC in the same loop, and the learned concepts become the taxonomy's leaves for this run via `ontology.WithConcepts`.
 4. **Generate + enrich concept docs** — `concepter.New()` makes bare docs; **`mapper.Map` does the real work**: attaches qualified callers, resolved internal callees, and the depth-2 call-graph neighborhood; derives per-corpus role thresholds from the resolved degree distribution and classifies; aggregates caller/callee patterns and packages from resolved edges. `culture.Build` then models the corpus's conceptual practice (see *Corpus culture*); its summary goes to stderr, and after the struct-min filter each surviving pair gets `Culture` notes for atypical realizations of its **shared** tags (positional attachment, like Evidence).
 5. **Candidate retrieval** — `retriever.Retrieve` runs three per-function top-K channels (structural shingle-IDF, concept IC, resolved-call IDF — see *Candidate retrieval* below), unions and dedupes them, and computes definitive per-pair evidence masses plus the exact `fingerprint.Breakdown` for every union pair. Retrieval stats go to stderr. `cmd` materializes the candidates into `analyzer.SimilarPair`s (with `Retrieval` set). `analyzer.FindSimilar` still exists as the simple library API but the pipeline no longer calls it.
 6. **Structural comparison** — a `comparator.Comparator` built over a corpus-weighted `ontology.Scorer` scores **every** candidate pair → `pair.Evidence`. Concept and role signals go through the ontology hierarchy, not string equality, and concept matching is weighted by information content computed from this run's tag counts — sharing a near-universal tag is weak evidence, sharing a rare one is strong.
@@ -78,9 +78,11 @@ internal/
   parser/       parser.go is a thin dispatcher (and owns ShouldSkipDir, the walk rule cmd and bench share); go_parser.go does the go/ast work; signals.go extracts the tagger's evidence channels → CodeUnit
   fingerprint/  AST token shingles + control-flow histogram + signature types; the code-similarity score
   ontology/     The formal vocabulary: entity kinds, typed relations, concept taxonomy, roles, axioms
-  tagger/       AST-signal intent detection → 14 pattern tags
+  tagger/       The 14 seed rules: AST-signal matching → founding member sets for the lexicon
+  lexicon/      Learns the corpus's own concepts: features.go (evidence channels), expand.go (seeded PMI expansion), emerge.go (clique clustering), name.go
+  clique/       Deterministic maximal-clique enumeration and components, shared by family and lexicon
   concepter/    ConceptDoc; callgraph.go (BuildCallGraph); role.go (ClassifyRole, role constants)
-  mapper/       Where enrichment actually happens: callers, role classification, aggregated patterns/packages
+  mapper/       Where enrichment actually happens: callers, role classification, aggregated concepts/packages
   retriever/    Multi-channel candidate retrieval: shape.go / concept.go / calls.go inverted indexes, retriever.go union + evidence
   culture/      Corpus-culture model: ecology.go (PMI), prototype.go (prototypes + typicality), habitat.go (fit), convention.go
   analyzer/     SimilarPair + Retrieval types; FindSimilar (library API); SortByEvidence (final ranking); kind.go + stem.go (pair kinds)
@@ -94,14 +96,17 @@ internal/
 examples/       Committed real reports for each corpus rung, plus labels/ (committed golden reviews) — see examples/README.md
 ```
 
-Four helpers are deliberately shared rather than copied, because doppel found each
+Six helpers are deliberately shared rather than copied, because doppel found each
 of them as an exact clone of itself: `parser.ShouldSkipDir` (the walk rule — `cmd` walks
 with it and `internal/bench` mirrored it by hand, which is how the harness could have
 silently measured a different corpus than the tool), `snapshot.RelSlash` (the path rule
 `cmd` and `reporter` both described as "mirrors the snapshot's"), `fingerprint.PrintType`
 (the type rendering `parser` needs for `Signature`, wrapped there only to keep its `"?"`
-fallback), and `cmd.validateMode` (one check for `--tests` and `--generated`, parameterized
-by flag name). Do not reintroduce a local copy of any of them.
+fallback), `cmd.validateMode` (one check for `--tests` and `--generated`, parameterized
+by flag name), `internal/clique` (the Bron–Kerbosch enumerator `family` needed for the pair
+graph and `lexicon` needs for the feature graph, with the same non-transitivity argument),
+and `concepter.Graded` (the `[]parser.Concept` → `[]ontology.WeightedTerm` conversion both
+`comparator` and `retriever` need). Do not reintroduce a local copy of any of them.
 
 Dependency directions that must hold: `analyzer` imports `comparator` (for the `Evidence` field), so
 `comparator` must never import `analyzer`. `parser` imports `fingerprint`, so `fingerprint` must
@@ -109,9 +114,12 @@ never import `parser` — it works on `*ast.FuncDecl` directly. `ontology` impor
 module and must stay that way: `tagger`, `concepter` and `comparator` all depend on it. `retriever`
 imports `parser`, `fingerprint`, `concepter`, `ontology` and must never import `analyzer` or
 `comparator` — `cmd` bridges retriever candidates into `analyzer.SimilarPair`. `culture` imports
-`parser`, `concepter`, `fingerprint` only (not even `ontology` — it is a leaf-tag count model) and
-nothing imports it except `cmd`, which bridges its findings into `analyzer.CultureNote`. `family`
-imports `parser`, `fingerprint`, `analyzer` and nothing else; `cmd` and `reporter` import it.
+`parser`, `concepter`, `fingerprint` only (not `ontology` directly — it is a count model over
+concept names) and nothing imports it except `cmd`, which bridges its findings into
+`analyzer.CultureNote`. `family` imports `parser`, `fingerprint`, `analyzer` and `clique`; `cmd`
+and `reporter` import it. `lexicon` imports `parser`, `fingerprint`, `concepter` and `clique` and
+must never import `ontology` or `tagger` — it learns names, it does not reason about a vocabulary,
+and `cmd` bridges its concepts into an ontology term table. `clique` imports nothing.
 
 ## Two scores, deliberately unblended — and a third quantity that ranks
 
@@ -211,13 +219,20 @@ doppel ontology --defs                                # print the vocabulary and
 ## Key types
 
 - **CodeUnit** (`internal/parser/parser.go`) — one function/method from the AST: `Name`, `File`,
-  `StartLine`, `Body`, `Signature`, `Package`, `Patterns`, `DocComment`, `Exported`, `ReceiverType`,
+  `StartLine`, `Body`, `Signature`, `Package`, `Concepts`, `DocComment`, `Exported`, `ReceiverType`,
   `Callees`, `Fingerprint`, `Generated`. Methods are named `"*Server.Start"` — the receiver keeps its
   star; `parser.MethodName` strips it back off. `Signature` is rendered text — `([]int) (int)`,
   types in order, names dropped, one entry per declared name — and is what the `sig:` line and the
   interface-implementation kind read; `Fingerprint.Types` (the sorted `in:`/`out:` type *set*) is
   what the similarity score reads. (For a long time `Signature` was empty on every unit: the old
   extractor handed an `*ast.FieldList` to `go/printer`, which rejects it silently.)
+- **Concept** (`internal/parser/parser.go`) — `{ID string; Confidence float64}`, one graded
+  membership; `CodeUnit.Concepts` holds them ascending by ID. It replaced a bare `Patterns
+  []string`, and the rename was deliberate: every reader became a compile error, so none could
+  silently keep a boolean view of a graded fact. `parser.ConceptIDs` is the boolean projection —
+  every caller of it is a place that must *not* see corpus-relative weights, the merge-signal gate
+  above all — and `parser.Certain` builds confidence-1 memberships for the callers that legitimately
+  have bare IDs (test fixtures pinning behavior that has nothing to do with confidence).
 - **Fingerprint** (`internal/fingerprint/fingerprint.go`) — `Shingles` (sorted, deduped 3-gram
   hashes), `Flow` (control-flow histogram), `Types` (normalized param/result types), `Nodes`, and
   `Patterns` (the multi-level trophic pattern multiset — see *Trophic structural energy*).
@@ -226,8 +241,9 @@ doppel ontology --defs                                # print the vocabulary and
   means "no body" and never matches anything.
 - **Term / Ontology** (`internal/ontology/ontology.go`) — the vocabulary: four disjoint rooted trees
   (`entity`, `relation`, `concept`, `role`) carrying definitions, relation weights, and `Validate()`.
-  Concept leaf IDs are exactly the tagger's tag strings and role IDs exactly `ClassifyRole`'s return
-  values, which is what let the ontology be introduced without changing any output.
+  Role IDs are exactly `ClassifyRole`'s return values. Concept leaves are per-run: the abstract
+  interior is authored, the concrete leaves come from `DerivedConceptTerms` — see *The ontology*.
+  `WeightedTerm` is a term plus a confidence, which is what the graded scorer methods take.
 - **ConceptDoc** (`internal/concepter/concepter.go`) — the architectural context the comparator
   scores. It is no longer rendered to text anywhere; `Format()` existed only to build embedding
   input and is gone.
@@ -239,6 +255,10 @@ doppel ontology --defs                                # print the vocabulary and
 - **Candidate / Stats / Options** (`internal/retriever/retriever.go`) — one retrieved pair with
   per-channel evidence masses, the run's channel statistics, and the retrieval knobs (the df caps
   live on `Options` so tests can shrink them; they are not flags).
+- **Concept / Feature / Model / Options** (`internal/lexicon/lexicon.go`) — a learned concept with
+  its weighted vocabulary, its `Scale` and `Floor`, and its `Seed`/`Anchor` provenance; `Model`
+  carries the concepts, the per-unit assignments (positional, like `docs[i]`), and `Stats`. Like
+  `culture`'s and `retriever`'s, none of `Options` is a flag.
 
 ### Candidate retrieval
 
@@ -252,7 +272,7 @@ function's top `--channel-k` (default 5) by `(mass desc, idx asc)`.
 | Channel | Features | Cap (Options) | Extra gates |
 | --- | --- | --- | --- |
 | shape | multi-level trophic patterns (`fingerprint.Pattern`, presence-df IDF, min-count multiset mass) | `MaxPatternDF` 50 | `--min-nodes` eligibility; admits only pairs with exact `code-shape >= --threshold`, probing at most `4*ChannelK` neighbors |
-| concept | tagger tags + non-root taxonomy ancestors (enumeration only) | `MaxConceptDF` 250 | none — evidence is `Scorer.SharedInformation` (raw `Σ IC(LCS)`) over the leaf tag sets |
+| concept | learned concepts + non-root taxonomy ancestors (enumeration only) | `MaxConceptDF` 250 | none — evidence is `Scorer.SharedInformationW` (`Σ min(conf)·IC(LCS)`) over the membership sets |
 | call | resolved internal callees (qualified) + import-qualified external calls via `RefPath` (full import path) | `MaxCallDF` 50 | none; bare names and variable-receiver calls are never tokens |
 
 The union is deduped on `(min idx, max idx)`; every union pair then gets **definitive** evidence on
@@ -282,10 +302,19 @@ Consequences worth knowing:
   The 130-clone `Error()` bucket exceeds the df cap entirely — those functions contribute no
   structural candidates and can only enter via concept/call evidence, which is the intended
   common-idiom suppression (no name-based heuristics anywhere).
-- The concept channel indexes ancestors so `db_access`-only can meet `caching`-only through
-  `data_store_access`, but the *evidence* is always `SharedInformation` on the leaf sets — a pair
-  meeting only at a shallow ancestor earns only that ancestor's small IC.
-- `ontology.Scorer.SharedInformation` exists precisely so retrieval never recomputes mass as
+- The concept channel indexes ancestors so two functions with no concept in common can still meet
+  under a shared parent, but the *evidence* is always the graded shared information of the
+  membership sets — a pair meeting only at a shallow ancestor earns only that ancestor's small IC,
+  and a pair where either side barely carries the concept earns only what that side claims.
+  **Postings are unweighted**: a unit posts under a concept it is a member of at all, so `df` keeps
+  meaning "how many functions carry this", which is the quantity the cap is stated in. Confidence
+  bends the evidence, not the index.
+- **The channel got much louder when concepts became learned**, and that is the main behavioral
+  shift of the change. On doppel's own corpus it went from 63 admitted pairs to ~1300, and
+  concept-only pairs from 3% of the union to 43%; on moby, 2410 → 12050. A fixed fourteen-tag
+  vocabulary simply could not distinguish enough functions to retrieve on. The golden benchmark is
+  what judges whether that is recall or noise — see *Development*.
+- `ontology.Scorer.SharedInformationW` exists precisely so retrieval never recomputes mass as
   `Σ ic.Of(m.LCA)` — that hits `Of("")` (the unknown sentinel) for unknown-term self-matches.
 - `Stats.Suppressed` / `Stats.LargeBuckets` are diagnostics on stderr, not gates.
 - On the large reference corpus (~8k functions): ~22k union pairs, a few seconds end to end (the
@@ -552,42 +581,152 @@ the thresholds themselves follow the degree distribution — so a function's rol
 merge signal) can move when unrelated code changes. That is what "high for this repo" means, and it
 was chosen deliberately over a fixed absolute scale.
 
-### Tagger patterns
+### The learned lexicon
 
+`internal/lexicon` learns this corpus's concept vocabulary instead of asserting one. It is the
+answer to the question the tagger could not scale to: fourteen hand-written rules over string
+channels are fourteen guesses about how *some* codebase writes something, they do not port to a
+repository that calls its database wrapper `store`, and they do not port to another language at
+all.
+
+**The rules survive as seeds.** `tagger.Tag` still runs and still matches the same AST evidence,
+but its output is a founding *member set* — which functions to look at — not a label. What the
+concept turns out to be is whatever those functions share that the rest of the corpus does not.
+
+Stages, all deterministic counting:
+
+1. **Features.** Per unit, a channel-prefixed set from material the frontend already produces:
+   `sel:` selectors (nested tail included, so `c.httpClient.Do` gives `httpClient.Do`), `imp:`
+   import paths, `id:` identifier stems split on camel/underscore boundaries, `lit:` the leading
+   token of each string literal, `call:` resolved call tokens, `act:` the L2/L3/L4 pattern renders
+   from the fingerprint, `flow:` binarized control-flow labels plus the go/select/chan flags.
+2. **Information window.** Keep features with `df >= MinDF` (2 — one function can relate nothing)
+   and `ln(N/df) >= MinIDF` (1.0 nat). The upper bound is derived, `cap = ⌊N·e^−MinIDF⌋`, for the
+   reason `retriever.Options.MinIDF` documents: an absolute cap of 50 means 1.5 nats on cobra and 5
+   on moby, and the same number should mean the same thing.
+3. **Seeded expansion** (`expand.go`). For each seed, every surviving feature is scored by lift
+   over the corpus base rate — `PMI(c,f) = ln( P(f | members) / P(f) )`, kept at `>= ln 2` with
+   `count >= MinSupport` — and weighted `lift × idf`: distinctive *to the concept* and rare *in the
+   corpus*. This is `culture/ecology.go`'s arithmetic generalized from tag~call to concept~feature.
+   A seed whose members share nothing distinctive produces no concept, which is a finding rather
+   than a failure.
+4. **Emergence** (`emerge.go`). Features no seed claimed are clustered on their own co-occurrence:
+   an edge at `PMI >= ln 2` with `count >= MinSupport`, then **maximal cliques**, then the same
+   `fit` as a seed. This is the path that makes an unseeded corpus work at all.
+5. **Membership.** `E(u,c) = Σ w(c,f)` over the features the unit carries. Two corpus-derived
+   quantities then do two different jobs: `Floor` (the founding evidence at `FloorQuantile`, 0.25)
+   decides membership, and `Scale` (the founding median) sets what the confidence reads,
+   `conf = E/(E+Scale)`. Saturating, not normalized — there is no maximum evidence a function could
+   carry, and pretending there is would make the number a rank in disguise.
+
+Five decisions here were **measured, not assumed**, and each was wrong the first time:
+
+- **A fixed confidence cut cannot decide membership.** Confidence saturates around the median
+  founding evidence, so `conf >= 0.5` means "at least the median founding member" and discards half
+  of every concept's own seed set by construction. On doppel's own corpus it left 527 of 546
+  functions with no concept at all. Hence the separate quantile floor.
+- **The feature co-occurrence graph is not sparse.** Features co-occur far more freely than
+  functions resemble each other, so the unbounded graph is one blob: it tripped `MaxComponent` and
+  produced one emergent concept, and none at all with no seeds. Each feature keeps its `EdgeK` (8)
+  strongest associations — the bounded per-item top-K idiom the retrieval channels already use.
+- **Components are the wrong enumeration unit, even sparsified.** A top-K graph's giant component
+  is most of the vocabulary. Enumeration runs over **one feature's neighbourhood** instead, at most
+  `EdgeK+1` vertices, so it is bounded by construction rather than by a budget. Every maximal
+  clique containing a feature lies inside its neighbourhood — an extending vertex would have to be
+  adjacent to it — so these are globally maximal, and each is rediscovered once per member: the
+  **lowest-indexed member owns it**, or a clique of seven becomes seven identical concepts.
+- **Not every feature may found a concept.** Seeding is restricted to `seedChannels`
+  (`sel`/`call`/`imp`) — what the code *does*. Every channel still contributes to a concept's
+  vocabulary once its members are known, but without this restriction doppel's own corpus produced
+  concepts founded on the stem `and` and the literal `%d`: groups of functions that genuinely
+  co-occur those tokens and mean nothing. That one restriction took 245 emergent concepts to 55.
+- **`MinCliqueSize` is 2, not 3.** "A pair is not a practice" sounds safer and is wrong: the
+  practices worth finding are overwhelmingly pairs of calls — Get/Decode, Marshal/Unmarshal,
+  Open/Close — and at three a store wrapper reached through exactly two calls is invisible. The
+  strictness is elsewhere: an edge needs `MinSupport` co-occurrences at `MinLift` nats, and a
+  founding member must carry two of the clique's features, which for a pair means both.
+
+**Naming.** A concept's ID is its top-weight features, short form, joined by `+`:
+`sql.Open+QueryRow`, `json.Marshal+Unmarshal`, `store.Get+store.Decode`. Ordering is **channel
+priority before weight** — a concept's heaviest feature is often an identifier stem, and naming by
+raw weight produced `ref+decode` for a concept whose evidence is `store.Get`/`store.Decode`: a name
+a reader cannot look up. Widening stops at `maxNameParts` (3) and falls back to a `~2` suffix. The
+seed's name is kept as `Seed` and rendered as provenance, **never as the identity** — after
+expansion the concept is its learned vocabulary, and a corpus where a rule fired on three unrelated
+things does not get to inherit the rule's claim.
+
+Overlapping cliques are the norm (one function does several things), so `MaxOverlap` (founding-member
+Jaccard 0.6) collapses concepts that are the same group of functions said twice; earlier-kept wins,
+and the iteration order is fixed, so which survives is deterministic.
+
+There are **no flags**. Every knob is on `lexicon.Options`, like `culture`'s and `retriever`'s, and
+`cmd` passes `DefaultOptions()`. A learned vocabulary is not an operating point a user tunes; it is
+what the corpus says.
+
+### Seeds
+
+The seed table is `internal/tagger`, unchanged as a matcher and re-documented as what it now is.
 Exactly 14, emitted in declaration order: `retry`, `http_call`, `db_access`, `validation`, `mapping`,
 `transaction`, `caching`, `concurrency`, `error_wrapping`, then the five added with ontology 1.1.0 —
 `grpc_call`, `circuit_breaker`, `serialization`, `file_io`, `logging` — appended after the original
-nine so every pre-existing tag keeps its emission position. The rules name `ontology` concept terms
+nine so every pre-existing seed keeps its emission position. The rules name `ontology` concept terms
 rather than bare strings, so a rule pointing at a concept that does not exist stops compiling, and
-`tagger_test` enforces the other direction: every concrete concept has exactly one rule.
+`tagger_test` enforces the other direction: every concrete concept in the authored taxonomy has
+exactly one rule. `tagger.Concepts()` exposes the full list, which is what makes "this corpus has no
+HTTP practice" reportable — see *Absence* below.
 
 Rules match **AST evidence** (`parser.TagSignals`), never raw source text, and each channel has its
 own semantics: selectors exact (`http.Get`, `sync.Map`), methods exact on the method or bare-call
 name, receivers exact on the receiver identifier (`tx.Commit` fires, `mtx.Lock` does not), imports
 and string-literal contents and identifier names by substring, plus node-kind flags
-(go/select/chan) for `concurrency`. Consequences worth knowing:
+(go/select/chan) for `concurrency`. Consequences worth knowing — all of them now bear on *which
+functions a search starts from*, not on what anything is called:
 
-- A comment saying `COMMIT` or `DELETE` no longer tags anything — comments are not evidence.
+- A comment saying `COMMIT` or `DELETE` no longer seeds anything — comments are not evidence.
 - `error_wrapping` is deliberately tight: a `%w` verb anywhere in a format string (the old rule
   only matched `%w"`) or a pkg/errors wrap helper. Bare `fmt.Errorf` and `errors.As`/`errors.Is`
-  no longer fire it, which makes the tag rare enough to be informative under IC.
-- `retry` and `circuit_breaker` are the two tags with no structural handle — their evidence is
+  no longer fire it.
+- `retry` and `circuit_breaker` are the two seeds with no structural handle — their evidence is
   lexical, in identifier names (`circuit_breaker` also matches a `gobreaker` import).
 - String literals are still evidence, so a test whose fixture strings contain `%w` or `SELECT `
-  earns those tags. A function carrying SQL strings is db-flavored even when it is a test.
-- `json.Marshal`/`json.Unmarshal` moved from `mapping` to `serialization` when that leaf arrived —
-  otherwise every json function would carry both tags forever. `mapping` is now purely the
-  conversion vocabulary (`transform`, `convert`, `ToDTO`, …).
+  seeds those searches. A function carrying SQL strings is db-flavored even when it is a test.
+- `json.Marshal`/`json.Unmarshal` moved from `mapping` to `serialization` when that leaf arrived.
+  `mapping` is purely the conversion vocabulary (`transform`, `convert`, `ToDTO`, …).
 - `serialization`, `file_io` and `logging` are selector/method/receiver evidence only — an
   `encoding/json` or `os` import is file-level and near-universal, and an import-substring `"log"`
   would match `dialog` and half the module paths on earth.
 - The pre-Go-only polyglot keywords (`axios`, `urllib`, `Promise.`, `await `) are gone.
 
+### Absence
+
+A learned concept can never be absent — it exists *because* functions carry it — so "does this
+codebase already do X" has to be answered against the one fixed list left: the seeds. `Model.
+GrownSeeds()` reports which seeds produced a concept, `cmd.unusedSeeds` subtracts them from
+`tagger.Concepts()`, and the remainder travels in `Result.UnusedSeeds`, `snapshot.UnusedSeeds`,
+the report overview and the session-start digest.
+
+The predecessor compared a run's tags against `ontology.Default()`'s fourteen leaves. Those leaves
+are seeds now and never appear in a derived vocabulary, so that comparison would have reported all
+fourteen absent on every corpus — confidently, and always wrongly.
+
 ### The ontology
 
-`internal/ontology` is the vocabulary the comparator reasons over, and the reason a pair tagged
-`http_call`/`db_access` no longer scores the same as a pair with nothing in common. The fourteen tags
-are leaves of a taxonomy whose interior nodes are abstract and exist purely to relate them:
+`internal/ontology` is the vocabulary the comparator reasons over, and the reason two functions
+doing related kinds of work no longer score the same as two with nothing in common.
+
+**The interior is authored; the leaves are learned.** `concepts.go` still declares the tree below,
+but its fourteen concrete leaves are now the *seed* vocabulary. Every run replaces them with what
+`internal/lexicon` found — `ontology.DerivedConceptTerms` builds the table and
+`ontology.WithConcepts` assembles the run's vocabulary, carrying entity, relation and role terms
+over untouched. A seeded concept hangs under its seed leaf's **parent** (a concept grown from
+`db_access` is a kind of `data_store_access`, whatever this corpus turned out to mean by it); an
+emergent one hangs under the parent of the seeded concept it shares the most vocabulary with, or
+under the concept root when it resembles none. `Ontology` was already constructible — `New(tables
+…)` predates this and `Default()` is just `New(entity, relation, concept, role)` — so nothing new
+was needed to make the vocabulary per-corpus.
+
+The abstract interior is the part that was never a claim about a codebase, and it is what
+Wu–Palmer depth, Lin similarity and the concept channel's ancestor postings all read:
 
 ```
 concept → io_operation → remote_io → http_call, grpc_call
@@ -615,13 +754,29 @@ Jaccard-shaped functions must not be merged into one helper.
 Axiom 8, the tagger/ontology correspondence, lives in `internal/tagger` instead: the check needs the
 rule table, and importing `tagger` from `ontology` would be a cycle.
 
+**Axiom 1 exempts concrete concept leaves from snake_case**, and the exemption is the point rather
+than a loophole. Learned leaves are named after the evidence that produced them
+(`sql.Open+QueryRow`), so a spelling convention meant to keep a hand-written vocabulary tidy would
+only force those names to be mangled into something a reader cannot match against the code.
+Everything still authored by hand — every abstract term, and every entity, relation and role —
+keeps the rule. `doppel ontology` prints the *seed* vocabulary and says so: the leaves it shows are
+not what any run reasons over.
+
+`Ontology.LCA` walks the deeper term up to the shallower and then both together, using the depth
+table and parent pointers. The chain-and-set form it replaced allocated a map per call, which was
+fine for fourteen tags and became a quarter of a run once a unit carries a dozen learned concepts.
+
 ### Corpus-weighted relatedness
 
-`ontology.NewCorpusIC` turns this run's tag counts into information content —
-`IC(c) = ln(1/P(c))`, add-one smoothed, ancestors accumulating their leaves — and
-`ontology.NewScorer` wraps the ontology with it. `cmd/analyze.go` builds the scorer from the tag
-counts and hands it to `comparator.New`; the free `comparator.Compare` stays corpus-independent
-(nil IC delegates literally to the Wu–Palmer methods) and is what the regression tests pin.
+`ontology.NewCorpusICMass` turns this run's **summed membership confidence** per concept into
+information content — `IC(c) = ln(1/P(c))`, add-one smoothed, ancestors accumulating their leaves —
+and `ontology.NewScorer` wraps the ontology with it. `NewCorpusIC` remains as the integer-count
+form and delegates. Mass rather than a member count because membership is graded: a concept twenty
+functions carry firmly is more of the corpus than one twenty functions barely carry. Accumulation
+is floating point now, so it runs in declaration order and never over a map. `cmd/pipeline.go`
+builds the scorer and hands it to `comparator.New`; the free `comparator.Compare` stays
+corpus-independent (nil IC delegates literally to the Wu–Palmer methods) and is what the regression
+tests pin.
 
 With IC loaded, term relatedness is **Lin** (`2·IC(LCS)/(IC(a)+IC(b))`) and set relatedness is
 information-weighted: a matched pair contributes `IC(LCS)` exactly (Lin's denominator cancels the
@@ -630,14 +785,26 @@ matcher is the same greedy **sorted by contribution, not similarity** — under 
 similar yet share less information, and contribution order is what stays optimal (verified against
 a brute-force oracle in `oracle_test.go`/`scorer_test.go`, exhaustively).
 
+**Confidence rides on top of IC, and only on the score.** `SetRelatednessW` and
+`SharedInformationW` take `[]ontology.WeightedTerm`: a matched pair contributes
+`min(conf_a, conf_b)·IC(LCS)`, and each side's total is `Σ conf·IC`. `min` because sharing is
+bounded by the weaker claim — a concept one side barely carries cannot be strong shared evidence
+however sure the other side is. The **matching itself stays unweighted**: it is the same
+contribution-ordered greedy over the same term IDs, and confidence only rescales the pairs it
+chose. That is not a shortcut. The greedy's optimality rests on IC decomposing laminarly over the
+tree, an argument confidences break — a down-weighted exact match can be worth less than two
+related pairs, the classic case where greedy matching is not optimal — so keeping the *choice* of
+pairs weight-free preserves exactly the property the exhaustive oracle test verifies.
+
 Two invariants worth knowing:
 
-- **The merge-signal gate never sees IC.** `countSignals` reads `PatternSignalBest`, a
-  taxonomy-only Wu–Palmer best match. Under Lin, sibling/cousin similarities move with tag
-  frequencies elsewhere in the tree; a pair's `MergeWorthy` must not flip because unrelated code
-  shifted the statistics. (The `OverlapScore >= 0.4` half of the verdict does include the weighted
-  score, so `MergeWorthy` is not fully corpus-independent — the signal count and the shape floor
-  are.)
+- **The merge-signal gate never sees IC, and now never sees confidence either.** `countSignals`
+  reads `PatternSignalBest`, a taxonomy-only Wu–Palmer best match over bare concept IDs. Under Lin,
+  sibling/cousin similarities move with concept frequencies elsewhere in the tree; membership
+  confidence is corpus-relative twice over (the learned vocabulary and the evidence scale both move
+  with the corpus); a pair's `MergeWorthy` must not flip because unrelated code shifted either.
+  (The `OverlapScore >= 0.4` half of the verdict does include the weighted score, so `MergeWorthy`
+  is not fully corpus-independent — the signal count and the shape floor are.)
 - **Singleton sets cannot be discounted.** `{error_wrapping}` vs `{error_wrapping}` is still 1.0 —
   the shared information and the total information are the same quantity. The discount only
   manifests in sets of ≥ 2 tags. Fixing it would mean IC-scaling the `exhibits` relation weight,
@@ -978,7 +1145,11 @@ to rewrite on every turn:
   Anything added back needs a reader, or it is weight in a file the Stop hook rewrites every turn.
   `Schema` 3 added no field: it changed what `Pair.MergeWorthy` asserts (the shape floor). A
   meaning change with no shape change is exactly what the version exists for — the two files would
-  otherwise compare cleanly and report a merge-worthy drop nobody caused.
+  otherwise compare cleanly and report a merge-worthy drop nobody caused. `Schema` 5 replaced
+  `Unit.Patterns []string` with graded `Unit.Concepts` (confidence rounded to two decimals — the
+  Stop hook rewrites this file every turn and full float precision is bytes of noise) and added
+  `UnusedSeeds`. A schema-4 baseline's tags are names from a vocabulary that no longer exists: they
+  would not fail to compare, they would silently match nothing.
 
 **What a delta may and may not claim.** `UnitsAdded`, `UnitsRemoved` and `BodiesChanged` are solid:
 they come from names and from `Digest`, an FNV-1a hash of the unit's own fingerprint, so nothing
@@ -999,8 +1170,8 @@ reason rather than returning a partial delta.
   hook's stderr surfaces to the user as a broken-tool notice, and blocking a session over a
   measurement would be indefensible.
 - `session-start` emits `additionalContext` (the corpus concept inventory — deliberately only
-  what is session-stable: tag counts, absent tags, roles, one pair-count line; per-target findings
-  live in the two hooks below, where a target exists) and writes the baseline **only if one does
+  what is session-stable: concept member counts, the seeds this corpus grew no practice for, roles,
+  one pair-count line; per-target findings live in the two hooks below, where a target exists) and writes the baseline **only if one does
   not already exist**. SessionStart also fires on resume and after compaction; re-recording then
   would silently move the origin mid-session.
 - `user-prompt` (UserPromptSubmit) scopes the corpus's duplication facts to the packages the
@@ -1083,13 +1254,20 @@ shell and behaves identically on Windows and Unix, and which is also the only fo
   Tests are conventionally similar by design, so they form their own population: `exclude`
   models production practice, `only` is test-suite hygiene mode, `include` mixes both but
   **cross test/prod pairs are never reported** (different build units are never merge
-  candidates). The filter runs before tagging, so every corpus statistic — IC, dfs, culture,
+  candidates). The filter runs before the lexicon, so every corpus statistic — the learned
+  vocabulary itself, IC, dfs, culture,
   habitats, arenas — models exactly the population the report describes; filtering at report
   time instead would be the worst of both. `_test.go` is a compiler-recognized suffix, not a
   naming heuristic.
 - Tested: `ontology`, `fingerprint`, `analyzer`, `comparator`, `tagger`, `parser`,
-  `concepter/role`, `retriever`, `culture`, `reporter`, `snapshot`, `cmd` config precedence and
-  hook baseline handling. Untested and worth covering: `mapper`.
+  `concepter/role`, `retriever`, `culture`, `lexicon`, `reporter`, `snapshot`, `cmd` config
+  precedence and hook baseline handling. Untested and worth covering: `mapper`, `clique` (covered
+  only through `family`'s tests).
+- `lexicon`'s `TestNoSeeds` is the language-portability claim as a test: the learner must produce
+  usable concepts from a corpus with **no seed labels at all**, because that is what a frontend for
+  another language starts from. After it passes, the only Go-specific pieces left are
+  `internal/parser`'s frontend and the seed rules, and a new frontend that fills `TagSignals` and a
+  `Fingerprint` gets concepts for free. Do not let it become a formality.
 - **Measurement harness** (`internal/bench`), four jobs in one package:
   - `scoreLabels` ranks a corpus and scores a human-reviewed labels file against it: every
     labeled pair gets a rank or an absence reason, three assertions are hard (merges retrieved,
@@ -1195,7 +1373,7 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   `shares_neighborhood`. The compared counterpart itself is excluded per pair (without that,
   adjacency would be *penalized* instead); the residual bias is accepted at weight 0.030.
 - **Retrieval recall is bounded by the channels.** A pair with no shared rare shingle, no shared
-  tag, and no shared resolved call is never compared, no matter how alike it is — that is the
+  concept, and no shared resolved call is never compared, no matter how alike it is — that is the
   design trade (the old exhaustive `FindSimilar` pass remains available as a library call). The
   worst case of the inverted-index accumulation is `O(cap · postings)`, comfortably sub-quadratic
   at 10k functions (~2.5s on an 8.7k-function corpus, vs ~20s for the old all-pairs pass).
@@ -1349,3 +1527,46 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   at high shape is labeled (the rule strips `New`, case falls out); numbered series (`sha256`/
   `sha512`) are excluded by design; lower-case markers inside a word (`Threshold`) are not markers.
   The 0.60 shape floor and the same/sibling-package locality bound the damage.
+
+- **A learned vocabulary costs real time, and the cost is corpus-derived.** moby went from ~1.8s
+  end to end to ~9.7s, prometheus from ~2.6s to ~5.5s. Almost none of that is the lexicon itself
+  (~1s on moby); it is the stages downstream that now do proportionate work — `culture` models 394
+  concepts where it modeled 12, and retrieval's concept channel admits several times more pairs.
+  Three pathologies were found and fixed along the way and are worth not reintroducing: the arena
+  rebuilt its interaction matrix by map lookup inside the replicator loop (90% of a prometheus run
+  once candidate sets grew), `lexicon.assign` scored every unit against every concept's vocabulary
+  instead of inverting the index, and `ontology.LCA` allocated a map per call. What remains is
+  proportionate, not pathological — but the Stop hook runs a full analysis every turn, so on a very
+  large repo this is the first thing that will be felt.
+- **A learned concept can be enormous.** moby's largest reads
+  `Config.OpenStdin+Config.StdinOnce` and has 922 members — 12% of the corpus. It is real (those
+  functions do touch container config) but it is weak evidence, and nothing bounds a concept's size
+  directly. IC handles it automatically, which is why nothing does bound it: a concept a tenth of
+  the corpus carries contributes almost nothing to any pair that shares it. The df window bounds
+  *features*, not concepts, deliberately.
+- **Concept identity is corpus-relative, and cross-corpus names do not compare.** Two repositories'
+  `sql.Open+QueryRow` concepts are different objects that happen to share a spelling, and within one
+  repository a concept's name can change when unrelated code shifts which feature weighs most. This
+  is the same caveat roles, typicality and habitat fit already carry, widened to the vocabulary
+  itself. `snapshot.Digest` is unaffected — it hashes the fingerprint alone — so `BodiesChanged` and
+  the `Attributable` contract still mean exactly what they meant.
+- **Seed bias remains.** Fourteen Go-shaped seeds still give some concepts a head start, and a
+  seeded concept claims its vocabulary before the emergent pass runs (`claimed` bounds what may
+  *found* a cluster, though never what a vocabulary may contain). `TestNoSeeds` bounds how much this
+  matters by proving the unseeded path works; it does not remove the bias.
+- **Emergent concepts are found per feature-neighbourhood, so recall is per-feature.** A practice
+  whose features all fall outside each other's top `EdgeK` associations is not found, the same
+  bounded-recall trade retrieval already makes. `MaxEmergentFeatures` (2000) and `MaxUnitFeatures`
+  (64) bound the co-occurrence pass and are reported in `Stats` rather than applied silently, but a
+  corpus with more than 2000 informative seedable features is sampled, not covered.
+- **The graded matcher is not proven optimal.** `SetRelatednessW` keeps the matching itself
+  unweighted precisely so the oracle test still certifies the pair *choice*; with confidences in the
+  objective, greedy matching genuinely is not optimal in general. The scores it produces are
+  therefore a defensible lower bound on the weighted objective, not the objective's maximum. It
+  feeds ranking, never a gate.
+- **The golden benchmark moved slightly the wrong way and was accepted.** On cobra, the only
+  labeled corpus: merge mean rank 5.2 → 5.5, refactor 16.1 → 16.8, false-positive 40.0 → 39.0. All
+  three hard assertions stay green (6/6 merges retrieved and in the top 50, no false positive in
+  the top 20). One corpus is a direction, not a verdict, and the concept channel's recall changed by
+  an order of magnitude — gin/chi labels are what would say whether the extra recall is worth the
+  drift.
