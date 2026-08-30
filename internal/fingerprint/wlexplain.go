@@ -86,7 +86,7 @@ func LowLabels(fd *ast.FuncDecl) []LowLabel {
 
 	ast.Inspect(fd.Body, func(n ast.Node) bool {
 		if n != nil {
-			frames = append(frames, frame{label0: wlLabel0(n), kind: kindName(n), start: len(kids)})
+			frames = append(frames, frame{label0: wlLabel0Hash(n), kind: kindName(n), start: len(kids)})
 			return true
 		}
 		last := len(frames) - 1

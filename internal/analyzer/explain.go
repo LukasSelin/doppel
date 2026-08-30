@@ -305,27 +305,27 @@ func bagDiff(a, b []fingerprint.LabelCount) []labelDelta {
 	for i < len(a) && j < len(b) {
 		switch {
 		case a[i].Label < b[j].Label:
-			out = append(out, labelDelta{label: a[i].Label, n: a[i].Count})
+			out = append(out, labelDelta{label: a[i].Label, n: int(a[i].Count)})
 			i++
 		case a[i].Label > b[j].Label:
-			out = append(out, labelDelta{label: b[j].Label, n: b[j].Count})
+			out = append(out, labelDelta{label: b[j].Label, n: int(b[j].Count)})
 			j++
 		default:
 			if d := a[i].Count - b[j].Count; d != 0 {
 				if d < 0 {
 					d = -d
 				}
-				out = append(out, labelDelta{label: a[i].Label, n: d})
+				out = append(out, labelDelta{label: a[i].Label, n: int(d)})
 			}
 			i++
 			j++
 		}
 	}
 	for ; i < len(a); i++ {
-		out = append(out, labelDelta{label: a[i].Label, n: a[i].Count})
+		out = append(out, labelDelta{label: a[i].Label, n: int(a[i].Count)})
 	}
 	for ; j < len(b); j++ {
-		out = append(out, labelDelta{label: b[j].Label, n: b[j].Count})
+		out = append(out, labelDelta{label: b[j].Label, n: int(b[j].Count)})
 	}
 	return out
 }
