@@ -9,7 +9,7 @@ HTTP router; a narrow core with a middleware package beside it
 | Corpus | [chi](https://github.com/go-chi/chi) |
 | Pinned at | `v5.3.2` (`38939062c5df4d3e8814aad1a488983112627ced`) |
 | Project since | 2015 |
-| doppel | `bc0615f` |
+| doppel | `616ab78` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -26,11 +26,11 @@ Culture: 0 concepts modeled, 0 associations, 0 unusual realizations
 Habitats: 2 modeled, 1 misfits; most uniform chi (norm 0.91), most diverse middleware (norm 0.87)
 Ecosystems: 7 profiled (7 dominance, 0 coalition, 0 conflict, 0 weak)
 Found 183 functions. Retrieving candidates...
-Retrieval: shape 19, concept 5, call 357 -> 374 unique pairs
-  concept-only 1.3%  call-only 93.6%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 2138
-Running structural comparison on 374 pairs...
-Families: 3 over 14 components, 17 functions in a family, 21 edges completed
-  3 pairs suppressed by max-per-func=2
+Retrieval: shape 15, concept 5, call 357 -> 371 unique pairs
+  concept-only 1.3%  call-only 94.6%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1308
+Running structural comparison on 371 pairs...
+Families: 2 over 13 components, 14 functions in a family, 21 edges completed
+  1 pairs suppressed by max-per-func=2
 ```
 
 # Code Similarity Report
@@ -132,17 +132,17 @@ Most uniform is `chi` (norm `0.91`); most varied is `middleware` (norm `0.87`). 
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **374 candidate pairs** (shape 19, concept 5, call 357), of which 94% arrived on call evidence alone and 1% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **371 candidate pairs** (shape 15, concept 5, call 357), of which 95% arrived on call evidence alone and 1% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 7 functions reached an equilibrium: **7** settled on a single concept, **0** on a coalition, **0** hold concepts this corpus says do not go together.
 
-_3 further pairs were held back so no single function fills the report._
+_1 further pairs were held back so no single function fills the report._
 
 ### Corpus metrics
 
 **Compression ratio:** `5.32`x — this corpus's canonical function bodies contain **11155 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **2097 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **183 functions**, **131** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.41` / `1.00` / `1.00`, and 30% of them (39 of 131) already clear this run's threshold of `0.60`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 52 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **183 functions**, **128** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.41` / `1.00` / `1.00`, and 28% of them (36 of 128) already clear this run's threshold of `0.60`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 55 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -152,26 +152,61 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 ---
 
-## Match #1 — Code-shape: `0.6878`
+## Match #1 — Code-shape: `0.7890`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `tree.go:559` | `chi.*node.findEdge` | `(nodeTyp, byte) (*node)` | — |
+| **B** | `tree.go:850` | `chi.nodes.findEdge` | `(byte) (*node)` | — |
+
+**Explain:** differs by two extra case, one extra assign, one extra return, and 5 more kinds
+
+**Code similarity:** `wl 0.77  flow 0.96  nesting 0.74  sig 0.67  size 0.80`
+
+**Containment:** `0.97`
+
+**Evidence:** `411.97` (shape 411.97, concept 0.00, call 0.00)
+
+**Trophic:** `0.94`
+
+**Shared structure:**
+
+- `9.68` — `depth-3 SEL` ×3
+- `9.68` — `depth-2 SEL` ×3
+- `8.29` — `depth-3 BIN` ×2
+
+**Structural overlap:** `0.50` (merge-worthy)
+
+- share 1 callees: [len]
+- both are leaf functions
+- same package
+- same visibility
+- both are methods, on *node and nodes
+
+---
+
+## Match #2 — Code-shape: `0.6878`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
 | **A** | `middleware/recoverer.go:132` | `middleware.prettyStack.decorateFuncCallLine` | `(string, bool, int) (string, error)` | — |
 | **B** | `middleware/recoverer.go:172` | `middleware.prettyStack.decorateSourceLine` | `(string, bool, int) (string, error)` | — |
 
+**Explain:** differs by four extra assign, one extra if, five extra binary, and 7 more kinds
+
 **Code similarity:** `wl 0.49  flow 1.00  nesting 0.90  sig 1.00  size 0.99`
 
 **Containment:** `0.67`
 
-**Evidence:** `803.08` (shape 787.95, concept 0.00, call 15.13)
+**Evidence:** `501.87` (shape 486.74, concept 0.00, call 15.13)
 
-**Trophic:** `0.71`
+**Trophic:** `0.76`
 
 **Shared structure:**
 
-- `14.36` — `flow:param→call:cW`
-- `13.47` — `do(call:cW)`
-- `7.76` — `flow:call:LastIndex→cond`
+- `12.91` — `depth-1 EXPRSTMT` ×4
+- `12.91` — `depth-0 CALL` ×4
+- `11.08` — `depth-3 LIT` ×11
 
 **Structural overlap:** `0.72` (merge-worthy)
 
@@ -187,37 +222,6 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 ---
 
-## Match #2 — Code-shape: `0.7890`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `tree.go:559` | `chi.*node.findEdge` | `(nodeTyp, byte) (*node)` | — |
-| **B** | `tree.go:850` | `chi.nodes.findEdge` | `(byte) (*node)` | — |
-
-**Code similarity:** `wl 0.77  flow 0.96  nesting 0.74  sig 0.67  size 0.80`
-
-**Containment:** `0.97`
-
-**Evidence:** `509.55` (shape 509.55, concept 0.00, call 0.00)
-
-**Trophic:** `0.92`
-
-**Shared structure:**
-
-- `9.55` — `assign=(bin)`
-- `4.28` — `seq[ assign:=(call:len) ; assign:=(lit:INT) ]`
-- `4.28` — `seq[ assign=(bin) ; if(bin:>(id,sel)) ]`
-
-**Structural overlap:** `0.50` (merge-worthy)
-
-- share 1 callees: [len]
-- both are leaf functions
-- same package
-- same visibility
-- both are methods, on *node and nodes
-
----
-
 ## Match #3 — Code-shape: `0.8418`
 
 | | Location | Function | Signature | Patterns |
@@ -225,19 +229,21 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 | **A** | `mux.go:203` | `chi.*Mux.NotFound` | `(http.HandlerFunc)` | — |
 | **B** | `mux.go:223` | `chi.*Mux.MethodNotAllowed` | `(http.HandlerFunc)` | — |
 
+**Explain:** differs by two extra call
+
 **Code similarity:** `wl 0.74  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `0.85`
 
-**Evidence:** `334.43` (shape 321.28, concept 0.00, call 13.14)
+**Evidence:** `253.45` (shape 240.31, concept 0.00, call 13.14)
 
-**Trophic:** `0.89`
+**Trophic:** `0.95`
 
 **Shared structure:**
 
-- `4.98` — `assign:=(id)`
-- `4.82` — `assign=(sel)`
-- `4.28` — `seq[ assign:=(id) ; if(bin:&&(sel,bin)) ]`
+- `4.62` — `depth-1 ASSIGN` ×3
+- `4.54` — `depth-3 ASSIGN` ×2
+- `4.54` — `depth-2 ASSIGN` ×2
 
 **Structural overlap:** `0.67` (merge-worthy)
 
@@ -253,26 +259,94 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 ---
 
-## Match #4 — Code-shape: `0.6414`
+## Match #4 — Code-shape: `0.6090`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `middleware/content_encoding.go:10` | `middleware.AllowContentEncoding` | `(...string) (func(next http.Handler) http.Handler)` | — |
+| **B** | `middleware/content_type.go:20` | `middleware.AllowContentType` | `(...string) (func(http.Handler) http.Handler)` | — |
+
+**Explain:** differs by two extra assign, one extra range, two extra call, and 6 more kinds
+
+**Code similarity:** `wl 0.52  flow 0.98  nesting 0.98  sig 0.33  size 0.98`
+
+**Containment:** `0.70`
+
+**Evidence:** `355.75` (shape 347.48, concept 0.00, call 8.27)
+
+**Trophic:** `0.79`
+
+**Shared structure:**
+
+- `7.48` — `depth-3 STRUCTTYPE` ×2
+- `7.48` — `depth-2 STRUCTTYPE` ×2
+- `7.48` — `depth-1 STRUCTTYPE` ×2
+
+**Structural overlap:** `0.48` (merge-worthy)
+
+- share 7 callees: [http.HandlerFunc, len, make, next.ServeHTTP, strings.ToLower, strings.TrimSpace, w.WriteHeader]
+- both are leaf functions
+- same package
+- same visibility
+- same receiver type: plain functions
+
+---
+
+## Match #5 — Code-shape: `0.6883`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `middleware/strip.go:14` | `middleware.StripSlashes` | `(http.Handler) (http.Handler)` | — |
+| **B** | `middleware/strip.go:41` | `middleware.RedirectSlashes` | `(http.Handler) (http.Handler)` | — |
+
+**Explain:** differs by one extra return, six extra literal, five extra call, and 6 more kinds
+
+**Code similarity:** `wl 0.49  flow 0.97  nesting 0.96  sig 1.00  size 0.83`
+
+**Containment:** `0.74`
+
+**Evidence:** `304.63` (shape 302.98, concept 0.00, call 1.65)
+
+**Trophic:** `0.83`
+
+**Shared structure:**
+
+- `4.39` — `depth-2 BLOCK` ×2
+- `4.14` — `depth-3 BIN`
+- `4.14` — `depth-3 IF`
+
+**Structural overlap:** `0.43` (merge-worthy)
+
+- share 5 callees: [chi.RouteContext, http.HandlerFunc, len, next.ServeHTTP, r.Context]
+- both are leaf functions
+- same package
+- same visibility
+- same receiver type: plain functions
+
+---
+
+## Match #6 — Code-shape: `0.6414`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
 | **A** | `middleware/route_headers.go:48` | `middleware.HeaderRouter.Route` | `(string, string, func(next http.Handler) http.Handler) (HeaderRouter)` | — |
 | **B** | `middleware/route_headers.go:58` | `middleware.HeaderRouter.RouteAny` | `(string, []string, func(next http.Handler) http.Handler) (HeaderRouter)` | — |
 
+**Explain:** differs by two extra assign, one extra range, one extra call, and 4 more kinds
+
 **Code similarity:** `wl 0.53  flow 0.82  nesting 1.00  sig 0.75  size 0.74`
 
 **Containment:** `0.81` — most of the smaller body's shape is inside the larger
 
-**Evidence:** `248.60` (shape 241.07, concept 0.00, call 7.53)
+**Evidence:** `178.88` (shape 171.36, concept 0.00, call 7.53)
 
-**Trophic:** `0.82`
+**Trophic:** `0.86`
 
 **Shared structure:**
 
-- `4.28` — `seq[ assign:=(index) ; if(bin:==(id,nil)) ]`
-- `4.28` — `seq[ assign=(call:ToLower) ; assign:=(index) ]`
-- `3.88` — `seq[ assign=(call:append) ; return(id) ]`
+- `6.98` — `depth-3 INDEX` ×4
+- `6.98` — `depth-2 INDEX` ×4
+- `6.98` — `depth-1 INDEX` ×4
 
 **Structural overlap:** `0.58` (merge-worthy)
 
@@ -286,69 +360,44 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 ---
 
-## Match #5 — Code-shape: `0.6090`
+## Match #7 — Code-shape: `0.5097`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `middleware/content_encoding.go:10` | `middleware.AllowContentEncoding` | `(...string) (func(next http.Handler) http.Handler)` | — |
-| **B** | `middleware/content_type.go:20` | `middleware.AllowContentType` | `(...string) (func(http.Handler) http.Handler)` | — |
+| **A** | `middleware/client_ip.go:92` | `middleware.ClientIPFromXFF` | `(...string) (func(http.Handler) http.Handler)` | validation |
+| **B** | `middleware/client_ip.go:149` | `middleware.ClientIPFromXFFTrustedProxies` | `(int) (func(http.Handler) http.Handler)` | — |
 
-**Code similarity:** `wl 0.52  flow 0.98  nesting 0.98  sig 0.33  size 0.98`
+**Explain:** differs by one extra assign, one extra if, one extra increment, and 11 more kinds
 
-**Containment:** `0.70`
+**Profile A:** `validation` 1.00 (dominance)
 
-**Evidence:** `395.75` (shape 387.49, concept 0.00, call 8.27)
+**Code similarity:** `wl 0.36  flow 0.97  nesting 0.98  sig 0.33  size 0.87`
+
+**Containment:** `0.56`
+
+**Evidence:** `296.14` (shape 282.84, concept 0.00, call 13.29)
 
 **Trophic:** `0.71`
 
 **Shared structure:**
 
-- `4.28` — `range{ call:TrimSpace call:ToLower }`
-- `4.28` — `if(bin:==(sel,lit:INT))`
-- `3.86` — `return()`
+- `6.74` — `depth-0 FIELD` ×6
+- `6.31` — `depth-1 FIELDLIST` ×4
+- `5.38` — `depth-0 FIELDLIST` ×5
 
 **Structural overlap:** `0.48` (merge-worthy)
 
-- share 7 callees: [http.HandlerFunc, len, make, next.ServeHTTP, strings.ToLower, strings.TrimSpace, w.WriteHeader]
-- both are leaf functions
+- share 7 callees: [context.WithValue, h.ServeHTTP, http.HandlerFunc, parseHeaderAddr, r.Context, r.WithContext, walkXFF]
+- overlapping call-graph neighborhoods (0.75): 3 shared
+- both are orchestrator functions
 - same package
 - same visibility
 - same receiver type: plain functions
+- call into same packages: [middleware]
 
 ---
 
-## Match #6 — Code-shape: `0.6883`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `middleware/strip.go:14` | `middleware.StripSlashes` | `(http.Handler) (http.Handler)` | — |
-| **B** | `middleware/strip.go:41` | `middleware.RedirectSlashes` | `(http.Handler) (http.Handler)` | — |
-
-**Code similarity:** `wl 0.49  flow 0.97  nesting 0.96  sig 1.00  size 0.83`
-
-**Containment:** `0.74`
-
-**Evidence:** `380.92` (shape 379.26, concept 0.00, call 1.65)
-
-**Trophic:** `0.70`
-
-**Shared structure:**
-
-- `6.73` — `flow:call:RouteContext→cond`
-- `4.98` — `if(bin:&&(bin,bin))`
-- `4.82` — `assign=(sel)`
-
-**Structural overlap:** `0.43` (merge-worthy)
-
-- share 5 callees: [chi.RouteContext, http.HandlerFunc, len, next.ServeHTTP, r.Context]
-- both are leaf functions
-- same package
-- same visibility
-- same receiver type: plain functions
-
----
-
-## Match #7 — Code-shape: `1.0000`
+## Match #8 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -357,19 +406,21 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 **Kind:** interface implementations — both implement `Flush()` on `*flushWriter` and `*flushHijackWriter`, in package `middleware`
 
+**Explain:** identical after rename
+
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `1.00`
 
-**Evidence:** `81.38` (shape 81.38, concept 0.00, call 0.00)
+**Evidence:** `61.82` (shape 61.82, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `3.59` — `seq[ assign:=(assert) ; do(call:Flush) ]`
-- `3.59` — `seq[ assign=(true) ; assign:=(assert) ]`
-- `3.37` — `do(call:Flush)`
+- `3.45` — `depth-3 BLOCK`
+- `3.45` — `depth-2 BLOCK`
+- `3.45` — `depth-1 BLOCK`
 
 **Structural overlap:** `0.50` (merge-worthy)
 
@@ -381,7 +432,7 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 ---
 
-## Match #8 — Code-shape: `1.0000`
+## Match #9 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -390,19 +441,21 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 **Kind:** interface implementations — both implement `Flush()` on `*flushWriter` and `*httpFancyWriter`, in package `middleware`
 
+**Explain:** identical after rename
+
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `1.00`
 
-**Evidence:** `81.38` (shape 81.38, concept 0.00, call 0.00)
+**Evidence:** `61.82` (shape 61.82, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `3.59` — `seq[ assign:=(assert) ; do(call:Flush) ]`
-- `3.59` — `seq[ assign=(true) ; assign:=(assert) ]`
-- `3.37` — `do(call:Flush)`
+- `3.45` — `depth-3 BLOCK`
+- `3.45` — `depth-2 BLOCK`
+- `3.45` — `depth-1 BLOCK`
 
 **Structural overlap:** `0.50` (merge-worthy)
 
@@ -414,7 +467,7 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 ---
 
-## Match #9 — Code-shape: `1.0000`
+## Match #10 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -423,19 +476,21 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 **Kind:** interface implementations — both implement `Flush()` on `*flushHijackWriter` and `*httpFancyWriter`, in package `middleware`
 
+**Explain:** identical after rename
+
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `1.00`
 
-**Evidence:** `81.38` (shape 81.38, concept 0.00, call 0.00)
+**Evidence:** `61.82` (shape 61.82, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `3.59` — `seq[ assign:=(assert) ; do(call:Flush) ]`
-- `3.59` — `seq[ assign=(true) ; assign:=(assert) ]`
-- `3.37` — `do(call:Flush)`
+- `3.45` — `depth-3 BLOCK`
+- `3.45` — `depth-2 BLOCK`
+- `3.45` — `depth-1 BLOCK`
 
 **Structural overlap:** `0.50` (merge-worthy)
 
@@ -447,42 +502,11 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 ---
 
-## Match #10 — Code-shape: `0.6123`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `middleware/clean_path.go:12` | `middleware.CleanPath` | `(http.Handler) (http.Handler)` | — |
-| **B** | `middleware/get_head.go:10` | `middleware.GetHead` | `(http.Handler) (http.Handler)` | — |
-
-**Code similarity:** `wl 0.38  flow 0.98  nesting 0.79  sig 1.00  size 0.70`
-
-**Containment:** `0.69` — most of the smaller body's shape is inside the larger
-
-**Evidence:** `253.27` (shape 251.62, concept 0.00, call 1.65)
-
-**Trophic:** `0.73`
-
-**Shared structure:**
-
-- `4.82` — `assign=(sel)`
-- `4.28` — `seq[ assign:=(call:RouteContext) ; assign:=(sel) ]`
-- `3.88` — `seq[ assign:=(sel) ; if(bin:==(id,lit:STRING)) ]`
-
-**Structural overlap:** `0.45` (merge-worthy)
-
-- share 4 callees: [chi.RouteContext, http.HandlerFunc, next.ServeHTTP, r.Context]
-- both are leaf functions
-- same package
-- same visibility
-- same receiver type: plain functions
-
----
-
 ## Families
 
-3 families, 17 functions in a family, largest 10 members; 21 edges scored here that retrieval never proposed
+2 families, 14 functions in a family, largest 10 members; 21 edges scored here that retrieval never proposed
 
-### Family 1 — 4 members, every pair `>= 1.00` code-shape, evidence `488`, interface implementations of `Flush()`, in package `middleware`
+### Family 1 — 4 members, every pair `>= 1.00` code-shape, evidence `371`, interface implementations of `Flush()`, in package `middleware`
 
 ```mermaid
 flowchart LR
@@ -505,25 +529,7 @@ flowchart LR
 | `middleware/wrap_writer.go:194` | `middleware.*httpFancyWriter.Flush` | `()` | — |
 | `middleware/wrap_writer.go:239` | `middleware.*http2FancyWriter.Flush` | `()` | — |
 
-### Family 2 — 3 members, every pair `>= 1.00` code-shape, evidence `197`, interface implementations of `Hijack() (net.Conn, *bufio.ReadWriter, error)`, in package `middleware`
-
-```mermaid
-flowchart LR
-    m0["middleware.*hijackWriter.Hijack"]
-    m1["middleware.*flushHijackWriter.Hijack"]
-    m2["middleware.*httpFancyWriter.Hijack"]
-    m0 --- m1
-    m0 --- m2
-    m1 --- m2
-```
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `middleware/wrap_writer.go:160` | `middleware.*hijackWriter.Hijack` | `() (net.Conn, *bufio.ReadWriter, error)` | — |
-| `middleware/wrap_writer.go:178` | `middleware.*flushHijackWriter.Hijack` | `() (net.Conn, *bufio.ReadWriter, error)` | — |
-| `middleware/wrap_writer.go:200` | `middleware.*httpFancyWriter.Hijack` | `() (net.Conn, *bufio.ReadWriter, error)` | — |
-
-### Family 3 — 10 members, every pair `>= 1.00` code-shape, evidence `63`  (21 edges scored here)
+### Family 2 — 10 members, every pair `>= 1.00` code-shape, evidence `63`  (21 edges scored here)
 
 _Not drawn: 10 members is 45 connections. Every one of them holds — that is what makes this a family._
 

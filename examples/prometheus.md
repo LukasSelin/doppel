@@ -9,7 +9,7 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `bc0615f` |
+| doppel | `616ab78` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -27,10 +27,10 @@ Habitats: 90 modeled, 195 misfits (145 excused by subsystem), 16 subsystems; mos
 Conventions: strongest error_wrapping (0.63), loosest retry (0.34)
 Ecosystems: 2400 profiled (1707 dominance, 693 coalition, 0 conflict, 0 weak)
 Found 5469 functions. Retrieving candidates...
-Retrieval: shape 1950, concept 3669, call 8141 -> 12934 unique pairs
-  concept-only 26.8%  call-only 57.0%  suppressed-shape functions: 67  large identity buckets: 0  surviving patterns: 37732
-Running structural comparison on 12934 pairs...
-Families: 268 over 477 components, 781 functions in a family, 1827 edges completed
+Retrieval: shape 1732, concept 3669, call 8141 -> 12773 unique pairs
+  concept-only 27.1%  call-only 58.1%  suppressed-shape functions: 9  large identity buckets: 0  surviving labels: 28863
+Running structural comparison on 12773 pairs...
+Families: 256 over 438 components, 713 functions in a family, 1818 edges completed
 ```
 
 # Code Similarity Report
@@ -124,35 +124,35 @@ Merge-worthy pairs folded up to their packages. An edge means two packages keep 
 ```mermaid
 flowchart LR
     p0["rules<br/>30 internal"]
-    p1["scrape<br/>25 internal"]
-    p0 ---|"31"| p1
-    p2["agent<br/>21 internal"]
-    p3["tsdb<br/>171 internal"]
+    p1["scrape<br/>26 internal"]
+    p0 ---|"32"| p1
+    p2["agent<br/>19 internal"]
+    p3["tsdb<br/>155 internal"]
     p2 ---|"13"| p3
-    p4["aws<br/>111 internal"]
+    p4["aws<br/>115 internal"]
     p5["linode"]
     p4 ---|"10"| p5
     p6["moby<br/>5 internal"]
     p4 ---|"10"| p6
     p7["vultr"]
-    p4 ---|"9"| p7
+    p4 ---|"8"| p7
     p8["remote<br/>27 internal"]
     p8 ---|"8"| p0
-    p9["digitalocean"]
+    p9["openstack<br/>3 internal"]
     p4 ---|"7"| p9
-    p10["hetzner<br/>1 internal"]
-    p4 ---|"7"| p10
-    p11["openstack<br/>3 internal"]
-    p4 ---|"7"| p11
-    p12["chunks<br/>10 internal"]
-    p12 ---|"7"| p3
-    p13["azure<br/>3 internal"]
+    p10["chunks<br/>10 internal"]
+    p10 ---|"7"| p3
+    p11["azure<br/>3 internal"]
+    p4 ---|"6"| p11
+    p12["digitalocean"]
+    p4 ---|"6"| p12
+    p13["dns"]
     p4 ---|"6"| p13
-    p14["eureka"]
+    p14["hetzner<br/>1 internal"]
     p4 ---|"6"| p14
 ```
 
-_215 further package pairs are connected by merge-worthy duplication and are not drawn._
+_209 further package pairs are connected by merge-worthy duplication and are not drawn._
 
 ### How settled each package is
 
@@ -183,7 +183,7 @@ _78 further packages are modeled and not drawn._ Most uniform is `tracing` (norm
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **12934 candidate pairs** (shape 1950, concept 3669, call 8141), of which 57% arrived on call evidence alone and 27% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **12773 candidate pairs** (shape 1732, concept 3669, call 8141), of which 58% arrived on call evidence alone and 27% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 2400 functions reached an equilibrium: **1707** settled on a single concept, **693** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -191,7 +191,7 @@ Each function is also an arena where its candidate concepts compete for its evid
 
 **Compression ratio:** `9.07`x — this corpus's canonical function bodies contain **468473 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **51658 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **5469 functions**, **3318** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.54` / `1.00` / `1.00`, and 46% of them (1523 of 3318) already clear this run's threshold of `0.60`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 2151 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **5469 functions**, **3216** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.51` / `1.00` / `1.00`, and 44% of them (1405 of 3216) already clear this run's threshold of `0.60`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 2253 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -362,6 +362,8 @@ _19 more unusual realizations not listed._
 
 **Kind:** diverged copy — `*scrapeLoopAppender.append` and `*scrapeLoopAppenderV2.append` share the stem `scrapeLoopAppender` in package `scrape`
 
+**Explain:** differs by nine extra assign, three extra case, one extra branch, and 15 more kinds
+
 **Profile A:** `mapping` 0.51, `caching` 0.49 (coalition)
 
 **Profile B:** `mapping` 0.51, `caching` 0.49 (coalition)
@@ -370,15 +372,15 @@ _19 more unusual realizations not listed._
 
 **Containment:** `0.78`
 
-**Evidence:** `4720.28` (shape 4601.59, concept 8.41, call 110.28)
+**Evidence:** `3436.24` (shape 3317.55, concept 8.41, call 110.28)
 
-**Trophic:** `0.81`
+**Trophic:** `0.83`
 
 **Shared structure:**
 
-- `43.32` — `flow:call:get→cond`
-- `38.06` — `flow:call:Histogram→cond`
-- `20.76` — `seq[ if(bin:>(sel,lit:INT)) ; if(bin:>(sel,lit:INT)) ]`
+- `30.04` — `depth-3 IF` ×4
+- `27.27` — `depth-2 IF` ×4
+- `26.37` — `depth-3 BLOCK` ×4
 
 **Culture:** A realizes `validation` atypically (typicality 0.17, concept median 0.35, convention 0.60)
 
@@ -405,6 +407,8 @@ _19 more unusual realizations not listed._
 | **A** | `discovery/kubernetes/endpoints.go:63` | `kubernetes.NewEndpoints` | `(*slog.Logger, cache.SharedIndexInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, bool, bool, bool, *prometheus.CounterVec) (*Endpoints)` | mapping, caching, logging |
 | **B** | `discovery/kubernetes/endpointslice.go:62` | `kubernetes.NewEndpointSlice` | `(*slog.Logger, cache.SharedIndexInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, bool, bool, bool, *prometheus.CounterVec) (*EndpointSlice)` | mapping, caching, logging |
 
+**Explain:** differs by five extra if, four extra assign, one extra range, and 17 more kinds
+
 **Profile A:** `caching` 1.00 (dominance)
 
 **Profile B:** `caching` 1.00 (dominance)
@@ -413,15 +417,15 @@ _19 more unusual realizations not listed._
 
 **Containment:** `0.86`
 
-**Evidence:** `3018.39` (shape 2982.95, concept 7.93, call 27.51)
+**Evidence:** `2046.90` (shape 2011.45, concept 7.93, call 27.51)
 
-**Trophic:** `0.90`
+**Trophic:** `0.88`
 
 **Shared structure:**
 
-- `45.60` — `flow:call:AddEventHandler→call:Error`
-- `45.60` — `flow:call:AddEventHandler→cond`
-- `39.08` — `assign:=(call:WithLabelValues)`
+- `48.02` — `depth-2 KV` ×10
+- `48.02` — `depth-1 KV` ×10
+- `38.47` — `depth-3 ASSIGN` ×6
 
 **Structural overlap:** `0.93` (merge-worthy)
 
@@ -440,231 +444,14 @@ _19 more unusual realizations not listed._
 
 ---
 
-## Match #3 — Code-shape: `0.9000`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `util/strutil/jarowinkler.go:57` | `strutil.jaroWinklerString` | `(string, string) (float64)` | — |
-| **B** | `util/strutil/jarowinkler.go:125` | `strutil.jaroWinklerRunes` | `([]rune, []rune) (float64)` | — |
-
-**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
-
-**Containment:** `1.00`
-
-**Evidence:** `2024.14` (shape 2024.14, concept 0.00, call 0.00)
-
-**Trophic:** `1.00`
-
-**Shared structure:**
-
-- `22.84` — `flow:call:len→call:min`
-- `11.20` — `assign:=(call:max)`
-- `11.07` — `flow:call:len→call:float64`
-
-**Structural overlap:** `0.72` (merge-worthy)
-
-- share 5 callees: [float64, len, make, max, min]
-- share 1 callers: [strutil.*JaroWinklerMatcher.Score]
-- overlapping call-graph neighborhoods (1.00): 1040 shared
-- both are leaf functions
-- same package
-- same visibility
-- same receiver type: plain functions
-- called from same packages: [strutil]
-- call into same packages: [tsdb]
-
----
-
-## Match #4 — Code-shape: `0.9000`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `storage/remote/queue_manager.go:844` | `remote.*QueueManager.AppendHistograms` | `([]record.RefHistogramSample) (bool)` | retry, concurrency, logging |
-| **B** | `storage/remote/queue_manager.go:906` | `remote.*QueueManager.AppendFloatHistograms` | `([]record.RefFloatHistogramSample) (bool)` | retry, concurrency, logging |
-
-**Profile A:** `retry` 1.00 (dominance)
-
-**Profile B:** `retry` 1.00 (dominance)
-
-**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
-
-**Containment:** `1.00`
-
-**Evidence:** `1211.21` (shape 1178.45, concept 7.33, call 25.43)
-
-**Trophic:** `1.00`
-
-**Shared structure:**
-
-- `7.61` — `range{ call:isSampleOld call:Duration call:Inc call:WithLabelValues call:Warn call:Lock call:incr call:Info ... }`
-- `7.61` — `seq[ if(call:isSampleOld) ; if(bin:&&(bin,bin)) ]`
-- `7.21` — `seq[ do(call:Unlock) ; assign:=(call:Duration) ]`
-
-**Structural overlap:** `1.00` (merge-worthy)
-
-- share 13 callees: [Inc, Info, Lock, Unlock, Warn, WithLabelValues, enqueue, incr, isSampleOld, model.Duration, time.Duration, time.Now, time.Sleep]
-- share 1 callers: [wlog.*Watcher.readSegment]
-- overlapping call-graph neighborhoods (1.00): 380 shared
-- share patterns: [concurrency, logging, retry]
-- both are orchestrator functions
-- same package
-- callers do related work (1.00): [logging]
-- callees do related work (1.00): [logging, error_wrapping, concurrency]
-- same visibility
-- same receiver type: QueueManager
-- called from same packages: [wlog]
-- call into same packages: [discovery, remote, tsdbutil]
-
----
-
-## Match #5 — Code-shape: `1.0000`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `util/runtime/statfs_linux_386.go:24` | `runtime.FsType` | `(string) (string)` | — |
-| **B** | `util/runtime/statfs_uint32.go:23` | `runtime.FsType` | `(string) (string)` | — |
-
-**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
-
-**Containment:** `1.00`
-
-**Evidence:** `2054.36` (shape 2042.77, concept 0.00, call 11.59)
-
-**Trophic:** `1.00`
-
-**Shared structure:**
-
-- `15.23` — `return(call:Itoa)`
-- `7.61` — `seq[ if(id) ; return(call:Itoa) ]`
-- `6.70` — `seq[ assign:=(call:Statfs) ; if(bin:!=(id,nil)) ]`
-
-**Structural overlap:** `0.52` (merge-worthy)
-
-- share 3 callees: [int, strconv.Itoa, syscall.Statfs]
-- both are leaf functions
-- same package
-- same visibility
-- same receiver type: plain functions
-
----
-
-## Match #6 — Code-shape: `0.6052`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `tsdb/head_wal.go:81` | `tsdb.*Head.loadWAL` | `(*wlog.Reader, *labels.SymbolTable, map[chunks.HeadSeriesRef]chunks.HeadSeriesRef, map[chunks.HeadSeriesRef][]*mmappedChunk, map[chunks.HeadSeriesRef][]*mmappedChunk) (error)` | concurrency, error_wrapping, logging |
-| **B** | `tsdb/head_wal.go:871` | `tsdb.*Head.loadWBL` | `(*wlog.Reader, *labels.SymbolTable, map[chunks.HeadSeriesRef]chunks.HeadSeriesRef, chunks.ChunkDiskMapperRef) (error)` | concurrency, error_wrapping, logging |
-
-**Profile A:** `logging` 1.00 (dominance)
-
-**Profile B:** `logging` 1.00 (dominance)
-
-**Code similarity:** `wl 0.43  flow 0.99  nesting 0.99  sig 0.67  size 0.54`
-
-**Containment:** `0.84` — most of the smaller body's shape is inside the larger
-
-**Evidence:** `6107.70` (shape 6059.51, concept 4.99, call 43.21)
-
-**Trophic:** `0.65`
-
-**Shared structure:**
-
-- `40.18` — `flow:call:Get→call:len`
-- `30.45` — `seq[ assign=(unary) ; return() ]`
-- `30.45` — `do(call:counterAddNonZero)`
-
-**Structural overlap:** `0.68` (merge-worthy)
-
-- share 38 callees: [Get, Put, Warn, append, clear, close, closeAndDrain, counterAddNonZero, dec.FloatHistogramSamples, dec.HistogramSamples, dec.Samples, dec.Type, float64, fmt.Errorf, getByID, len, make, min, panic, r.Err, r.Next, r.Offset, r.Record, r.Segment, record.NewDecoder, reuseBuf, reuseHistogramBuf, setup, uint64, unknownHistogramRefs.Add, unknownHistogramRefs.Load, unknownSampleRefs.Add, unknownSampleRefs.Load, unknownSeriesRefs.count, unknownSeriesRefs.merge, wg.Add, wg.Done, wg.Wait]
-- overlapping call-graph neighborhoods (0.98): 1180 shared
-- share patterns: [concurrency, error_wrapping, logging]
-- both are orchestrator functions
-- same package
-- callees do related work (0.37): [concurrency]
-- same visibility
-- same receiver type: Head
-- call into same packages: [discovery, record, rules, tsdb, wlog]
-
----
-
-## Match #7 — Code-shape: `0.7475`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `prompb/io/prometheus/client/decoder.go:314` | `io_prometheus_client.*Metric.unmarshalWithoutLabels` | `(*MetricStreamingDecoder, []byte) (error)` | validation |
-| **B** | `prompb/io/prometheus/client/decoder.go:596` | `io_prometheus_client.*MetricFamily.unmarshalWithoutMetrics` | `(*MetricStreamingDecoder, []byte) (error)` | validation |
-
-**Profile A:** `validation` 1.00 (dominance)
-
-**Profile B:** `validation` 1.00 (dominance)
-
-**Code similarity:** `wl 0.58  flow 1.00  nesting 1.00  sig 1.00  size 0.69`
-
-**Containment:** `0.88` — most of the smaller body's shape is inside the larger
-
-**Evidence:** `4344.70` (shape 4342.26, concept 2.44, call 0.00)
-
-**Trophic:** `0.75`
-
-**Shared structure:**
-
-- `64.29` — `if(bin:<(id,lit:INT))`
-- `47.22` — `flow:call:int→cond`
-- `43.24` — `seq[ assign\|=(bin) ; if(bin:<(id,lit:INT)) ]`
-
-**Structural overlap:** `0.57` (merge-worthy)
-
-- share 9 callees: [append, errors.New, fmt.Errorf, int, int32, len, skipMetrics, uint, uint64]
-- overlapping call-graph neighborhoods (1.00): 1039 shared
-- share patterns: [validation]
-- same package
-- same visibility
-- both are methods, on *Metric and *MetricFamily
-- called from same packages: [io_prometheus_client]
-- call into same packages: [tsdb]
-
----
-
-## Match #8 — Code-shape: `0.8777`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `tsdb/chunkenc/float_histogram.go:335` | `chunkenc.expandFloatSpansAndBuckets` | `([]histogram.Span, []histogram.Span, []xorValue, []float64) ([]Insert, []Insert, bool)` | — |
-| **B** | `tsdb/chunkenc/histogram.go:371` | `chunkenc.expandIntSpansAndBuckets` | `([]histogram.Span, []histogram.Span, []int64, []int64) ([]Insert, []Insert, bool)` | — |
-
-**Code similarity:** `wl 0.92  flow 1.00  nesting 1.00  sig 0.50  size 0.99`
-
-**Containment:** `0.96`
-
-**Evidence:** `2179.52` (shape 2172.30, concept 0.00, call 7.22)
-
-**Trophic:** `0.96`
-
-**Shared structure:**
-
-- `30.45` — `assign=(call:addInsert)`
-- `30.45` — `flow:call:Next→call:addInsert`
-- `30.45` — `flow:call:append→call:addInsert`
-
-**Structural overlap:** `0.59` (merge-worthy)
-
-- share 7 callees: [addInsert, advanceA, advanceB, ai.Next, append, bi.Next, newBucketIterator]
-- overlapping call-graph neighborhoods (0.78): 7 shared
-- both are utility functions
-- same package
-- same visibility
-- same receiver type: plain functions
-- called from same packages: [chunkenc]
-- call into same packages: [chunkenc]
-
----
-
-## Match #9 — Code-shape: `0.9172`
+## Match #3 — Code-shape: `0.9172`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
 | **A** | `tsdb/head_append.go:1477` | `tsdb.*headAppenderBase.commitHistograms` | `(*appendBatch, *appenderCommitContext)` | concurrency |
 | **B** | `tsdb/head_append.go:1579` | `tsdb.*headAppenderBase.commitFloatHistograms` | `(*appendBatch, *appenderCommitContext)` | concurrency |
+
+**Explain:** differs by four extra call
 
 **Profile A:** `concurrency` 1.00 (dominance)
 
@@ -674,15 +461,15 @@ _19 more unusual realizations not listed._
 
 **Containment:** `0.93`
 
-**Evidence:** `1375.70` (shape 1319.49, concept 1.41, call 54.81)
+**Evidence:** `1225.58` (shape 1169.37, concept 1.41, call 54.81)
 
-**Trophic:** `0.90`
+**Trophic:** `0.98`
 
 **Shared structure:**
 
-- `34.60` — `flow:call:insert→cond`
-- `14.41` — `flow:call:insert→call:len`
-- `13.39` — `flow:call:sampleState→call:updateNativeHistogramMetricsOnAppend`
+- `12.51` — `depth-3 IF` ×2
+- `12.01` — `depth-2 IF` ×2
+- `11.80` — `depth-3 IF` ×2
 
 **Structural overlap:** `0.98` (merge-worthy)
 
@@ -701,12 +488,99 @@ _19 more unusual realizations not listed._
 
 ---
 
-## Match #10 — Code-shape: `0.9246`
+## Match #4 — Code-shape: `0.6052`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `tsdb/head_wal.go:81` | `tsdb.*Head.loadWAL` | `(*wlog.Reader, *labels.SymbolTable, map[chunks.HeadSeriesRef]chunks.HeadSeriesRef, map[chunks.HeadSeriesRef][]*mmappedChunk, map[chunks.HeadSeriesRef][]*mmappedChunk) (error)` | concurrency, error_wrapping, logging |
+| **B** | `tsdb/head_wal.go:871` | `tsdb.*Head.loadWBL` | `(*wlog.Reader, *labels.SymbolTable, map[chunks.HeadSeriesRef]chunks.HeadSeriesRef, chunks.ChunkDiskMapperRef) (error)` | concurrency, error_wrapping, logging |
+
+**Explain:** differs by 33 extra assign, 22 extra if, nine extra range, and 31 more kinds
+
+**Profile A:** `logging` 1.00 (dominance)
+
+**Profile B:** `logging` 1.00 (dominance)
+
+**Code similarity:** `wl 0.43  flow 0.99  nesting 0.99  sig 0.67  size 0.54`
+
+**Containment:** `0.84` — most of the smaller body's shape is inside the larger
+
+**Evidence:** `4691.25` (shape 4643.05, concept 4.99, call 43.21)
+
+**Trophic:** `0.69`
+
+**Shared structure:**
+
+- `55.11` — `depth-3 CALL` ×9
+- `55.11` — `depth-2 CALL` ×9
+- `39.56` — `depth-2 RANGE` ×6
+
+**Structural overlap:** `0.68` (merge-worthy)
+
+- share 38 callees: [Get, Put, Warn, append, clear, close, closeAndDrain, counterAddNonZero, dec.FloatHistogramSamples, dec.HistogramSamples, dec.Samples, dec.Type, float64, fmt.Errorf, getByID, len, make, min, panic, r.Err, r.Next, r.Offset, r.Record, r.Segment, record.NewDecoder, reuseBuf, reuseHistogramBuf, setup, uint64, unknownHistogramRefs.Add, unknownHistogramRefs.Load, unknownSampleRefs.Add, unknownSampleRefs.Load, unknownSeriesRefs.count, unknownSeriesRefs.merge, wg.Add, wg.Done, wg.Wait]
+- overlapping call-graph neighborhoods (0.98): 1180 shared
+- share patterns: [concurrency, error_wrapping, logging]
+- both are orchestrator functions
+- same package
+- callees do related work (0.37): [concurrency]
+- same visibility
+- same receiver type: Head
+- call into same packages: [discovery, record, rules, tsdb, wlog]
+
+---
+
+## Match #5 — Code-shape: `0.9000`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `storage/remote/queue_manager.go:844` | `remote.*QueueManager.AppendHistograms` | `([]record.RefHistogramSample) (bool)` | retry, concurrency, logging |
+| **B** | `storage/remote/queue_manager.go:906` | `remote.*QueueManager.AppendFloatHistograms` | `([]record.RefFloatHistogramSample) (bool)` | retry, concurrency, logging |
+
+**Explain:** identical after rename, negation-flip, commutative-reorder
+
+**Profile A:** `retry` 1.00 (dominance)
+
+**Profile B:** `retry` 1.00 (dominance)
+
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
+
+**Containment:** `1.00`
+
+**Evidence:** `1026.52` (shape 993.76, concept 7.33, call 25.43)
+
+**Trophic:** `1.00`
+
+**Shared structure:**
+
+- `22.26` — `depth-3 CALL` ×4
+- `21.25` — `depth-3 CALL` ×4
+- `21.25` — `depth-3 SEL` ×4
+
+**Structural overlap:** `1.00` (merge-worthy)
+
+- share 13 callees: [Inc, Info, Lock, Unlock, Warn, WithLabelValues, enqueue, incr, isSampleOld, model.Duration, time.Duration, time.Now, time.Sleep]
+- share 1 callers: [wlog.*Watcher.readSegment]
+- overlapping call-graph neighborhoods (1.00): 380 shared
+- share patterns: [concurrency, logging, retry]
+- both are orchestrator functions
+- same package
+- callers do related work (1.00): [logging]
+- callees do related work (1.00): [logging, error_wrapping, concurrency]
+- same visibility
+- same receiver type: QueueManager
+- called from same packages: [wlog]
+- call into same packages: [discovery, remote, tsdbutil]
+
+---
+
+## Match #6 — Code-shape: `0.9246`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
 | **A** | `discovery/aws/msk.go:226` | `aws.*MSKDiscovery.initMskClient` | `(context.Context) (error)` | caching, error_wrapping, logging |
 | **B** | `discovery/aws/rds.go:339` | `aws.*RDSDiscovery.initRdsClient` | `(context.Context) (error)` | caching, error_wrapping, logging |
+
+**Explain:** differs by four extra call
 
 **Profile A:** `caching` 1.00 (dominance)
 
@@ -716,15 +590,15 @@ _19 more unusual realizations not listed._
 
 **Containment:** `0.93`
 
-**Evidence:** `1444.72` (shape 1353.50, concept 6.12, call 85.10)
+**Evidence:** `1200.68` (shape 1109.46, concept 6.12, call 85.10)
 
-**Trophic:** `0.96`
+**Trophic:** `0.98`
 
 **Shared structure:**
 
-- `22.13` — `flow:call:NewClientFromConfig→cond`
-- `13.84` — `flow:call:NewClientFromConfig→call:Error`
-- `12.72` — `seq[ do(call:Error) ; return(call:Errorf) ]`
+- `32.22` — `depth-3 BIN` ×6
+- `32.22` — `depth-2 BIN` ×6
+- `14.61` — `depth-2 IF` ×3
 
 **Structural overlap:** `0.79` (merge-worthy)
 
@@ -742,11 +616,170 @@ _19 more unusual realizations not listed._
 
 ---
 
+## Match #7 — Code-shape: `0.9000`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `util/strutil/jarowinkler.go:57` | `strutil.jaroWinklerString` | `(string, string) (float64)` | — |
+| **B** | `util/strutil/jarowinkler.go:125` | `strutil.jaroWinklerRunes` | `([]rune, []rune) (float64)` | — |
+
+**Explain:** identical after rename, commutative-reorder
+
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
+
+**Containment:** `1.00`
+
+**Evidence:** `1263.60` (shape 1263.60, concept 0.00, call 0.00)
+
+**Trophic:** `1.00`
+
+**Shared structure:**
+
+- `14.12` — `depth-1 ASSIGN` ×3
+- `13.63` — `depth-3 UNARY` ×2
+- `13.63` — `depth-3 BIN` ×2
+
+**Structural overlap:** `0.72` (merge-worthy)
+
+- share 5 callees: [float64, len, make, max, min]
+- share 1 callers: [strutil.*JaroWinklerMatcher.Score]
+- overlapping call-graph neighborhoods (1.00): 1040 shared
+- both are leaf functions
+- same package
+- same visibility
+- same receiver type: plain functions
+- called from same packages: [strutil]
+- call into same packages: [tsdb]
+
+---
+
+## Match #8 — Code-shape: `0.9248`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `discovery/aws/elasticache.go:315` | `aws.*ElasticacheDiscovery.initElasticacheClient` | `(context.Context) (error)` | caching, error_wrapping, logging |
+| **B** | `discovery/aws/rds.go:339` | `aws.*RDSDiscovery.initRdsClient` | `(context.Context) (error)` | caching, error_wrapping, logging |
+
+**Explain:** differs by four extra call
+
+**Profile A:** `caching` 1.00 (dominance)
+
+**Profile B:** `caching` 1.00 (dominance)
+
+**Code similarity:** `wl 0.87  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Containment:** `0.93`
+
+**Evidence:** `1200.68` (shape 1109.46, concept 6.12, call 85.10)
+
+**Trophic:** `0.98`
+
+**Shared structure:**
+
+- `32.22` — `depth-3 BIN` ×6
+- `32.22` — `depth-2 BIN` ×6
+- `14.61` — `depth-2 IF` ×3
+
+**Structural overlap:** `0.76` (merge-worthy)
+
+- share 18 callees: [Error, append, aws.NewCredentialsCache, aws.String, awsConfig.LoadDefaultConfig, awsConfig.WithCredentialsProvider, awsConfig.WithHTTPClient, awsConfig.WithRegion, awsConfig.WithSharedConfigProfile, cancel, config.NewClientFromConfig, context.WithTimeout, credentials.NewStaticCredentialsProvider, fmt.Errorf, loadRegion, string, sts.NewFromConfig, stscreds.NewAssumeRoleProvider]
+- overlapping call-graph neighborhoods (0.40): 6 shared
+- share patterns: [caching, error_wrapping, logging]
+- both are orchestrator functions
+- same package
+- callers do related work (0.54): [error_wrapping, concurrency]
+- callees do related work (0.39): [error_wrapping]
+- same visibility
+- both are methods, on *ElasticacheDiscovery and *RDSDiscovery
+- called from same packages: [aws]
+- call into same packages: [aws]
+
+---
+
+## Match #9 — Code-shape: `0.9243`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `discovery/aws/elasticache.go:315` | `aws.*ElasticacheDiscovery.initElasticacheClient` | `(context.Context) (error)` | caching, error_wrapping, logging |
+| **B** | `discovery/aws/msk.go:226` | `aws.*MSKDiscovery.initMskClient` | `(context.Context) (error)` | caching, error_wrapping, logging |
+
+**Explain:** differs by four extra call
+
+**Profile A:** `caching` 1.00 (dominance)
+
+**Profile B:** `caching` 1.00 (dominance)
+
+**Code similarity:** `wl 0.87  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Containment:** `0.93`
+
+**Evidence:** `1200.68` (shape 1109.46, concept 6.12, call 85.10)
+
+**Trophic:** `0.98`
+
+**Shared structure:**
+
+- `32.22` — `depth-3 BIN` ×6
+- `32.22` — `depth-2 BIN` ×6
+- `14.61` — `depth-2 IF` ×3
+
+**Structural overlap:** `0.74` (merge-worthy)
+
+- share 18 callees: [Error, append, aws.NewCredentialsCache, aws.String, awsConfig.LoadDefaultConfig, awsConfig.WithCredentialsProvider, awsConfig.WithHTTPClient, awsConfig.WithRegion, awsConfig.WithSharedConfigProfile, cancel, config.NewClientFromConfig, context.WithTimeout, credentials.NewStaticCredentialsProvider, fmt.Errorf, loadRegion, string, sts.NewFromConfig, stscreds.NewAssumeRoleProvider]
+- overlapping call-graph neighborhoods (0.40): 6 shared
+- share patterns: [caching, error_wrapping, logging]
+- both are orchestrator functions
+- same package
+- callers do related work (0.25): [concurrency]
+- callees do related work (0.39): [error_wrapping]
+- same visibility
+- both are methods, on *ElasticacheDiscovery and *MSKDiscovery
+- called from same packages: [aws]
+- call into same packages: [aws]
+
+---
+
+## Match #10 — Code-shape: `0.8777`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `tsdb/chunkenc/float_histogram.go:335` | `chunkenc.expandFloatSpansAndBuckets` | `([]histogram.Span, []histogram.Span, []xorValue, []float64) ([]Insert, []Insert, bool)` | — |
+| **B** | `tsdb/chunkenc/histogram.go:371` | `chunkenc.expandIntSpansAndBuckets` | `([]histogram.Span, []histogram.Span, []int64, []int64) ([]Insert, []Insert, bool)` | — |
+
+**Explain:** differs by four extra assign, two extra selector, two extra ident
+
+**Code similarity:** `wl 0.92  flow 1.00  nesting 1.00  sig 0.50  size 0.99`
+
+**Containment:** `0.96`
+
+**Evidence:** `1635.01` (shape 1627.79, concept 0.00, call 7.22)
+
+**Trophic:** `0.96`
+
+**Shared structure:**
+
+- `30.04` — `depth-3 CALL` ×4
+- `30.04` — `depth-3 ASSIGN` ×4
+- `30.04` — `depth-2 ASSIGN` ×4
+
+**Structural overlap:** `0.59` (merge-worthy)
+
+- share 7 callees: [addInsert, advanceA, advanceB, ai.Next, append, bi.Next, newBucketIterator]
+- overlapping call-graph neighborhoods (0.78): 7 shared
+- both are utility functions
+- same package
+- same visibility
+- same receiver type: plain functions
+- called from same packages: [chunkenc]
+- call into same packages: [chunkenc]
+
+---
+
 ## Families
 
-268 families, 781 functions in a family, largest 34 members; 1827 edges scored here that retrieval never proposed
+256 families, 713 functions in a family, largest 34 members; 1818 edges scored here that retrieval never proposed
 
-### Family 1 — 6 members, every pair `>= 0.68` code-shape, evidence `19179`
+### Family 1 — 6 members, every pair `>= 0.68` code-shape, evidence `15963`
 
 ```mermaid
 flowchart LR
@@ -782,7 +815,7 @@ flowchart LR
 | `discovery/aws/msk.go:226` | `aws.*MSKDiscovery.initMskClient` | `(context.Context) (error)` | caching, error_wrapping, logging |
 | `discovery/aws/rds.go:339` | `aws.*RDSDiscovery.initRdsClient` | `(context.Context) (error)` | caching, error_wrapping, logging |
 
-### Family 2 — 4 members, every pair `>= 0.71` code-shape, evidence `18772`
+### Family 2 — 4 members, every pair `>= 0.71` code-shape, evidence `11784`
 
 ```mermaid
 flowchart LR
@@ -805,7 +838,26 @@ flowchart LR
 | `tsdb/chunkenc/histogram.go:751` | `chunkenc.*HistogramAppender.AppendHistogram` | `(Appender, int64, int64, *histogram.Histogram, bool) (Chunk, bool, Appender, error)` | — |
 | `tsdb/chunkenc/histogram_st.go:312` | `chunkenc.*HistogramSTAppender.AppendHistogram` | `(Appender, int64, int64, *histogram.Histogram, bool) (Chunk, bool, Appender, error)` | — |
 
-### Family 3 — 7 members, every pair `>= 0.61` code-shape, evidence `16802`  (1 edge scored here)
+### Family 3 — 15 members, every pair `>= 0.60` code-shape, evidence `11366`  (51 edges scored here)
+
+_Not drawn: 15 members is 105 connections. Every one of them holds — that is what makes this a family._
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `web/api/v1/openapi_schemas.go:181` | `v1.*OpenAPIBuilder.simpleResponseBodySchema` | `() (*base.SchemaProxy)` | — |
+| `web/api/v1/openapi_schemas.go:200` | `v1.*OpenAPIBuilder.statusOnlyResponseBodySchema` | `() (*base.SchemaProxy)` | — |
+| `web/api/v1/openapi_schemas.go:215` | `v1.*OpenAPIBuilder.stringArrayResponseBodySchema` | `() (*base.SchemaProxy)` | — |
+| `web/api/v1/openapi_schemas.go:235` | `v1.*OpenAPIBuilder.labelsArrayResponseBodySchema` | `() (*base.SchemaProxy)` | — |
+| `web/api/v1/openapi_schemas.go:255` | `v1.*OpenAPIBuilder.metricMetadataArrayResponseBodySchema` | `() (*base.SchemaProxy)` | — |
+| `web/api/v1/openapi_schemas.go:286` | `v1.*OpenAPIBuilder.notificationArrayResponseBodySchema` | `() (*base.SchemaProxy)` | — |
+| `web/api/v1/openapi_schemas.go:683` | `v1.*OpenAPIBuilder.formatQueryOutputBodySchema` | `() (*base.SchemaProxy)` | — |
+| `web/api/v1/openapi_schemas.go:847` | `v1.*OpenAPIBuilder.metadataOutputBodySchema` | `() (*base.SchemaProxy)` | — |
+| `web/api/v1/openapi_schemas.go:949` | `v1.*OpenAPIBuilder.scrapePoolsDiscoverySchema` | `() (*base.SchemaProxy)` | — |
+| `web/api/v1/openapi_schemas.go:983` | `v1.*OpenAPIBuilder.relabelStepSchema` | `() (*base.SchemaProxy)` | — |
+
+_5 more members not listed._
+
+### Family 4 — 7 members, every pair `>= 0.61` code-shape, evidence `10867`
 
 ```mermaid
 flowchart LR
@@ -849,77 +901,24 @@ flowchart LR
 | `web/api/v1/openapi_paths.go:321` | `v1.*OpenAPIBuilder.seriesPath` | `() (*v3.PathItem)` | — |
 | `web/api/v1/openapi_paths.go:579` | `v1.*OpenAPIBuilder.adminDeleteSeriesPath` | `() (*v3.PathItem)` | — |
 
-### Family 4 — 8 members, every pair `>= 0.60` code-shape, evidence `8506`  (6 edges scored here)
+### Family 5 — 14 members, every pair `>= 0.60` code-shape, evidence `9526`  (45 edges scored here)
 
-```mermaid
-flowchart LR
-    m0["v1.seriesResponseExamples"]
-    m1["v1.targetsResponseExamples"]
-    m2["v1.rulesResponseExamples"]
-    m3["v1.alertsResponseExamples"]
-    m4["v1.queryExemplarsResponseExamples"]
-    m5["v1.targetsRelabelStepsResponseExamples"]
-    m6["v1.statusFlagsResponseExamples"]
-    m7["v1.statusSelfMetricsResponseExamples"]
-    m0 --- m1
-    m0 --- m2
-    m0 --- m3
-    m0 --- m4
-    m0 --- m5
-    m0 --- m6
-    m0 --- m7
-    m1 --- m2
-    m1 --- m3
-    m1 --- m4
-    m1 --- m5
-    m1 --- m6
-    m1 --- m7
-    m2 --- m3
-    m2 --- m4
-    m2 --- m5
-    m2 --- m6
-    m2 --- m7
-    m3 --- m4
-    m3 --- m5
-    m3 --- m6
-    m3 --- m7
-    m4 --- m5
-    m4 --- m6
-    m4 --- m7
-    m5 --- m6
-    m5 --- m7
-    m6 --- m7
-```
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `web/api/v1/openapi_examples.go:342` | `v1.seriesResponseExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
-| `web/api/v1/openapi_examples.go:386` | `v1.targetsResponseExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
-| `web/api/v1/openapi_examples.go:439` | `v1.rulesResponseExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
-| `web/api/v1/openapi_examples.go:480` | `v1.alertsResponseExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
-| `web/api/v1/openapi_examples.go:511` | `v1.queryExemplarsResponseExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
-| `web/api/v1/openapi_examples.go:670` | `v1.targetsRelabelStepsResponseExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
-| `web/api/v1/openapi_examples.go:793` | `v1.statusFlagsResponseExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
-| `web/api/v1/openapi_examples.go:942` | `v1.statusSelfMetricsResponseExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
-
-### Family 5 — 15 members, every pair `>= 0.60` code-shape, evidence `8285`  (59 edges scored here)
-
-_Not drawn: 15 members is 105 connections. Every one of them holds — that is what makes this a family._
+_Not drawn: 14 members is 91 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
 | `web/api/v1/openapi_schemas.go:181` | `v1.*OpenAPIBuilder.simpleResponseBodySchema` | `() (*base.SchemaProxy)` | — |
-| `web/api/v1/openapi_schemas.go:200` | `v1.*OpenAPIBuilder.statusOnlyResponseBodySchema` | `() (*base.SchemaProxy)` | — |
 | `web/api/v1/openapi_schemas.go:215` | `v1.*OpenAPIBuilder.stringArrayResponseBodySchema` | `() (*base.SchemaProxy)` | — |
 | `web/api/v1/openapi_schemas.go:235` | `v1.*OpenAPIBuilder.labelsArrayResponseBodySchema` | `() (*base.SchemaProxy)` | — |
 | `web/api/v1/openapi_schemas.go:255` | `v1.*OpenAPIBuilder.metricMetadataArrayResponseBodySchema` | `() (*base.SchemaProxy)` | — |
 | `web/api/v1/openapi_schemas.go:286` | `v1.*OpenAPIBuilder.notificationArrayResponseBodySchema` | `() (*base.SchemaProxy)` | — |
-| `web/api/v1/openapi_schemas.go:683` | `v1.*OpenAPIBuilder.formatQueryOutputBodySchema` | `() (*base.SchemaProxy)` | — |
 | `web/api/v1/openapi_schemas.go:847` | `v1.*OpenAPIBuilder.metadataOutputBodySchema` | `() (*base.SchemaProxy)` | — |
 | `web/api/v1/openapi_schemas.go:949` | `v1.*OpenAPIBuilder.scrapePoolsDiscoverySchema` | `() (*base.SchemaProxy)` | — |
 | `web/api/v1/openapi_schemas.go:983` | `v1.*OpenAPIBuilder.relabelStepSchema` | `() (*base.SchemaProxy)` | — |
+| `web/api/v1/openapi_schemas.go:998` | `v1.*OpenAPIBuilder.relabelStepsResponseSchema` | `() (*base.SchemaProxy)` | — |
+| `web/api/v1/openapi_schemas.go:1037` | `v1.*OpenAPIBuilder.ruleDiscoverySchema` | `() (*base.SchemaProxy)` | — |
 
-_5 more members not listed._
+_4 more members not listed._
 
-_263 more families not listed._
+_251 more families not listed._
 

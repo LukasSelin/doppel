@@ -9,7 +9,7 @@ static site generator; a large monolith with heavy template and resource subsyst
 | Corpus | [hugo](https://github.com/gohugoio/hugo) |
 | Pinned at | `v0.165.0` (`76a5e1880ab46688155b02e99bab9be2a6134492`) |
 | Project since | 2013 |
-| doppel | `bc0615f` |
+| doppel | `616ab78` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -27,10 +27,10 @@ Habitats: 126 modeled, 538 misfits (121 excused by subsystem), 31 subsystems; mo
 Conventions: strongest error_wrapping (0.64), loosest serialization (0.52)
 Ecosystems: 1997 profiled (1408 dominance, 589 coalition, 0 conflict, 0 weak)
 Found 5438 functions. Retrieving candidates...
-Retrieval: shape 1004, concept 4057, call 8265 -> 12833 unique pairs
-  concept-only 30.3%  call-only 60.7%  suppressed-shape functions: 70  large identity buckets: 0  surviving patterns: 31542
-Running structural comparison on 12833 pairs...
-Families: 134 over 341 components, 436 functions in a family, 188 edges completed
+Retrieval: shape 728, concept 4057, call 8265 -> 12609 unique pairs
+  concept-only 30.8%  call-only 62.1%  suppressed-shape functions: 15  large identity buckets: 0  surviving labels: 22140
+Running structural comparison on 12609 pairs...
+Families: 114 over 291 components, 350 functions in a family, 159 edges completed
 ```
 
 # Code Similarity Report
@@ -122,36 +122,37 @@ Merge-worthy pairs folded up to their packages. An edge means two packages keep 
 
 ```mermaid
 flowchart LR
-    p0["babel"]
-    p1["cssjs<br/>3 internal"]
-    p0 ---|"6"| p1
-    p2["navigation<br/>1 internal"]
-    p3["page<br/>37 internal"]
-    p2 ---|"6"| p3
-    p4["langs<br/>5 internal"]
-    p5["roles"]
-    p4 ---|"5"| p5
-    p6["versions"]
-    p4 ---|"5"| p6
+    p0["allconfig"]
+    p1["commands<br/>26 internal"]
+    p0 ---|"5"| p1
+    p2["langs<br/>4 internal"]
+    p3["roles"]
+    p2 ---|"5"| p3
+    p4["versions"]
+    p2 ---|"5"| p4
+    p5["navigation<br/>1 internal"]
+    p6["page<br/>37 internal"]
     p5 ---|"5"| p6
-    p7["commands<br/>26 internal"]
-    p8["hugolib<br/>118 internal"]
+    p3 ---|"5"| p4
+    p7["babel"]
+    p8["cssjs<br/>2 internal"]
     p7 ---|"4"| p8
-    p9["minifier"]
+    p9["hugolib<br/>104 internal"]
     p1 ---|"4"| p9
-    p8 ---|"4"| p3
-    p10["allconfig"]
-    p10 ---|"3"| p7
-    p11["hugofs<br/>27 internal"]
-    p7 ---|"3"| p11
-    p12["esbuild<br/>8 internal"]
-    p13["filecache<br/>30 internal"]
-    p12 ---|"3"| p13
-    p14["httpcache"]
-    p12 ---|"3"| p14
+    p9 ---|"4"| p6
+    p10["hugofs<br/>27 internal"]
+    p1 ---|"3"| p10
+    p11["esbuild<br/>8 internal"]
+    p12["filecache<br/>29 internal"]
+    p11 ---|"3"| p12
+    p13["httpcache"]
+    p11 ---|"3"| p13
+    p14["goldmark<br/>11 internal"]
+    p15["hugocontext<br/>3 internal"]
+    p14 ---|"3"| p15
 ```
 
-_198 further package pairs are connected by merge-worthy duplication and are not drawn._
+_178 further package pairs are connected by merge-worthy duplication and are not drawn._
 
 ### How settled each package is
 
@@ -181,7 +182,7 @@ _114 further packages are modeled and not drawn._ Most uniform is `partials` (no
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **12833 candidate pairs** (shape 1004, concept 4057, call 8265), of which 61% arrived on call evidence alone and 30% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **12609 candidate pairs** (shape 728, concept 4057, call 8265), of which 62% arrived on call evidence alone and 31% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 1997 functions reached an equilibrium: **1408** settled on a single concept, **589** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -189,7 +190,7 @@ Each function is also an arena where its candidate concepts compete for its evid
 
 **Compression ratio:** `7.22`x — this corpus's canonical function bodies contain **337951 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **46792 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **5438 functions**, **3279** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.40` / `0.95` / `1.00`, and 29% of them (937 of 3279) already clear this run's threshold of `0.60`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 2159 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **5438 functions**, **3140** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.38` / `0.85` / `1.00`, and 25% of them (779 of 3140) already clear this run's threshold of `0.60`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 2298 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -341,6 +342,8 @@ _47 more unusual realizations not listed._
 
 **Kind:** diverged copy — `*state.evalCallOld` and `*state.evalCall` share the stem `evalCall` in package `template`
 
+**Explain:** differs by seven extra assign, five extra if, one extra defer, and 16 more kinds
+
 **Profile A:** `validation` 1.00 (dominance)
 
 **Profile B:** `validation` 1.00 (dominance)
@@ -349,15 +352,15 @@ _47 more unusual realizations not listed._
 
 **Containment:** `0.92` — most of the smaller body's shape is inside the larger
 
-**Evidence:** `3741.11` (shape 3686.51, concept 4.60, call 50.00)
+**Evidence:** `2514.05` (shape 2459.45, concept 4.60, call 50.00)
 
-**Trophic:** `0.88`
+**Trophic:** `0.91`
 
 **Shared structure:**
 
-- `41.32` — `flow:call:Type→call:NumIn`
-- `34.44` — `flow:call:Type→call:In`
-- `22.74` — `flow:call:Interface→return`
+- `39.00` — `depth-3 CALL` ×6
+- `39.00` — `depth-2 CALL` ×6
+- `33.27` — `depth-1 CALL` ×6
 
 **Culture:** B realizes `error_wrapping` atypically (typicality 0.16, concept median 0.36, convention 0.64)
 
@@ -386,6 +389,8 @@ _47 more unusual realizations not listed._
 
 **Kind:** diverged copy — `*state.evalFieldOld` and `*state.evalField` share the stem `evalField` in package `template`
 
+**Explain:** differs by five extra assign, four extra if, three extra declaration, and 9 more kinds
+
 **Profile A:** `validation` 1.00 (dominance)
 
 **Profile B:** `validation` 1.00 (dominance)
@@ -394,15 +399,15 @@ _47 more unusual realizations not listed._
 
 **Containment:** `0.93`
 
-**Evidence:** `2230.52` (shape 2214.61, concept 2.49, call 13.42)
+**Evidence:** `1717.02` (shape 1701.11, concept 2.49, call 13.42)
 
-**Trophic:** `0.89`
+**Trophic:** `0.91`
 
 **Shared structure:**
 
-- `40.40` — `do(call:errorf)`
-- `35.22` — `flow:param→call:errorf`
-- `34.44` — `flow:param→call:evalCall`
+- `38.93` — `depth-1 EXPRSTMT` ×9
+- `29.35` — `depth-2 BLOCK` ×6
+- `24.12` — `depth-3 EXPRSTMT` ×4
 
 **Structural overlap:** `0.77` (merge-worthy)
 
@@ -418,44 +423,14 @@ _47 more unusual realizations not listed._
 
 ---
 
-## Match #3 — Code-shape: `0.7494`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `tpl/math/init.go:26` | `math.init` | `()` | — |
-| **B** | `tpl/strings/init.go:25` | `strings.init` | `()` | — |
-
-**Code similarity:** `wl 0.61  flow 0.94  nesting 0.95  sig 1.00  size 0.92`
-
-**Containment:** `0.80`
-
-**Evidence:** `3172.59` (shape 3162.31, concept 0.00, call 10.28)
-
-**Trophic:** `0.81`
-
-**Shared structure:**
-
-- `149.32` — `do(call:AddMethodMapping)`
-- `146.58` — `seq[ do(call:AddMethodMapping) ; do(call:AddMethodMapping) ]`
-- `5.05` — `seq[ assign:=(call:New) ; assign:=(unary) ]`
-
-**Structural overlap:** `0.48` (merge-worthy)
-
-- share 3 callees: [New, internal.AddTemplateFuncsNamespace, ns.AddMethodMapping]
-- overlapping call-graph neighborhoods (0.97): 32 shared
-- both are orchestrator functions
-- same visibility
-- same receiver type: plain functions
-- call into same packages: [internal]
-
----
-
-## Match #4 — Code-shape: `0.7006`
+## Match #3 — Code-shape: `0.7006`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
 | **A** | `resources/image.go:82` | `resources.*imageResource.newExifInfoFn` | `() (func() (*meta.ExifInfo, error))` | caching, serialization, file_io |
 | **B** | `resources/image.go:125` | `resources.*imageResource.newMetaInfoFn` | `() (func() (*meta.MetaInfo, error))` | caching, serialization, file_io |
+
+**Explain:** differs by five extra call, three extra literal, one extra selector, and 2 more kinds
 
 **Profile A:** `file_io` 0.94, `caching` 0.06 (dominance)
 
@@ -465,15 +440,15 @@ _47 more unusual realizations not listed._
 
 **Containment:** `0.87`
 
-**Evidence:** `1230.71` (shape 1169.95, concept 7.07, call 53.69)
+**Evidence:** `885.67` (shape 824.92, concept 7.07, call 53.69)
 
-**Trophic:** `0.97`
+**Trophic:** `0.98`
 
 **Shared structure:**
 
-- `17.63` — `flow:call:ReadAll→cond`
-- `17.63` — `flow:call:ReadAll→return`
-- `7.58` — `seq[ assign:=(call:NewEncoder) ; return(call:Encode) ]`
+- `18.09` — `depth-3 SEL` ×3
+- `18.09` — `depth-3 SEL` ×3
+- `18.09` — `depth-3 CALL` ×3
 
 **Habitat:** A fits poorly in `resources` (fit 0.27, package norm 0.75)
 
@@ -495,40 +470,7 @@ _47 more unusual realizations not listed._
 
 ---
 
-## Match #5 — Code-shape: `0.7619`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `tpl/collections/init.go:25` | `collections.init` | `()` | — |
-| **B** | `tpl/strings/init.go:25` | `strings.init` | `()` | — |
-
-**Code similarity:** `wl 0.60  flow 1.00  nesting 1.00  sig 1.00  size 0.86`
-
-**Containment:** `0.82`
-
-**Evidence:** `2848.97` (shape 2838.69, concept 0.00, call 10.28)
-
-**Trophic:** `0.75`
-
-**Shared structure:**
-
-- `134.39` — `do(call:AddMethodMapping)`
-- `131.42` — `seq[ do(call:AddMethodMapping) ; do(call:AddMethodMapping) ]`
-- `5.05` — `seq[ assign:=(call:New) ; assign:=(unary) ]`
-
-**Structural overlap:** `0.52` (merge-worthy)
-
-- share 3 callees: [New, internal.AddTemplateFuncsNamespace, ns.AddMethodMapping]
-- overlapping call-graph neighborhoods (0.91): 32 shared
-- both are orchestrator functions
-- callees do related work (1.00): [caching]
-- same visibility
-- same receiver type: plain functions
-- call into same packages: [internal]
-
----
-
-## Match #6 — Code-shape: `0.9282`
+## Match #4 — Code-shape: `0.9282`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -536,6 +478,8 @@ _47 more unusual realizations not listed._
 | **B** | `tpl/internal/go_templates/texttemplate/hugo_template.go:435` | `template.*state.validateType` | `(reflect.Value, reflect.Type) (reflect.Value)` | validation, mapping |
 
 **Kind:** diverged copy — `*state._validateType` and `*state.validateType` share the stem `validateType` in package `template`
+
+**Explain:** differs by two extra assign, one extra if, one extra call, and 3 more kinds
 
 **Profile A:** `validation` 1.00 (dominance)
 
@@ -545,15 +489,15 @@ _47 more unusual realizations not listed._
 
 **Containment:** `0.97`
 
-**Evidence:** `1457.44` (shape 1434.32, concept 2.49, call 20.63)
+**Evidence:** `1149.67` (shape 1126.55, concept 2.49, call 20.63)
 
-**Trophic:** `0.96`
+**Trophic:** `0.97`
 
 **Shared structure:**
 
-- `27.07` — `flow:param→call:Type`
-- `25.93` — `flow:param→call:AssignableTo`
-- `13.47` — `do(call:errorf)`
+- `24.12` — `depth-1 CALL` ×4
+- `22.50` — `depth-0 CALL` ×4
+- `14.83` — `depth-3 BLOCK` ×2
 
 **Structural overlap:** `0.49` (merge-worthy)
 
@@ -567,12 +511,83 @@ _47 more unusual realizations not listed._
 
 ---
 
+## Match #5 — Code-shape: `0.7494`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `tpl/math/init.go:26` | `math.init` | `()` | — |
+| **B** | `tpl/strings/init.go:25` | `strings.init` | `()` | — |
+
+**Explain:** differs by four extra assign, one extra if, 28 extra literal, and 8 more kinds
+
+**Code similarity:** `wl 0.61  flow 0.94  nesting 0.95  sig 1.00  size 0.92`
+
+**Containment:** `0.80`
+
+**Evidence:** `2361.73` (shape 2351.45, concept 0.00, call 10.28)
+
+**Trophic:** `0.74`
+
+**Shared structure:**
+
+- `144.43` — `depth-1 EXPRSTMT` ×30
+- `144.43` — `depth-0 CALL` ×30
+- `139.33` — `depth-3 ARRAYTYPE` ×30
+
+**Structural overlap:** `0.48` (merge-worthy)
+
+- share 3 callees: [New, internal.AddTemplateFuncsNamespace, ns.AddMethodMapping]
+- overlapping call-graph neighborhoods (0.97): 32 shared
+- both are orchestrator functions
+- same visibility
+- same receiver type: plain functions
+- call into same packages: [internal]
+
+---
+
+## Match #6 — Code-shape: `0.7619`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `tpl/collections/init.go:25` | `collections.init` | `()` | — |
+| **B** | `tpl/strings/init.go:25` | `strings.init` | `()` | — |
+
+**Explain:** differs by 37 extra literal, 17 extra composite literal, eight extra selector, and 3 more kinds
+
+**Code similarity:** `wl 0.60  flow 1.00  nesting 1.00  sig 1.00  size 0.86`
+
+**Containment:** `0.82`
+
+**Evidence:** `2209.49` (shape 2199.21, concept 0.00, call 10.28)
+
+**Trophic:** `0.71`
+
+**Shared structure:**
+
+- `129.99` — `depth-1 EXPRSTMT` ×27
+- `129.99` — `depth-0 CALL` ×27
+- `125.40` — `depth-3 ARRAYTYPE` ×27
+
+**Structural overlap:** `0.52` (merge-worthy)
+
+- share 3 callees: [New, internal.AddTemplateFuncsNamespace, ns.AddMethodMapping]
+- overlapping call-graph neighborhoods (0.91): 32 shared
+- both are orchestrator functions
+- callees do related work (1.00): [caching]
+- same visibility
+- same receiver type: plain functions
+- call into same packages: [internal]
+
+---
+
 ## Match #7 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
 | **A** | `resources/image.go:198` | `resources.*imageResource.getImageMetaInfoCacheTargetPath` | `() (string)` | caching |
 | **B** | `resources/image.go:501` | `resources.*imageResource.getImageMetaCacheTargetPath` | `() (string)` | caching |
+
+**Explain:** identical after rename
 
 **Profile A:** `caching` 1.00 (dominance)
 
@@ -582,15 +597,15 @@ _47 more unusual realizations not listed._
 
 **Containment:** `1.00`
 
-**Evidence:** `633.62` (shape 596.69, concept 1.64, call 35.29)
+**Evidence:** `464.56` (shape 427.63, concept 1.64, call 35.29)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `7.58` — `seq[ assign:=(call:FileAndExt) ; assign:=(call:hash) ]`
-- `7.58` — `seq[ assign:=(call:HashStringHex) ; assign=(call:Sprintf) ]`
-- `7.58` — `seq[ assign:=(call:getResourcePaths) ; assign:=(call:FileAndExt) ]`
+- `7.42` — `depth-3 CALL`
+- `7.42` — `depth-3 ASSIGN`
+- `7.42` — `depth-3 CALL`
 
 **Structural overlap:** `0.83` (merge-worthy)
 
@@ -616,6 +631,8 @@ _47 more unusual realizations not listed._
 
 **Kind:** interface implementations — both implement `Transform(*resources.ResourceTransformationCtx) (error)` on `*babelTransformation` and `*postcssTransformation`, sibling packages `babel` and `cssjs`
 
+**Explain:** differs by three extra assign, one extra if, 16 extra call, and 8 more kinds
+
 **Profile A:** `file_io` 1.00 (dominance)
 
 **Profile B:** `file_io` 1.00 (dominance)
@@ -624,15 +641,15 @@ _47 more unusual realizations not listed._
 
 **Containment:** `0.79`
 
-**Evidence:** `2165.06` (shape 2052.31, concept 5.82, call 106.93)
+**Evidence:** `1508.73` (shape 1395.99, concept 5.82, call 106.93)
 
-**Trophic:** `0.77`
+**Trophic:** `0.78`
 
 **Shared structure:**
 
-- `30.32` — `flow:call:ResolveJSConfigFile→cond`
-- `14.72` — `seq[ assign=(call:append) ; assign=(call:append) ]`
-- `14.35` — `assign=(call:ResolveJSConfigFile)`
+- `14.83` — `depth-3 CALL` ×2
+- `14.83` — `depth-3 ASSIGN` ×2
+- `14.83` — `depth-2 CALL` ×2
 
 **Culture:** A realizes `concurrency` atypically (typicality 0.13, concept median 0.35, convention 0.60)
 
@@ -662,6 +679,8 @@ _47 more unusual realizations not listed._
 | **A** | `internal/js/esbuild/batch.go:1021` | `esbuild.*scriptGroup.Runner` | `(string) (js.OptionsSetter)` | validation, concurrency |
 | **B** | `internal/js/esbuild/batch.go:1050` | `esbuild.*scriptGroup.Script` | `(string) (js.OptionsSetter)` | validation, concurrency |
 
+**Explain:** identical after rename, commutative-reorder
+
 **Profile A:** `validation` 1.00 (dominance)
 
 **Profile B:** `validation` 1.00 (dominance)
@@ -670,15 +689,15 @@ _47 more unusual realizations not listed._
 
 **Containment:** `1.00`
 
-**Evidence:** `562.20` (shape 551.22, concept 3.99, call 6.99)
+**Evidence:** `425.86` (shape 414.88, concept 3.99, call 6.99)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `13.33` — `return(call:Get)`
-- `7.58` — `seq[ assign:=(call:scriptID) ; if(id) ]`
-- `7.58` — `seq[ defer(call:Unlock) ; assign:=(call:scriptID) ]`
+- `14.02` — `depth-2 RETURN` ×2
+- `13.00` — `depth-1 RETURN` ×2
+- `11.25` — `depth-1 CALL` ×2
 
 **Structural overlap:** `0.81` (merge-worthy)
 
@@ -694,60 +713,46 @@ _47 more unusual realizations not listed._
 
 ---
 
-## Match #10 — Code-shape: `0.6643`
+## Match #10 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `resources/resource_transformers/cssjs/postcss.go:146` | `cssjs.*postcssTransformation.Transform` | `(*resources.ResourceTransformationCtx) (error)` | mapping, concurrency, file_io |
-| **B** | `resources/resource_transformers/cssjs/tailwindcss.go:80` | `cssjs.*tailwindcssTransformation.Transform` | `(*resources.ResourceTransformationCtx) (error)` | mapping, concurrency, file_io |
+| **A** | `resources/images/config.go:694` | `images.*AvifConfig.init` | `(*ImagingConfig) (error)` | — |
+| **B** | `resources/images/config.go:758` | `images.*WebpConfig.init` | `(*ImagingConfig) (error)` | — |
 
-**Kind:** interface implementations — both implement `Transform(*resources.ResourceTransformationCtx) (error)` on `*postcssTransformation` and `*tailwindcssTransformation`, in package `cssjs`
+**Kind:** interface implementations — both implement `init(*ImagingConfig) (error)` on `*AvifConfig` and `*WebpConfig`, in package `images`
 
-**Profile A:** `file_io` 1.00 (dominance)
+**Explain:** identical after rename, commutative-reorder
 
-**Profile B:** `file_io` 1.00 (dominance)
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Code similarity:** `wl 0.45  flow 0.98  nesting 0.99  sig 1.00  size 0.75`
+**Containment:** `1.00`
 
-**Containment:** `0.73` — most of the smaller body's shape is inside the larger
+**Evidence:** `554.57` (shape 554.57, concept 0.00, call 0.00)
 
-**Evidence:** `1661.62` (shape 1544.81, concept 5.82, call 110.99)
-
-**Trophic:** `0.73`
+**Trophic:** `1.00`
 
 **Shared structure:**
 
-- `14.72` — `seq[ assign=(call:append) ; assign=(call:append) ]`
-- `14.35` — `if(call:IsNotFound)`
-- `7.58` — `seq[ assign:=(call:LevelLoggerToWriter) ; assign:=(sel) ]`
+- `21.11` — `depth-3 RETURN` ×4
+- `20.66` — `depth-3 BLOCK` ×4
+- `20.46` — `depth-2 RETURN` ×4
 
-**Culture:** A realizes `concurrency` atypically (typicality 0.13, concept median 0.35, convention 0.60)
+**Structural overlap:** `0.50` (merge-worthy)
 
-**Culture:** B realizes `concurrency` atypically (typicality 0.13, concept median 0.35, convention 0.60)
-
-**Culture:** A realizes `mapping` atypically (typicality 0.14, concept median 0.31, convention 0.63)
-
-**Culture:** B realizes `mapping` atypically (typicality 0.15, concept median 0.31, convention 0.63)
-
-**Structural overlap:** `0.72` (merge-worthy)
-
-- share 21 callees: [BaseConfig, InfoCommand, append, cmd.Run, cmd.StdinPipe, errBuf.String, ex.Npx, hexec.IsNotFound, hexec.WithDir, hexec.WithEnviron, hexec.WithStderr, hexec.WithStdout, hugo.GetExecEnviron, imp.resolve, imp.toFileError, io.Copy, io.MultiWriter, loggers.LevelLoggerToWriter, newImportResolver, options.toArgs, stdin.Close]
-- overlapping call-graph neighborhoods (0.90): 44 shared
-- share patterns: [concurrency, file_io, mapping]
-- both are orchestrator functions
+- share 2 callees: [fmt.Errorf, strings.ToLower]
+- both are leaf functions
 - same package
-- callees do related work (1.00): [file_io, caching]
 - same visibility
-- both are methods, on *postcssTransformation and *tailwindcssTransformation
-- call into same packages: [allconfig, cssjs, hexec, hugo, loggers]
+- both are methods, on *AvifConfig and *WebpConfig
 
 ---
 
 ## Families
 
-134 families, 436 functions in a family, largest 14 members; 188 edges scored here that retrieval never proposed
+114 families, 350 functions in a family, largest 14 members; 159 edges scored here that retrieval never proposed
 
-### Family 1 — 12 members, every pair `>= 0.60` code-shape, evidence `32550`  (24 edges scored here)
+### Family 1 — 12 members, every pair `>= 0.60` code-shape, evidence `27937`  (24 edges scored here)
 
 _Not drawn: 12 members is 66 connections. Every one of them holds — that is what makes this a family._
 
@@ -766,7 +771,7 @@ _Not drawn: 12 members is 66 connections. Every one of them holds — that is wh
 
 _2 more members not listed._
 
-### Family 2 — 12 members, every pair `>= 0.61` code-shape, evidence `32115`  (25 edges scored here)
+### Family 2 — 12 members, every pair `>= 0.61` code-shape, evidence `26551`  (26 edges scored here)
 
 _Not drawn: 12 members is 66 connections. Every one of them holds — that is what makes this a family._
 
@@ -785,7 +790,7 @@ _Not drawn: 12 members is 66 connections. Every one of them holds — that is wh
 
 _2 more members not listed._
 
-### Family 3 — 11 members, every pair `>= 0.62` code-shape, evidence `28757`  (18 edges scored here)
+### Family 3 — 11 members, every pair `>= 0.62` code-shape, evidence `23432`  (19 edges scored here)
 
 _Not drawn: 11 members is 55 connections. Every one of them holds — that is what makes this a family._
 
@@ -804,7 +809,7 @@ _Not drawn: 11 members is 55 connections. Every one of them holds — that is wh
 
 _1 more members not listed._
 
-### Family 4 — 12 members, every pair `>= 0.61` code-shape, evidence `26855`  (23 edges scored here)
+### Family 4 — 12 members, every pair `>= 0.61` code-shape, evidence `22476`  (24 edges scored here)
 
 _Not drawn: 12 members is 66 connections. Every one of them holds — that is what makes this a family._
 
@@ -823,7 +828,7 @@ _Not drawn: 12 members is 66 connections. Every one of them holds — that is wh
 
 _2 more members not listed._
 
-### Family 5 — 12 members, every pair `>= 0.60` code-shape, evidence `24259`  (31 edges scored here)
+### Family 5 — 12 members, every pair `>= 0.60` code-shape, evidence `20258`  (32 edges scored here)
 
 _Not drawn: 12 members is 66 connections. Every one of them holds — that is what makes this a family._
 
@@ -842,5 +847,5 @@ _Not drawn: 12 members is 66 connections. Every one of them holds — that is wh
 
 _2 more members not listed._
 
-_129 more families not listed._
+_109 more families not listed._
 
