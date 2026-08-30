@@ -94,25 +94,43 @@ func Describe(name string, n int) string {
 // untouched — one renamed finding and one unchanged one.
 var diffSrcAfter = strings.Replace(diffSrcBefore, "func Total(", "func Sum(", 1)
 
-// diffSrcSession is the gate fixture's session: one function renamed, and one
-// copied verbatim under a new name. The copy is what creates a pair, and the
-// pair's stored explanation is what the delta report has to carry.
-var diffSrcSession = diffSrcAfter + `
-func Report(name string, n int) string {
-	if n == 0 {
-		return fmt.Sprintf("%s: empty", name)
+// The gate fixture, shared with the Stop hook's test: a session that renames
+// one function and copies another verbatim under a new name.
+//
+// Clip is the copied one and its body is deliberately free of commutative
+// operators (no ==, !=, +, *, && or ||, which canon's commutative-sort would
+// reorder). That is what makes the copy's stored explanation read exactly
+// `identical after rename` rather than naming a second rule — the fixture's
+// whole point is that the sentence comes off the stored field, so it has to be
+// a sentence worth recognising.
+const gateSrcClip = `
+func Clip(items []string, limit int) []string {
+	out := make([]string, 0, len(items))
+	for _, item := range items {
+		trimmed := strings.TrimSpace(item)
+		if len(trimmed) < 1 {
+			continue
+		}
+		out = append(out, trimmed)
+		if len(out) > limit {
+			break
+		}
 	}
-	if n < 0 {
-		return fmt.Sprintf("%s: negative (%d)", name, n)
-	}
-	return fmt.Sprintf("%s: %d entries", name, n)
+	return out
 }
 `
+
+// gateSrcBefore is the session's starting tree and gateSrcAfter its end state:
+// Total renamed to Sum, and Clip copied byte-for-byte as Trim.
+const gateSrcBefore = diffSrcBefore + gateSrcClip
+
+var gateSrcAfter = strings.Replace(gateSrcBefore, "func Total(", "func Sum(", 1) +
+	strings.Replace(gateSrcClip, "func Clip(", "func Trim(", 1)
 
 func runDiffCmd(t *testing.T, args ...string) (stdout, stderr string, exitCode int) {
 	t.Helper()
 	// Flags are package-level and cobra does not reset them between runs.
-	diffFormat, diffUnchanged = "text", false
+	diffFormat, diffUnchanged, diffOutput = "text", false, ""
 	code := exitDiffOK
 	prev := diffExit
 	diffExit = func(c int) { code = c }

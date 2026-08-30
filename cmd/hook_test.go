@@ -137,6 +137,16 @@ func TestReadBaselineMissingAndCorrupt(t *testing.T) {
 // A hook must never block a session over a measurement, so every failure path
 // exits zero, writes nothing to stderr, and emits either nothing or valid JSON.
 func TestHookCommandsFailSilently(t *testing.T) {
+	// The empty-object cases carry session id "", which is a real path in the
+	// shared baseline directory — session-start will record one there and stop
+	// will read it back, which is the point: `{}` reaches further into
+	// runHookStop than a malformed payload does. Sweep it rather than leaving
+	// a stray origin behind.
+	t.Cleanup(func() {
+		os.Remove(baselinePath(""))
+		os.Remove(deltaPathFor(baselinePath("")))
+	})
+
 	tests := []struct {
 		name    string
 		cmdName string
@@ -144,9 +154,20 @@ func TestHookCommandsFailSilently(t *testing.T) {
 	}{
 		{"session-start with malformed payload", "session-start", "{not json"},
 		{"session-start with empty payload", "session-start", ""},
+		{"session-start with an empty object", "session-start", `{}`},
 		{"stop with malformed payload", "stop", "{not json"},
+		{"stop with empty payload", "stop", ""},
+		// An empty object is the shape a harness sends when it knows nothing
+		// about the session. It reaches further into runHookStop than a
+		// malformed payload does — past the parse, into the baseline lookup —
+		// so it exercises the delta path's entry rather than only its guard.
+		{"stop with an empty object", "stop", `{}`},
 		{"stop with no baseline", "stop", `{"session_id":"no-such-session-at-all","cwd":"."}`},
 		{"stop with unreadable root", "stop", `{"session_id":"x","cwd":"/nonexistent-path-xyz"}`},
+		{"user-prompt with malformed payload", "user-prompt", "{not json"},
+		{"user-prompt with an empty object", "user-prompt", `{}`},
+		{"pre-tool with malformed payload", "pre-tool", "{not json"},
+		{"pre-tool with an empty object", "pre-tool", `{}`},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
