@@ -14,6 +14,7 @@ import (
 var (
 	diffFormat    string
 	diffUnchanged bool
+	diffOutput    string
 )
 
 // Exit codes. `doppel diff` is a command a person or a script runs, not a
@@ -99,6 +100,7 @@ func diffExitCode(err error) int {
 func init() {
 	diffCmd.Flags().StringVar(&diffFormat, "format", "text", "Output format: text or json")
 	diffCmd.Flags().BoolVar(&diffUnchanged, "unchanged", false, "List unchanged functions individually instead of only counting them")
+	diffCmd.Flags().StringVar(&diffOutput, "output", "", "Also write the delta report as markdown to this file")
 	rootCmd.AddCommand(diffCmd)
 }
 
@@ -115,22 +117,49 @@ func runDiff(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	res, err := identity.Compare(base, head, identity.Options{})
+	// Since is Compare plus the pair-set comparison: which near-duplicate pairs
+	// the classified changes created and which they dissolved. Both snapshots
+	// carry their pair lists, so this costs a set difference and no re-scoring.
+	d, err := identity.Since(base, head, identity.Options{})
 	if err != nil {
 		return err
 	}
-	if !res.Comparable {
+	if !d.Comparable {
 		// The refusal is a Result, not an error, inside the library — the
 		// hook path needs it that way. At the CLI boundary it becomes a
 		// non-zero exit, because a script piping this into anything must not
 		// read an empty change list as "nothing happened".
-		return incomparableError{reason: res.Reason}
+		return incomparableError{reason: d.Reason}
+	}
+
+	if err := writeDeltaMarkdown(cmd, d); err != nil {
+		return err
 	}
 
 	if diffFormat == "json" {
-		return identity.WriteJSON(cmd.OutOrStdout(), res)
+		return identity.WriteJSONDelta(cmd.OutOrStdout(), d)
 	}
-	identity.Print(cmd.OutOrStdout(), res, diffUnchanged)
+	identity.PrintDelta(cmd.OutOrStdout(), d, diffUnchanged)
+	return nil
+}
+
+// writeDeltaMarkdown honours --output.
+//
+// Unlike `analyze --output`, the extension selects nothing: markdown is the
+// only file form this command has. There is no HTML one because the dashboard
+// is a payload-driven page describing a single run, and a two-run page would be
+// a different artifact rather than a format of this one.
+func writeDeltaMarkdown(cmd *cobra.Command, d identity.Delta) error {
+	if diffOutput == "" {
+		return nil
+	}
+	f, err := os.Create(diffOutput)
+	if err != nil {
+		return fmt.Errorf("create output file: %w", err)
+	}
+	defer f.Close()
+	identity.MarkdownDelta(f, d, diffUnchanged)
+	fmt.Fprintf(cmd.ErrOrStderr(), "Delta report written to %s\n", diffOutput)
 	return nil
 }
 

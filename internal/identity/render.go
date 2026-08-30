@@ -146,3 +146,16 @@ func WriteJSON(w io.Writer, r Result) error {
 	enc.SetIndent("", "  ")
 	return enc.Encode(r)
 }
+
+// WriteJSONDelta emits the classification and the pair changes together.
+//
+// Delta embeds Result, so this payload is the one WriteJSON produces with two
+// fields appended: a consumer written against the classification alone keeps
+// reading exactly the keys it always did. Both lists are already in a total
+// order and neither contains a map, so two runs over the same two files produce
+// byte-identical bytes.
+func WriteJSONDelta(w io.Writer, d Delta) error {
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	return enc.Encode(d)
+}

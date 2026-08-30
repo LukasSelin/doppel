@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/LukasSelin/doppel/internal/identity"
 	"github.com/LukasSelin/doppel/internal/reporter"
 	"github.com/LukasSelin/doppel/internal/snapshot"
 	"github.com/spf13/cobra"
@@ -229,25 +230,39 @@ func runHookStop(cmd *cobra.Command, args []string) error {
 		return emitNothing()
 	}
 
-	digest := reporter.ImpactDigest(delta, "")
+	// The identity classification of the same two snapshots. It leads both
+	// digests: snapshot.Diff can say a pair appeared and that one side is new,
+	// and only this can say the side is new because a function was renamed
+	// into it.
+	ident := identityDelta(base.Snapshot, head)
+
+	digest := reporter.SessionDigest(ident, delta, "")
 	if digest == "" {
 		return emitNothing()
 	}
 
 	deltaPath := deltaPathFor(path)
 	if err := writeJSONAtomic(deltaPath, delta); err == nil {
-		digest = reporter.ImpactDigest(delta, deltaPath)
+		digest = reporter.SessionDigest(ident, delta, deltaPath)
 	}
 
 	out := map[string]any{"systemMessage": digest}
 
 	if mode == NotifyAgent {
+		// Notable alone decides whether the turn is continued, and the
+		// identity classification deliberately does not lower that bar: a
+		// rename with no pair consequence is a fact about code the model just
+		// wrote, and paying a model turn to restate it would make the feature
+		// hostile. What the classification does buy, once a notable finding
+		// has already justified the note, is the attribution the note is read
+		// through.
 		if fresh := unreported(reporter.Notable(delta), base.Reported); len(fresh) > 0 {
+			freshID := unreported(reporter.DeltaFindings(ident), base.Reported)
 			// Only the findings the digest actually printed go in the ledger.
 			// The rest were counted, not said, and retiring them here would
 			// suppress them for the whole session without anyone having seen
 			// them; they lead the next turn's list instead.
-			if note, shown := reporter.AgentDigest(fresh); note != "" {
+			if note, shown := reporter.AgentDeltaDigest(ident, freshID, fresh); note != "" {
 				// Record before emitting. If the write fails we would rather
 				// stay silent than repeat this finding on every future turn,
 				// each time continuing the turn to do it.
@@ -262,6 +277,31 @@ func runHookStop(cmd *cobra.Command, args []string) error {
 	}
 
 	return emitJSON(cmd, out)
+}
+
+// identityDelta matches the two snapshots' bodies, degrading to nothing rather
+// than to a broken session.
+//
+// Two guards, both because this runs inside a hook. An error is a corrupt WL
+// codec, which is a real failure but not one worth a word to the user: the
+// impact half of the digest is unaffected and still has something to say. The
+// recover is the harder rule — the whole hook contract is that no failure path
+// ever exits non-zero or writes to stderr, and a panic would do both. It costs
+// the identity section and nothing else.
+//
+// Note what is *not* here: no fallback that guesses. A delta this cannot
+// compute is a delta that is not printed.
+func identityDelta(base, head snapshot.Snapshot) (d identity.Delta) {
+	defer func() {
+		if r := recover(); r != nil {
+			d = identity.Delta{}
+		}
+	}()
+	res, err := identity.Since(base, head, identity.Options{})
+	if err != nil {
+		return identity.Delta{}
+	}
+	return res
 }
 
 // unreported drops findings already surfaced this session.

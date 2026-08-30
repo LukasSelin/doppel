@@ -95,7 +95,7 @@ cmd/            CLI commands (Cobra).
   config.go     .doppel.json loading (AnalysisConfig), flag precedence, hookParams
   hook.go       doppel hook session-start / user-prompt / pre-tool / stop: the four Claude Code
                 hook entry points, and baseline file I/O
-  diff.go       doppel diff: match two snapshot files' functions to each other; exit codes 0/1/2
+  diff.go       doppel diff: match two snapshot files' functions to each other; --output writes the delta report as markdown; exit codes 0/1/2
   version.go    build identity, for deciding whether a baseline is still comparable
   ontology.go   doppel ontology: print the vocabulary, check its axioms
 internal/
@@ -123,6 +123,7 @@ internal/
   family/       Near-duplicate families: components + edge completion + maximal cliques over the pair graph
   snapshot/     One analysis run as comparable plain data: schema + Build, and Diff over two of them
   identity/     Matches two snapshots' functions to each other by WL bag and classifies each into one of eight classes; render.go is the text + JSON report
+                delta.go adds the pairs those changes created or dissolved; deltarender.go is the delta report's text + markdown form
   reporter/     Plain-text (stdout), Markdown (--output), JSON (--format json), and the five hook digests
                 (impact.go: ConceptDigest, ImpactDigest, AgentDigest; scope.go: ScopeDigest, AdviceDigest)
                 overview.go + mermaid.go render the corpus model into the markdown report only
@@ -164,6 +165,9 @@ and `cmd` bridges its concepts into an ontology term table. `clique` imports not
 imports **nothing from this module at all** — its payload is plain data and its renderer is
 `html/template` plus `embed` — which is what keeps the page's data contract from quietly acquiring
 pipeline types; `cmd` bridges a finished run into it, exactly as it does for `reporter.Overview`.
+`identity` imports `fingerprint` and `snapshot` only, and `reporter` imports `identity` — that edge
+is one-way and must stay so: `identity` models what happened between two runs, `reporter` renders
+it, and an import the other way would put a digest's byte budget inside the matcher.
 
 ## Two scores, deliberately unblended — and a third quantity that ranks
 
@@ -1923,6 +1927,39 @@ reason rather than returning a partial delta.
   a continuum that cannot separate a pair three signals past the gate from one barely over it. The
   flag stays on the rendered line. This is presentation only — `snapshot.Diff`'s own total order
   (attributable, merge-worthy, score) is untouched, and nothing here feeds a score.
+- **Both `stop` digests lead with the delta report** — the identity classification since the
+  baseline, then the pairs those changes created or dissolved, each line carrying its stored
+  `explain:` sentence. See *The delta report* below for the model; what belongs here is where the
+  line was drawn:
+
+  **The classification never buys a model turn.** `reporter.Notable` alone decides whether
+  `additionalContext` is emitted, and its bar is untouched. A rename with no pair consequence is a
+  fact about code the model just wrote and the user digest already carries; paying a turn to
+  restate it would make the feature hostile. What the classification buys, *once a notable finding
+  has already justified the note*, is the attribution the note is read through. So identity changes
+  what the note says and never whether it is sent — `AgentDeltaDigest` returns "" for an empty
+  `notable` list however much the delta found.
+
+  **The `Reported` ledger covers it, by the existing mechanism.** `reporter.DeltaFindings` turns
+  the report into `Finding`s keyed `class:<class>:<old>|<new>`, `created:<a>|<b>` and
+  `dissolved:<a>|<b>` — prefixes deliberately distinct from `new:`, `gate:` and `drift:`, so two
+  kinds of finding cannot collide on one key. They go through the same `unreported` filter and the
+  same `withReported` write, and `AgentDeltaDigest` returns the findings from *both* halves that it
+  actually rendered, because ledgering what was only counted retires findings nobody was shown. The
+  user digest is deliberately not ledgered: it lets the turn end, and it is a cumulative statement
+  of where the session stands rather than a feed.
+
+  **`identityDelta` in `cmd/hook.go` recovers.** An error (a corrupt WL codec) and a panic both
+  degrade to no delta section, never to a non-zero exit or a byte on stderr. The identity pass can
+  only *refuse* on schema or rule set, both of which `snapshot.Diff` refuses on first, so the
+  refusal path is unreachable from the hook and the error path is the one that matters.
+
+  **`SessionDigest` composes and truncates once.** Two finished digests concatenated would bound
+  each half at `digestMaxChars` and the sum at twice it, past what the harness carries — so
+  `ImpactDigest` was split into `impactBody` plus the truncation, and nothing was re-rendered. It
+  returns "" exactly when `ImpactDigest` would: every class but `unchanged` moves a key or a digest,
+  so an identity finding always implies a non-empty `snapshot.Delta` and the impact half is the
+  stricter emptiness test.
 - `stop` emits `systemMessage` to the user and, under `hook-notify: agent` (the default),
   `additionalContext` to the model. **`additionalContext` on a Stop hook continues the turn** —
   verified against the shipped Claude Code binary, because the public docs do not document Stop's
@@ -2052,6 +2089,64 @@ under eight hundred "still there" lines defeats the point. `--format json` has n
 carries every change, unchanged included, because a machine consumer filtering is trivial and one
 missing data is not. All eight class counts are always emitted, zeros included, so the payload
 shape is stable.
+
+## The delta report
+
+`identity.Since` is `Compare` plus one set difference: the near-duplicate **pairs those changes
+created or dissolved**. Both snapshots already carry their pair lists, so this costs a walk of two
+key sets and no re-scoring. `identity.Delta` is the pair of halves, and it is what both the
+`doppel diff` renderings and the Stop hook's two digests lead with.
+
+**It exists only where two snapshots exist.** `analyze` never reads the session baseline — the
+hard convention — so a plain run's markdown and HTML *cannot* carry this section, and do not.
+Three homes, in the order they matter:
+
+1. **The Stop hook digests.** Both of them lead with it; see the hook contract above.
+2. **`doppel diff`'s text form**, where the classification is already the whole output and the pair
+   sections follow it under one `Delta since the baseline` title.
+3. **`doppel diff --output <file.md>`**, a markdown form whose first section is the report because
+   it is the only section. The extension selects nothing there — markdown is the command's only
+   file form. **A two-run HTML dashboard is deliberately not built**: the dashboard is a
+   payload-driven page describing one run, and a two-run page would be a different artifact rather
+   than a format of this one. Future work, noted here rather than half-done.
+
+**Attribution is the reason the classification leads.** `snapshot.Diff` can say a pair appeared and
+that one side is new; only this can say the side is new *because a function was renamed into it*.
+So a `PairChange` carries the class of each of its two sides — from the changes' `New` members for
+a created pair, their `Old` members for a dissolved one, which is the case where looking a key up in
+the other side's index would be silently wrong — and `Attributable()` is "either side is classified
+as something other than `unchanged`". That is strictly wider than `snapshot.Delta.Touched()` (added
+or digest-moved), and the two never disagree about a fact, only about how much they can name.
+
+**Ordering is `snapshot.sortPairChanges`, mirrored**: attributable first, then merge-worthy, then
+score desc, then the two keys. Only the first key means something different. In the hook, "pairs
+involving functions in files the session edited come first" is exactly what that first key does —
+**the classification is the edit signal**, and no per-file edit tracking is invented to improve on
+it. The baseline wrapper's `Advised` ledger is not one: it records only files whose pre-tool
+advisory actually rendered, and only when that hook is installed, so ordering on it would be a
+partial record presented as a complete one. `BodiesChanged` is a strict subset of what the
+classification already reports as `edited`.
+
+**Every line carries the stored `explain:` sentence** — a created pair's from the new snapshot's
+`Pair.Explain`, a dissolved pair's from the old one's. Read back, never recomputed: the sentence
+names the canonicalization rules that fired on two specific bodies, and this package has neither
+body. That is also why `snapshot.Diff` still does not *diff* the field — a reworded sentence is not
+a session's doing — while the delta report renders it verbatim.
+
+**One rendering, three surfaces.** The class lines are `identity.Lines` and the pair lines
+`identity.PairLines`, in the text report, the markdown and both digests alike. A digest that spelled
+these differently would be a second rendering to keep in step with the first.
+
+**`--format json` gained the two lists without moving a field.** `Delta` embeds `Result`, so the
+payload is what `WriteJSON` produced with `created` and `dissolved` appended, and a consumer written
+against the classification alone keeps reading exactly the keys it always did.
+
+Known limits, both inherent: a rename **re-keys every pair its function held**, so a single rename
+produces N created and N dissolved pair changes that are one fact restated — the bounded head is
+where the new duplication is and the tail is the restatement, which is why the pair bound is
+tighter than the class bound. And two snapshots from `analyze --format json` carry the *ranked* pair
+set (top-N, `--max-per-func`), so a pair can appear in one list purely because a presentation cutoff
+moved; the hook path does not have this, because it snapshots the full candidate set.
 
 ## Conventions
 
