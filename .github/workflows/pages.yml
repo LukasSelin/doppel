@@ -1,0 +1,81 @@
+name: Pages
+
+# The repo is the source of truth for the site, exactly as it is for the wiki:
+# .github/pages/index.html is authored and reviewed like code, and
+# lukasselin.github.io/doppel is a rendered view of it plus one generated
+# artifact — doppel's report on its own source.
+#
+# Requires Settings → Pages → Source set to "GitHub Actions". Nothing here can
+# set that; until it is set the deploy job fails with "Pages is not enabled".
+on:
+  push:
+    branches: [master]
+  # A rebuild without a commit — useful after enabling Pages for the first time.
+  workflow_dispatch:
+
+# Deliberately no `paths:` filter, unlike wiki.yml. The report is a property of
+# the whole Go corpus, so any commit touching any .go file changes it; a filter
+# would leave a stale page published and look like it was current.
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Same argument wiki.yml makes: cancelling mid-publish is the one way to leave
+# the published thing half-written. A superseded run is cheap; a half-deployed
+# site is not.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # `_site` rather than `site`: parser.ShouldSkipDir skips underscore-
+      # prefixed directories (the go tool's own ignore rule), so the output
+      # directory cannot join the corpus of the very run writing into it.
+      # It is also upload-pages-artifact's default path.
+      - name: Render the dashboard for doppel's own source
+        run: |
+          set -euo pipefail
+          mkdir -p _site
+          go run . analyze . -o _site/report.html
+
+      - name: Assemble the landing page
+        run: |
+          set -euo pipefail
+          # The landing page links the same stylesheet the report inlines, so
+          # the two read as one document.
+          cp internal/dashboard/assets/vendor/broadsheet.css _site/
+          # Provenance lives here and never in the report — an unchanged tree
+          # must render byte-identical HTML, which ci.yml asserts.
+          sed -e "s/@@COMMIT@@/${GITHUB_SHA:0:7}/g" \
+              -e "s/@@BUILT@@/$(date -u +%Y-%m-%d)/g" \
+              .github/pages/index.html > _site/index.html
+
+      # Deliberately no vet/test here: ci.yml already gates every push to
+      # master, and duplicating it would double the runner cost of a push for
+      # no extra signal. A tree that does not build fails `go run` above and
+      # nothing is deployed.
+      - uses: actions/upload-pages-artifact@v3
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

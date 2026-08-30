@@ -9,6 +9,9 @@ dist/
 # Generated output
 report.md
 doppel-report.md
+# The Pages site, assembled by .github/workflows/pages.yml. Underscore-prefixed
+# so doppel's own walker skips it — see parser.ShouldSkipDir.
+_site/
 
 # Go test/coverage artifacts
 coverage.out
