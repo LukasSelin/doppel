@@ -120,8 +120,10 @@ type Options struct {
 	RenameFloor float64
 
 	// SplitContainment is how much of a body has to be covered for the split
-	// and merged rules to fire. 0.8 is the task's own definition of the
-	// classes and is not derived from anything.
+	// and merged rules to fire. 0.8 is the definition of those two classes
+	// rather than a tuned value: it is not derived from any measurement, and
+	// what keeps the classes honest is the three digest exclusions in
+	// detectSplits, not this number.
 	SplitContainment float64
 
 	// CandidateK bounds how many counterparts each function keeps from
@@ -886,9 +888,9 @@ func (m *matcher) absorbMerge(j int, parts []int) Change {
 	return c
 }
 
-// isUnchanged reports whether old function i survived into the new snapshot
-// byte-identically — the one state the split and merged rules refuse to build
-// on.
+// isUnchanged reports whether old function i is matched to a new function of
+// the same package and name with the same body — one of the three states the
+// split and merged rules refuse to build on.
 func (m *matcher) isUnchanged(i int) bool {
 	j := m.partnerOf[i]
 	return j >= 0 && classOf(m.a.units[i], m.b.units[j]) == Unchanged
