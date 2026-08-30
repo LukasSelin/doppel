@@ -7,7 +7,7 @@
     {
       "name": "doppel",
       "source": "./plugin",
-      "description": "Surfaces a Go repo's existing concepts before you write code, and measures what your session did to its duplication surface afterwards."
+      "description": "Measures a Go repo's architectural erosion from inside your session: surfaces the concepts and duplicates that already exist before you write code, and reports what your session did to them afterwards."
     }
   ]
 }
