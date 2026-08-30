@@ -39,13 +39,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
-    env:
-      # Must stay outside the working tree: a corpus checked out under it
-      # would be walked by `doppel analyze .` on this repo, which is the same
-      # reason bench.Root() defaults outside the module.
-      DOPPEL_CORPORA: ${{ runner.temp }}/doppel-corpora
-
     steps:
+      # `runner.temp` is not available in a job-level `env:` block, so the
+      # variable is exported here instead. It must stay outside the working
+      # tree: a corpus checked out under it would be walked by
+      # `doppel analyze .` on this repo, which is the same reason
+      # bench.Root() defaults outside the module.
+      - name: Point the corpus cache outside the working tree
+        run: echo "DOPPEL_CORPORA=$RUNNER_TEMP/doppel-corpora" >> "$GITHUB_ENV"
+
       # The push event checks out a detached sha; this job pushes back, so it
       # needs the branch.
       - uses: actions/checkout@v4
