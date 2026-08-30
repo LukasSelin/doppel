@@ -78,42 +78,39 @@
   </header>
 
   <section>
+    <a class="cta" href="report.html">
+      <span class="cta-title">Open the report</span>
+      <span class="cta-note">doppel's own source ›</span>
+    </a>
     <p>
-      Nobody erodes an architecture deliberately. Someone needs a retry loop and writes one, because
-      finding the existing one costs more than writing it. Someone forks a handler for a second
-      provider, and a year later only one of the two carries the bug fix. Every such edit is
-      defensible on its own and invisible in review, because review sees a diff and erosion is a
-      property of the whole corpus. That is why doppel reads every function in the repo at once
-      rather than reading a change.
-    </p>
-    <p>
-      It fingerprints each function from its AST and cross-checks matches against call-graph
-      context, so it finds pairs that share <em>shape and role</em> rather than string overlap — the
-      kind text-based clone detection stops seeing once two copies have drifted apart. Everything
-      runs locally and offline: no models, no network, no cache. The same source always produces the
-      same report.
+      Not a demo corpus: the tool's own source, analysed by itself and regenerated from
+      <code>master</code> on every push. Every pair it names can be opened in
+      <a href="https://github.com/LukasSelin/doppel">the repository</a> and judged — which is the
+      only honest way to show a similarity tool working. One self-contained file, nothing to fetch.
     </p>
   </section>
 
   <section>
-    <h2>The report below is doppel run on doppel</h2>
+    <h2>What you are looking at</h2>
     <p>
-      This is not a demo corpus. It is the tool's own source, analysed by itself, regenerated from
-      <code>master</code> on every push — so every pair it names can be opened in
-      <a href="https://github.com/LukasSelin/doppel">this repository</a> and judged. The page is one
-      self-contained file with nothing to fetch.
+      <strong>Map</strong> draws the corpus as a political map. Each package is a polygon whose
+      <em>area</em> is its share of the functions, so the picture is a cartogram rather than a floor
+      plan. Functions are dots inside their own region, coloured by the concept doppel learned from
+      this corpus rather than from a fixed list, sized by how many callers resolve to them. A
+      <span style="color: var(--color-accent-2)">painted border</span> between two regions is
+      duplication crossing it — the heavier the paint, the more of it.
     </p>
     <p>
-      <strong>Map</strong> draws the corpus as a political map: each package is a polygon whose area
-      is its share of the functions, functions are dots inside their own region coloured by learned
-      concept, and a painted border is duplication crossing between two regions.
-      <strong>Neighbourhood</strong> takes one function and shows its ranked neighbours with both
-      bodies side by side and the evidence for the match.
+      <strong>Neighbourhood</strong> takes one function and ranks everything similar to it, with
+      both bodies side by side and the evidence underneath: the two similarity scores kept
+      deliberately unblended, the structural motifs the pair actually shares, and the callers,
+      callees and packages that corroborate the match.
     </p>
-    <a class="cta" href="report.html">
-      <span class="cta-title">Open the interactive report</span>
-      <span class="cta-note">doppel's own source ›</span>
-    </a>
+    <p class="text-muted">
+      Nothing on the page is a verdict. Doppel measures a codebase against its own practice, so what
+      it reports is "this repo has two of these" — whether that is worth merging is a judgment it
+      does not make.
+    </p>
   </section>
 
   <section>
