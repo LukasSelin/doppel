@@ -96,6 +96,8 @@ cmd/            CLI commands (Cobra).
   hook.go       doppel hook session-start / user-prompt / pre-tool / stop: the four Claude Code
                 hook entry points, and baseline file I/O
   diff.go       doppel diff: match two snapshot files' functions to each other; --output writes the delta report as markdown; exit codes 0/1/2
+  timeline.go   doppel timeline: N snapshot files as one steppable history; refuses a series whose steps disagree about the operating point
+  timeline_text.go  the terminal form of a series
   version.go    build identity, for deciding whether a baseline is still comparable
   ontology.go   doppel ontology: print the vocabulary, check its axioms
 internal/
@@ -124,13 +126,17 @@ internal/
   snapshot/     One analysis run as comparable plain data: schema + Build, and Diff over two of them
   identity/     Matches two snapshots' functions to each other by WL bag and classifies each into one of eight classes; render.go is the text + JSON report
                 delta.go adds the pairs those changes created or dissolved; deltarender.go is the delta report's text + markdown form
+                series.go chains N snapshots: N-1 consecutive deltas plus one Track per function lifeline
   reporter/     Plain-text (stdout), Markdown (--output), JSON (--format json), and the five hook digests
                 (impact.go: ConceptDigest, ImpactDigest, AgentDigest; scope.go: ScopeDigest, AdviceDigest)
                 overview.go + mermaid.go render the corpus model into the markdown report only
-  dashboard/    The HTML dashboard (--output *.html): payload.go is the semantic payload,
-                render.go inlines it into assets/ (shell.html + app.js + app.css + vendor/)
+  dashboard/    The two HTML pages: payload.go + assets/(shell.html, app.js, app.css) is the
+                single-run dashboard (--output *.html); timeline.go + assets/(timeline.html,
+                timeline.js, timeline.css) is the series page (doppel timeline -o *.html).
+                render.go inlines either into its shell; both share vendor/ and app.css
   bench/        Measurement harness: golden-ranking scorer, the pinned public corpus ladder, per-stage benchmarks, example generator
 examples/       Committed real reports for each corpus rung, plus labels/ (committed golden reviews) — see examples/README.md
+scripts/        timeline.sh: walks a git history and analyses each revision at one pinned operating point. The only code in the repo that knows git exists, and deliberately outside the Go module
 ```
 
 Six helpers are deliberately shared rather than copied, because doppel found each
@@ -1320,9 +1326,12 @@ never learns about `culture`, and `cmd` queries the model.
   so it was clutter with a redundant click target, and the border/arc pair lists and the
   neighbourhood picker remain the ways into a single function. *Neighbourhood* takes
   one function and shows its ranked neighbours, both bodies side by side, and the pair's evidence.
-  A **delta** screen and a **concept-drift** screen were scoped and dropped: both need a snapshot
-  *series*, and there is exactly one baseline per session in tmpdir, no timestamp inside a
-  `Snapshot`, and nothing from `culture` persisted at all. Neither is a small addition.
+  A **delta** screen was scoped and dropped here and then built as its own artifact — see *The
+  timeline* — because a series is not a format of a single-run page. A **concept-drift** screen
+  is still not built and the reason survives intact: concept identity is corpus-relative, so two
+  revisions' `sql.Open+QueryRow` are different objects sharing a spelling, and nothing from
+  `culture` is persisted in a snapshot at all. Drift is not measurable from what a snapshot
+  carries.
 - **The page draws `res.Pairs`, not the ranked report list.** Same reasoning as the family stage:
   `--top` and `--max-per-func` are report-time devices, and a neighbourhood built on a
   diversity-capped list would hide the neighbour a reader clicked in to find. So those two flags do
@@ -2118,9 +2127,11 @@ Three homes, in the order they matter:
    sections follow it under one `Delta since the baseline` title.
 3. **`doppel diff --output <file.md>`**, a markdown form whose first section is the report because
    it is the only section. The extension selects nothing there — markdown is the command's only
-   file form. **A two-run HTML dashboard is deliberately not built**: the dashboard is a
-   payload-driven page describing one run, and a two-run page would be a different artifact rather
-   than a format of this one. Future work, noted here rather than half-done.
+   file form. **`doppel diff` still has no HTML form**, and the argument for that has not moved:
+   the dashboard is a payload-driven page describing one run, and a page over runs is a different
+   artifact rather than a format of this one. That artifact now exists as `doppel timeline` — a
+   separate command, a separate payload and a separate page, over N runs rather than two. See
+   *The timeline*.
 
 **Attribution is the reason the classification leads.** `snapshot.Diff` can say a pair appeared and
 that one side is new; only this can say the side is new *because a function was renamed into it*.
@@ -2160,6 +2171,103 @@ tighter than the class bound. And two snapshots from `analyze --format json` car
 set (top-N, `--max-per-func`), so a pair can appear in one list purely because a presentation cutoff
 moved; the hook path does not have this, because it snapshots the full candidate set.
 
+## The timeline
+
+`doppel timeline <a.json> <b.json> …` reads N snapshots as one history and renders a page you step
+through: what happened to every function at each revision, which near-duplicate pairs those changes
+created or dissolved, and each function's lifeline across the whole series. `-o *.html` writes the
+page, `--format json` the payload, and the default prints a per-revision summary to the terminal.
+
+**It is a sibling of the dashboard, not an extension of it**, and the two "deliberately not built"
+notes it falsifies were right about the reason while being wrong about the conclusion.
+`dashboard.Payload`'s own doc says identity is a per-run index and that nothing crosses runs — so a
+time axis could not be added to it, and was not. `TimelinePayload` is a second type with a second
+`TimelineSchema`, keyed on `snapshot.Unit.Key` (the only identity that survives a revision), and
+`internal/dashboard` still imports nothing from this module. What the two share is `render.go`: one
+`page` value each naming a shell, a stylesheet list and a script, and one `printPage` doing the
+inlining, the `</script` guard and the `SetEscapeHTML(true)` that keeps a function key from closing
+the element carrying it. Copying that file into a new package would have been a clone doppel finds
+on itself.
+
+**The git walk is outside the module, and that is the load-bearing split.** "No git history" is a
+construction constraint of this tool — it is why authorship, age and churn are invisible and why
+every claim is corpus-relative rather than history-relative — so `doppel timeline` shells out to
+nothing. Argument order **is** series order, which needs no timestamp inside a `Snapshot` (there is
+none, by the schema's third rule) and no sorting the tool could not justify. `scripts/timeline.sh`
+walks `git rev-list`, materializes each revision in a detached worktree, analyses it, and calls the
+command; `task timeline` wraps it. That script is the only thing in the repo that knows git exists.
+
+### One operating point for the whole series
+
+**This is the constraint that makes the feature honest, and the command refuses rather than
+warns.** Calibration is on by default, so a series of independently calibrated runs derives a
+different code-shape floor per revision and its pair sets are answers to different questions.
+`sameOperatingPoint` in `cmd/timeline.go` requires `snapshot.Params.Equal` across every step and
+requires `Calibrate == 0`, naming the first offending file. The reasoning is `pinThresholds`'
+one layer out: the hook pins its thresholds for a session because the corpus moves under it, and a
+series is the same problem with the revisions made explicit.
+
+**It is deliberately stricter than `internal/identity`, which allows a Params mismatch and notes
+it.** That looseness is correct there — `Compare` reads `Units`, whose key, digest and bag are
+properties of a function's own AST — and wrong here, because a timeline puts each run's pair counts
+and corpus metrics on one axis and those are exactly the corpus-relative numbers a moved threshold
+invalidates. The judgment lives at the command boundary so `identity`'s documented contract stays
+one thing.
+
+**A second bound is at the source and can only be warned about.** `analyze --format json` stores
+the *ranked* pair list, so at the shipped defaults a snapshot carries twenty pairs however large
+the corpus — a series produced that way shows a pair list that barely moves and reads as a quiet
+history. `warnReportCaps` says so on stderr and `Bounds.ReportTop`/`ReportMaxPerFunc` say so on the
+page; the fix is `--top 0 --max-per-func 0`, which is what the script passes and what `cmd/hook.go`
+already overrides for the same reason. It warns rather than refusing because a capped series is a
+true history of the pairs it carries — what would be wrong is letting it read as a complete one.
+
+### Tracks
+
+`identity.Chain` is `Since` applied to each consecutive pair plus a union-find over `(step, key)`
+nodes. **Nothing is matched across a gap**: a match between step 0 and step 7 inferred by chaining
+is a claim about seven intervening comparisons rather than a measurement of one, and the weighted
+Jaccard it would have to print does not exist. A `Track` is the transitive closure of consecutive
+one-to-one matches and claims exactly that much — so its points are contiguous by construction, and
+a function that vanished and returned under the same name is two tracks.
+
+**Only the one-to-one classes join a track**: `unchanged`, `edited`, `renamed`, `moved`. Split and
+merged do not, because no evidence decides which of several parts inherits the lifeline and picking
+the lowest-keyed one would be an arbitrary answer presented as a finding. A split ends its track,
+the ending is recorded as `Track.Fate`, and the page says "split at this revision" rather than
+pretending one part continued.
+
+Every unit of every snapshot appears in exactly one track at exactly one point — the tracks are a
+partition, which `TestChainCoversEveryFunctionExactlyOnce` pins. `cmd` then drops the **flat**
+tracks (whole series, nothing but `unchanged`), which are the bulk of any history and the least
+informative part of it — the same cut identity's text report makes for `unchanged` — orders the rest
+by event count so the display cap takes the quietest rather than an arbitrary tail, and reports
+both counts on the page.
+
+### What it does not carry, and why
+
+**No source bodies.** They are the only part of the single-run payload that scales with corpus size
+rather than with findings, and N revisions of them would dominate the file outright. The page cites
+`file:line` and leaves bodies to the per-revision dashboard, which already renders them.
+
+**Nothing is recomputed.** Every classification, score, verdict and `explain:` sentence is read back
+from what `identity` settled or the run that held the pair stored. This page has neither body nor
+bag, which is the same reason `identity` reads a stored `Pair.Explain` rather than re-deriving one.
+
+**A concept-drift screen is still not built**, and the reason is now the sharper one: concept
+identity is corpus-relative, so two revisions' `sql.Open+QueryRow` are different objects that share
+a spelling, and a line drawn between them would be asserting a continuity nothing measured. Nothing
+from `culture` is persisted in a snapshot either. That is a data problem, not a rendering one.
+
+### The fixture trap, worth not rediscovering
+
+Label weight is `ln(N/df)` over the union of both snapshots' bags, so on a corpus of two
+near-identical functions every label has `df == N`, every weight is 0, and the weighted Jaccard of
+any two bodies is `0/0`. The matcher then refuses every similarity match and a rename classifies as
+one deletion plus one arrival. That is correct behaviour on a corpus with no information in it, and
+it makes a two-function fixture useless for testing a matcher — the series tests carry six filler
+functions for exactly this reason, and the first version of them did not and failed.
+
 ## Conventions
 
 - **Language-neutral by construction, Go-first by fidelity.** Everything from `fingerprint`
@@ -2188,6 +2296,12 @@ moved; the hook path does not have this, because it snapshots the full candidate
   never read it, and no code path may short-circuit a stage because a baseline exists. If you find
   yourself adding a second state file, or reading this one to skip work, that is a design change,
   not an optimization. (`--format json` and `--output` write reports, not state.)
+
+  **A timeline's series of snapshot files is not a cache either**, and the distinction is the one
+  above rather than a new exemption: they are `--format json` reports, no run reads one to avoid
+  recomputation, and `doppel timeline` neither produces nor consults them as pipeline state — it
+  is a reader of reports, like any script piping `--format json` somewhere. It runs no pipeline
+  stage at all.
 
   **One documented exception, `pinThresholds` in `cmd/hook.go`:** a hook run reads the baseline's
   recorded `Threshold` and `Calibrate` and skips the calibration derivation. It is a supplied

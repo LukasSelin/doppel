@@ -77,6 +77,19 @@ jobs:
           go run . analyze . -o /tmp/b.html
           diff /tmp/a.html /tmp/b.html
 
+      # A timeline is a second inlined payload over a series of runs, so it is
+      # subject to the same rule. Two snapshots of one tree at a pinned
+      # operating point is the smallest series there is, and it exercises the
+      # refusal path too: an unpinned pair would be rejected rather than drawn.
+      - name: Timeline is deterministic
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          go run . analyze . --format json --threshold 0.38 --struct-min 0.0 --top 0 --max-per-func 0 > /tmp/t0.json
+          cp /tmp/t0.json /tmp/t1.json
+          go run . timeline /tmp/t0.json /tmp/t1.json -o /tmp/ta.html > /dev/null
+          go run . timeline /tmp/t0.json /tmp/t1.json -o /tmp/tb.html > /dev/null
+          diff /tmp/ta.html /tmp/tb.html
+
       - name: Hook entry points respond
         if: matrix.os == 'ubuntu-latest'
         run: |

@@ -350,6 +350,23 @@ A single `doppel` run gives you a snapshot. Running it repeatedly after each ref
 4. Lower the threshold slightly once the high-confidence pairs are gone (`0.75 → 0.65 → 0.55`) to surface the next layer
 5. Repeat until the report comes back empty at your chosen floor
 
+**Watching the loop from the outside.** Keep each pass's `--format json` snapshot and
+`doppel timeline runs/*.json -o timeline.html` renders the whole sequence as one page you step
+through with the arrow keys: what happened to every function at each pass, which near-duplicate
+pairs the pass created or dissolved, and each function's lifeline across the lot — so a helper you
+extracted in pass 2 and renamed in pass 4 reads as one line rather than as three arrivals.
+
+Two conditions, both enforced or reported rather than assumed. Every pass must be analysed at the
+**same** operating point (an explicit `--threshold` and `--struct-min`, which turns calibration
+off), or the runs are answers to different questions and the command refuses the series — so the
+threshold-lowering ladder above is a different exercise from a timeline, and wants its own pinned
+series if you want to watch it. And pass `--top 0 --max-per-func 0`, or each snapshot stores only
+its twenty-pair report list and the pair half of the page will barely move. `scripts/timeline.sh`
+does both, over a git history rather than a manual loop.
+
+Doppel itself reads no git history — that is what makes every judgement it offers corpus-relative
+rather than blame-shaped — so walking the revisions is always the caller's job, never the tool's.
+
 **Scheduling it:**
 
 The loop works best when it runs automatically. Commit a `.doppel.json` to the repo with a standing configuration so every run uses consistent settings:

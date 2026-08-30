@@ -29,12 +29,35 @@ var assetsFS embed.FS
 // and tests must leave it unset.
 const DevAssetsEnv = "DOPPEL_DASHBOARD_ASSETS"
 
-// The asset names, relative to the assets root, in the order they are inlined.
+// The asset names, relative to the assets root.
 const (
 	shellAsset    = "shell.html"
+	timelineShell = "timeline.html"
 	broadsheetCSS = "vendor/broadsheet.css"
 	appCSS        = "app.css"
+	timelineCSS   = "timeline.css"
 	appJS         = "app.js"
+	timelineJS    = "timeline.js"
+)
+
+// A page is one self-contained document this package can render: which shell
+// carries it, which stylesheets are inlined into it and in what order, and
+// which script drives it.
+//
+// Two pages exist and they share everything below this line — the asset
+// source, the </script guard, the escaping rule and the template shape. They
+// deliberately share nothing above it: a single-run dashboard and a series
+// timeline answer different questions and have separate payloads and schemas.
+type page struct {
+	name  string
+	shell string
+	css   []string
+	js    string
+}
+
+var (
+	dashboardPage = page{name: "dashboard", shell: shellAsset, css: []string{broadsheetCSS, appCSS}, js: appJS}
+	timelinePage  = page{name: "timeline", shell: timelineShell, css: []string{broadsheetCSS, appCSS, timelineCSS}, js: timelineJS}
 )
 
 // source is where assets are read from: a filesystem plus the prefix the
@@ -47,13 +70,13 @@ type source struct {
 	prefix string
 }
 
-// view is what the shell template sees.
+// view is what a shell template sees.
 //
 // The typed fields are typed so html/template inlines them rather than
 // escaping them as text. That is safe for each for a different reason: the CSS
 // and the JS are files in this repo, not analysed source, and Data is JSON
 // marshalled with HTML escaping on — so `<`, `>` and `&` reach the page as
-// <, > and &, and no function name or body can close the script
+// &lt;, &gt; and &amp;, and no function name or body can close the script
 // element that carries it.
 type view struct {
 	Target string
@@ -62,7 +85,7 @@ type view struct {
 	Script template.JS
 }
 
-// Print writes the payload as one self-contained HTML document.
+// Print writes the single-run payload as one self-contained HTML document.
 //
 // There is no vendored JavaScript. The map is a power diagram drawn as plain
 // SVG and the neighbourhood screen is DOM, so the graph library this started
@@ -73,52 +96,65 @@ type view struct {
 // file://. The only external reference is the design system's font import,
 // which falls back to system-ui offline.
 func Print(w io.Writer, p Payload) error {
+	return printPage(w, dashboardPage, p.Target, p)
+}
+
+// PrintTimeline writes a series payload as one self-contained HTML document,
+// under exactly the same contract as Print.
+func PrintTimeline(w io.Writer, p TimelinePayload) error {
+	return printPage(w, timelinePage, p.Target, p)
+}
+
+// printPage inlines one page's assets and payload into its shell.
+func printPage(w io.Writer, pg page, target string, payload any) error {
 	src, err := assetSource()
 	if err != nil {
 		return err
 	}
 
-	shell, err := src.read(shellAsset)
+	shell, err := src.readShell(pg.shell)
 	if err != nil {
 		return err
 	}
-	css, err := src.readAll(broadsheetCSS, appCSS)
+	css, err := src.readAll(pg.css...)
 	if err != nil {
 		return err
 	}
-	script, err := src.read(appJS)
-	if err != nil {
-		return err
-	}
-
-	data, err := marshalPayload(p)
+	script, err := src.read(pg.js)
 	if err != nil {
 		return err
 	}
 
-	tmpl, err := template.New("dashboard").Parse(shell)
+	data, err := marshalPayload(payload)
 	if err != nil {
-		return fmt.Errorf("parse %s: %w", shellAsset, err)
+		return err
+	}
+
+	tmpl, err := template.New(pg.name).Parse(shell)
+	if err != nil {
+		return fmt.Errorf("parse %s: %w", pg.shell, err)
 	}
 	return tmpl.Execute(w, view{
-		Target: p.Target,
+		Target: target,
 		CSS:    template.CSS(css),
 		Data:   template.JS(data),
 		Script: template.JS(script),
 	})
 }
 
-// marshalPayload encodes the payload for embedding in a script element.
+// marshalPayload encodes a payload for embedding in a script element.
 //
 // HTML escaping is left ON, which is the opposite of reporter's snapshot
 // encoder and deliberately so: that one turns it off to keep a baseline
 // byte-comparable, and this one needs a `</script>` inside an analysed function
-// body to come out as </script> rather than ending the page.
-func marshalPayload(p Payload) (string, error) {
+// body — or inside a function *name* on the timeline page, which carries keys
+// rather than bodies — to come out as &lt;/script&gt; rather than ending the
+// page.
+func marshalPayload(v any) (string, error) {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	enc.SetEscapeHTML(true)
-	if err := enc.Encode(p); err != nil {
+	if err := enc.Encode(v); err != nil {
 		return "", fmt.Errorf("encode payload: %w", err)
 	}
 	return strings.TrimRight(buf.String(), "\n"), nil
@@ -142,6 +178,23 @@ func assetSource() (source, error) {
 }
 
 func (s source) read(name string) (string, error) {
+	text, err := s.readShell(name)
+	if err != nil {
+		return "", err
+	}
+	// An asset that can close a script element would break every page it is
+	// inlined into, and would do it silently. Checked rather than escaped:
+	// these are files in this repo, so the fix is to edit the file. A shell is
+	// exempt — it is the document, and its own script tags are the point,
+	// which is why it is read through readShell instead.
+	if strings.Contains(strings.ToLower(text), "</script") {
+		return "", fmt.Errorf("asset %s contains </script, which cannot be inlined", name)
+	}
+	return text, nil
+}
+
+// readShell reads an asset without the </script guard.
+func (s source) readShell(name string) (string, error) {
 	full := name
 	if s.prefix != "" {
 		full = path.Join(s.prefix, name)
@@ -149,13 +202,6 @@ func (s source) read(name string) (string, error) {
 	b, err := fs.ReadFile(s.fsys, full)
 	if err != nil {
 		return "", fmt.Errorf("read asset %s: %w", name, err)
-	}
-	// An asset that can close a script element would break every page it is
-	// inlined into, and would do it silently. Checked rather than escaped:
-	// these are files in this repo, so the fix is to edit the file. The shell
-	// is exempt — it is the document, and its own script tags are the point.
-	if name != shellAsset && strings.Contains(strings.ToLower(string(b)), "</script") {
-		return "", fmt.Errorf("asset %s contains </script, which cannot be inlined", name)
 	}
 	return string(b), nil
 }

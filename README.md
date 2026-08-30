@@ -265,8 +265,9 @@ carrying the stored sentence saying what the canonicalizer did for it. A pair th
 nothing classified on either side says so — that is retrieval re-ranking around your change rather
 than a consequence of it — and sorts after everything that is attributable.
 
-`--output <file.md>` writes the same report as markdown. There is no HTML form: the dashboard
-describes one run, and a two-run page would be a different artifact.
+`--output <file.md>` writes the same report as markdown. There is no HTML form for `diff` itself:
+the dashboard describes one run, and a page over runs is a different artifact — which is what
+`doppel timeline` below is.
 
 A function that both moved and was renamed carries one class — the move — with the rename printed
 alongside it, and the same goes for a rename that also edited the body. `--unchanged` lists the
@@ -282,6 +283,42 @@ comparison runs.
 
 This is a different question from what the Claude Code hooks answer. Those measure a session's
 impact on the pair list and deliberately claim nothing they cannot attribute to an edit.
+
+### Stepping through many runs
+
+`doppel timeline` takes the same snapshots, N of them instead of two, and renders one page you step
+through with the arrow keys — the classification at each revision, the pairs it created or
+dissolved, and every function's lifeline across the whole series.
+
+```bash
+doppel timeline runs/*.json -o timeline.html
+```
+
+Argument order is series order. A snapshot deliberately carries no timestamp, so nothing in the
+tool can sort them for you — and doppel reads no git history at all, which is why producing the
+series is a script's job rather than the tool's. `scripts/timeline.sh` (or `task timeline`) is the
+worked example: it walks `git rev-list`, checks each revision out into a throwaway worktree,
+analyses it, and calls the command.
+
+**Every revision must be analysed at the same operating point**, and the command refuses a series
+that was not. Calibration is on by default, so runs left to derive their own thresholds are answers
+to different questions and their pair counts do not belong on one axis. Analyse the series with an
+explicit `--threshold` and `--struct-min` — which turns calibration off — plus `--top 0
+--max-per-func 0`, so each snapshot stores the full candidate set rather than its twenty-pair
+report list. The script does all of this; if you roll your own and forget the caps, the command
+says so.
+
+A function's **track** is joined only through one-to-one matches, so a rename or a move continues
+the same line and you can watch one function across a refactor. A split or a merge ends a track
+rather than continuing arbitrarily into one part — nothing decides which piece inherits the
+lifeline, so the page labels the ending instead of guessing.
+
+Even pinned, the learned concept vocabulary, roles, habitat fit and the nearest-neighbour
+percentiles are properties of each revision's own corpus. The page reports them per step and says
+so; it does not draw a trend line through them.
+
+Exit codes match `doppel diff`: **0** rendered, **1** a file could not be read, **2** the series
+refuses comparison.
 
 ### Flags
 
