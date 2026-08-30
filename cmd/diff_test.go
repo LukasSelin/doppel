@@ -94,6 +94,21 @@ func Describe(name string, n int) string {
 // untouched — one renamed finding and one unchanged one.
 var diffSrcAfter = strings.Replace(diffSrcBefore, "func Total(", "func Sum(", 1)
 
+// diffSrcSession is the gate fixture's session: one function renamed, and one
+// copied verbatim under a new name. The copy is what creates a pair, and the
+// pair's stored explanation is what the delta report has to carry.
+var diffSrcSession = diffSrcAfter + `
+func Report(name string, n int) string {
+	if n == 0 {
+		return fmt.Sprintf("%s: empty", name)
+	}
+	if n < 0 {
+		return fmt.Sprintf("%s: negative (%d)", name, n)
+	}
+	return fmt.Sprintf("%s: %d entries", name, n)
+}
+`
+
 func runDiffCmd(t *testing.T, args ...string) (stdout, stderr string, exitCode int) {
 	t.Helper()
 	// Flags are package-level and cobra does not reset them between runs.
