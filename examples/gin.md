@@ -9,7 +9,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `616ab78` |
+| doppel | `8a7ede0` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -27,15 +27,15 @@ Habitats: 5 modeled, 17 misfits (0 excused by subsystem), 1 subsystems; most uni
 Conventions: strongest serialization (0.72), loosest caching (0.37)
 Ecosystems: 128 profiled (128 dominance, 0 coalition, 0 conflict, 0 weak)
 Found 497 functions. Retrieving candidates...
-Retrieval: shape 28, concept 317, call 609 -> 919 unique pairs
-  concept-only 32.8%  call-only 62.7%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1924
-Running structural comparison on 919 pairs...
-Families: 10 over 26 components, 59 functions in a family, 76 edges completed
+Retrieval: shape 238, concept 317, call 609 -> 1082 unique pairs
+  concept-only 27.6%  call-only 49.3%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1934
+Running structural comparison on 1082 pairs...
+Families: 10 over 27 components, 59 functions in a family, 76 edges completed
 ```
 
 # Code Similarity Report
 
-**Functions analyzed:** 497 | **Threshold:** 0.60 | **Pairs found:** 10
+**Functions analyzed:** 497 | **Threshold:** 0.38 | **Pairs found:** 10
 
 ---
 
@@ -139,7 +139,7 @@ Most uniform is `binding` (norm `0.91`); most varied is `json` (norm `0.63`). 17
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **919 candidate pairs** (shape 28, concept 317, call 609), of which 63% arrived on call evidence alone and 33% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **1082 candidate pairs** (shape 238, concept 317, call 609), of which 49% arrived on call evidence alone and 28% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 128 functions reached an equilibrium: **128** settled on a single concept, **0** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -147,7 +147,7 @@ Each function is also an arena where its candidate concepts compete for its evid
 
 **Compression ratio:** `5.28`x — this corpus's canonical function bodies contain **17625 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **3336 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **497 functions**, **298** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.43` / `1.00` / `1.00`, and 31% of them (93 of 298) already clear this run's threshold of `0.60`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 199 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **497 functions**, **326** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.48` / `1.00` / `1.00`, and 76% of them (249 of 326) already clear this run's threshold of `0.38`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 171 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -247,15 +247,15 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `1.00`
 
-**Evidence:** `417.13` (shape 383.87, concept 0.00, call 33.26)
+**Evidence:** `422.84` (shape 389.58, concept 0.00, call 33.26)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `4.73` — `depth-3 CALL`
-- `4.73` — `depth-3 ASSIGN`
-- `4.73` — `depth-3 CALL`
+- `4.78` — `depth-3 CALL`
+- `4.78` — `depth-3 ASSIGN`
+- `4.78` — `depth-3 CALL`
 
 **Structural overlap:** `0.63` (merge-worthy)
 
@@ -287,15 +287,15 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `0.75`
 
-**Evidence:** `230.33` (shape 205.30, concept 1.32, call 23.71)
+**Evidence:** `231.71` (shape 206.68, concept 1.32, call 23.71)
 
 **Trophic:** `0.84`
 
 **Shared structure:**
 
-- `5.87` — `depth-3 KV` ×2
-- `5.87` — `depth-2 KV` ×2
-- `5.86` — `depth-0 KV` ×3
+- `5.98` — `depth-3 KV` ×2
+- `5.98` — `depth-2 KV` ×2
+- `5.82` — `depth-1 KV` ×2
 
 **Structural overlap:** `0.78` (merge-worthy)
 
@@ -324,15 +324,15 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `0.85`
 
-**Evidence:** `279.30` (shape 267.03, concept 0.00, call 12.27)
+**Evidence:** `282.80` (shape 270.53, concept 0.00, call 12.27)
 
 **Trophic:** `0.93`
 
 **Shared structure:**
 
-- `5.56` — `depth-1 EXPRSTMT` ×2
-- `5.56` — `depth-0 CALL` ×2
-- `4.73` — `depth-3 ASSIGN`
+- `5.67` — `depth-1 EXPRSTMT` ×2
+- `5.67` — `depth-0 CALL` ×2
+- `4.78` — `depth-3 ASSIGN`
 
 **Structural overlap:** `0.48` (merge-worthy)
 
@@ -363,15 +363,15 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `1.00`
 
-**Evidence:** `100.48` (shape 99.16, concept 1.32, call 0.00)
+**Evidence:** `101.99` (shape 100.67, concept 1.32, call 0.00)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `4.32` — `depth-3 ASSIGN`
-- `4.32` — `depth-3 BLOCK`
-- `4.32` — `depth-3 CALL`
+- `4.38` — `depth-3 ASSIGN`
+- `4.38` — `depth-3 BLOCK`
+- `4.38` — `depth-3 CALL`
 
 **Structural overlap:** `0.66` (merge-worthy)
 
@@ -400,15 +400,15 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `0.84` — most of the smaller body's shape is inside the larger
 
-**Evidence:** `286.72` (shape 274.45, concept 0.00, call 12.27)
+**Evidence:** `290.99` (shape 278.72, concept 0.00, call 12.27)
 
 **Trophic:** `0.85`
 
 **Shared structure:**
 
-- `5.56` — `depth-1 EXPRSTMT` ×2
-- `5.56` — `depth-0 CALL` ×2
-- `4.73` — `depth-3 UNARY`
+- `5.67` — `depth-1 EXPRSTMT` ×2
+- `5.67` — `depth-0 CALL` ×2
+- `4.78` — `depth-3 UNARY`
 
 **Structural overlap:** `0.50` (merge-worthy)
 
@@ -435,15 +435,15 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `0.82`
 
-**Evidence:** `217.17` (shape 204.90, concept 0.00, call 12.27)
+**Evidence:** `220.70` (shape 208.43, concept 0.00, call 12.27)
 
 **Trophic:** `0.86`
 
 **Shared structure:**
 
-- `5.56` — `depth-1 EXPRSTMT` ×2
-- `5.56` — `depth-0 CALL` ×2
-- `3.81` — `depth-3 CALL`
+- `5.67` — `depth-1 EXPRSTMT` ×2
+- `5.67` — `depth-0 CALL` ×2
+- `3.87` — `depth-3 CALL`
 
 **Structural overlap:** `0.54` (merge-worthy)
 
@@ -474,15 +474,15 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `1.00`
 
-**Evidence:** `100.48` (shape 99.16, concept 1.32, call 0.00)
+**Evidence:** `101.99` (shape 100.67, concept 1.32, call 0.00)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `4.32` — `depth-3 ASSIGN`
-- `4.32` — `depth-3 BLOCK`
-- `4.32` — `depth-3 CALL`
+- `4.38` — `depth-3 ASSIGN`
+- `4.38` — `depth-3 BLOCK`
+- `4.38` — `depth-3 CALL`
 
 **Structural overlap:** `0.57` (merge-worthy)
 
@@ -513,15 +513,15 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `1.00`
 
-**Evidence:** `100.48` (shape 99.16, concept 1.32, call 0.00)
+**Evidence:** `101.99` (shape 100.67, concept 1.32, call 0.00)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `4.32` — `depth-3 ASSIGN`
-- `4.32` — `depth-3 BLOCK`
-- `4.32` — `depth-3 CALL`
+- `4.38` — `depth-3 ASSIGN`
+- `4.38` — `depth-3 BLOCK`
+- `4.38` — `depth-3 CALL`
 
 **Structural overlap:** `0.57` (merge-worthy)
 
@@ -548,15 +548,15 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `1.00`
 
-**Evidence:** `102.21` (shape 93.98, concept 0.00, call 8.23)
+**Evidence:** `102.22` (shape 93.99, concept 0.00, call 8.23)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `4.73` — `depth-3 BLOCK`
-- `4.73` — `depth-3 EXPRSTMT`
-- `4.73` — `depth-3 RANGE`
+- `4.78` — `depth-3 BLOCK`
+- `4.78` — `depth-3 EXPRSTMT`
+- `4.78` — `depth-3 RANGE`
 
 **Structural overlap:** `0.58` (merge-worthy)
 
@@ -583,15 +583,15 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `0.93` — most of the smaller body's shape is inside the larger
 
-**Evidence:** `203.05` (shape 182.78, concept 0.00, call 20.27)
+**Evidence:** `204.29` (shape 184.02, concept 0.00, call 20.27)
 
 **Trophic:** `0.95`
 
 **Shared structure:**
 
-- `8.64` — `depth-3 CALL` ×2
-- `8.64` — `depth-2 CALL` ×2
-- `8.64` — `depth-1 CALL` ×2
+- `8.76` — `depth-3 CALL` ×2
+- `8.76` — `depth-2 CALL` ×2
+- `8.76` — `depth-1 CALL` ×2
 
 **Structural overlap:** `0.41` (merge-worthy)
 
@@ -609,7 +609,7 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 10 families, 59 functions in a family, largest 14 members; 76 edges scored here that retrieval never proposed
 
-### Family 1 — 4 members, every pair `>= 0.60` code-shape, evidence `1398`
+### Family 1 — 4 members, every pair `>= 0.60` code-shape, evidence `1420`
 
 ```mermaid
 flowchart LR
@@ -632,7 +632,7 @@ flowchart LR
 | `gin.go:630` | `gin.*Engine.RunQUIC` | `(string, string, string) (error)` | — |
 | `gin.go:645` | `gin.*Engine.RunListener` | `(net.Listener) (error)` | — |
 
-### Family 2 — 4 members, every pair `>= 0.65` code-shape, evidence `384`, interface implementations of `Render(http.ResponseWriter) (error)`, in package `render`
+### Family 2 — 4 members, every pair `>= 0.65` code-shape, evidence `391`, interface implementations of `Render(http.ResponseWriter) (error)`, in package `render`
 
 ```mermaid
 flowchart LR
@@ -655,7 +655,7 @@ flowchart LR
 | `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | — |
 | `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | serialization |
 
-### Family 3 — 3 members, every pair `>= 1.00` code-shape, evidence `301`
+### Family 3 — 3 members, every pair `>= 1.00` code-shape, evidence `306`
 
 ```mermaid
 flowchart LR

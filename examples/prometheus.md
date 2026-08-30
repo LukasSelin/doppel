@@ -9,7 +9,7 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `616ab78` |
+| doppel | `8a7ede0` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -27,15 +27,15 @@ Habitats: 90 modeled, 195 misfits (145 excused by subsystem), 16 subsystems; mos
 Conventions: strongest error_wrapping (0.63), loosest retry (0.34)
 Ecosystems: 2400 profiled (1707 dominance, 693 coalition, 0 conflict, 0 weak)
 Found 5469 functions. Retrieving candidates...
-Retrieval: shape 1732, concept 3669, call 8141 -> 12773 unique pairs
-  concept-only 27.1%  call-only 58.1%  suppressed-shape functions: 9  large identity buckets: 0  surviving labels: 28863
-Running structural comparison on 12773 pairs...
-Families: 256 over 438 components, 713 functions in a family, 1818 edges completed
+Retrieval: shape 5416, concept 3669, call 8141 -> 15527 unique pairs
+  concept-only 22.1%  call-only 42.3%  suppressed-shape functions: 12  large identity buckets: 0  surviving labels: 29106
+Running structural comparison on 15527 pairs...
+Families: 262 over 457 components, 739 functions in a family, 1907 edges completed
 ```
 
 # Code Similarity Report
 
-**Functions analyzed:** 5469 | **Threshold:** 0.60 | **Pairs found:** 10
+**Functions analyzed:** 5469 | **Threshold:** 0.38 | **Pairs found:** 10
 
 ---
 
@@ -124,35 +124,34 @@ Merge-worthy pairs folded up to their packages. An edge means two packages keep 
 ```mermaid
 flowchart LR
     p0["rules<br/>30 internal"]
-    p1["scrape<br/>26 internal"]
-    p0 ---|"32"| p1
+    p1["scrape<br/>35 internal"]
+    p0 ---|"34"| p1
     p2["agent<br/>19 internal"]
-    p3["tsdb<br/>155 internal"]
-    p2 ---|"13"| p3
-    p4["aws<br/>115 internal"]
+    p3["tsdb<br/>198 internal"]
+    p2 ---|"22"| p3
+    p4["aws<br/>130 internal"]
     p5["linode"]
     p4 ---|"10"| p5
-    p6["moby<br/>5 internal"]
+    p6["moby<br/>8 internal"]
     p4 ---|"10"| p6
-    p7["vultr"]
-    p4 ---|"8"| p7
-    p8["remote<br/>27 internal"]
-    p8 ---|"8"| p0
-    p9["openstack<br/>3 internal"]
-    p4 ---|"7"| p9
-    p10["chunks<br/>10 internal"]
-    p10 ---|"7"| p3
-    p11["azure<br/>3 internal"]
-    p4 ---|"6"| p11
-    p12["digitalocean"]
-    p4 ---|"6"| p12
-    p13["dns"]
-    p4 ---|"6"| p13
-    p14["hetzner<br/>1 internal"]
-    p4 ---|"6"| p14
+    p0 ---|"10"| p3
+    p7["remote<br/>44 internal"]
+    p7 ---|"9"| p0
+    p8["azure<br/>5 internal"]
+    p4 ---|"8"| p8
+    p9["digitalocean<br/>1 internal"]
+    p4 ---|"8"| p9
+    p10["chunks<br/>11 internal"]
+    p10 ---|"8"| p3
+    p11["openstack<br/>3 internal"]
+    p4 ---|"7"| p11
+    p12["vultr"]
+    p4 ---|"7"| p12
+    p13["discovery<br/>4 internal"]
+    p13 ---|"7"| p0
 ```
 
-_209 further package pairs are connected by merge-worthy duplication and are not drawn._
+_264 further package pairs are connected by merge-worthy duplication and are not drawn._
 
 ### How settled each package is
 
@@ -183,7 +182,7 @@ _78 further packages are modeled and not drawn._ Most uniform is `tracing` (norm
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **12773 candidate pairs** (shape 1732, concept 3669, call 8141), of which 58% arrived on call evidence alone and 27% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **15527 candidate pairs** (shape 5416, concept 3669, call 8141), of which 42% arrived on call evidence alone and 22% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 2400 functions reached an equilibrium: **1707** settled on a single concept, **693** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -191,7 +190,7 @@ Each function is also an arena where its candidate concepts compete for its evid
 
 **Compression ratio:** `9.07`x — this corpus's canonical function bodies contain **468473 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **51658 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **5469 functions**, **3216** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.51` / `1.00` / `1.00`, and 44% of them (1405 of 3216) already clear this run's threshold of `0.60`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 2253 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **5469 functions**, **3780** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.52` / `1.00` / `1.00`, and 79% of them (2985 of 3780) already clear this run's threshold of `0.38`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 1689 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -372,15 +371,15 @@ _19 more unusual realizations not listed._
 
 **Containment:** `0.78`
 
-**Evidence:** `3436.24` (shape 3317.55, concept 8.41, call 110.28)
+**Evidence:** `3452.21` (shape 3333.52, concept 8.41, call 110.28)
 
 **Trophic:** `0.83`
 
 **Shared structure:**
 
-- `30.04` — `depth-3 IF` ×4
-- `27.27` — `depth-2 IF` ×4
-- `26.37` — `depth-3 BLOCK` ×4
+- `30.18` — `depth-3 IF` ×4
+- `27.41` — `depth-2 IF` ×4
+- `26.52` — `depth-3 BLOCK` ×4
 
 **Culture:** A realizes `validation` atypically (typicality 0.17, concept median 0.35, convention 0.60)
 
@@ -417,15 +416,15 @@ _19 more unusual realizations not listed._
 
 **Containment:** `0.86`
 
-**Evidence:** `2046.90` (shape 2011.45, concept 7.93, call 27.51)
+**Evidence:** `2058.21` (shape 2022.76, concept 7.93, call 27.51)
 
 **Trophic:** `0.88`
 
 **Shared structure:**
 
-- `48.02` — `depth-2 KV` ×10
-- `48.02` — `depth-1 KV` ×10
-- `38.47` — `depth-3 ASSIGN` ×6
+- `48.37` — `depth-2 KV` ×10
+- `48.37` — `depth-1 KV` ×10
+- `38.68` — `depth-3 ASSIGN` ×6
 
 **Structural overlap:** `0.93` (merge-worthy)
 
@@ -461,15 +460,15 @@ _19 more unusual realizations not listed._
 
 **Containment:** `0.93`
 
-**Evidence:** `1225.58` (shape 1169.37, concept 1.41, call 54.81)
+**Evidence:** `1231.53` (shape 1175.32, concept 1.41, call 54.81)
 
 **Trophic:** `0.98`
 
 **Shared structure:**
 
-- `12.51` — `depth-3 IF` ×2
-- `12.01` — `depth-2 IF` ×2
-- `11.80` — `depth-3 IF` ×2
+- `12.58` — `depth-3 IF` ×2
+- `12.08` — `depth-2 IF` ×2
+- `11.87` — `depth-3 IF` ×2
 
 **Structural overlap:** `0.98` (merge-worthy)
 
@@ -505,15 +504,15 @@ _19 more unusual realizations not listed._
 
 **Containment:** `0.84` — most of the smaller body's shape is inside the larger
 
-**Evidence:** `4691.25` (shape 4643.05, concept 4.99, call 43.21)
+**Evidence:** `4711.34` (shape 4663.14, concept 4.99, call 43.21)
 
 **Trophic:** `0.69`
 
 **Shared structure:**
 
-- `55.11` — `depth-3 CALL` ×9
-- `55.11` — `depth-2 CALL` ×9
-- `39.56` — `depth-2 RANGE` ×6
+- `55.43` — `depth-3 CALL` ×9
+- `55.43` — `depth-2 CALL` ×9
+- `39.77` — `depth-2 RANGE` ×6
 
 **Structural overlap:** `0.68` (merge-worthy)
 
@@ -546,15 +545,15 @@ _19 more unusual realizations not listed._
 
 **Containment:** `1.00`
 
-**Evidence:** `1026.52` (shape 993.76, concept 7.33, call 25.43)
+**Evidence:** `1031.28` (shape 998.52, concept 7.33, call 25.43)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `22.26` — `depth-3 CALL` ×4
-- `21.25` — `depth-3 CALL` ×4
-- `21.25` — `depth-3 SEL` ×4
+- `22.40` — `depth-3 CALL` ×4
+- `21.39` — `depth-3 CALL` ×4
+- `21.39` — `depth-3 SEL` ×4
 
 **Structural overlap:** `1.00` (merge-worthy)
 
@@ -590,15 +589,15 @@ _19 more unusual realizations not listed._
 
 **Containment:** `0.93`
 
-**Evidence:** `1200.68` (shape 1109.46, concept 6.12, call 85.10)
+**Evidence:** `1207.06` (shape 1115.84, concept 6.12, call 85.10)
 
 **Trophic:** `0.98`
 
 **Shared structure:**
 
-- `32.22` — `depth-3 BIN` ×6
-- `32.22` — `depth-2 BIN` ×6
-- `14.61` — `depth-2 IF` ×3
+- `32.43` — `depth-3 BIN` ×6
+- `32.43` — `depth-2 BIN` ×6
+- `14.72` — `depth-2 IF` ×3
 
 **Structural overlap:** `0.79` (merge-worthy)
 
@@ -629,15 +628,15 @@ _19 more unusual realizations not listed._
 
 **Containment:** `1.00`
 
-**Evidence:** `1263.60` (shape 1263.60, concept 0.00, call 0.00)
+**Evidence:** `1270.23` (shape 1270.23, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `14.12` — `depth-1 ASSIGN` ×3
-- `13.63` — `depth-3 UNARY` ×2
-- `13.63` — `depth-3 BIN` ×2
+- `14.23` — `depth-1 ASSIGN` ×3
+- `13.70` — `depth-3 UNARY` ×2
+- `13.70` — `depth-3 BIN` ×2
 
 **Structural overlap:** `0.72` (merge-worthy)
 
@@ -670,15 +669,15 @@ _19 more unusual realizations not listed._
 
 **Containment:** `0.93`
 
-**Evidence:** `1200.68` (shape 1109.46, concept 6.12, call 85.10)
+**Evidence:** `1207.06` (shape 1115.84, concept 6.12, call 85.10)
 
 **Trophic:** `0.98`
 
 **Shared structure:**
 
-- `32.22` — `depth-3 BIN` ×6
-- `32.22` — `depth-2 BIN` ×6
-- `14.61` — `depth-2 IF` ×3
+- `32.43` — `depth-3 BIN` ×6
+- `32.43` — `depth-2 BIN` ×6
+- `14.72` — `depth-2 IF` ×3
 
 **Structural overlap:** `0.76` (merge-worthy)
 
@@ -713,15 +712,15 @@ _19 more unusual realizations not listed._
 
 **Containment:** `0.93`
 
-**Evidence:** `1200.68` (shape 1109.46, concept 6.12, call 85.10)
+**Evidence:** `1207.06` (shape 1115.84, concept 6.12, call 85.10)
 
 **Trophic:** `0.98`
 
 **Shared structure:**
 
-- `32.22` — `depth-3 BIN` ×6
-- `32.22` — `depth-2 BIN` ×6
-- `14.61` — `depth-2 IF` ×3
+- `32.43` — `depth-3 BIN` ×6
+- `32.43` — `depth-2 BIN` ×6
+- `14.72` — `depth-2 IF` ×3
 
 **Structural overlap:** `0.74` (merge-worthy)
 
@@ -752,15 +751,15 @@ _19 more unusual realizations not listed._
 
 **Containment:** `0.96`
 
-**Evidence:** `1635.01` (shape 1627.79, concept 0.00, call 7.22)
+**Evidence:** `1642.71` (shape 1635.49, concept 0.00, call 7.22)
 
 **Trophic:** `0.96`
 
 **Shared structure:**
 
-- `30.04` — `depth-3 CALL` ×4
-- `30.04` — `depth-3 ASSIGN` ×4
-- `30.04` — `depth-2 ASSIGN` ×4
+- `30.18` — `depth-3 CALL` ×4
+- `30.18` — `depth-3 ASSIGN` ×4
+- `30.18` — `depth-2 ASSIGN` ×4
 
 **Structural overlap:** `0.59` (merge-worthy)
 
@@ -777,9 +776,9 @@ _19 more unusual realizations not listed._
 
 ## Families
 
-256 families, 713 functions in a family, largest 34 members; 1818 edges scored here that retrieval never proposed
+262 families, 739 functions in a family, largest 34 members; 1907 edges scored here that retrieval never proposed
 
-### Family 1 — 6 members, every pair `>= 0.68` code-shape, evidence `15963`
+### Family 1 — 6 members, every pair `>= 0.68` code-shape, evidence `16048`
 
 ```mermaid
 flowchart LR
@@ -815,7 +814,7 @@ flowchart LR
 | `discovery/aws/msk.go:226` | `aws.*MSKDiscovery.initMskClient` | `(context.Context) (error)` | caching, error_wrapping, logging |
 | `discovery/aws/rds.go:339` | `aws.*RDSDiscovery.initRdsClient` | `(context.Context) (error)` | caching, error_wrapping, logging |
 
-### Family 2 — 4 members, every pair `>= 0.71` code-shape, evidence `11784`
+### Family 2 — 4 members, every pair `>= 0.71` code-shape, evidence `11842`
 
 ```mermaid
 flowchart LR
@@ -838,7 +837,7 @@ flowchart LR
 | `tsdb/chunkenc/histogram.go:751` | `chunkenc.*HistogramAppender.AppendHistogram` | `(Appender, int64, int64, *histogram.Histogram, bool) (Chunk, bool, Appender, error)` | — |
 | `tsdb/chunkenc/histogram_st.go:312` | `chunkenc.*HistogramSTAppender.AppendHistogram` | `(Appender, int64, int64, *histogram.Histogram, bool) (Chunk, bool, Appender, error)` | — |
 
-### Family 3 — 15 members, every pair `>= 0.60` code-shape, evidence `11366`  (51 edges scored here)
+### Family 3 — 15 members, every pair `>= 0.60` code-shape, evidence `11349`  (52 edges scored here)
 
 _Not drawn: 15 members is 105 connections. Every one of them holds — that is what makes this a family._
 
@@ -857,7 +856,7 @@ _Not drawn: 15 members is 105 connections. Every one of them holds — that is w
 
 _5 more members not listed._
 
-### Family 4 — 7 members, every pair `>= 0.61` code-shape, evidence `10867`
+### Family 4 — 7 members, every pair `>= 0.61` code-shape, evidence `10930`
 
 ```mermaid
 flowchart LR
@@ -901,7 +900,7 @@ flowchart LR
 | `web/api/v1/openapi_paths.go:321` | `v1.*OpenAPIBuilder.seriesPath` | `() (*v3.PathItem)` | — |
 | `web/api/v1/openapi_paths.go:579` | `v1.*OpenAPIBuilder.adminDeleteSeriesPath` | `() (*v3.PathItem)` | — |
 
-### Family 5 — 14 members, every pair `>= 0.60` code-shape, evidence `9526`  (45 edges scored here)
+### Family 5 — 14 members, every pair `>= 0.60` code-shape, evidence `9499`  (46 edges scored here)
 
 _Not drawn: 14 members is 91 connections. Every one of them holds — that is what makes this a family._
 
@@ -920,5 +919,5 @@ _Not drawn: 14 members is 91 connections. Every one of them holds — that is wh
 
 _4 more members not listed._
 
-_251 more families not listed._
+_257 more families not listed._
 

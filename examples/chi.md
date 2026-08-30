@@ -9,7 +9,7 @@ HTTP router; a narrow core with a middleware package beside it
 | Corpus | [chi](https://github.com/go-chi/chi) |
 | Pinned at | `v5.3.2` (`38939062c5df4d3e8814aad1a488983112627ced`) |
 | Project since | 2015 |
-| doppel | `616ab78` |
+| doppel | `8a7ede0` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -26,16 +26,16 @@ Culture: 0 concepts modeled, 0 associations, 0 unusual realizations
 Habitats: 2 modeled, 1 misfits; most uniform chi (norm 0.91), most diverse middleware (norm 0.87)
 Ecosystems: 7 profiled (7 dominance, 0 coalition, 0 conflict, 0 weak)
 Found 183 functions. Retrieving candidates...
-Retrieval: shape 15, concept 5, call 357 -> 371 unique pairs
-  concept-only 1.3%  call-only 94.6%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1308
-Running structural comparison on 371 pairs...
-Families: 2 over 13 components, 14 functions in a family, 21 edges completed
+Retrieval: shape 137, concept 5, call 357 -> 468 unique pairs
+  concept-only 1.1%  call-only 69.7%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1340
+Running structural comparison on 468 pairs...
+Families: 3 over 14 components, 17 functions in a family, 21 edges completed
   1 pairs suppressed by max-per-func=2
 ```
 
 # Code Similarity Report
 
-**Functions analyzed:** 183 | **Threshold:** 0.60 | **Pairs found:** 10
+**Functions analyzed:** 183 | **Threshold:** 0.38 | **Pairs found:** 10
 
 ---
 
@@ -132,7 +132,7 @@ Most uniform is `chi` (norm `0.91`); most varied is `middleware` (norm `0.87`). 
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **371 candidate pairs** (shape 15, concept 5, call 357), of which 95% arrived on call evidence alone and 1% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **468 candidate pairs** (shape 137, concept 5, call 357), of which 70% arrived on call evidence alone and 1% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 7 functions reached an equilibrium: **7** settled on a single concept, **0** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -142,7 +142,7 @@ _1 further pairs were held back so no single function fills the report._
 
 **Compression ratio:** `5.32`x — this corpus's canonical function bodies contain **11155 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **2097 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **183 functions**, **128** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.41` / `1.00` / `1.00`, and 28% of them (36 of 128) already clear this run's threshold of `0.60`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 55 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **183 functions**, **144** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.45` / `1.00` / `1.00`, and 70% of them (101 of 144) already clear this run's threshold of `0.38`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 39 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -152,40 +152,7 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 ---
 
-## Match #1 — Code-shape: `0.7890`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `tree.go:559` | `chi.*node.findEdge` | `(nodeTyp, byte) (*node)` | — |
-| **B** | `tree.go:850` | `chi.nodes.findEdge` | `(byte) (*node)` | — |
-
-**Explain:** differs by two extra case, one extra assign, one extra return, and 5 more kinds
-
-**Code similarity:** `wl 0.77  flow 0.96  nesting 0.74  sig 0.67  size 0.80`
-
-**Containment:** `0.97`
-
-**Evidence:** `411.97` (shape 411.97, concept 0.00, call 0.00)
-
-**Trophic:** `0.94`
-
-**Shared structure:**
-
-- `9.68` — `depth-3 SEL` ×3
-- `9.68` — `depth-2 SEL` ×3
-- `8.29` — `depth-3 BIN` ×2
-
-**Structural overlap:** `0.50` (merge-worthy)
-
-- share 1 callees: [len]
-- both are leaf functions
-- same package
-- same visibility
-- both are methods, on *node and nodes
-
----
-
-## Match #2 — Code-shape: `0.6878`
+## Match #1 — Code-shape: `0.6878`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -198,15 +165,15 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 **Containment:** `0.67`
 
-**Evidence:** `501.87` (shape 486.74, concept 0.00, call 15.13)
+**Evidence:** `514.22` (shape 499.09, concept 0.00, call 15.13)
 
 **Trophic:** `0.76`
 
 **Shared structure:**
 
-- `12.91` — `depth-1 EXPRSTMT` ×4
-- `12.91` — `depth-0 CALL` ×4
-- `11.08` — `depth-3 LIT` ×11
+- `13.18` — `depth-1 EXPRSTMT` ×4
+- `13.18` — `depth-0 CALL` ×4
+- `11.84` — `depth-3 LIT` ×11
 
 **Structural overlap:** `0.72` (merge-worthy)
 
@@ -219,6 +186,39 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 - same receiver type: prettyStack
 - called from same packages: [middleware]
 - call into same packages: [middleware]
+
+---
+
+## Match #2 — Code-shape: `0.7890`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `tree.go:559` | `chi.*node.findEdge` | `(nodeTyp, byte) (*node)` | — |
+| **B** | `tree.go:850` | `chi.nodes.findEdge` | `(byte) (*node)` | — |
+
+**Explain:** differs by two extra case, one extra assign, one extra return, and 5 more kinds
+
+**Code similarity:** `wl 0.77  flow 0.96  nesting 0.74  sig 0.67  size 0.80`
+
+**Containment:** `0.97`
+
+**Evidence:** `421.12` (shape 421.12, concept 0.00, call 0.00)
+
+**Trophic:** `0.94`
+
+**Shared structure:**
+
+- `9.89` — `depth-3 SEL` ×3
+- `9.89` — `depth-2 SEL` ×3
+- `8.42` — `depth-3 BIN` ×2
+
+**Structural overlap:** `0.50` (merge-worthy)
+
+- share 1 callees: [len]
+- both are leaf functions
+- same package
+- same visibility
+- both are methods, on *node and nodes
 
 ---
 
@@ -235,15 +235,15 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 **Containment:** `0.85`
 
-**Evidence:** `253.45` (shape 240.31, concept 0.00, call 13.14)
+**Evidence:** `258.51` (shape 245.37, concept 0.00, call 13.14)
 
 **Trophic:** `0.95`
 
 **Shared structure:**
 
-- `4.62` — `depth-1 ASSIGN` ×3
-- `4.54` — `depth-3 ASSIGN` ×2
-- `4.54` — `depth-2 ASSIGN` ×2
+- `4.83` — `depth-1 ASSIGN` ×3
+- `4.68` — `depth-3 ASSIGN` ×2
+- `4.68` — `depth-2 ASSIGN` ×2
 
 **Structural overlap:** `0.67` (merge-worthy)
 
@@ -272,15 +272,15 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 **Containment:** `0.70`
 
-**Evidence:** `355.75` (shape 347.48, concept 0.00, call 8.27)
+**Evidence:** `366.15` (shape 357.89, concept 0.00, call 8.27)
 
 **Trophic:** `0.79`
 
 **Shared structure:**
 
-- `7.48` — `depth-3 STRUCTTYPE` ×2
-- `7.48` — `depth-2 STRUCTTYPE` ×2
-- `7.48` — `depth-1 STRUCTTYPE` ×2
+- `7.61` — `depth-3 STRUCTTYPE` ×2
+- `7.61` — `depth-2 STRUCTTYPE` ×2
+- `7.61` — `depth-1 STRUCTTYPE` ×2
 
 **Structural overlap:** `0.48` (merge-worthy)
 
@@ -305,15 +305,15 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 **Containment:** `0.74`
 
-**Evidence:** `304.63` (shape 302.98, concept 0.00, call 1.65)
+**Evidence:** `313.67` (shape 312.02, concept 0.00, call 1.65)
 
 **Trophic:** `0.83`
 
 **Shared structure:**
 
-- `4.39` — `depth-2 BLOCK` ×2
-- `4.14` — `depth-3 BIN`
-- `4.14` — `depth-3 IF`
+- `4.53` — `depth-2 BLOCK` ×2
+- `4.21` — `depth-3 BIN`
+- `4.21` — `depth-3 IF`
 
 **Structural overlap:** `0.43` (merge-worthy)
 
@@ -338,15 +338,15 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 **Containment:** `0.81` — most of the smaller body's shape is inside the larger
 
-**Evidence:** `178.88` (shape 171.36, concept 0.00, call 7.53)
+**Evidence:** `183.27` (shape 175.74, concept 0.00, call 7.53)
 
 **Trophic:** `0.86`
 
 **Shared structure:**
 
-- `6.98` — `depth-3 INDEX` ×4
-- `6.98` — `depth-2 INDEX` ×4
-- `6.98` — `depth-1 INDEX` ×4
+- `7.26` — `depth-3 INDEX` ×4
+- `7.26` — `depth-2 INDEX` ×4
+- `7.26` — `depth-1 INDEX` ×4
 
 **Structural overlap:** `0.58` (merge-worthy)
 
@@ -375,15 +375,15 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 **Containment:** `0.56`
 
-**Evidence:** `296.14` (shape 282.84, concept 0.00, call 13.29)
+**Evidence:** `304.98` (shape 291.69, concept 0.00, call 13.29)
 
-**Trophic:** `0.71`
+**Trophic:** `0.72`
 
 **Shared structure:**
 
-- `6.74` — `depth-0 FIELD` ×6
-- `6.31` — `depth-1 FIELDLIST` ×4
-- `5.38` — `depth-0 FIELDLIST` ×5
+- `7.15` — `depth-0 FIELD` ×6
+- `6.59` — `depth-1 FIELDLIST` ×4
+- `5.72` — `depth-0 FIELDLIST` ×5
 
 **Structural overlap:** `0.48` (merge-worthy)
 
@@ -412,15 +412,15 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 **Containment:** `1.00`
 
-**Evidence:** `61.82` (shape 61.82, concept 0.00, call 0.00)
+**Evidence:** `59.92` (shape 59.92, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `3.45` — `depth-3 BLOCK`
-- `3.45` — `depth-2 BLOCK`
-- `3.45` — `depth-1 BLOCK`
+- `3.52` — `depth-3 BLOCK`
+- `3.52` — `depth-2 BLOCK`
+- `3.52` — `depth-1 BLOCK`
 
 **Structural overlap:** `0.50` (merge-worthy)
 
@@ -447,15 +447,15 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 **Containment:** `1.00`
 
-**Evidence:** `61.82` (shape 61.82, concept 0.00, call 0.00)
+**Evidence:** `59.92` (shape 59.92, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `3.45` — `depth-3 BLOCK`
-- `3.45` — `depth-2 BLOCK`
-- `3.45` — `depth-1 BLOCK`
+- `3.52` — `depth-3 BLOCK`
+- `3.52` — `depth-2 BLOCK`
+- `3.52` — `depth-1 BLOCK`
 
 **Structural overlap:** `0.50` (merge-worthy)
 
@@ -482,15 +482,15 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 **Containment:** `1.00`
 
-**Evidence:** `61.82` (shape 61.82, concept 0.00, call 0.00)
+**Evidence:** `59.92` (shape 59.92, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `3.45` — `depth-3 BLOCK`
-- `3.45` — `depth-2 BLOCK`
-- `3.45` — `depth-1 BLOCK`
+- `3.52` — `depth-3 BLOCK`
+- `3.52` — `depth-2 BLOCK`
+- `3.52` — `depth-1 BLOCK`
 
 **Structural overlap:** `0.50` (merge-worthy)
 
@@ -504,9 +504,9 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 ## Families
 
-2 families, 14 functions in a family, largest 10 members; 21 edges scored here that retrieval never proposed
+3 families, 17 functions in a family, largest 10 members; 21 edges scored here that retrieval never proposed
 
-### Family 1 — 4 members, every pair `>= 1.00` code-shape, evidence `371`, interface implementations of `Flush()`, in package `middleware`
+### Family 1 — 4 members, every pair `>= 1.00` code-shape, evidence `360`, interface implementations of `Flush()`, in package `middleware`
 
 ```mermaid
 flowchart LR
@@ -529,7 +529,25 @@ flowchart LR
 | `middleware/wrap_writer.go:194` | `middleware.*httpFancyWriter.Flush` | `()` | — |
 | `middleware/wrap_writer.go:239` | `middleware.*http2FancyWriter.Flush` | `()` | — |
 
-### Family 2 — 10 members, every pair `>= 1.00` code-shape, evidence `63`  (21 edges scored here)
+### Family 2 — 3 members, every pair `>= 1.00` code-shape, evidence `166`, interface implementations of `Hijack() (net.Conn, *bufio.ReadWriter, error)`, in package `middleware`
+
+```mermaid
+flowchart LR
+    m0["middleware.*hijackWriter.Hijack"]
+    m1["middleware.*flushHijackWriter.Hijack"]
+    m2["middleware.*httpFancyWriter.Hijack"]
+    m0 --- m1
+    m0 --- m2
+    m1 --- m2
+```
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `middleware/wrap_writer.go:160` | `middleware.*hijackWriter.Hijack` | `() (net.Conn, *bufio.ReadWriter, error)` | — |
+| `middleware/wrap_writer.go:178` | `middleware.*flushHijackWriter.Hijack` | `() (net.Conn, *bufio.ReadWriter, error)` | — |
+| `middleware/wrap_writer.go:200` | `middleware.*httpFancyWriter.Hijack` | `() (net.Conn, *bufio.ReadWriter, error)` | — |
+
+### Family 3 — 10 members, every pair `>= 1.00` code-shape, evidence `63`  (21 edges scored here)
 
 _Not drawn: 10 members is 45 connections. Every one of them holds — that is what makes this a family._
 

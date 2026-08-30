@@ -9,7 +9,7 @@ static site generator; a large monolith with heavy template and resource subsyst
 | Corpus | [hugo](https://github.com/gohugoio/hugo) |
 | Pinned at | `v0.165.0` (`76a5e1880ab46688155b02e99bab9be2a6134492`) |
 | Project since | 2013 |
-| doppel | `616ab78` |
+| doppel | `8a7ede0` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -27,15 +27,15 @@ Habitats: 126 modeled, 538 misfits (121 excused by subsystem), 31 subsystems; mo
 Conventions: strongest error_wrapping (0.64), loosest serialization (0.52)
 Ecosystems: 1997 profiled (1408 dominance, 589 coalition, 0 conflict, 0 weak)
 Found 5438 functions. Retrieving candidates...
-Retrieval: shape 728, concept 4057, call 8265 -> 12609 unique pairs
-  concept-only 30.8%  call-only 62.1%  suppressed-shape functions: 15  large identity buckets: 0  surviving labels: 22140
-Running structural comparison on 12609 pairs...
-Families: 114 over 291 components, 350 functions in a family, 159 edges completed
+Retrieval: shape 4204, concept 4057, call 8265 -> 15317 unique pairs
+  concept-only 25.3%  call-only 46.4%  suppressed-shape functions: 19  large identity buckets: 0  surviving labels: 22402
+Running structural comparison on 15317 pairs...
+Families: 119 over 312 components, 377 functions in a family, 197 edges completed
 ```
 
 # Code Similarity Report
 
-**Functions analyzed:** 5438 | **Threshold:** 0.60 | **Pairs found:** 10
+**Functions analyzed:** 5438 | **Threshold:** 0.38 | **Pairs found:** 10
 
 ---
 
@@ -122,37 +122,36 @@ Merge-worthy pairs folded up to their packages. An edge means two packages keep 
 
 ```mermaid
 flowchart LR
-    p0["allconfig"]
-    p1["commands<br/>26 internal"]
-    p0 ---|"5"| p1
-    p2["langs<br/>4 internal"]
-    p3["roles"]
-    p2 ---|"5"| p3
-    p4["versions"]
-    p2 ---|"5"| p4
-    p5["navigation<br/>1 internal"]
-    p6["page<br/>37 internal"]
+    p0["allconfig<br/>2 internal"]
+    p1["commands<br/>33 internal"]
+    p0 ---|"6"| p1
+    p2["babel"]
+    p3["cssjs<br/>4 internal"]
+    p2 ---|"6"| p3
+    p4["langs<br/>5 internal"]
+    p5["roles<br/>1 internal"]
+    p4 ---|"5"| p5
+    p6["versions"]
+    p4 ---|"5"| p6
+    p7["navigation<br/>2 internal"]
+    p8["page<br/>53 internal"]
+    p7 ---|"5"| p8
     p5 ---|"5"| p6
-    p3 ---|"5"| p4
-    p7["babel"]
-    p8["cssjs<br/>2 internal"]
-    p7 ---|"4"| p8
-    p9["hugolib<br/>104 internal"]
+    p9["hugolib<br/>150 internal"]
     p1 ---|"4"| p9
-    p9 ---|"4"| p6
-    p10["hugofs<br/>27 internal"]
-    p1 ---|"3"| p10
-    p11["esbuild<br/>8 internal"]
-    p12["filecache<br/>29 internal"]
-    p11 ---|"3"| p12
-    p13["httpcache"]
-    p11 ---|"3"| p13
-    p14["goldmark<br/>11 internal"]
-    p15["hugocontext<br/>3 internal"]
-    p14 ---|"3"| p15
+    p10["dartsass"]
+    p3 ---|"4"| p10
+    p11["integrity"]
+    p3 ---|"4"| p11
+    p12["minifier"]
+    p3 ---|"4"| p12
+    p9 ---|"4"| p8
+    p13["collections<br/>33 internal"]
+    p14["render<br/>3 internal"]
+    p13 ---|"3"| p14
 ```
 
-_178 further package pairs are connected by merge-worthy duplication and are not drawn._
+_235 further package pairs are connected by merge-worthy duplication and are not drawn._
 
 ### How settled each package is
 
@@ -182,7 +181,7 @@ _114 further packages are modeled and not drawn._ Most uniform is `partials` (no
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **12609 candidate pairs** (shape 728, concept 4057, call 8265), of which 62% arrived on call evidence alone and 31% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **15317 candidate pairs** (shape 4204, concept 4057, call 8265), of which 46% arrived on call evidence alone and 25% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 1997 functions reached an equilibrium: **1408** settled on a single concept, **589** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -190,7 +189,7 @@ Each function is also an arena where its candidate concepts compete for its evid
 
 **Compression ratio:** `7.22`x — this corpus's canonical function bodies contain **337951 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **46792 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **5438 functions**, **3140** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.38` / `0.85` / `1.00`, and 25% of them (779 of 3140) already clear this run's threshold of `0.60`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 2298 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **5438 functions**, **3665** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.45` / `0.84` / `1.00`, and 72% of them (2652 of 3665) already clear this run's threshold of `0.38`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 1773 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -352,15 +351,15 @@ _47 more unusual realizations not listed._
 
 **Containment:** `0.92` — most of the smaller body's shape is inside the larger
 
-**Evidence:** `2514.05` (shape 2459.45, concept 4.60, call 50.00)
+**Evidence:** `2534.98` (shape 2480.38, concept 4.60, call 50.00)
 
 **Trophic:** `0.91`
 
 **Shared structure:**
 
-- `39.00` — `depth-3 CALL` ×6
-- `39.00` — `depth-2 CALL` ×6
-- `33.27` — `depth-1 CALL` ×6
+- `39.34` — `depth-3 CALL` ×6
+- `39.34` — `depth-2 CALL` ×6
+- `33.60` — `depth-1 CALL` ×6
 
 **Culture:** B realizes `error_wrapping` atypically (typicality 0.16, concept median 0.36, convention 0.64)
 
@@ -399,15 +398,15 @@ _47 more unusual realizations not listed._
 
 **Containment:** `0.93`
 
-**Evidence:** `1717.02` (shape 1701.11, concept 2.49, call 13.42)
+**Evidence:** `1732.89` (shape 1716.98, concept 2.49, call 13.42)
 
 **Trophic:** `0.91`
 
 **Shared structure:**
 
-- `38.93` — `depth-1 EXPRSTMT` ×9
-- `29.35` — `depth-2 BLOCK` ×6
-- `24.12` — `depth-3 EXPRSTMT` ×4
+- `39.43` — `depth-1 EXPRSTMT` ×9
+- `29.68` — `depth-2 BLOCK` ×6
+- `24.34` — `depth-3 EXPRSTMT` ×4
 
 **Structural overlap:** `0.77` (merge-worthy)
 
@@ -440,15 +439,15 @@ _47 more unusual realizations not listed._
 
 **Containment:** `0.87`
 
-**Evidence:** `885.67` (shape 824.92, concept 7.07, call 53.69)
+**Evidence:** `892.96` (shape 832.21, concept 7.07, call 53.69)
 
 **Trophic:** `0.98`
 
 **Shared structure:**
 
-- `18.09` — `depth-3 SEL` ×3
-- `18.09` — `depth-3 SEL` ×3
-- `18.09` — `depth-3 CALL` ×3
+- `18.26` — `depth-3 SEL` ×3
+- `18.26` — `depth-3 SEL` ×3
+- `18.26` — `depth-3 CALL` ×3
 
 **Habitat:** A fits poorly in `resources` (fit 0.27, package norm 0.75)
 
@@ -489,15 +488,15 @@ _47 more unusual realizations not listed._
 
 **Containment:** `0.97`
 
-**Evidence:** `1149.67` (shape 1126.55, concept 2.49, call 20.63)
+**Evidence:** `1160.11` (shape 1136.99, concept 2.49, call 20.63)
 
 **Trophic:** `0.97`
 
 **Shared structure:**
 
-- `24.12` — `depth-1 CALL` ×4
-- `22.50` — `depth-0 CALL` ×4
-- `14.83` — `depth-3 BLOCK` ×2
+- `24.34` — `depth-1 CALL` ×4
+- `22.72` — `depth-0 CALL` ×4
+- `14.94` — `depth-3 BLOCK` ×2
 
 **Structural overlap:** `0.49` (merge-worthy)
 
@@ -524,15 +523,15 @@ _47 more unusual realizations not listed._
 
 **Containment:** `0.80`
 
-**Evidence:** `2361.73` (shape 2351.45, concept 0.00, call 10.28)
+**Evidence:** `2388.57` (shape 2378.29, concept 0.00, call 10.28)
 
 **Trophic:** `0.74`
 
 **Shared structure:**
 
-- `144.43` — `depth-1 EXPRSTMT` ×30
-- `144.43` — `depth-0 CALL` ×30
-- `139.33` — `depth-3 ARRAYTYPE` ×30
+- `146.09` — `depth-1 EXPRSTMT` ×30
+- `146.09` — `depth-0 CALL` ×30
+- `140.99` — `depth-3 ARRAYTYPE` ×30
 
 **Structural overlap:** `0.48` (merge-worthy)
 
@@ -558,15 +557,15 @@ _47 more unusual realizations not listed._
 
 **Containment:** `0.82`
 
-**Evidence:** `2209.49` (shape 2199.21, concept 0.00, call 10.28)
+**Evidence:** `2234.84` (shape 2224.56, concept 0.00, call 10.28)
 
 **Trophic:** `0.71`
 
 **Shared structure:**
 
-- `129.99` — `depth-1 EXPRSTMT` ×27
-- `129.99` — `depth-0 CALL` ×27
-- `125.40` — `depth-3 ARRAYTYPE` ×27
+- `131.48` — `depth-1 EXPRSTMT` ×27
+- `131.48` — `depth-0 CALL` ×27
+- `126.89` — `depth-3 ARRAYTYPE` ×27
 
 **Structural overlap:** `0.52` (merge-worthy)
 
@@ -597,15 +596,15 @@ _47 more unusual realizations not listed._
 
 **Containment:** `1.00`
 
-**Evidence:** `464.56` (shape 427.63, concept 1.64, call 35.29)
+**Evidence:** `468.15` (shape 431.22, concept 1.64, call 35.29)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `7.42` — `depth-3 CALL`
-- `7.42` — `depth-3 ASSIGN`
-- `7.42` — `depth-3 CALL`
+- `7.47` — `depth-3 CALL`
+- `7.47` — `depth-3 ASSIGN`
+- `7.47` — `depth-3 CALL`
 
 **Structural overlap:** `0.83` (merge-worthy)
 
@@ -641,15 +640,15 @@ _47 more unusual realizations not listed._
 
 **Containment:** `0.79`
 
-**Evidence:** `1508.73` (shape 1395.99, concept 5.82, call 106.93)
+**Evidence:** `1520.56` (shape 1407.81, concept 5.82, call 106.93)
 
 **Trophic:** `0.78`
 
 **Shared structure:**
 
-- `14.83` — `depth-3 CALL` ×2
-- `14.83` — `depth-3 ASSIGN` ×2
-- `14.83` — `depth-2 CALL` ×2
+- `14.94` — `depth-3 CALL` ×2
+- `14.94` — `depth-3 ASSIGN` ×2
+- `14.94` — `depth-2 CALL` ×2
 
 **Culture:** A realizes `concurrency` atypically (typicality 0.13, concept median 0.35, convention 0.60)
 
@@ -689,15 +688,15 @@ _47 more unusual realizations not listed._
 
 **Containment:** `1.00`
 
-**Evidence:** `425.86` (shape 414.88, concept 3.99, call 6.99)
+**Evidence:** `429.23` (shape 418.25, concept 3.99, call 6.99)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `14.02` — `depth-2 RETURN` ×2
-- `13.00` — `depth-1 RETURN` ×2
-- `11.25` — `depth-1 CALL` ×2
+- `14.13` — `depth-2 RETURN` ×2
+- `13.11` — `depth-1 RETURN` ×2
+- `11.36` — `depth-1 CALL` ×2
 
 **Structural overlap:** `0.81` (merge-worthy)
 
@@ -728,15 +727,15 @@ _47 more unusual realizations not listed._
 
 **Containment:** `1.00`
 
-**Evidence:** `554.57` (shape 554.57, concept 0.00, call 0.00)
+**Evidence:** `559.15` (shape 559.15, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `21.11` — `depth-3 RETURN` ×4
-- `20.66` — `depth-3 BLOCK` ×4
-- `20.46` — `depth-2 RETURN` ×4
+- `21.33` — `depth-3 RETURN` ×4
+- `20.88` — `depth-3 BLOCK` ×4
+- `20.68` — `depth-2 RETURN` ×4
 
 **Structural overlap:** `0.50` (merge-worthy)
 
@@ -750,9 +749,9 @@ _47 more unusual realizations not listed._
 
 ## Families
 
-114 families, 350 functions in a family, largest 14 members; 159 edges scored here that retrieval never proposed
+119 families, 377 functions in a family, largest 14 members; 197 edges scored here that retrieval never proposed
 
-### Family 1 — 12 members, every pair `>= 0.60` code-shape, evidence `27937`  (24 edges scored here)
+### Family 1 — 12 members, every pair `>= 0.60` code-shape, evidence `21480`  (35 edges scored here)
 
 _Not drawn: 12 members is 66 connections. Every one of them holds — that is what makes this a family._
 
@@ -771,7 +770,7 @@ _Not drawn: 12 members is 66 connections. Every one of them holds — that is wh
 
 _2 more members not listed._
 
-### Family 2 — 12 members, every pair `>= 0.61` code-shape, evidence `26551`  (26 edges scored here)
+### Family 2 — 12 members, every pair `>= 0.61` code-shape, evidence `19953`  (37 edges scored here)
 
 _Not drawn: 12 members is 66 connections. Every one of them holds — that is what makes this a family._
 
@@ -790,7 +789,7 @@ _Not drawn: 12 members is 66 connections. Every one of them holds — that is wh
 
 _2 more members not listed._
 
-### Family 3 — 11 members, every pair `>= 0.62` code-shape, evidence `23432`  (19 edges scored here)
+### Family 3 — 11 members, every pair `>= 0.62` code-shape, evidence `17987`  (28 edges scored here)
 
 _Not drawn: 11 members is 55 connections. Every one of them holds — that is what makes this a family._
 
@@ -809,7 +808,7 @@ _Not drawn: 11 members is 55 connections. Every one of them holds — that is wh
 
 _1 more members not listed._
 
-### Family 4 — 12 members, every pair `>= 0.61` code-shape, evidence `22476`  (24 edges scored here)
+### Family 4 — 12 members, every pair `>= 0.61` code-shape, evidence `16225`  (35 edges scored here)
 
 _Not drawn: 12 members is 66 connections. Every one of them holds — that is what makes this a family._
 
@@ -828,7 +827,7 @@ _Not drawn: 12 members is 66 connections. Every one of them holds — that is wh
 
 _2 more members not listed._
 
-### Family 5 — 12 members, every pair `>= 0.60` code-shape, evidence `20258`  (32 edges scored here)
+### Family 5 — 12 members, every pair `>= 0.60` code-shape, evidence `12795`  (45 edges scored here)
 
 _Not drawn: 12 members is 66 connections. Every one of them holds — that is what makes this a family._
 
@@ -847,5 +846,5 @@ _Not drawn: 12 members is 66 connections. Every one of them holds — that is wh
 
 _2 more members not listed._
 
-_109 more families not listed._
+_114 more families not listed._
 
