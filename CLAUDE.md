@@ -1622,11 +1622,16 @@ documented escape hatch from calibration, and a hidden escape hatch is not one.
 ### Where the shipped floors come from
 
 `--threshold` defaults to **0.38**: the median of the code-shape floors `--calibrate 0.01` derives
-across the public ladder — prometheus 0.33, moby 0.35, hugo 0.35, gin 0.41, cobra 0.44, chi 0.45,
-with conc declining for want of eligible null pairs (351, against the 1 000 the calibration
+across the public ladder — prometheus 0.33, hugo 0.34, moby 0.36, gin 0.41, cobra 0.44, chi 0.45,
+with conc declining for want of eligible null pairs (780, against the 1 000 the calibration
 requires). The declined rung is **excluded from the median rather than counted at the old
 default**: a declined calibration is missing data, and letting the incumbent value vote for its own
-retention is not a measurement. Six values, so the median is the midpoint of 0.35 and 0.41.
+retention is not a measurement. Six values, so the median is the midpoint of 0.36 and 0.41 — the
+shipped constant is the nearest hundredth below, and stays 0.38 because `TestThresholdLadder` reads
+flat across 0.30–0.60 on the cobra labels and nothing distinguishes 0.38 from 0.39.
+(Measured on the merged tree at the shipped `--min-nodes 16`; the same run under `--languages go`
+gives identical numbers, the ladder being Go-only. The earlier figures here — moby 0.35, hugo 0.35,
+conc 351 — predate the 18 → 16 relaxation and the language-neutral IR.)
 
 The old `0.60` was not wrong so much as *differently strict on every corpus* — it admitted far
 fewer than 1% of random unrelated pairs everywhere it was measured, which is exactly the
@@ -1675,7 +1680,7 @@ somebody else's repo and no end user has a basis for moving it.
 
 Measured at rate 0.01 **on the merged tree**, where the code-shape null is drawn against the
 corpus-weighted WL Jaccard rather than the old token-3-gram one: threshold **0.33 prometheus,
-0.35 hugo, 0.35 moby, 0.41 gin, 0.44 cobra, 0.45 chi**, with struct-min from 0.29 to 0.51. The
+0.34 hugo, 0.36 moby, 0.41 gin, 0.44 cobra, 0.45 chi**, with struct-min from 0.29 to 0.51. The
 whole ladder sits *lower* than the fixed 0.60 and lower than the same measurement on the
 pre-merge tool (which read 0.45 moby / 0.53 cobra), which is what a WL score distribution looks
 like: a WL bag weights every shared label by corpus surprisal, so two unrelated bodies agree on
@@ -1690,8 +1695,8 @@ shape channel) is an *eligibility* rule about which functions the channel indexe
 subsumes the other — a corpus of accessors has a null distribution made of accessors, so a rate
 would happily admit them — and the shape null is drawn over exactly the `--min-nodes`-eligible
 units, so raising the floor shrinks the null population. On **conc** (81 functions) that is
-decisive: too few eligible shape null pairs remain against the 1 000 the calibration needs (351
-measured at floor 18), so calibration is **declined** and conc runs at the static fallbacks
+decisive: too few eligible shape null pairs remain against the 1 000 the calibration needs (780 at
+the shipped floor 16; 351 measured at floor 18), so calibration is **declined** and conc runs at the static fallbacks
 (threshold 0.38, struct-min 0.0). At `--min-nodes 12` the same corpus calibrates to 0.85. That is the guard doing its job — eight samples above a 1% cut is not
 a calibration — and it is stated on stderr, not silent. Whether 16 is right for a corpus that
 small is a measurement question, not a merge question; the seam is here for it.

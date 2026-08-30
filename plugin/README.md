@@ -115,16 +115,53 @@ hook that misfires on a genuine near-duplicate would be worse than none.
 
 ### Stop
 
-Re-runs the analysis and reports the difference against the baseline:
+Re-runs the analysis and reports the difference against the baseline. It leads with **what happened
+to each function** — matched by body, so a rename reads as a rename — and then the pairs those
+changes created or dissolved:
 
 ```
-doppel impact this session: functions 261 -> 262, candidate pairs 551 -> 560, merge-worthy 100 -> 101.
-  NEW  parser.sortedSet <-> snapshot.probeSortedNames  shape 0.90  overlap 0.43  (merge-worthy)
-  NEW  culture.sortedStrings <-> snapshot.probeSortedNames  shape 1.00  overlap 0.30
-  (4 more pair changes from functions edited this session, not listed)
-  1 further pair changes involve no function edited this session (retrieval re-ranking).
-  Full delta: /tmp/doppel-baselines/1f23b7da….impact.json
+doppel delta since the session baseline: split 1, moved 1, renamed 1, new 1, deleted 1; pairs created 74, dissolved 70.
+  cobra.defaultUsageFunc (command.go:1974)  -> 2 bodies
+      -> cobra.usageBody (command.go:1983)  containment 0.9921
+      -> cobra.usageHeader (command.go:1974)  containment 0.9022
+  cobra.stringInSlice (cobra.go:225) -> sliceutil.stringInSlice (sliceutil/slice.go:3)
+      jaccard 1.0000  containment 1.0000  digests equal
+  cobra.MinimumNArgs (args.go:74) -> cobra.AtLeastNArgs (args.go:74)
+      jaccard 1.0000  containment 1.0000  digests equal
+  cobra.ExactlyNArgs (args.go:104)  (no counterpart above the match floor)
+  cobra.ExactValidArgs (args.go:129)  (no counterpart above the match floor)
+  NEW  cobra.ExactArgs <-> cobra.ExactlyNArgs  shape 1.00  overlap 0.71  (merge-worthy)
+      cobra.ExactlyNArgs new
+      explain: identical after rename
+  NEW  cobra.ExactlyNArgs <-> cobra.MaximumNArgs  shape 0.79  overlap 0.71  (merge-worthy)
+      cobra.ExactlyNArgs new
+      explain: differs by two extra binary
+  NEW  cobra.AtLeastNArgs <-> cobra.ExactArgs  shape 0.79  overlap 0.71  (merge-worthy)
+      cobra.AtLeastNArgs renamed
+      explain: differs by two extra binary
+  (71 more, not listed)
+  GONE cobra.MaximumNArgs <-> cobra.MinimumNArgs  shape 0.79  overlap 0.71  (merge-worthy)
+      cobra.MinimumNArgs renamed
+      explain: differs by two extra binary
+  ...
+doppel impact this session: functions 269 -> 270, candidate pairs 1155 -> 1159, merge-worthy 157 -> 161.
+  NEW  cobra.ExactArgs <-> cobra.ExactlyNArgs  shape 1.00  overlap 0.71  (merge-worthy)
+  NEW  cobra.ExactlyNArgs <-> cobra.MaximumNArgs  shape 0.79  overlap 0.71  (merge-worthy)
+  NEW  cobra.AtLeastNArgs <-> cobra.ExactArgs  shape 0.79  overlap 0.71  (merge-worthy)
+  (52 more pair changes from functions edited this session, not listed)
+  86 further pair changes involve no function edited this session (retrieval re-ranking).
+  Full delta: …/doppel-baselines/44e17b81….impact.json
 ```
+
+(Real output, from a session over cobra in which one function was split, one moved to another
+package, one renamed, one deleted and one added as a copy. Trimmed at the `...` and at the temp
+path; nothing else is changed.)
+
+Each pair line carries the class of the function that explains it and the stored `explain:` sentence
+saying what canonicalization did for that pair — `identical after rename` means the two canonical
+trees agree and renaming is what got them there. Note the pair counts: one rename re-keys every pair
+its function held, so 74 created and 70 dissolved is largely one fact restated, which is why only a
+bounded head is printed.
 
 It is **cumulative**, not per-turn: every turn compares against the same session-start baseline, so
 the report answers "what has this session done so far". When nothing changed it prints nothing at
@@ -132,17 +169,33 @@ all — a "no changes" line after every turn would only train you to stop readin
 
 Two things come out of it, and they are not the same report.
 
-**You** get the digest above: the counts, the pair changes, the re-ranking line, the path to the
-full delta.
+**You** get the digest above: the classification, the pair changes both ways, the counts, the
+re-ranking line, the path to the full delta.
 
 **The agent** gets a much shorter note, and only when the session produced something worth
-interrupting for:
+interrupting for — the delta scoreboard, three delta findings, then the notable pairs:
 
 ```
-doppel measured this session's effect on the repository's duplication surface and found 1 new near-duplicate finding:
-  billing.ValidateReceiverRef <-> billing.ValidateSenderRef  shape 1.00  overlap 0.71
+doppel matched this session's functions against the session baseline: split 1, moved 1, renamed 1, new 1, deleted 1; pairs created 74, dissolved 70.
+  cobra.defaultUsageFunc (command.go:1974)  -> 2 bodies
+      -> cobra.usageBody (command.go:1983)  containment 0.9921
+      -> cobra.usageHeader (command.go:1974)  containment 0.9022
+  cobra.stringInSlice (cobra.go:225) -> sliceutil.stringInSlice (sliceutil/slice.go:3)
+      jaccard 1.0000  containment 1.0000  digests equal
+  cobra.MinimumNArgs (args.go:74) -> cobra.AtLeastNArgs (args.go:74)
+      jaccard 1.0000  containment 1.0000  digests equal
+  (146 further delta findings not listed)
+doppel measured this session's effect on the repository's duplication surface and found 9 new near-duplicate findings:
+  cobra.ExactArgs <-> cobra.ExactlyNArgs  shape 1.00  overlap 0.71
+  cobra.ExactlyNArgs <-> cobra.MaximumNArgs  shape 0.79  overlap 0.71
+  cobra.AtLeastNArgs <-> cobra.ExactArgs  shape 0.79  overlap 0.71
+  (6 further findings not listed)
 This is a measurement, not a request. No change is required.
 ```
+
+The classification never buys the turn: `additionalContext` is emitted only when the *notable* list
+is non-empty, and its bar is unchanged. What identity buys, once a notable finding has already
+justified the note, is the attribution the note is read through.
 
 **This costs one extra turn.** A Stop hook cannot put text in the model's context without the
 conversation continuing — that is how the harness works, not a choice doppel makes. So the bar for
@@ -164,15 +217,21 @@ Set `hook-notify` in `.doppel.json` to change this:
 
 The report separates what it can prove from what it cannot, and so should you:
 
-- **Functions added, removed, and bodies changed** are solid. They come from names and from a hash
-  of each function's own AST, so nothing outside that function can move them.
+- **The classification is solid.** Every class comes from a function's own key, its own fingerprint
+  digest, or the label bag of its own body — never from anything the corpus does — so nothing
+  outside a function can move it. `jaccard`, `containment` and `digests equal` are printed on the
+  line precisely so you can check one by opening two files. The same goes for functions added,
+  removed and bodies changed in the impact half.
 - **Pair changes** carry an attribution bit. doppel retrieves a bounded number of candidate
   neighbours per function, so a pair can enter or leave the set without either side being edited.
-  Changes traced to a function you actually edited are listed; the rest are only counted, as
-  "retrieval re-ranking".
-- **Scores are corpus-relative.** Concept weighting is derived from the tag frequencies of the tree
-  being analysed, and structural roles from its call-graph degree distribution. Adding unrelated code
-  moves both. This is why the impact report leads with identity and not with score movement.
+  Changes traced to a classified function are listed and say which class; the rest read
+  "no classified change on either side (retrieval re-ranking)" and sort last.
+- **One rename restates itself.** A rename re-keys every pair its function held, so the created and
+  dissolved counts run far ahead of the number of things that actually happened. The head of each
+  list is where the new duplication is; the tail is the same rename seen from other pairs.
+- **Scores are corpus-relative.** Concept weighting is derived from the learned concept frequencies
+  of the tree being analysed, and structural roles from its call-graph degree distribution. Adding
+  unrelated code moves both. This is why the report leads with identity and not with score movement.
 
 Hook runs deliberately ignore the presentation settings in `.doppel.json` — `top`, `max-per-func` and
 `struct-min` — and diff the full candidate set. A pair that fell past rank 20 has not changed, and

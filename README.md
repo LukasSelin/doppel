@@ -151,15 +151,29 @@ doppel diff before.json after.json
 functions most related to it by structure, learned concepts and calls:
 
 ```
-query: cmd.validateHookSetup — concepts: validateMode+fmt.Errorf 0.71
-  role: orchestrator   resolved calls: 3
+$ doppel query --near cmd . --file draft.go
+query: cmd.validateHookSetup — concepts: p.IsValid+token.NoPos 0.54
+  role: leaf   resolved calls: 1
 
-Corpus: 304 functions. 5 related functions:
+Corpus: 864 functions. 5 related functions:
 
-#1  cmd.hookParams  cmd/config.go:130
-    evidence: 69.7 nats (shape 59.1, concept 1.4, call 9.2)  code-shape: 0.49  locality: 1.00
-    concepts: validateMode+fmt.Errorf 0.64   role: orchestrator
+#1  cmd.validateMode  cmd/pipeline.go:496
+    evidence: 59.7 nats (shape 54.4, concept 1.7, call 3.5)  code-shape: 0.52  locality: 1.00
+    concepts: side.idx+side.label 0.53, p.IsValid+token.NoPos 0.38   role: utility
+    shared structure:
+      5.51  depth-3 BLOCK
+      5.51  depth-3 SWITCH
+      5.51  depth-3 CASE
+
+#2  cmd.index  cmd/pipeline.go:186
+    evidence: 53.6 nats (shape 42.0, concept 2.5, call 9.2)  code-shape: 0.29  locality: 1.00
+    ...
 ```
+
+The snippet joins the corpus for the duration of the query: the call-graph resolver gives it
+resolved callees, it is classified against the same role thresholds as everyone else, and every
+corpus statistic sees it. So the numbers it is scored against are the ones it would actually live
+under, not the ones the corpus had before it existed. (The count is the corpus without the probe.)
 
 Matches are ranked by evidence boosted with **locality** — the fraction of the snippet's resolved
 call neighborhood the match inhabits — so architecturally near code outranks equally-similar code
@@ -194,9 +208,16 @@ A pair is two functions. `doppel families` reports the *groups*: every set of th
 functions in which **every member** is at least `--family-min` alike to every other member.
 
 ```
-F1    7 members   every pair >= 0.75 code-shape  (3 edges scored here)
-      culture.sortedStrings                           internal/culture/culture.go:214
-      culture.sortedCountKeys                         internal/culture/ecology.go:175
+$ doppel families .
+
+Families
+--------
+95 families, 237 functions in a family, largest 11 members; 177 edges scored here that retrieval never proposed
+
+F1    8 members   every pair >= 0.38 code-shape   evidence 5923  (10 edges scored here)
+      assets.renderColophon                           internal/dashboard/assets/app.js:118
+      assets.drawMap                                  internal/dashboard/assets/app.js:483
+      assets.renderSelection                          internal/dashboard/assets/app.js:676
       ...
 ```
 
@@ -206,6 +227,13 @@ whose two ends have nothing in common. And because candidate retrieval keeps a b
 neighbours per function, some edges inside a real family are never proposed — doppel scores those
 directly before grouping, and says how many it added, so a family never rests on an edge you cannot
 find in the pair list without being told.
+
+The census is ordered by **evidence**, not by member count — the summed retrieval mass of the edges
+retrieval actually proposed. Ranked by size, every large corpus leads with its biggest *idiom*
+(moby's was 44 mutex-guarded getters, mostly stitched together by the edge completion above), which
+is a fact about Go rather than about that repository. The `>= 0.38 code-shape` on the line above is
+the weakest edge in that particular clique, and it is a guarantee: any two members you open satisfy
+it.
 
 A function can belong to more than one family; the counts report distinct functions. A family
 whose every member pair satisfies one of the pair kinds says so on its line (`kind: interface
@@ -223,41 +251,61 @@ line prints the evidence that produced it:
 $ doppel diff before.json after.json
 Delta since the baseline
 ========================
-269 functions before, 269 after
-split 1, merged 0, moved 1, renamed 2, edited 0, new 0, deleted 1, unchanged 264
+269 functions before, 270 after
+split 1, merged 0, moved 1, renamed 1, edited 0, new 1, deleted 1, unchanged 265
+note: different analysis params ({Threshold:0.44 … StructMin:0.51 …}, {Threshold:0.44 … StructMin:0.5 …}); a population change shows up as new and deleted functions
 
 split 1
   cobra.defaultUsageFunc (command.go:1974)  -> 2 bodies
-      -> cobra.usageBody (command.go:1994)  containment 0.9906
-      -> cobra.usageHeader (command.go:1974)  containment 0.9670
+      -> cobra.usageBody (command.go:1983)  containment 0.9921
+      -> cobra.usageHeader (command.go:1974)  containment 0.9022
 
 moved 1
   cobra.stringInSlice (cobra.go:225) -> sliceutil.stringInSlice (sliceutil/slice.go:3)
       jaccard 1.0000  containment 1.0000  digests equal
 
-renamed 2
-  cobra.GetActiveHelpConfig (active_help.go:47) -> cobra.ActiveHelpConfig (active_help.go:47)  (body edited)
-      jaccard 0.6798  containment 0.9082  digests differ
-  cobra.OnlyValidArgs (args.go:51) -> cobra.ValidateArgs (args.go:51)
+renamed 1
+  cobra.MinimumNArgs (args.go:74) -> cobra.AtLeastNArgs (args.go:74)
       jaccard 1.0000  containment 1.0000  digests equal
+
+new 1
+  cobra.ExactlyNArgs (args.go:104)  (no counterpart above the match floor)
 
 deleted 1
   cobra.ExactValidArgs (args.go:129)  (no counterpart above the match floor)
 
-unchanged 264
+unchanged 265
 
-pairs created 1, dissolved 1
+pairs created 3, dissolved 3
 
-pairs created 1
-  cobra.ValidateArgs <-> cobra.usageBody  shape 1.00  overlap 0.70  (merge-worthy)
-      cobra.ValidateArgs renamed
+pairs created 3
+  cobra.ExactArgs <-> cobra.ExactlyNArgs  shape 1.00  overlap 0.71  (merge-worthy)
+      cobra.ExactlyNArgs new
       explain: identical after rename
+  cobra.AtLeastNArgs <-> cobra.MaximumNArgs  shape 0.78  overlap 0.71  (merge-worthy)
+      cobra.AtLeastNArgs renamed
+      explain: differs by two extra binary
+  cobra.*Command.SetUsageTemplate <-> cobra.*Command.SetVersionTemplate  shape 1.00  overlap 0.63  (merge-worthy)
+      no classified change on either side (retrieval re-ranking)
+      explain: identical after rename, commutative-reorder
 
-pairs dissolved 1
-  cobra.ExactValidArgs <-> cobra.OnlyValidArgs  shape 1.00  overlap 0.68  (merge-worthy)
-      cobra.ExactValidArgs deleted, cobra.OnlyValidArgs renamed
-      explain: identical after rename
+pairs dissolved 3
+  cobra.MaximumNArgs <-> cobra.MinimumNArgs  shape 0.79  overlap 0.71  (merge-worthy)
+      cobra.MinimumNArgs renamed
+      explain: differs by two extra binary
+  cobra.ExactArgs <-> cobra.MinimumNArgs  shape 0.78  overlap 0.73  (merge-worthy)
+      cobra.MinimumNArgs renamed
+      explain: differs by two extra binary
+  cobra.ExactArgs <-> cobra.MaximumNArgs  shape 0.79  overlap 0.71  (merge-worthy)
+      no classified change on either side (retrieval re-ranking)
+      explain: differs by two extra binary
 ```
+
+(That is cobra at its pinned tag against a copy in which `defaultUsageFunc` was cut in two,
+`stringInSlice` moved to its own package, `MinimumNArgs` renamed, `ExactValidArgs` deleted, and a
+fresh copy of `ExactArgs` added under a new name. The `note:` line, elided here for width, appears
+because the two runs calibrated their overlap floor a hundredth apart — the corpus genuinely
+changed — and the comparison says so rather than refusing over it.)
 
 The second half is the one a plain diff cannot produce: the near-duplicate **pairs those changes
 created or dissolved**, each attributed to the classified function that explains it and each
@@ -289,31 +337,52 @@ impact on the pair list and deliberately claim nothing they cannot attribute to 
 | ------------------- | ------- | --------------------------------------------------------------------------- |
 | `--calibrate`       | `0.01`  | **The one knob that sets the others.** Fraction of random unrelated pairs the thresholds may admit. Doppel measures what an unrelated pair scores *in your repo* and derives `--threshold`, `--struct-min` and `--family-min` from it, so the setting means the same thing on 80 functions and on 8000. `0` falls back to the fixed defaults below |
 | `-n`, `--top`       | `20`    | Maximum number of pairs to show (`0` for no limit)                          |
-| `-t`, `--threshold` | *(calibrated)* | Pin the minimum code similarity to report (0.0–1.0). Setting it turns calibration off for the run, so the number you give is the number used. Falls back to `0.38` on a corpus too small to calibrate — the median of the six ladder corpora that do calibrate |
-| `--struct-min`      | *(calibrated)* | Pin the minimum structural overlap (0.0–1.0) to keep a pair. Turns calibration off; falls back to `0.0` |
-| `--min-nodes`       | `16`    | Skip functions whose body has fewer than this many AST nodes. A separate knob from `--calibrate`, which derives a *score* floor: this is an eligibility rule about which functions the shape channel indexes at all, and it guards against one-line accessors, which match each other perfectly and would otherwise flood the channel |
+| `-t`, `--threshold` | `0.38`, *calibrated* | Pin the minimum code similarity to report (0.0–1.0). Setting it turns calibration off for the run, so the number you give is the number used. Falls back to `0.38` on a corpus too small to calibrate — the midpoint of what the six ladder corpora that *can* calibrate derive |
+| `--struct-min`      | `0.0`, *calibrated* | Pin the structural-overlap floor (0.0–1.0) for keeping a pair. Turns calibration off; falls back to `0.0` |
+| `--family-min`      | `0.6`, *calibrated* | Pin the code-shape between every two members of a family. Turns calibration off; under `--calibrate` it follows the derived code-shape value |
 | `-o`, `--output`    | *(disabled)* | Write a report to this file. **A `.html` path renders the interactive dashboard** — one self-contained page that opens from `file://`, showing your packages as a political map (each region's area is its share of the functions, and a painted border is duplication crossing it) plus a per-function neighbourhood view with both bodies side by side. Any other extension writes Markdown, which opens with what doppel understands about the corpus — learned concepts, duplication map, package habitats — as mermaid diagrams, then how this codebase *writes* things. The stdout report is still printed |
 | `--format`          | `text`  | Stdout format: `text` or `json`. The JSON form is a deterministic snapshot of the whole run — every function, its concepts with confidence, its role, its Weisfeiler-Lehman label bag, and every reported pair with its containment and its rule-attributed explanation |
 | `--families`        | `5`     | Near-duplicate families to show after the pair list (`0` removes the section) |
-| `--family-min`      | *(calibrated)* | Pin the code similarity every two members of a family must reach. Turns calibration off; falls back to `0.60` |
+| `--languages`       | *(all)* | Languages to read, comma-separated. The extension allowlist is the whole scope rule — a file is in the corpus because a frontend claims its extension, never because its contents looked like code. Corpus-defining, so a run reading Go alone is correctly incomparable to one reading Go and TypeScript |
+| `--tests`           | `exclude` | Test-function population: `include`, `exclude` or `only`. Tests are conventionally similar, so the default models production code; cross test/production pairs are never reported in any mode |
+| `--generated`       | `exclude` | Generated-file population: `include`, `exclude` or `only`, over files carrying Go's "Code generated ... DO NOT EDIT." marker |
+| `--debug`           | `false` | Show per-pair retrieval provenance in the report |
 | `--config`          | `.doppel.json` if present | Path to a JSON config file                                |
 
-`--min-nodes`, `--channel-k` and `--max-per-func` are retrieval and report
-budgets rather than judgments about your code. They still work and still take
-config keys, but they are hidden from `--help` because there is no question
-about a codebase whose answer tells you what to set them to.
+Three flags parse and take config keys but are hidden from `--help`, because they are retrieval and
+report budgets rather than judgments about your code and no question about a codebase answers what
+to set them to: `--min-nodes` (`16` — skip functions whose body has fewer than this many nodes,
+which is an *eligibility* rule about what the shape channel indexes rather than the *score* floor
+`--calibrate` derives, and which is what keeps one-line accessors from flooding the channel),
+`--channel-k` (`5` — neighbours kept per function per retrieval channel) and `--max-per-func` (`2` —
+how many reported pairs one function may fill).
 
 **Why the three similarity floors are calibrated rather than fixed.** A code
 similarity of `0.60` is not one standard: on a small library almost nothing
 reaches it, and on a large one a great deal of unrelated code does. Doppel draws
-a sample of random, unrelated pairs from your repo, scores them, and takes the
-quantile at which only `--calibrate` of them would be admitted — so "admit 1% of
-random pairs" is the same question everywhere. Measured at the default rate the
-derived floor is 0.45 on moby, 0.53 on cobra, 0.85 on conc. The calibration is
-deterministic (a fixed seed derived from the corpus itself), it is printed on
-stderr at the start of every run, and it is recorded in the JSON snapshot, so a
-run always states the operating point it used. On a corpus too small to sample
-from, doppel says so and keeps the fixed defaults.
+a sample of random, unrelated pairs from your repo, scores them with the very
+functions the run will use, and takes the quantile at which only `--calibrate`
+of them would be admitted — so "admit 1% of random pairs" is the same question
+everywhere. Measured at the default rate across the seven pinned corpora, the
+derived code-shape floor is:
+
+```
+moby:       Calibration: rate 0.01 over 20000 null pairs -> threshold 0.36, struct-min 0.29, family-min 0.36
+prometheus: Calibration: rate 0.01 over 20000 null pairs -> threshold 0.33, struct-min 0.31, family-min 0.33
+hugo:       Calibration: rate 0.01 over 20000 null pairs -> threshold 0.34, struct-min 0.30, family-min 0.34
+gin:        Calibration: rate 0.01 over 20000 null pairs -> threshold 0.41, struct-min 0.50, family-min 0.41
+cobra:      Calibration: rate 0.01 over 14535 shape / 20000 overlap null pairs -> threshold 0.44, struct-min 0.51, family-min 0.44
+chi:        Calibration: rate 0.01 over 9045 shape / 16653 overlap null pairs -> threshold 0.45, struct-min 0.50, family-min 0.45
+conc:       Calibration: rate 0.01 declined (only 780 eligible shape null pairs (need 1000)); defaults kept
+```
+
+Those are the stderr lines each run prints, one per corpus, with the corpus name
+prefixed. The spread is the point: one fixed number cannot be the same question
+on all seven. The calibration is deterministic (a fixed seed derived from the
+corpus itself), and the operating point is recorded in the JSON snapshot, so a
+run always states what it used. On a corpus too small to sample from — conc, at
+81 functions — doppel declines out loud and keeps the fixed defaults rather than
+calibrating off eight samples.
 
 ### Configuration
 
@@ -369,8 +438,9 @@ Four hooks, placed by when a fact can still change what gets written:
   else. Silent when it recognises none.
 - **PreToolUse** on `Edit`/`Write` — immediately before a file changes, the merge-worthy twins of
   the functions in it. Advisory only; it never blocks an edit.
-- **Stop** — what the session has done to the duplication surface, leading with the pairs it can
-  trace to a function you actually edited. Prints nothing on turns that changed nothing.
+- **Stop** — what the session has done to the duplication surface, leading with what happened to
+  each function (matched by body, so a rename reads as a rename) and then the pairs those changes
+  created or dissolved. Prints nothing on turns that changed nothing.
 
 Each is driven by a `doppel hook <name>` subcommand reading a Claude Code hook payload on stdin and
 writing a hook response on stdout. None ever exits non-zero: a measurement must not be able to break
