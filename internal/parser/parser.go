@@ -1,9 +1,11 @@
 package parser
 
 import (
+	"go/ast"
 	"path/filepath"
 	"strings"
 
+	"github.com/LukasSelin/doppel/internal/canon"
 	"github.com/LukasSelin/doppel/internal/fingerprint"
 )
 
@@ -23,6 +25,26 @@ type CodeUnit struct {
 	Fingerprint  fingerprint.Fingerprint // deterministic static summary of the body
 	Signals      TagSignals              // AST-level evidence channels the tagger reads
 	Generated    bool                    // the file carries Go's "Code generated ... DO NOT EDIT." marker
+
+	// Canonical is the function rewritten into canon's canonical shape — a
+	// deep copy, never the tree Fingerprint and Signals were built from.
+	// nil when the declaration has no body.
+	//
+	// Nothing reads it yet. It is produced here rather than later because
+	// this is where the AST exists: the same reason fingerprint.Build and
+	// extractSignals run in this loop.
+	//
+	// The declaration keeps its own name — that is the unit's identity in
+	// the package, not a binding inside it, and the call graph and every
+	// report key on it. A consumer comparing two canonical trees as shapes
+	// has to set the name aside itself.
+	Canonical *ast.FuncDecl
+
+	// CanonRules names the canonicalization rules that fired on this
+	// function, in canon's declaration order. It is the evidence half of
+	// Canonical: whatever the canonical tree is later used to claim, this
+	// says which normalizations were needed to get there.
+	CanonRules []canon.RuleID
 }
 
 // MethodName returns the bare method name of a method unit ("Start" for

@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/LukasSelin/doppel/internal/canon"
 	"github.com/LukasSelin/doppel/internal/fingerprint"
 )
 
@@ -54,6 +55,14 @@ func parseGoSource(path string, src []byte) ([]CodeUnit, error) {
 			docComment = strings.TrimRight(fd.Doc.Text(), "\n")
 		}
 
+		// Canonicalization works on a deep copy and never touches fd, which
+		// matters here specifically: fingerprint.Build and extractSignals
+		// below read the same declaration, so an in-place rewrite would
+		// change every score and every tag in the tool without a line of
+		// scoring code changing. canon.Canonicalize owns that guarantee and
+		// internal/canon proves it over every function in this repo.
+		canonical := canon.Canonicalize(fd)
+
 		units = append(units, CodeUnit{
 			Name:         name,
 			File:         path,
@@ -68,6 +77,8 @@ func parseGoSource(path string, src []byte) ([]CodeUnit, error) {
 			Fingerprint:  fingerprint.Build(fd),
 			Signals:      extractSignals(fd, f),
 			Generated:    generated,
+			Canonical:    canonical.Decl,
+			CanonRules:   canonical.Fired,
 		})
 	}
 	return units, nil
