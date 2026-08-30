@@ -1,12 +1,23 @@
 package parser
 
 import (
-	"go/ast"
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/LukasSelin/doppel/internal/canon"
+	"github.com/LukasSelin/doppel/internal/syntax"
 )
+
+// These tests sit at the seam where canonicalization becomes visible to
+// everything downstream: CodeUnit.Canonical and CodeUnit.CanonRules.
+//
+// They read the neutral tree rather than go/ast, deliberately. Canonicalization
+// itself is Go semantics and runs inside gofront, where internal/canon's own
+// tests prove the rewrites; what a *consumer* of a CodeUnit can see is a
+// syntax.Node, and that is what the WL bag, the hash-cons and the explanation
+// layer all walk. Asserting on the go/ast form here would test a tree nobody
+// downstream is handed.
 
 const canonSrc = `package p
 
@@ -49,8 +60,8 @@ func TestParseAttachesCanonicalForm(t *testing.T) {
 			t.Errorf("%s: no canonical tree", u.Name)
 			continue
 		}
-		if got := canon.Print(u.Canonical); got == "" {
-			t.Errorf("%s: canonical tree does not print", u.Name)
+		if countNodes(u.Canonical) == 0 {
+			t.Errorf("%s: canonical tree has no nodes", u.Name)
 		}
 	}
 
@@ -64,7 +75,7 @@ func TestParseAttachesCanonicalForm(t *testing.T) {
 	for _, want := range []canon.RuleID{canon.RuleAlphaRename, canon.RuleGuardReturn, canon.RuleIncDec} {
 		found := false
 		for _, id := range add.CanonRules {
-			if id == want {
+			if id == string(want) {
 				found = true
 			}
 		}
@@ -72,8 +83,10 @@ func TestParseAttachesCanonicalForm(t *testing.T) {
 			t.Errorf("expected %s to fire on Add; fired %v", want, add.CanonRules)
 		}
 	}
-	if printed := canon.Print(add.Canonical); strings.Contains(printed, "left") || strings.Contains(printed, "right") {
-		t.Errorf("parameters were not renamed in the canonical tree:\n%s", printed)
+	for _, gone := range []string{"left", "right"} {
+		if hasIdent(add.Canonical, gone) {
+			t.Errorf("parameter %q was not renamed in the canonical tree:\n%s", gone, render(add.Canonical))
+		}
 	}
 
 	// Bare has a body, an empty one: a canonical tree with nothing to do,
@@ -88,12 +101,11 @@ func TestParseAttachesCanonicalForm(t *testing.T) {
 }
 
 // TestCanonicalIsSeparateFromTheScoredTree is the whole reason canon clones.
-// The fields the pipeline already scores — Fingerprint, Signals, Body,
-// Signature, Callees — must be exactly what they were before a canonical
-// tree existed. Comparing two parses of the same source cannot show that,
-// so this checks the property that would break: the canonical tree is a
-// different object, and it is genuinely rewritten while the recorded body
-// text still reads as written.
+// The fields the pipeline already scores — the token stream, Signals, Body,
+// Signature, Callees — must be exactly what they were before a canonical tree
+// existed. Comparing two parses of the same source cannot show that, so this
+// checks the property that would break: the canonical tree is genuinely
+// rewritten while the recorded body text still reads as written.
 func TestCanonicalIsSeparateFromTheScoredTree(t *testing.T) {
 	units, err := ParseSource("p.go", []byte(canonSrc))
 	if err != nil {
@@ -121,16 +133,19 @@ func TestCanonicalIsSeparateFromTheScoredTree(t *testing.T) {
 	if len(add.CanonRules) == 0 {
 		t.Fatal("no rules fired, so this test proves nothing")
 	}
-	if strings.Contains(canon.Print(add.Canonical), "else") {
-		t.Errorf("canonical tree still has an else:\n%s", canon.Print(add.Canonical))
+	if hasElse(add.Canonical) {
+		t.Errorf("canonical tree still has an else:\n%s", render(add.Canonical))
 	}
 }
 
 // TestCanonicalTreesMatchForRenamedClones is the property the canonical form
-// is being built for, checked at the seam where it is now produced: two
-// functions that differ only in incidental spelling must canonicalize to the
-// same tree, while the fingerprints — which nothing in this task rewired —
-// stay whatever they already were.
+// exists for, checked at the seam where a consumer sees it: two functions that
+// differ only in incidental spelling canonicalize to the same tree.
+//
+// The declaration's own name never arises, which is why no name has to be set
+// aside here the way it did when the canonical form was a whole FuncDecl:
+// Canonical is the *body*, and a function's identity in its package is not a
+// binding inside it.
 func TestCanonicalTreesMatchForRenamedClones(t *testing.T) {
 	src := `package p
 
@@ -164,25 +179,66 @@ func second(entries []string) int {
 	if len(units) != 2 {
 		t.Fatalf("expected 2 units, got %d", len(units))
 	}
-	a, b := shapeOf(units[0].Canonical), shapeOf(units[1].Canonical)
+	a, b := render(units[0].Canonical), render(units[1].Canonical)
 	if a != b {
 		t.Errorf("renamed-and-respelled clones did not converge\nfirst:\n%s\n\nsecond:\n%s", a, b)
 	}
 }
 
-// shapeOf prints a canonical tree with its own name replaced. The
-// declaration name is not renamed by canonicalization and must not be: it is
-// the function's identity in the package, not a binding inside it, and the
-// call graph and every report refer to units by it. A consumer comparing two
-// canonical trees as shapes has to set it aside, which is what this does.
-func shapeOf(fd *ast.FuncDecl) string {
-	if fd == nil {
-		return ""
+// render is a total, deterministic serialization of a syntax tree: every
+// node's kind, its label and its children's slots, indented. It is a test
+// helper and nothing else — the production code hashes trees rather than
+// printing them — but it makes a failure readable, which a hash cannot.
+func render(n *syntax.Node) string {
+	var b strings.Builder
+	renderInto(&b, n, 0)
+	return b.String()
+}
+
+func renderInto(b *strings.Builder, n *syntax.Node, depth int) {
+	if n == nil {
+		return
 	}
-	return canon.Print(&ast.FuncDecl{
-		Recv: fd.Recv,
-		Name: ast.NewIdent("_"),
-		Type: fd.Type,
-		Body: fd.Body,
+	fmt.Fprintf(b, "%s%d", strings.Repeat("  ", depth), n.Kind)
+	if n.Label != "" {
+		fmt.Fprintf(b, "(%s)", n.Label)
+	}
+	b.WriteByte('\n')
+	for _, k := range n.Kids {
+		fmt.Fprintf(b, "%s#%d\n", strings.Repeat("  ", depth+1), k.Role)
+		renderInto(b, k.Node, depth+2)
+	}
+}
+
+func countNodes(n *syntax.Node) int {
+	count := 0
+	syntax.Inspect(n, func(x *syntax.Node) bool {
+		if x != nil {
+			count++
+		}
+		return true
 	})
+	return count
+}
+
+func hasIdent(n *syntax.Node, name string) bool {
+	found := false
+	syntax.Inspect(n, func(x *syntax.Node) bool {
+		if x != nil && x.Kind == syntax.KindIdent && x.Label == name {
+			found = true
+		}
+		return true
+	})
+	return found
+}
+
+func hasElse(n *syntax.Node) bool {
+	found := false
+	syntax.Inspect(n, func(x *syntax.Node) bool {
+		if x != nil && x.Kind == syntax.KindIf && x.Slot(syntax.RoleElse) != nil {
+			found = true
+		}
+		return true
+	})
+	return found
 }

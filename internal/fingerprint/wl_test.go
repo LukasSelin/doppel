@@ -1,28 +1,34 @@
 package fingerprint
 
 import (
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"slices"
 	"testing"
+
+	"github.com/LukasSelin/doppel/internal/gofront"
+	"github.com/LukasSelin/doppel/internal/syntax"
 )
 
-// parseFunc parses a single function declaration from a snippet.
-func parseFunc(t *testing.T, src string) *ast.FuncDecl {
+// parseFunc parses a snippet and returns its one function's body as written —
+// syntax.Func.Body, not Shape.
+//
+// Deliberately the raw body rather than the canonical one. These tests are
+// about the Weisfeiler-Lehman recurrence itself: what a label folds in, how
+// far an insertion propagates, that sibling order does not reach a label.
+// Every one of them counts nodes in the same tree it bags, so bagging a tree
+// canon had rewritten while counting nodes in the tree it rewrote *from*
+// would make the assertions measure two different functions. What
+// canonicalization does to a bag's contents is internal/canon's and
+// internal/parser's to prove.
+func parseFunc(t *testing.T, src string) *syntax.Node {
 	t.Helper()
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "snippet.go", "package p\n"+src, 0)
+	f, err := gofront.Parse("snippet.go", []byte("package p\n"+src))
 	if err != nil {
 		t.Fatalf("parse snippet: %v", err)
 	}
-	for _, decl := range file.Decls {
-		if fd, ok := decl.(*ast.FuncDecl); ok {
-			return fd
-		}
+	if f == nil || len(f.Funcs) == 0 {
+		t.Fatalf("no function declaration in snippet")
 	}
-	t.Fatalf("no function declaration in snippet")
-	return nil
+	return f.Funcs[0].Body
 }
 
 // bagOf returns the bag as a map. WLBag returns a sorted slice — that is the
@@ -32,7 +38,7 @@ func parseFunc(t *testing.T, src string) *ast.FuncDecl {
 // the package uses.
 func bagOf(t *testing.T, src string) map[uint64]int {
 	t.Helper()
-	return asMap(WLBag(parseFunc(t, src)))
+	return asMap(wlBagOf(parseFunc(t, src)))
 }
 
 func asMap(bag []LabelCount) map[uint64]int {
@@ -50,7 +56,7 @@ func asMap(bag []LabelCount) map[uint64]int {
 // with no label repeated, so a pair is one merge of two sorted runs and never
 // a sort inside the pair loop.
 func TestWLBagSorted(t *testing.T) {
-	bag := WLBag(parseFunc(t, srcSum))
+	bag := wlBagOf(parseFunc(t, srcSum))
 	if len(bag) < 2 {
 		t.Fatalf("bag has %d labels, too few to test ordering", len(bag))
 	}
@@ -175,14 +181,18 @@ func TestWLBagDeterministic(t *testing.T) {
 }
 
 // TestWLBagNoBody: a declaration without a body has no shape, mirroring the
-// zero Fingerprint.
+// zero Fingerprint. Both spellings of "no body" are covered — a nil function
+// and a function whose Body and Canon are both nil, which is what a frontend
+// produces for an external or forward declaration.
 func TestWLBagNoBody(t *testing.T) {
 	if got := WLBag(nil); got != nil {
-		t.Errorf("nil declaration: got %v, want nil", got)
+		t.Errorf("nil function: got %v, want nil", got)
 	}
-	fd := &ast.FuncDecl{Name: ast.NewIdent("M"), Type: &ast.FuncType{}}
-	if got := WLBag(fd); got != nil {
+	if got := WLBag(&syntax.Func{Name: "M"}); got != nil {
 		t.Errorf("body-less declaration: got %v, want nil", got)
+	}
+	if got := wlBagOf(nil); got != nil {
+		t.Errorf("nil tree: got %v, want nil", got)
 	}
 }
 
@@ -198,15 +208,14 @@ func Sum(nums []int) int {
 }`
 
 // isIncDec / isWideAssign locate the inserted statement in the "after" tree.
-func isIncDec(n ast.Node) bool { _, ok := n.(*ast.IncDecStmt); return ok }
+func isIncDec(n *syntax.Node) bool { return n.Kind == syntax.KindIncDec }
 
-func isWideAssign(n ast.Node) bool {
-	a, ok := n.(*ast.AssignStmt)
-	if !ok || len(a.Rhs) != 1 {
+func isWideAssign(n *syntax.Node) bool {
+	if n.Kind != syntax.KindAssign {
 		return false
 	}
-	_, ok = a.Rhs[0].(*ast.CallExpr)
-	return ok
+	rhs := n.Slots(syntax.RoleRhs)
+	return len(rhs) == 1 && rhs[0].Kind == syntax.KindCall
 }
 
 // insertionCases pair a base function with the same function carrying one
@@ -217,7 +226,7 @@ func isWideAssign(n ast.Node) bool {
 var insertionCases = []struct {
 	name  string
 	after string
-	find  func(ast.Node) bool
+	find  func(*syntax.Node) bool
 }{
 	{
 		name: "top level",
@@ -320,15 +329,15 @@ func TestWLBagLocalityOfInsertion(t *testing.T) {
 	before := bagOf(t, wlInsertBase)
 	for _, tc := range insertionCases {
 		t.Run(tc.name, func(t *testing.T) {
-			fd := parseFunc(t, tc.after)
-			after := asMap(WLBag(fd))
+			body := parseFunc(t, tc.after)
+			after := asMap(wlBagOf(body))
 
 			diff := keyDiff(before, after)
 			if diff == 0 {
 				t.Fatal("adding a statement changed no label at all")
 			}
 
-			depth, added := insertionSite(t, fd, tc.find)
+			depth, added := insertionSite(t, body, tc.find)
 			if depth < 1 || added < 1 {
 				t.Fatalf("could not locate the inserted statement")
 			}
@@ -366,13 +375,13 @@ func ancestorBudget(depth int) int {
 }
 
 // insertionSite locates the inserted statement and returns the depth of the
-// block holding it — the body block counting as 1 — and the number of AST
+// block holding it — the body block counting as 1 — and the number of syntax
 // nodes the statement itself contributes.
-func insertionSite(t *testing.T, fd *ast.FuncDecl, find func(ast.Node) bool) (depth, nodes int) {
+func insertionSite(t *testing.T, body *syntax.Node, find func(*syntax.Node) bool) (depth, nodes int) {
 	t.Helper()
-	var stmt ast.Node
-	var path []ast.Node
-	ast.Inspect(fd.Body, func(n ast.Node) bool {
+	var stmt *syntax.Node
+	var path []*syntax.Node
+	syntax.Inspect(body, func(n *syntax.Node) bool {
 		if n == nil {
 			path = path[:len(path)-1]
 			return false
@@ -387,7 +396,7 @@ func insertionSite(t *testing.T, fd *ast.FuncDecl, find func(ast.Node) bool) (de
 	if stmt == nil {
 		return 0, 0
 	}
-	ast.Inspect(stmt, func(n ast.Node) bool {
+	syntax.Inspect(stmt, func(n *syntax.Node) bool {
 		if n != nil {
 			nodes++
 		}
@@ -490,9 +499,9 @@ func TestLabelWeightsNil(t *testing.T) {
 // TestLabelWeightsOverRealBags ties the weights to actual bags: a label two
 // functions share weighs less than one only one of them carries.
 func TestLabelWeightsOverRealBags(t *testing.T) {
-	sum := WLBag(parseFunc(t, srcSum))
-	renamed := WLBag(parseFunc(t, srcSumRenamed))
-	serve := WLBag(parseFunc(t, srcServe))
+	sum := wlBagOf(parseFunc(t, srcSum))
+	renamed := wlBagOf(parseFunc(t, srcSumRenamed))
+	serve := wlBagOf(parseFunc(t, srcServe))
 	w := LabelWeights([][]LabelCount{sum, renamed, serve})
 	if w.N() != 3 {
 		t.Fatalf("N = %d, want 3", w.N())
@@ -558,7 +567,7 @@ func TestLabelKindStringOutOfRange(t *testing.T) {
 // part must be exactly wlKind(kind, ""), which is what ties the recorded kind
 // to the hash rather than leaving it a parallel claim.
 func TestWLBagRecordsRoundAndKind(t *testing.T) {
-	bag := WLBag(parseFunc(t, srcSum))
+	bag := wlBagOf(parseFunc(t, srcSum))
 
 	byKind := make(map[LabelKind][]LabelCount)
 	for _, lc := range bag {
@@ -605,9 +614,9 @@ func TestDescribeLabel(t *testing.T) {
 // sighting's round and kind, and the walk that decides "first" must be the
 // only thing that decides it.
 func TestWLBagMetaDeterministic(t *testing.T) {
-	first := WLBag(parseFunc(t, srcSum))
+	first := wlBagOf(parseFunc(t, srcSum))
 	for i := 0; i < 20; i++ {
-		again := WLBag(parseFunc(t, srcSum))
+		again := wlBagOf(parseFunc(t, srcSum))
 		if len(again) != len(first) {
 			t.Fatalf("run %d: %d entries, want %d", i, len(again), len(first))
 		}

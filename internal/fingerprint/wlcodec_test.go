@@ -1,9 +1,6 @@
 package fingerprint
 
 import (
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"math"
 	"os"
 	"path/filepath"
@@ -11,7 +8,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/LukasSelin/doppel/internal/canon"
+	"github.com/LukasSelin/doppel/internal/gofront"
 )
 
 // TestEncodeDecodeWLBagSynthetic covers the shapes real bags cannot easily
@@ -105,21 +102,25 @@ func TestEncodeDecodeWLBagOverRealCorpus(t *testing.T) {
 		if filepath.Ext(path) != ".go" {
 			return nil
 		}
-		fset := token.NewFileSet()
-		f, perr := parser.ParseFile(fset, path, nil, 0)
+		// Through the real frontend, which is what canonicalizes now: the
+		// bag under test is the one production would build for this body,
+		// not a reconstruction of it.
+		f, perr := gofront.ParseFile(path)
 		if perr != nil {
 			t.Fatalf("parse %s: %v", path, perr)
 		}
-		for _, decl := range f.Decls {
-			fd, ok := decl.(*ast.FuncDecl)
-			if !ok || fd.Body == nil {
+		if f == nil {
+			return nil
+		}
+		for i := range f.Funcs {
+			fn := &f.Funcs[i]
+			if fn.Body == nil {
 				continue
 			}
-			res := canon.Canonicalize(fd)
-			bag := WLBag(res.Decl)
+			bag := WLBag(fn)
 			if len(bag) == 0 {
 				t.Fatalf("%s: %s produced an empty WL bag; a non-nil body should never yield one",
-					path, fd.Name.Name)
+					path, fn.Name)
 			}
 			roundTripBag(t, bag, checked)
 			checked++

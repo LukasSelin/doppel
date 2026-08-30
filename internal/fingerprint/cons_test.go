@@ -1,8 +1,9 @@
 package fingerprint
 
 import (
-	"go/ast"
 	"testing"
+
+	"github.com/LukasSelin/doppel/internal/syntax"
 )
 
 func consOf(t *testing.T, src string) []uint64 {
@@ -106,7 +107,7 @@ func f(a, b bool) {
 		g()
 	}
 }`)
-	stats := ConsCorpus([]*ast.FuncDecl{repeated})
+	stats := ConsCorpus([]*syntax.Node{repeated})
 	if stats.TotalNodes == 0 {
 		t.Fatal("expected some nodes")
 	}
@@ -128,7 +129,7 @@ func f(a, b bool) {
 
 	// A nil body among real ones contributes nothing, mirroring Cons's own
 	// nil rule, and does not panic.
-	mixed := ConsCorpus([]*ast.FuncDecl{repeated, nil})
+	mixed := ConsCorpus([]*syntax.Node{repeated, nil})
 	if mixed != stats {
 		t.Errorf("a nil body changed the corpus totals: %+v vs %+v", mixed, stats)
 	}
@@ -151,7 +152,7 @@ func TestConsCrossFunctionCollapse(t *testing.T) {
 		t.Fatalf("identical bodies produced different node counts: %d vs %d", len(ha), len(hb))
 	}
 	withinA := uniqueCount(ha)
-	stats := ConsCorpus([]*ast.FuncDecl{a, b})
+	stats := ConsCorpus([]*syntax.Node{a, b})
 	if stats.UniqueSubtrees != withinA {
 		t.Errorf("UniqueSubtrees = %d, want %d (b should add no new shape over a)",
 			stats.UniqueSubtrees, withinA)

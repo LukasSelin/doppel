@@ -47,38 +47,23 @@ func (s *Server) Addr() string {
 }`
 )
 
-<<<<<<< HEAD
-// build parses a single function declaration and fingerprints it.
-//
-// It fills WL itself, because Build deliberately does not: in production the
-// parser sets it from canon's canonical tree, and this package cannot import
-// canon. Bagging the parsed declaration instead is the right substitute here
-// — these tests are about the scoring arithmetic over two bags, and what
-// canonicalization does to a bag's contents is internal/canon's and
-// internal/parser's to prove.
-=======
 // build parses a single function declaration and fingerprints it. It goes
 // through the real Go frontend rather than handing go/ast to Build, because
 // Build no longer takes go/ast — which is the point: this package scores the
 // neutral IR and knows nothing about any language.
->>>>>>> origin/master
+//
+// Going through gofront also means the WL bag is built over canon's canonical
+// tree, exactly as production does. That is not what these tests are about —
+// they are about the scoring arithmetic over two bags — but taking the real
+// path costs nothing and keeps the fixtures honest about what a bag contains.
 func build(t *testing.T, src string) Fingerprint {
 	t.Helper()
 	f, err := gofront.Parse("snippet.go", []byte("package p\n"+src))
 	if err != nil {
 		t.Fatalf("parse snippet: %v", err)
 	}
-<<<<<<< HEAD
-	for _, decl := range file.Decls {
-		if fd, ok := decl.(*ast.FuncDecl); ok {
-			fp := Build(fd)
-			fp.WL = WLBag(fd)
-			return fp
-		}
-=======
 	if f == nil || len(f.Funcs) == 0 {
 		t.Fatalf("no function declaration in snippet")
->>>>>>> origin/master
 	}
 	return Build(&f.Funcs[0])
 }

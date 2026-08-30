@@ -55,7 +55,6 @@ func gitHead(dir string) string {
 	return strings.TrimSpace(string(out))
 }
 
-<<<<<<< HEAD
 // buildDoppel builds the doppel binary into a fresh temp dir and returns its
 // path alongside the git rev that identifies the tree it was built from.
 // Extracted so TestGenerateExamples and the baseline checksum generator
@@ -76,52 +75,20 @@ func buildDoppel(t *testing.T, root string) (bin, rev string) {
 	return bin, gitHead(root)
 }
 
-// buildExampleReport runs bin over corpus c exactly the way `task examples`
-// does — same flags, same corpus-relative working directory — and returns
-// the full example-report content: the metadata table, the run diagnostics,
-// then the markdown report body. This is the exact byte sequence
-// TestGenerateExamples writes to examples/<corpus>.md, extracted so the
-// baseline checksum generator can produce identical content without ever
-// touching examples/ itself.
+// buildExampleReport is generateReport without the ladder row: the exact byte
+// sequence TestGenerateExamples writes to examples/<corpus>.md, so the
+// baseline checksum generator can produce identical content in memory without
+// ever touching examples/ itself.
+//
+// A wrapper rather than a second implementation, for the obvious reason: two
+// functions building "the report" would be one edit away from the baseline
+// checksumming something the committed file is not.
 func buildExampleReport(t *testing.T, bin, doppelRev string, c Corpus) []byte {
 	t.Helper()
-	dir, err := Path(c)
-	if err != nil {
-		t.Fatal(err)
-	}
-	md := filepath.Join(t.TempDir(), "report.md")
-	args := []string{"analyze", ".", "--tests", "exclude",
-		"--top", fmt.Sprint(exampleTop), "--output", md}
-	cmd := exec.Command(bin, args...)
-	cmd.Dir = dir
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("analyze %s: %v\n%s", c.Name, err, stderr.String())
-	}
-	body, err := os.ReadFile(md)
-	if err != nil {
-		t.Fatal(err)
-	}
+	body, _ := generateReport(t, bin, doppelRev, c)
+	return body
+}
 
-	var out bytes.Buffer
-	fmt.Fprintf(&out, "# %s\n\n", c.Name)
-	fmt.Fprintf(&out, "%s\n\n", c.Character)
-	fmt.Fprintf(&out, "**What this rung shows:** %s\n\n", c.Exercises)
-	fmt.Fprintf(&out, "| | |\n|---|---|\n")
-	fmt.Fprintf(&out, "| Corpus | [%s](%s) |\n", c.Name, strings.TrimSuffix(c.Repo, ".git"))
-	fmt.Fprintf(&out, "| Pinned at | `%s` (`%s`) |\n", c.Tag, c.Commit)
-	fmt.Fprintf(&out, "| Project since | %d |\n", c.Since)
-	fmt.Fprintf(&out, "| doppel | `%s` |\n", doppelRev)
-	fmt.Fprintf(&out, "| Command | `doppel %s` |\n\n", strings.Join(args[:len(args)-2], " "))
-	fmt.Fprintf(&out, "Run from the corpus root, so every path below is corpus-relative.\n")
-	fmt.Fprintf(&out, "Regenerate with `task examples`.\n\n")
-	fmt.Fprintf(&out, "## Run diagnostics\n\n")
-	fmt.Fprintf(&out, "The corpus-level models doppel builds before ranking anything, as printed to stderr:\n\n")
-	fmt.Fprintf(&out, "```\n%s```\n\n", diagnostics(stderr.String()))
-	out.Write(body)
-	return normalizeEOL(out.Bytes())
-=======
 // ladderRow is one rung's line in the examples/README.md summary table: the
 // manifest coordinates plus the six quantities the run measured.
 type ladderRow struct {
@@ -130,9 +97,9 @@ type ladderRow struct {
 	Pairs    int
 	Kept     int
 	Floor    string
-	Concepts int
+	Learned  int // concepts the lexicon grew from this corpus
+	Concepts int // of those, how many culture prototyped
 	Habitats int
->>>>>>> origin/master
 }
 
 // TestGenerateExamples regenerates examples/<corpus>.md for every fetched
@@ -169,14 +136,6 @@ func TestGenerateExamples(t *testing.T) {
 			continue
 		}
 		t.Run(c.Name, func(t *testing.T) {
-<<<<<<< HEAD
-			content := buildExampleReport(t, bin, doppelRev, c)
-			dst := filepath.Join(outDir, c.Name+".md")
-			if err := os.WriteFile(dst, content, 0o644); err != nil {
-				t.Fatal(err)
-			}
-			t.Logf("wrote %s (%d bytes)", dst, len(content))
-=======
 			body, row := generateReport(t, bin, doppelRev, c)
 			rows = append(rows, row)
 
@@ -196,7 +155,6 @@ func TestGenerateExamples(t *testing.T) {
 			} else {
 				t.Logf("%s is already current", dst)
 			}
->>>>>>> origin/master
 		})
 	}
 	if len(rows) == 0 {
@@ -289,6 +247,7 @@ var (
 	reKept     = regexp.MustCompile(`(?m)^\s*(\d+) pairs remain after struct-min=`)
 	reFloor    = regexp.MustCompile(`(?m)^Calibration: .*-> threshold (\d+\.\d+)`)
 	reDeclined = regexp.MustCompile(`(?m)^Calibration: .* declined`)
+	reLearned  = regexp.MustCompile(`(?m)^Lexicon: (\d+) concepts`)
 	reConcepts = regexp.MustCompile(`(?m)^Culture: (\d+) concepts modeled`)
 	reHabitats = regexp.MustCompile(`(?m)^Habitats: (\d+) modeled`)
 )
@@ -304,6 +263,9 @@ func parseDiagnostics(c Corpus, diag string) (ladderRow, error) {
 		return row, err
 	}
 	if row.Pairs, err = matchInt(rePairs, diag, "N unique pairs"); err != nil {
+		return row, err
+	}
+	if row.Learned, err = matchInt(reLearned, diag, "Lexicon: N concepts"); err != nil {
 		return row, err
 	}
 	if row.Concepts, err = matchInt(reConcepts, diag, "Culture: N concepts modeled"); err != nil {
@@ -346,12 +308,12 @@ func matchInt(re *regexp.Regexp, diag, want string) (int, error) {
 // renderLadder is the generated block of examples/README.md.
 func renderLadder(rows []ladderRow) string {
 	var b strings.Builder
-	b.WriteString("| Corpus | Since | Pinned | Functions | Pairs compared | Kept | Code-shape floor | Concepts modeled | Habitats |\n")
-	b.WriteString("| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n")
+	b.WriteString("| Corpus | Since | Pinned | Functions | Pairs compared | Kept | Code-shape floor | Concepts learned | Concepts modeled | Habitats |\n")
+	b.WriteString("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n")
 	for _, r := range rows {
-		fmt.Fprintf(&b, "| [%s](%s.md) | %d | `%s` | %d | %d | %d | %s | %d | %d |\n",
+		fmt.Fprintf(&b, "| [%s](%s.md) | %d | `%s` | %d | %d | %d | %s | %d | %d | %d |\n",
 			r.Corpus.Name, r.Corpus.Name, r.Corpus.Since, r.Corpus.Tag,
-			r.Funcs, r.Pairs, r.Kept, r.Floor, r.Concepts, r.Habitats)
+			r.Funcs, r.Pairs, r.Kept, r.Floor, r.Learned, r.Concepts, r.Habitats)
 	}
 	return b.String()
 }
