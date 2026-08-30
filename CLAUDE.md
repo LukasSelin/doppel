@@ -147,6 +147,13 @@ Do not merge these into one number. High code score + low overlap is a *differen
 bodies in unrelated subsystems) from high on both (a real merge candidate), and collapsing them
 destroys that distinction.
 
+A **third** reported quantity, `Breakdown.Containment`, is gated by no flag and blended into
+neither: `Σ w·min(a,b) / min(Σ w·a, Σ w·b)` over the same WL bags and corpus weights `Score`'s
+shape component reads. It answers how much of the *smaller* body's structure the larger one also
+has, where the shape score divides by the union — so an inlined helper reads low on shape and
+near 1.0 on containment. It is reported in text, markdown, HTML and JSON, and never enters
+ranking, filtering or `MergeWorthy`. See *Fingerprint scoring*.
+
 The report is **ranked by neither alone**: `analyzer.SortForReport` orders by **corroborated
 evidence** — `Retrieval.Total × Evidence.OverlapScore × Score × TrophicSim²`, with one further
 linear factor `CallSim` (the call-channel Dice: the mutual fraction of the two functions'
@@ -239,12 +246,18 @@ doppel ontology --defs                                # print the vocabulary and
   interface-implementation kind read; `Fingerprint.Types` (the sorted `in:`/`out:` type *set*) is
   what the similarity score reads. (For a long time `Signature` was empty on every unit: the old
   extractor handed an `*ast.FieldList` to `go/printer`, which rejects it silently.)
-- **Fingerprint** (`internal/fingerprint/fingerprint.go`) — `Shingles` (sorted, deduped 3-gram
-  hashes), `Flow` (control-flow histogram), `Types` (normalized param/result types), `Nodes`, and
-  `Patterns` (the multi-level trophic pattern multiset — see *Trophic structural energy*).
-  `Shingles` still feeds the pinned `ast` Jaccard while `Patterns` feeds retrieval; the L0 overlap
-  between them is deliberate — different dedup semantics, different consumers. The zero value
-  means "no body" and never matches anything.
+- **Fingerprint** (`internal/fingerprint/fingerprint.go`) — `WL` (the Weisfeiler-Lehman label
+  bag: rounds 0..3 merged, sorted ascending by label, built by the *parser* from canon's canonical
+  tree — the one field `Build` does not produce), `Shingles` (sorted, deduped 3-gram hashes),
+  `Flow` (control-flow histogram), `Depth` (nesting-entry histogram), `Types` (normalized
+  param/result types), `Nodes`, and `Patterns` (the multi-level trophic pattern multiset — see
+  *Trophic structural energy*). `WL` feeds the `wl` code-shape component, `Patterns` feeds
+  retrieval, and `Shingles` now feeds only `snapshot.Digest` — the digest answers "did this body
+  change" about the code *as written*, which is a different question from the canonical shape the
+  score reads. The zero value means "no body" and never matches anything.
+  `fingerprint.LabelIDF` (built once per run in `index()`) is the corpus surprisal `ln(N/df)` of
+  every WL label, over presence df; an unseen label answers `ln(N)` (df 1), never 0 — a zero
+  weight does not make a label neutral in a ratio, it makes it invisible.
 - **Term / Ontology** (`internal/ontology/ontology.go`) — the vocabulary: four disjoint rooted trees
   (`entity`, `relation`, `concept`, `role`) carrying definitions, relation weights, and `Validate()`.
   Concept leaf IDs are exactly the tagger's tag strings and role IDs exactly `ClassifyRole`'s return
@@ -467,14 +480,43 @@ extinct because they explain none of the surrounding evidence.
 
 ### Fingerprint scoring
 
-`fingerprint.Similarity` blends four components; weights are constants and sum to exactly `1.00`.
+`fingerprint.Similarity(a, b, idf)` blends four components; weights are constants and sum to
+exactly `1.00`.
 
 | Component | Metric | Weight |
 | --- | --- | --- |
-| AST shingles | Jaccard over hashed 3-grams | 0.60 |
+| WL labels | corpus-weighted multiset Jaccard over the WL bags | 0.60 |
 | Control flow | cosine over the node-kind histogram | 0.20 |
 | Nesting depth | cosine over the entry-depth histogram | 0.05 |
 | Signature | Jaccard over normalized param/result types | 0.15 |
+
+The 0.60 slot used to be Jaccard over hashed 3-grams of a flattened token stream. A shingle is a
+window over a *linearisation*: it cannot tell a condition from the statement it guards, and two
+shingles adjacent in the stream may be nowhere near each other in the tree. A WL label is a
+subtree summary, so sharing one is a claim about shape. The metric is
+
+    jaccard = Σ w·min(a,b) / Σ w·max(a,b),   w = ln(N/df)
+
+with `w` the label's surprisal in *this* corpus, so **code shape is corpus-dependent now** — a
+structure every function in the repo carries weighs exactly 0 and is not a finding. The blend
+weights themselves did not move: re-tuning them in the same change as the metric would leave
+nothing to attribute a ranking move to.
+
+`idf` is threaded explicitly rather than read from a global, so every call site says which corpus
+it is scoring against. `index()` builds exactly one `LabelIDF` after the population filter and
+hands it to retrieval, calibration, family edge completion and the query probe; a nil idf means
+uniform `w = 1` (plain multiset Jaccard), which is the honest answer when there is no corpus and
+what the package's own unit tests score under. `analyzer.FindSimilar` counts its own over the
+units it is handed — the only population a library call can claim to know.
+
+**Containment** is a third reported quantity, `Σ w·min(a,b) / min(Σ w·a, Σ w·b)` — the same
+numerator over the smaller side alone. Both fall out of one sorted merge (`Σ w·max` is
+`massA + massB − shared` term by term), so a pair costs one pass. It is **never** blended into
+`Score`, never enters ranking, filtering or the merge verdict, and is reported in all four
+formats. A helper inlined into a long function reads low on the Jaccard and high on containment,
+which is a finding no single blended number states. Both quantities are `0.0` when the
+denominator is — including the case where every label a pair carries is corpus-universal, the
+same convention `TrophicSimilarity` uses for a pair whose every pattern is idiom.
 
 The depth histogram (`Fingerprint.Depth`, 6 buckets, deep tails folded into the last) records the
 nesting depth each control-flow node is *entered* at; the seven statement-bearing constructs (if,
@@ -488,9 +530,12 @@ Schema 3).
 `SizeRatio` is reported in the `Breakdown` but **not** scored — Jaccard already penalizes size
 mismatch through the union, so damping again would double-count it.
 
-Two canonicalization rules do the heavy lifting in the token stream, and both are load-bearing:
-identifiers collapse to `ID` (so renamed clones still match), while call *selector* names survive as
-`CALL:Errorf` (intent-bearing) with the receiver expression dropped (`e`, `s`, `cfg` are arbitrary).
+Three mechanisms do the heavy lifting, and all are load-bearing. Two are canonicalization rules
+shared by the token stream and the WL labels: identifiers collapse to `ID` (so renamed clones
+still match), while call *selector* names survive as `CALL:Errorf` (intent-bearing) with the
+receiver expression dropped (`e`, `s`, `cfg` are arbitrary). The third is the corpus weighting
+above — the token stream had no way to say that a shared shape was unremarkable, so a body made
+entirely of the repo's own idiom scored as high as a genuine clone.
 
 `--min-nodes` (default `12`) excludes tiny bodies from the **structural retrieval channel** (and
 from `FindSimilar`). Without it one-line accessors match each other at 1.0 and flood the channel.
@@ -1019,7 +1064,14 @@ to rewrite on every turn:
   Anything added back needs a reader, or it is weight in a file the Stop hook rewrites every turn.
   `Schema` 3 added no field: it changed what `Pair.MergeWorthy` asserts (the shape floor). A
   meaning change with no shape change is exactly what the version exists for — the two files would
-  otherwise compare cleanly and report a merge-worthy drop nobody caused.
+  otherwise compare cleanly and report a merge-worthy drop nobody caused. `Schema` 5 is the same
+  kind of bump one step further: `Pair.Score` changed metric (token shingles → corpus-weighted WL
+  Jaccard) *and* became corpus-relative, so a schema-4 baseline and a schema-5 run would disagree
+  about pairs nobody edited. It also added `Containment`, which earns its bytes the way rule four
+  requires: containment is reported on every pair in all four output formats now, and
+  `--format json` is the machine-readable form of that same report, so the field has a reader
+  rather than being write-only. (`README.md`'s `--format` row describes the payload in prose and
+  never enumerated pair fields; naming containment there is a doc follow-up.)
 
 **What a delta may and may not claim.** `UnitsAdded`, `UnitsRemoved` and `BodiesChanged` are solid:
 they come from names and from `Digest`, an FNV-1a hash of the unit's own fingerprint, so nothing

@@ -78,14 +78,14 @@ func TestProbeAgreesWithRetrieveForTheSameUnit(t *testing.T) {
 	opt := DefaultOptions()
 	opt.MinNodes = 1
 
-	full, _ := Retrieve(units, g, onto, ic, opt)
+	full, _ := Retrieve(units, g, onto, ic, labelWeights(units), opt)
 	var wantPairs []Candidate
 	for _, c := range full {
 		if c.AIdx == probeIdx || c.BIdx == probeIdx {
 			wantPairs = append(wantPairs, c)
 		}
 	}
-	got, _ := Probe(units, probeIdx, g, onto, ic, opt)
+	got, _ := Probe(units, probeIdx, g, onto, ic, labelWeights(units), opt)
 
 	if len(got) != len(wantPairs) {
 		t.Fatalf("Probe found %d pairs, Retrieve found %d involving the same unit", len(got), len(wantPairs))
@@ -114,7 +114,7 @@ func TestProbeWithNothingSharedFindsNothing(t *testing.T) {
 	opt.MinNodes = 1
 
 	// Unrelated (index 2) shares no rare shape, tags, or calls with the twins.
-	got, _ := Probe(units, 2, g, onto, ic, opt)
+	got, _ := Probe(units, 2, g, onto, ic, labelWeights(units), opt)
 	for _, c := range got {
 		if c.Total > 0 {
 			// Some incidental L0 window overlap can admit a low-mass pair;
@@ -133,9 +133,9 @@ func TestProbeIsDeterministic(t *testing.T) {
 	opt := DefaultOptions()
 	opt.MinNodes = 1
 
-	first, _ := Probe(units, 0, g, onto, ic, opt)
+	first, _ := Probe(units, 0, g, onto, ic, labelWeights(units), opt)
 	for run := 0; run < 5; run++ {
-		again, _ := Probe(units, 0, g, onto, ic, opt)
+		again, _ := Probe(units, 0, g, onto, ic, labelWeights(units), opt)
 		if len(again) != len(first) {
 			t.Fatalf("run %d: %d candidates, first run had %d", run, len(again), len(first))
 		}

@@ -49,6 +49,13 @@ func (s *Server) Addr() string {
 )
 
 // build parses a single function declaration and fingerprints it.
+//
+// It fills WL itself, because Build deliberately does not: in production the
+// parser sets it from canon's canonical tree, and this package cannot import
+// canon. Bagging the parsed declaration instead is the right substitute here
+// — these tests are about the scoring arithmetic over two bags, and what
+// canonicalization does to a bag's contents is internal/canon's and
+// internal/parser's to prove.
 func build(t *testing.T, src string) Fingerprint {
 	t.Helper()
 	fset := token.NewFileSet()
@@ -58,16 +65,24 @@ func build(t *testing.T, src string) Fingerprint {
 	}
 	for _, decl := range file.Decls {
 		if fd, ok := decl.(*ast.FuncDecl); ok {
-			return Build(fd)
+			fp := Build(fd)
+			fp.WL = WLBag(fd)
+			return fp
 		}
 	}
 	t.Fatalf("no function declaration in snippet")
 	return Fingerprint{}
 }
 
+// Unit tests score with nil weights — no corpus, so every label is worth 1
+// and the shape component is a plain multiset Jaccard. The corpus-weighted
+// path is exercised where a corpus exists: retriever, calibrate and the
+// golden benchmark.
+func sim(a, b Fingerprint) Breakdown { return SimilarityWith(a, b, nil, DefaultWeights()) }
+
 func TestSimilarityIdentical(t *testing.T) {
 	fp := build(t, srcSum)
-	got := Similarity(fp, fp)
+	got := sim(fp, fp)
 	if got.Score != 1.0 {
 		t.Errorf("Score = %v, want 1.0 (breakdown %+v)", got.Score, got)
 	}
@@ -126,7 +141,7 @@ func nested(a, b bool) int {
 	}
 	return x
 }`)
-	bd := Similarity(flat, nested)
+	bd := sim(flat, nested)
 	if bd.Depth >= 1.0 {
 		t.Errorf("Depth = %v, want < 1.0 for different nesting", bd.Depth)
 	}
@@ -166,32 +181,144 @@ func deep(a bool) {
 // Renaming every variable must not change the score: canonicalizing
 // identifiers is the whole point of the AST token stream.
 func TestSimilarityRenamedVariables(t *testing.T) {
-	got := Similarity(build(t, srcSum), build(t, srcSumRenamed))
+	got := sim(build(t, srcSum), build(t, srcSumRenamed))
 	if got.Score < 0.95 {
 		t.Errorf("Score = %v, want >= 0.95 (breakdown %+v)", got.Score, got)
 	}
 }
 
 func TestSimilarityUnrelated(t *testing.T) {
-	got := Similarity(build(t, srcSum), build(t, srcServe))
+	got := sim(build(t, srcSum), build(t, srcServe))
 	if got.Score >= 0.3 {
 		t.Errorf("Score = %v, want < 0.3 (breakdown %+v)", got.Score, got)
 	}
 }
 
+// Containment divides the shared mass by the smaller side's rather than by
+// the union, so a body whose whole shape reappears inside a much longer one
+// reads high on containment and low on the Jaccard. That gap is the finding
+// the pair list could not previously state.
+func TestContainmentSeesTheInlinedHelper(t *testing.T) {
+	helper := build(t, `
+func helper(nums []int) int {
+	total := 0
+	for _, n := range nums {
+		if n > 0 {
+			total += n
+		}
+	}
+	return total
+}`)
+	// The same loop, inlined into a function that does a great deal more.
+	host := build(t, `
+func host(nums []int, names []string) (int, string) {
+	total := 0
+	for _, n := range nums {
+		if n > 0 {
+			total += n
+		}
+	}
+	joined := ""
+	for _, s := range names {
+		if s != "" {
+			joined += s
+		}
+	}
+	switch {
+	case total > 100:
+		joined += "big"
+	case total > 10:
+		joined += "medium"
+	}
+	if joined == "" {
+		joined = "none"
+	}
+	return total, joined
+}`)
+	bd := sim(helper, host)
+	if bd.Containment < bd.WL {
+		t.Fatalf("containment %.3f below the Jaccard %.3f — same numerator, smaller denominator",
+			bd.Containment, bd.WL)
+	}
+	if bd.Containment-bd.WL < 0.15 {
+		t.Errorf("containment %.3f vs Jaccard %.3f: the fixture no longer shows the gap",
+			bd.Containment, bd.WL)
+	}
+	// And the thing the gap is for: containment is not folded into Score.
+	if bd.Score >= bd.Containment {
+		t.Errorf("Score %.3f >= containment %.3f — containment must not be blended in",
+			bd.Score, bd.Containment)
+	}
+}
+
+// Identical bags contain each other entirely, whatever the weighting.
+func TestContainmentOfIdenticalBodies(t *testing.T) {
+	fp := build(t, srcSum)
+	if got := sim(fp, fp).Containment; got != 1.0 {
+		t.Errorf("self-containment = %v, want 1.0", got)
+	}
+}
+
+// Corpus weighting is the semantic shift: the same two bodies score
+// differently depending on how ordinary their shared structure is where they
+// live. Against a corpus of nothing but copies of themselves, every label is
+// universal, every weight is ln(N/N) = 0, and the pair shares no information
+// at all — the same 0/0 convention TrophicSimilarity uses for a pair whose
+// every pattern is corpus idiom.
+func TestWeightingIsCorpusRelative(t *testing.T) {
+	a, b := build(t, srcSum), build(t, srcSumRenamed)
+	if plain := sim(a, b).WL; plain != 1.0 {
+		t.Fatalf("unweighted Jaccard of a renamed copy = %v, want 1.0", plain)
+	}
+
+	// A corpus that is nothing but these two: every label is in every bag.
+	idiom := LabelWeights([][]LabelCount{a.WL, b.WL})
+	if got := Similarity(a, b, idiom); got.WL != 0 || got.Containment != 0 {
+		t.Errorf("in a corpus of nothing but this shape, wl = %v / containment = %v, want 0 and 0",
+			got.WL, got.Containment)
+	}
+
+	// Add bodies that share none of it and the shape becomes informative again.
+	corpus := LabelWeights([][]LabelCount{a.WL, b.WL,
+		build(t, srcServe).WL, build(t, srcGetter).WL})
+	if got := Similarity(a, b, corpus).WL; got <= 0 {
+		t.Errorf("wl = %v in a mixed corpus, want > 0 — the shape is rare there", got)
+	}
+}
+
+// An unseen label is treated as df 1 rather than weightless, so it lands in
+// the union and depresses the score. Weightless would make it invisible,
+// which is the unsafe direction — see LabelIDF.Weight.
+func TestUnseenLabelsDepressRatherThanVanish(t *testing.T) {
+	a, b := build(t, srcSum), build(t, srcServe)
+	// Weights counted over a corpus neither body belongs to.
+	foreign := LabelWeights([][]LabelCount{
+		build(t, srcGetter).WL,
+		build(t, `func g() { println(1) }`).WL,
+	})
+	got := Similarity(a, b, foreign)
+	if got.WL < 0 || got.WL > 1 {
+		t.Errorf("wl = %v, outside [0,1]", got.WL)
+	}
+	if got.WL >= sim(a, b).WL {
+		t.Errorf("wl %v against a foreign corpus is not below the unweighted %v",
+			got.WL, sim(a, b).WL)
+	}
+}
+
 func TestSimilaritySymmetric(t *testing.T) {
 	a, b := build(t, srcSum), build(t, srcServe)
-	if forward, reverse := Similarity(a, b), Similarity(b, a); forward != reverse {
+	if forward, reverse := sim(a, b), sim(b, a); forward != reverse {
 		t.Errorf("Similarity not symmetric: %+v vs %+v", forward, reverse)
 	}
 }
 
 func TestSimilarityNoBody(t *testing.T) {
 	var empty Fingerprint
-	if got := Similarity(empty, build(t, srcSum)); got != (Breakdown{}) {
+	if got := sim(empty, build(t, srcSum)); got != (Breakdown{}) {
 		t.Errorf("Similarity with empty fingerprint = %+v, want zero Breakdown", got)
 	}
-	if got := Similarity(empty, empty); got != (Breakdown{}) {
+	if got := sim(empty, empty); got != (Breakdown{}) {
 		t.Errorf("Similarity of two empty fingerprints = %+v, want zero Breakdown", got)
 	}
 }
@@ -247,12 +374,12 @@ func TestSimilarityWithDefaultIsIdentical(t *testing.T) {
 	fps := []Fingerprint{build(t, srcSum), build(t, srcSumRenamed), build(t, srcServe), build(t, srcGetter)}
 	for _, a := range fps {
 		for _, b := range fps {
-			if Similarity(a, b) != SimilarityWith(a, b, DefaultWeights()) {
+			if Similarity(a, b, nil) != SimilarityWith(a, b, nil, DefaultWeights()) {
 				t.Fatalf("SimilarityWith(DefaultWeights) differs from Similarity")
 			}
 		}
 	}
-	if s := DefaultWeights().Sum(); s != weightAST+weightFlow+weightDepth+weightSignature {
+	if s := DefaultWeights().Sum(); s != weightWL+weightFlow+weightDepth+weightSignature {
 		t.Errorf("DefaultWeights().Sum() = %v", s)
 	}
 }
@@ -260,8 +387,8 @@ func TestSimilarityWithDefaultIsIdentical(t *testing.T) {
 // Scaled moves one component and renormalizes the rest, keeping the total.
 func TestWeightsScaled(t *testing.T) {
 	w := DefaultWeights().Scaled(0, 0.5)
-	if w.AST != 0.30 {
-		t.Errorf("AST = %v, want 0.30", w.AST)
+	if w.WL != 0.30 {
+		t.Errorf("WL = %v, want 0.30", w.WL)
 	}
 	if d := w.Sum() - 1.0; d > 1e-12 || d < -1e-12 {
 		t.Errorf("Sum = %v, want 1.0", w.Sum())
@@ -270,7 +397,7 @@ func TestWeightsScaled(t *testing.T) {
 	if r := w.Flow / w.Signature; r < 0.2/0.15-1e-9 || r > 0.2/0.15+1e-9 {
 		t.Errorf("flow/sig ratio moved: %v", r)
 	}
-	if a, b := Similarity(build(t, srcSum), build(t, srcServe)), SimilarityWith(build(t, srcSum), build(t, srcServe), w); a.Score == b.Score {
+	if a, b := sim(build(t, srcSum), build(t, srcServe)), SimilarityWith(build(t, srcSum), build(t, srcServe), nil, w); a.Score == b.Score {
 		t.Error("a different blend left the score unchanged")
 	}
 }

@@ -152,7 +152,7 @@ func runQuery(cmd *cobra.Command, args []string) error {
 
 	for pi := range probes {
 		probeIdx := corpusN + pi
-		cands, _ := retriever.Probe(res.Units, probeIdx, res.Graph, res.Onto, res.IC, opts)
+		cands, _ := retriever.Probe(res.Units, probeIdx, res.Graph, res.Onto, res.IC, res.WL, opts)
 
 		matches := make([]reporter.QueryMatch, 0, len(cands))
 		ball := neighborhoodSet(res.Graph, res.Units[probeIdx])

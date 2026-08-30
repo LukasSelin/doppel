@@ -80,8 +80,8 @@ func (e T%d) Label() string {
 		t.Errorf("idiom twins shape energy = %.3f, want 0 (fully capped)", twin.Shape)
 	}
 	if twin.TrophicSim >= 0.3 {
-		t.Errorf("ubiquitous twins trophic = %.3f, want < 0.3 despite ast %.2f",
-			twin.TrophicSim, twin.Breakdown.AST)
+		t.Errorf("ubiquitous twins trophic = %.3f, want < 0.3 despite wl %.2f",
+			twin.TrophicSim, twin.Breakdown.WL)
 	}
 }
 

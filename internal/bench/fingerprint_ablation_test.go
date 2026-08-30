@@ -28,7 +28,7 @@ type fpComponent struct {
 
 func fpComponents() []fpComponent {
 	return []fpComponent{
-		{"AST 0.60", func(w fingerprint.Weights) fingerprint.Weights { w.AST = 0; return w }},
+		{"WL 0.60", func(w fingerprint.Weights) fingerprint.Weights { w.WL = 0; return w }},
 		{"Flow 0.20", func(w fingerprint.Weights) fingerprint.Weights { w.Flow = 0; return w }},
 		{"Depth 0.05", func(w fingerprint.Weights) fingerprint.Weights { w.Depth = 0; return w }},
 		{"Signature 0.15", func(w fingerprint.Weights) fingerprint.Weights { w.Signature = 0; return w }},

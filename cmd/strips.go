@@ -160,6 +160,10 @@ func pairCard(n int, p analyzer.SimilarPair) reporter.HTMLPairCard {
 		A:          concepter.QualifiedName(p.A),
 		B:          concepter.QualifiedName(p.B),
 		ShapeLabel: fmt.Sprintf("%.4f", p.Score),
+		// Reported on every card, whether or not the pair has evidence:
+		// containment comes from the same two bags the shape score does, so
+		// there is no pair that has one and not the other.
+		ContainmentLabel: fmt.Sprintf("%.2f", p.Breakdown.Containment),
 	}
 	// "nesting" is the design's name for the depth component; the fingerprint
 	// calls the field Depth and its own comment says it reports as nesting.
@@ -167,7 +171,7 @@ func pairCard(n int, p analyzer.SimilarPair) reporter.HTMLPairCard {
 		name string
 		v    float64
 	}{
-		{"ast", p.Breakdown.AST},
+		{"wl", p.Breakdown.WL},
 		{"flow", p.Breakdown.Flow},
 		{"nesting", p.Breakdown.Depth},
 		{"sig", p.Breakdown.Signature},

@@ -17,6 +17,22 @@ import (
 // carry maximal ln(N/df) and pair with nothing.
 const wlRounds = 3
 
+// LabelCount is one Weisfeiler–Lehman label and how many times a body carries
+// it. A bag is a slice of these sorted ascending by Label, with no label
+// repeated.
+//
+// A sorted slice rather than the map T2 shipped, now that something scores on
+// it. Every other multiset on a Fingerprint — Shingles, Patterns — is already
+// a sorted slice, for the reason this one now is too: scoring a pair is a
+// single merge of two sorted runs, and sorting inside the pair loop would
+// dominate a stage that runs on tens of thousands of pairs. Keeping the map
+// as well and deriving this from it would be two spellings of one multiset,
+// which is the drift this package refuses everywhere else.
+type LabelCount struct {
+	Label uint64
+	Count int
+}
+
 // wlLabels holds one node's labels for every round, index h.
 type wlLabels [wlRounds + 1]uint64
 
@@ -60,7 +76,7 @@ type wlFrame struct {
 // is walked once rather than once per round. Children's vectors live in a
 // single arena reused across siblings, so a function costs one map and two
 // slices no matter how deep it nests.
-func WLBag(fd *ast.FuncDecl) map[uint64]int {
+func WLBag(fd *ast.FuncDecl) []LabelCount {
 	if fd == nil || fd.Body == nil {
 		return nil
 	}
@@ -109,7 +125,22 @@ func WLBag(fd *ast.FuncDecl) map[uint64]int {
 		}
 		return false
 	})
-	return bag
+	// The map is a counting scratchpad and never escapes: the result is
+	// sorted, so nothing downstream can depend on Go's map order.
+	out := make([]LabelCount, 0, len(bag))
+	for label, n := range bag {
+		out = append(out, LabelCount{Label: label, Count: n})
+	}
+	slices.SortFunc(out, func(a, b LabelCount) int {
+		switch {
+		case a.Label < b.Label:
+			return -1
+		case a.Label > b.Label:
+			return 1
+		}
+		return 0
+	})
+	return out
 }
 
 // FNV-1a, inlined over uint64 accumulators rather than through hash/fnv.
@@ -349,23 +380,33 @@ func chanDir(d ast.ChanDir) string {
 type LabelIDF struct {
 	n  int
 	df map[uint64]int
+	w  map[uint64]float64 // ln(N/df), precomputed
 }
 
 // LabelWeights counts label document frequency across a population's bags.
 // Pass one bag per function, in any order and including nil ones; the result
 // depends only on the multiset of bags, never on their order.
-func LabelWeights(bags []map[uint64]int) *LabelIDF {
+//
+// The ln(N/df) of every label is computed once, here. Weight is called twice
+// per label per scored pair and the pair count is quadratic-ish in the corpus;
+// a math.Log per call is more expensive than the lookup that finds it.
+func LabelWeights(bags [][]LabelCount) *LabelIDF {
 	w := &LabelIDF{df: make(map[uint64]int)}
 	for _, bag := range bags {
 		if len(bag) == 0 {
 			continue
 		}
 		w.n++
-		// Iterating a map is safe here and only here: every key is
-		// incremented independently, so no ordering decides anything.
-		for label := range bag {
-			w.df[label]++
+		for _, lc := range bag {
+			w.df[lc.Label]++
 		}
+	}
+	w.w = make(map[uint64]float64, len(w.df))
+	// Iterating a map is safe here and only here: every entry is computed
+	// independently from its own key and value, so no ordering decides
+	// anything.
+	for label, df := range w.df {
+		w.w[label] = math.Log(float64(w.n) / float64(df))
 	}
 	return w
 }
@@ -388,17 +429,34 @@ func (w *LabelIDF) DF(label uint64) int {
 }
 
 // Weight is ln(N/df), the evidence in nats that two functions sharing this
-// label supply. A label the corpus has never seen weighs 0 rather than
-// infinity: it is absence of evidence here, not evidence.
+// label supply. A label every function carries weighs exactly 0.
+//
+// # An unseen label counts as df 1, the rarest thing the corpus can express
+//
+// T2 returned 0 here, on the reading that a label the corpus has never seen is
+// absence of evidence. Scoring makes that reading unsafe, so it is now ln(N).
+//
+// A weight of 0 does not make a label neutral in a weighted Jaccard — it makes
+// it *invisible*, dropping out of the numerator and the denominator alike. Two
+// functions built entirely of labels this table has never seen would then
+// divide 0 by 0 and be reported as unlike, or worse, share one incidental
+// label and be reported as identical. Under ln(N) an unseen label lands in the
+// union and depresses the score, so the failure direction is "less similar
+// than they are", which a reader can act on. Both readings are defensible for
+// a lookup; only one is safe for a ratio.
+//
+// This is a fallback, not a path. Every unit the pipeline scores is in the
+// population LabelWeights counted, query probes included — they join the
+// corpus before the weights are built. A label reaches this branch only when a
+// caller scores a fingerprint from outside the corpus it passed.
 func (w *LabelIDF) Weight(label uint64) float64 {
 	if w == nil || w.n == 0 {
 		return 0
 	}
-	df := w.df[label]
-	if df <= 0 {
-		return 0
+	if weight, ok := w.w[label]; ok {
+		return weight
 	}
-	return math.Log(float64(w.n) / float64(df))
+	return math.Log(float64(w.n))
 }
 
 // Labels returns every label the corpus carries, ascending. It exists so a

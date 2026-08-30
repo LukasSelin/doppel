@@ -217,7 +217,7 @@ func TestPrintProfileNotes(t *testing.T) {
 		t.Errorf("arena detail shown without Debug:\n%s", out)
 	}
 	// Placement: profile precedes the breakdown line.
-	if strings.Index(out, "profile A:") > strings.Index(out, "ast ") {
+	if strings.Index(out, "profile A:") > strings.Index(out, "wl ") {
 		t.Errorf("profile line rendered after the breakdown:\n%s", out)
 	}
 

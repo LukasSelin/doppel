@@ -60,7 +60,15 @@ import (
 // body hashes differently under schema 3 and 4, so cross-schema diffs would
 // report every function as changed. The histogram itself is not stored — no
 // consumer reads it back, and rule four still holds.
-const Schema = 4
+//
+// 5 changed what Score means and added Containment. Code shape is a
+// corpus-weighted multiset Jaccard over Weisfeiler-Lehman label bags now, not
+// Jaccard over token 3-grams, so the same untouched pair scores differently
+// under schema 4 and 5. Worse than differently: the new score is
+// corpus-relative, so a schema-4 baseline and a schema-5 run would disagree
+// about pairs nobody edited. The bump turns that into an incomparability
+// result rather than a delta full of movement no session caused.
+const Schema = 5
 
 // Snapshot is one full analysis run.
 //
@@ -183,10 +191,21 @@ type Unit struct {
 // Pair is one reported near-duplicate. A and B are Unit keys, ordered A < B so
 // a pair has exactly one spelling and can be matched across runs.
 //
-// Score is corpus-independent: fingerprint.Similarity reads two fingerprints
-// and nothing else. Overlap is corpus-weighted through the information content
-// of this run's tag counts, and MergeWorthy is half so — the signal count and
-// the shape floor are corpus-independent but the 0.4 overlap gate is not.
+// Every number here is corpus-relative now. Score used to be the exception —
+// fingerprint.Similarity read two fingerprints and nothing else — but its
+// shape component weights each shared structural label by ln(N/df) over this
+// run's corpus, so it moves when the corpus does. Overlap has always been
+// corpus-weighted through this run's concept information content, and
+// MergeWorthy is a pair of thresholds over both.
+//
+// That is not an argument for dropping them; it is the reason Params equality
+// and the Schema version gate a diff at all. Two runs over the same tree with
+// the same params still agree exactly, which is the only claim a delta makes.
+//
+// Containment is stored because it is now part of the documented --format
+// json payload, which is rule four's whole test: a field earns its bytes by
+// having a reader. It is reported and never scored — not in the rank key, not
+// in the merge verdict, and Diff does not diff it.
 //
 // Earlier schemas also carried the four fingerprint.Breakdown components and
 // the evidence Reasons strings. Neither was ever read back: the text report
@@ -197,6 +216,7 @@ type Pair struct {
 	A           string  `json:"a"`
 	B           string  `json:"b"`
 	Score       float64 `json:"score"`
+	Containment float64 `json:"containment"` // reported, never scored or diffed
 	Overlap     float64 `json:"overlap"`     // corpus-relative
 	MergeWorthy bool    `json:"mergeWorthy"` // half corpus-relative
 }
@@ -256,7 +276,7 @@ func Build(units []parser.CodeUnit, docs []concepter.ConceptDoc, pairs []analyze
 		if a > b {
 			a, b = b, a
 		}
-		rec := Pair{A: a, B: b, Score: pr.Score}
+		rec := Pair{A: a, B: b, Score: pr.Score, Containment: pr.Breakdown.Containment}
 		if pr.Evidence != nil {
 			rec.Overlap = pr.Evidence.OverlapScore
 			rec.MergeWorthy = pr.MergeWorthy()

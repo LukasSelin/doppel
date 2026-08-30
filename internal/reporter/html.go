@@ -97,16 +97,23 @@ type HTMLStripMember struct {
 
 // HTMLPairCard is one reported pair, shown under the strip that produced it.
 type HTMLPairCard struct {
-	Label        string
-	A, B         string
-	ShapeLabel   string
-	OverlapLabel string
-	Components   []HTMLComponent
-	Footer       string
+	Label      string
+	A, B       string
+	ShapeLabel string
+	// ContainmentLabel sits between the two scores in the card header
+	// because that is what it is: a third reported quantity about the pair,
+	// blended into neither. Shape divides shared structural information by
+	// the pair's union, containment by the smaller side alone, so a helper
+	// inlined into a long function reads low on the first and high on the
+	// second.
+	ContainmentLabel string
+	OverlapLabel     string
+	Components       []HTMLComponent
+	Footer           string
 }
 
-// HTMLComponent is one of the five fingerprint components behind a pair's
-// code-shape score.
+// HTMLComponent is one of the fingerprint components behind a pair's
+// code-shape score, plus the reported-but-unscored size ratio.
 type HTMLComponent struct {
 	Name  string
 	Pct   int

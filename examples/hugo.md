@@ -9,7 +9,7 @@ static site generator; a large monolith with heavy template and resource subsyst
 | Corpus | [hugo](https://github.com/gohugoio/hugo) |
 | Pinned at | `v0.165.0` (`76a5e1880ab46688155b02e99bab9be2a6134492`) |
 | Project since | 2013 |
-| doppel | `e53d59d` |
+| doppel | `2e3a4cc` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -27,10 +27,10 @@ Habitats: 126 modeled, 538 misfits (121 excused by subsystem), 31 subsystems; mo
 Conventions: strongest error_wrapping (0.64), loosest serialization (0.52)
 Ecosystems: 1997 profiled (1408 dominance, 589 coalition, 0 conflict, 0 weak)
 Found 5438 functions. Retrieving candidates...
-Retrieval: shape 2195, concept 4057, call 8265 -> 13753 unique pairs
-  concept-only 28.2%  call-only 54.7%  suppressed-shape functions: 70  large identity buckets: 0  surviving patterns: 31542
-Running structural comparison on 13753 pairs...
-Families: 306 over 480 components, 939 functions in a family, 623 edges completed
+Retrieval: shape 1004, concept 4057, call 8265 -> 12833 unique pairs
+  concept-only 30.3%  call-only 60.7%  suppressed-shape functions: 70  large identity buckets: 0  surviving patterns: 31542
+Running structural comparison on 12833 pairs...
+Families: 134 over 341 components, 436 functions in a family, 188 edges completed
 ```
 
 # Code Similarity Report
@@ -126,7 +126,7 @@ flowchart LR
     p1["cssjs<br/>3 internal"]
     p0 ---|"6"| p1
     p2["navigation<br/>1 internal"]
-    p3["page<br/>106 internal"]
+    p3["page<br/>37 internal"]
     p2 ---|"6"| p3
     p4["langs<br/>5 internal"]
     p5["roles"]
@@ -134,24 +134,24 @@ flowchart LR
     p6["versions"]
     p4 ---|"5"| p6
     p5 ---|"5"| p6
-    p7["commands<br/>46 internal"]
-    p8["hugolib<br/>182 internal"]
+    p7["commands<br/>26 internal"]
+    p8["hugolib<br/>118 internal"]
     p7 ---|"4"| p8
-    p9["dartsass"]
+    p9["minifier"]
     p1 ---|"4"| p9
-    p10["js<br/>1 internal"]
-    p1 ---|"4"| p10
-    p11["minifier"]
-    p1 ---|"4"| p11
-    p12["filecache<br/>40 internal"]
-    p13["template<br/>121 internal"]
-    p12 ---|"4"| p13
     p8 ---|"4"| p3
-    p14["allconfig"]
-    p14 ---|"3"| p7
+    p10["allconfig"]
+    p10 ---|"3"| p7
+    p11["hugofs<br/>27 internal"]
+    p7 ---|"3"| p11
+    p12["esbuild<br/>8 internal"]
+    p13["filecache<br/>30 internal"]
+    p12 ---|"3"| p13
+    p14["httpcache"]
+    p12 ---|"3"| p14
 ```
 
-_279 further package pairs are connected by merge-worthy duplication and are not drawn._
+_198 further package pairs are connected by merge-worthy duplication and are not drawn._
 
 ### How settled each package is
 
@@ -181,7 +181,7 @@ _114 further packages are modeled and not drawn._ Most uniform is `partials` (no
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **13753 candidate pairs** (shape 2195, concept 4057, call 8265), of which 55% arrived on call evidence alone and 28% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **12833 candidate pairs** (shape 1004, concept 4057, call 8265), of which 61% arrived on call evidence alone and 30% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 1997 functions reached an equilibrium: **1408** settled on a single concept, **589** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -326,7 +326,7 @@ _47 more unusual realizations not listed._
 
 ---
 
-## Match #1 — Code-shape: `0.8459`
+## Match #1 — Code-shape: `0.7661`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -339,7 +339,9 @@ _47 more unusual realizations not listed._
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.78  flow 1.00  nesting 1.00  sig 0.86  size 0.75`
+**Code similarity:** `wl 0.65  flow 1.00  nesting 1.00  sig 0.86  size 0.75`
+
+**Containment:** `0.92` — most of the smaller body's shape is inside the larger
 
 **Evidence:** `3741.11` (shape 3686.51, concept 4.60, call 50.00)
 
@@ -369,7 +371,7 @@ _47 more unusual realizations not listed._
 
 ---
 
-## Match #2 — Code-shape: `0.9248`
+## Match #2 — Code-shape: `0.8293`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -382,7 +384,9 @@ _47 more unusual realizations not listed._
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.88  flow 1.00  nesting 1.00  sig 1.00  size 0.75`
+**Code similarity:** `wl 0.72  flow 1.00  nesting 1.00  sig 1.00  size 0.75`
+
+**Containment:** `0.93`
 
 **Evidence:** `2230.52` (shape 2214.61, concept 2.49, call 13.42)
 
@@ -408,14 +412,16 @@ _47 more unusual realizations not listed._
 
 ---
 
-## Match #3 — Code-shape: `0.8498`
+## Match #3 — Code-shape: `0.7494`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
 | **A** | `tpl/math/init.go:26` | `math.init` | `()` | — |
 | **B** | `tpl/strings/init.go:25` | `strings.init` | `()` | — |
 
-**Code similarity:** `ast 0.77  flow 0.94  nesting 0.95  sig 1.00  size 0.92`
+**Code similarity:** `wl 0.61  flow 0.94  nesting 0.95  sig 1.00  size 0.92`
+
+**Containment:** `0.80`
 
 **Evidence:** `3172.59` (shape 3162.31, concept 0.00, call 10.28)
 
@@ -438,38 +444,7 @@ _47 more unusual realizations not listed._
 
 ---
 
-## Match #4 — Code-shape: `0.9564`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `tpl/collections/init.go:25` | `collections.init` | `()` | — |
-| **B** | `tpl/strings/init.go:25` | `strings.init` | `()` | — |
-
-**Code similarity:** `ast 0.93  flow 1.00  nesting 1.00  sig 1.00  size 0.86`
-
-**Evidence:** `2848.97` (shape 2838.69, concept 0.00, call 10.28)
-
-**Trophic:** `0.75`
-
-**Shared structure:**
-
-- `134.39` — `do(call:AddMethodMapping)`
-- `131.42` — `seq[ do(call:AddMethodMapping) ; do(call:AddMethodMapping) ]`
-- `5.05` — `seq[ assign:=(call:New) ; assign:=(unary) ]`
-
-**Structural overlap:** `0.52` (merge-worthy)
-
-- share 3 callees: [New, internal.AddTemplateFuncsNamespace, ns.AddMethodMapping]
-- overlapping call-graph neighborhoods (0.91): 32 shared
-- both are orchestrator functions
-- callees do related work (1.00): [caching]
-- same visibility
-- same receiver type: plain functions
-- call into same packages: [internal]
-
----
-
-## Match #5 — Code-shape: `0.7425`
+## Match #4 — Code-shape: `0.7006`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -480,7 +455,9 @@ _47 more unusual realizations not listed._
 
 **Profile B:** `file_io` 0.94, `caching` 0.06 (dominance)
 
-**Code similarity:** `ast 0.82  flow 1.00  nesting 1.00  sig 0.00  size 0.96`
+**Code similarity:** `wl 0.75  flow 1.00  nesting 1.00  sig 0.00  size 0.96`
+
+**Containment:** `0.87`
 
 **Evidence:** `1230.71` (shape 1169.95, concept 7.07, call 53.69)
 
@@ -512,7 +489,40 @@ _47 more unusual realizations not listed._
 
 ---
 
-## Match #6 — Code-shape: `0.9533`
+## Match #5 — Code-shape: `0.7619`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `tpl/collections/init.go:25` | `collections.init` | `()` | — |
+| **B** | `tpl/strings/init.go:25` | `strings.init` | `()` | — |
+
+**Code similarity:** `wl 0.60  flow 1.00  nesting 1.00  sig 1.00  size 0.86`
+
+**Containment:** `0.82`
+
+**Evidence:** `2848.97` (shape 2838.69, concept 0.00, call 10.28)
+
+**Trophic:** `0.75`
+
+**Shared structure:**
+
+- `134.39` — `do(call:AddMethodMapping)`
+- `131.42` — `seq[ do(call:AddMethodMapping) ; do(call:AddMethodMapping) ]`
+- `5.05` — `seq[ assign:=(call:New) ; assign:=(unary) ]`
+
+**Structural overlap:** `0.52` (merge-worthy)
+
+- share 3 callees: [New, internal.AddTemplateFuncsNamespace, ns.AddMethodMapping]
+- overlapping call-graph neighborhoods (0.91): 32 shared
+- both are orchestrator functions
+- callees do related work (1.00): [caching]
+- same visibility
+- same receiver type: plain functions
+- call into same packages: [internal]
+
+---
+
+## Match #6 — Code-shape: `0.9282`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -525,7 +535,9 @@ _47 more unusual realizations not listed._
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.92  flow 1.00  nesting 0.99  sig 1.00  size 0.92`
+**Code similarity:** `wl 0.88  flow 1.00  nesting 0.99  sig 1.00  size 0.92`
+
+**Containment:** `0.97`
 
 **Evidence:** `1457.44` (shape 1434.32, concept 2.49, call 20.63)
 
@@ -549,7 +561,47 @@ _47 more unusual realizations not listed._
 
 ---
 
-## Match #7 — Code-shape: `0.8113`
+## Match #7 — Code-shape: `1.0000`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `resources/image.go:198` | `resources.*imageResource.getImageMetaInfoCacheTargetPath` | `() (string)` | caching |
+| **B** | `resources/image.go:501` | `resources.*imageResource.getImageMetaCacheTargetPath` | `() (string)` | caching |
+
+**Profile A:** `caching` 1.00 (dominance)
+
+**Profile B:** `caching` 1.00 (dominance)
+
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 0.99`
+
+**Containment:** `1.00`
+
+**Evidence:** `633.62` (shape 596.69, concept 1.64, call 35.29)
+
+**Trophic:** `1.00`
+
+**Shared structure:**
+
+- `7.58` — `seq[ assign:=(call:FileAndExt) ; assign:=(call:hash) ]`
+- `7.58` — `seq[ assign:=(call:HashStringHex) ; assign=(call:Sprintf) ]`
+- `7.58` — `seq[ assign:=(call:getResourcePaths) ; assign:=(call:FileAndExt) ]`
+
+**Structural overlap:** `0.83` (merge-worthy)
+
+- share 8 callees: [df.TargetPath, fmt.Sprintf, hashing.HashStringHex, i.getResourcePaths, i.getSpec, i.hash, i.size, paths.FileAndExt]
+- overlapping call-graph neighborhoods (0.92): 23 shared
+- share patterns: [caching]
+- both are orchestrator functions
+- same package
+- callers do related work (1.00): [serialization, file_io, caching]
+- same visibility
+- same receiver type: imageResource
+- called from same packages: [resources]
+- call into same packages: [hashing, paths, resources]
+
+---
+
+## Match #8 — Code-shape: `0.7426`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -562,7 +614,9 @@ _47 more unusual realizations not listed._
 
 **Profile B:** `file_io` 1.00 (dominance)
 
-**Code similarity:** `ast 0.69  flow 1.00  nesting 1.00  sig 1.00  size 0.91`
+**Code similarity:** `wl 0.57  flow 1.00  nesting 1.00  sig 1.00  size 0.91`
+
+**Containment:** `0.79`
 
 **Evidence:** `2165.06` (shape 2052.31, concept 5.82, call 106.93)
 
@@ -595,45 +649,46 @@ _47 more unusual realizations not listed._
 
 ---
 
-## Match #8 — Code-shape: `1.0000`
+## Match #9 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `resources/image.go:198` | `resources.*imageResource.getImageMetaInfoCacheTargetPath` | `() (string)` | caching |
-| **B** | `resources/image.go:501` | `resources.*imageResource.getImageMetaCacheTargetPath` | `() (string)` | caching |
+| **A** | `internal/js/esbuild/batch.go:1021` | `esbuild.*scriptGroup.Runner` | `(string) (js.OptionsSetter)` | validation, concurrency |
+| **B** | `internal/js/esbuild/batch.go:1050` | `esbuild.*scriptGroup.Script` | `(string) (js.OptionsSetter)` | validation, concurrency |
 
-**Profile A:** `caching` 1.00 (dominance)
+**Profile A:** `validation` 1.00 (dominance)
 
-**Profile B:** `caching` 1.00 (dominance)
+**Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 0.99`
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `633.62` (shape 596.69, concept 1.64, call 35.29)
+**Containment:** `1.00`
+
+**Evidence:** `562.20` (shape 551.22, concept 3.99, call 6.99)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `7.58` — `seq[ assign:=(call:FileAndExt) ; assign:=(call:hash) ]`
-- `7.58` — `seq[ assign:=(call:HashStringHex) ; assign=(call:Sprintf) ]`
-- `7.58` — `seq[ assign:=(call:getResourcePaths) ; assign:=(call:FileAndExt) ]`
+- `13.33` — `return(call:Get)`
+- `7.58` — `seq[ assign:=(call:scriptID) ; if(id) ]`
+- `7.58` — `seq[ defer(call:Unlock) ; assign:=(call:scriptID) ]`
 
-**Structural overlap:** `0.83` (merge-worthy)
+**Structural overlap:** `0.81` (merge-worthy)
 
-- share 8 callees: [df.TargetPath, fmt.Sprintf, hashing.HashStringHex, i.getResourcePaths, i.getSpec, i.hash, i.size, paths.FileAndExt]
-- overlapping call-graph neighborhoods (0.92): 23 shared
-- share patterns: [caching]
-- both are orchestrator functions
+- share 8 callees: [Get, Lock, Unlock, ValidateBatchID, panic, s.key, scriptID, v.Get]
+- overlapping call-graph neighborhoods (1.00): 4 shared
+- share patterns: [concurrency, validation]
+- both are leaf functions
 - same package
-- callers do related work (1.00): [serialization, file_io, caching]
+- callees do related work (1.00): [validation]
 - same visibility
-- same receiver type: imageResource
-- called from same packages: [resources]
-- call into same packages: [hashing, paths, resources]
+- same receiver type: scriptGroup
+- call into same packages: [esbuild]
 
 ---
 
-## Match #9 — Code-shape: `0.7598`
+## Match #10 — Code-shape: `0.6643`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -646,7 +701,9 @@ _47 more unusual realizations not listed._
 
 **Profile B:** `file_io` 1.00 (dominance)
 
-**Code similarity:** `ast 0.61  flow 0.98  nesting 0.99  sig 1.00  size 0.75`
+**Code similarity:** `wl 0.45  flow 0.98  nesting 0.99  sig 1.00  size 0.75`
+
+**Containment:** `0.73` — most of the smaller body's shape is inside the larger
 
 **Evidence:** `1661.62` (shape 1544.81, concept 5.82, call 110.99)
 
@@ -680,141 +737,104 @@ _47 more unusual realizations not listed._
 
 ---
 
-## Match #10 — Code-shape: `1.0000`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `internal/js/esbuild/batch.go:1021` | `esbuild.*scriptGroup.Runner` | `(string) (js.OptionsSetter)` | validation, concurrency |
-| **B** | `internal/js/esbuild/batch.go:1050` | `esbuild.*scriptGroup.Script` | `(string) (js.OptionsSetter)` | validation, concurrency |
-
-**Profile A:** `validation` 1.00 (dominance)
-
-**Profile B:** `validation` 1.00 (dominance)
-
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
-
-**Evidence:** `562.20` (shape 551.22, concept 3.99, call 6.99)
-
-**Trophic:** `1.00`
-
-**Shared structure:**
-
-- `13.33` — `return(call:Get)`
-- `7.58` — `seq[ assign:=(call:scriptID) ; if(id) ]`
-- `7.58` — `seq[ defer(call:Unlock) ; assign:=(call:scriptID) ]`
-
-**Structural overlap:** `0.81` (merge-worthy)
-
-- share 8 callees: [Get, Lock, Unlock, ValidateBatchID, panic, s.key, scriptID, v.Get]
-- overlapping call-graph neighborhoods (1.00): 4 shared
-- share patterns: [concurrency, validation]
-- both are leaf functions
-- same package
-- callees do related work (1.00): [validation]
-- same visibility
-- same receiver type: scriptGroup
-- call into same packages: [esbuild]
-
----
-
 ## Families
 
-306 families, 939 functions in a family, largest 27 members; 623 edges scored here that retrieval never proposed
+134 families, 436 functions in a family, largest 14 members; 188 edges scored here that retrieval never proposed
 
-### Family 1 — 27 members, every pair `>= 0.61` code-shape, evidence `102861`  (195 edges scored here)
+### Family 1 — 12 members, every pair `>= 0.60` code-shape, evidence `32550`  (24 edges scored here)
 
-_Not drawn: 27 members is 351 connections. Every one of them holds — that is what makes this a family._
+_Not drawn: 12 members is 66 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `tpl/cast/init.go:25` | `cast.init` | `()` | — |
-| `tpl/collections/init.go:25` | `collections.init` | `()` | — |
 | `tpl/compare/init.go:26` | `compare.init` | `()` | — |
-| `tpl/crypto/init.go:25` | `crypto.init` | `()` | — |
 | `tpl/css/css.go:229` | `css.init` | `()` | mapping, caching |
 | `tpl/debug/init.go:25` | `debug.init` | `()` | — |
-| `tpl/diagrams/init.go:26` | `diagrams.init` | `()` | — |
-| `tpl/encoding/init.go:25` | `encoding.init` | `()` | — |
 | `tpl/fmt/init.go:25` | `fmt.init` | `()` | — |
-| `tpl/hash/hash.go:58` | `hash.init` | `()` | — |
+| `tpl/lang/init.go:26` | `lang.init` | `()` | — |
+| `tpl/os/init.go:25` | `os.init` | `()` | — |
+| `tpl/path/init.go:27` | `path.init` | `()` | — |
+| `tpl/resources/init.go:25` | `resources.init` | `()` | — |
+| `tpl/safe/init.go:25` | `safe.init` | `()` | — |
+| `tpl/templates/init.go:26` | `templates.init` | `()` | — |
 
-_17 more members not listed._
+_2 more members not listed._
 
-### Family 2 — 24 members, every pair `>= 0.61` code-shape, evidence `99661`  (139 edges scored here)
+### Family 2 — 12 members, every pair `>= 0.61` code-shape, evidence `32115`  (25 edges scored here)
 
-_Not drawn: 24 members is 276 connections. Every one of them holds — that is what makes this a family._
+_Not drawn: 12 members is 66 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `tpl/cast/init.go:25` | `cast.init` | `()` | — |
-| `tpl/collections/init.go:25` | `collections.init` | `()` | — |
 | `tpl/compare/init.go:26` | `compare.init` | `()` | — |
 | `tpl/crypto/init.go:25` | `crypto.init` | `()` | — |
 | `tpl/debug/init.go:25` | `debug.init` | `()` | — |
 | `tpl/encoding/init.go:25` | `encoding.init` | `()` | — |
 | `tpl/fmt/init.go:25` | `fmt.init` | `()` | — |
-| `tpl/hash/hash.go:58` | `hash.init` | `()` | — |
-| `tpl/images/init.go:25` | `images.init` | `()` | — |
+| `tpl/lang/init.go:26` | `lang.init` | `()` | — |
+| `tpl/os/init.go:25` | `os.init` | `()` | — |
+| `tpl/path/init.go:27` | `path.init` | `()` | — |
+| `tpl/safe/init.go:25` | `safe.init` | `()` | — |
+| `tpl/templates/init.go:26` | `templates.init` | `()` | — |
+
+_2 more members not listed._
+
+### Family 3 — 11 members, every pair `>= 0.62` code-shape, evidence `28757`  (18 edges scored here)
+
+_Not drawn: 11 members is 55 connections. Every one of them holds — that is what makes this a family._
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `tpl/compare/init.go:26` | `compare.init` | `()` | — |
+| `tpl/crypto/init.go:25` | `crypto.init` | `()` | — |
+| `tpl/debug/init.go:25` | `debug.init` | `()` | — |
+| `tpl/encoding/init.go:25` | `encoding.init` | `()` | — |
+| `tpl/fmt/init.go:25` | `fmt.init` | `()` | — |
 | `tpl/inflect/init.go:25` | `inflect.init` | `()` | — |
+| `tpl/lang/init.go:26` | `lang.init` | `()` | — |
+| `tpl/os/init.go:25` | `os.init` | `()` | — |
+| `tpl/safe/init.go:25` | `safe.init` | `()` | — |
+| `tpl/transform/init.go:25` | `transform.init` | `()` | — |
 
-_14 more members not listed._
+_1 more members not listed._
 
-### Family 3 — 27 members, every pair `>= 0.61` code-shape, evidence `98543`  (197 edges scored here)
+### Family 4 — 12 members, every pair `>= 0.61` code-shape, evidence `26855`  (23 edges scored here)
 
-_Not drawn: 27 members is 351 connections. Every one of them holds — that is what makes this a family._
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `tpl/cast/init.go:25` | `cast.init` | `()` | — |
-| `tpl/collections/init.go:25` | `collections.init` | `()` | — |
-| `tpl/compare/init.go:26` | `compare.init` | `()` | — |
-| `tpl/crypto/init.go:25` | `crypto.init` | `()` | — |
-| `tpl/debug/init.go:25` | `debug.init` | `()` | — |
-| `tpl/diagrams/init.go:26` | `diagrams.init` | `()` | — |
-| `tpl/encoding/init.go:25` | `encoding.init` | `()` | — |
-| `tpl/fmt/init.go:25` | `fmt.init` | `()` | — |
-| `tpl/hash/hash.go:58` | `hash.init` | `()` | — |
-| `tpl/hugo/init.go:26` | `hugo.init` | `()` | — |
-
-_17 more members not listed._
-
-### Family 4 — 27 members, every pair `>= 0.61` code-shape, evidence `92704`  (202 edges scored here)
-
-_Not drawn: 27 members is 351 connections. Every one of them holds — that is what makes this a family._
+_Not drawn: 12 members is 66 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
 | `tpl/cast/init.go:25` | `cast.init` | `()` | — |
-| `tpl/collections/init.go:25` | `collections.init` | `()` | — |
 | `tpl/compare/init.go:26` | `compare.init` | `()` | — |
 | `tpl/crypto/init.go:25` | `crypto.init` | `()` | — |
 | `tpl/debug/init.go:25` | `debug.init` | `()` | — |
-| `tpl/diagrams/init.go:26` | `diagrams.init` | `()` | — |
 | `tpl/encoding/init.go:25` | `encoding.init` | `()` | — |
 | `tpl/fmt/init.go:25` | `fmt.init` | `()` | — |
-| `tpl/hash/hash.go:58` | `hash.init` | `()` | — |
-| `tpl/hugo/init.go:26` | `hugo.init` | `()` | — |
+| `tpl/inflect/init.go:25` | `inflect.init` | `()` | — |
+| `tpl/lang/init.go:26` | `lang.init` | `()` | — |
+| `tpl/os/init.go:25` | `os.init` | `()` | — |
+| `tpl/partials/init.go:25` | `partials.init` | `()` | caching |
 
-_17 more members not listed._
+_2 more members not listed._
 
-### Family 5 — 27 members, every pair `>= 0.61` code-shape, evidence `88027`  (204 edges scored here)
+### Family 5 — 12 members, every pair `>= 0.60` code-shape, evidence `24259`  (31 edges scored here)
 
-_Not drawn: 27 members is 351 connections. Every one of them holds — that is what makes this a family._
+_Not drawn: 12 members is 66 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `tpl/cast/init.go:25` | `cast.init` | `()` | — |
-| `tpl/collections/init.go:25` | `collections.init` | `()` | — |
 | `tpl/compare/init.go:26` | `compare.init` | `()` | — |
 | `tpl/crypto/init.go:25` | `crypto.init` | `()` | — |
 | `tpl/debug/init.go:25` | `debug.init` | `()` | — |
-| `tpl/diagrams/init.go:26` | `diagrams.init` | `()` | — |
 | `tpl/encoding/init.go:25` | `encoding.init` | `()` | — |
 | `tpl/fmt/init.go:25` | `fmt.init` | `()` | — |
-| `tpl/hash/hash.go:58` | `hash.init` | `()` | — |
-| `tpl/hugo/init.go:26` | `hugo.init` | `()` | — |
+| `tpl/lang/init.go:26` | `lang.init` | `()` | — |
+| `tpl/os/init.go:25` | `os.init` | `()` | — |
+| `tpl/partials/init.go:25` | `partials.init` | `()` | caching |
+| `tpl/path/init.go:27` | `path.init` | `()` | — |
+| `tpl/safe/init.go:25` | `safe.init` | `()` | — |
 
-_17 more members not listed._
+_2 more members not listed._
 
-_301 more families not listed._
+_129 more families not listed._
 

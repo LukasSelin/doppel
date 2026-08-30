@@ -142,10 +142,11 @@ type admission struct {
 // evidence happens downstream, after the comparator — retriever output order
 // is positional so the pipeline's positional doc lookup stays obvious.
 func Retrieve(units []parser.CodeUnit, g *concepter.Graph,
-	onto *ontology.Ontology, ic *ontology.IC, opt Options) ([]Candidate, Stats) {
+	onto *ontology.Ontology, ic *ontology.IC, wl *fingerprint.LabelIDF,
+	opt Options) ([]Candidate, Stats) {
 
 	scorer := ontology.NewScorer(onto, ic)
-	sim := newSimCache(units, opt.weights())
+	sim := newSimCache(units, wl, opt.weights())
 
 	shapes := buildShapeIndex(units, opt)
 	calls := buildCallIndex(units, g, opt)
@@ -202,10 +203,11 @@ func Retrieve(units []parser.CodeUnit, g *concepter.Graph,
 // how it sits in this corpus. The caller appends it before tagging and graph
 // building, which also hands it resolved callees for free.
 func Probe(units []parser.CodeUnit, probeIdx int, g *concepter.Graph,
-	onto *ontology.Ontology, ic *ontology.IC, opt Options) ([]Candidate, Stats) {
+	onto *ontology.Ontology, ic *ontology.IC, wl *fingerprint.LabelIDF,
+	opt Options) ([]Candidate, Stats) {
 
 	scorer := ontology.NewScorer(onto, ic)
-	sim := newSimCache(units, opt.weights())
+	sim := newSimCache(units, wl, opt.weights())
 
 	shapes := buildShapeIndex(units, opt)
 	calls := buildCallIndex(units, g, opt)
@@ -303,12 +305,13 @@ func evaluate(admitted map[pairKey]*admission, shapes *shapeIndex, concepts *con
 // compute the same pair twice.
 type simCache struct {
 	units   []parser.CodeUnit
+	wl      *fingerprint.LabelIDF
 	weights fingerprint.Weights
 	seen    map[pairKey]fingerprint.Breakdown
 }
 
-func newSimCache(units []parser.CodeUnit, w fingerprint.Weights) *simCache {
-	return &simCache{units: units, weights: w, seen: make(map[pairKey]fingerprint.Breakdown)}
+func newSimCache(units []parser.CodeUnit, wl *fingerprint.LabelIDF, w fingerprint.Weights) *simCache {
+	return &simCache{units: units, wl: wl, weights: w, seen: make(map[pairKey]fingerprint.Breakdown)}
 }
 
 func (c *simCache) get(a, b int) fingerprint.Breakdown {
@@ -316,7 +319,7 @@ func (c *simCache) get(a, b int) fingerprint.Breakdown {
 	if bd, ok := c.seen[k]; ok {
 		return bd
 	}
-	bd := fingerprint.SimilarityWith(c.units[k[0]].Fingerprint, c.units[k[1]].Fingerprint, c.weights)
+	bd := fingerprint.SimilarityWith(c.units[k[0]].Fingerprint, c.units[k[1]].Fingerprint, c.wl, c.weights)
 	c.seen[k] = bd
 	return bd
 }

@@ -119,7 +119,7 @@ var htmlTemplate = template.Must(template.New("report").Funcs(template.FuncMap{
         <div style="flex:1 1 300px; min-width:280px; display:flex; flex-direction:column; gap:10px; padding:16px 18px; background:var(--color-surface); border-radius:var(--radius-md)">
           <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px">
             <span style="font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-accent-700)">Match {{ .Label }}</span>
-            <span class="mono" style="font-size:13px">shape {{ .ShapeLabel }} · overlap {{ .OverlapLabel }}</span>
+            <span class="mono" style="font-size:13px">shape {{ .ShapeLabel }} · containment {{ .ContainmentLabel }} · overlap {{ .OverlapLabel }}</span>
           </div>
           <div class="mono" style="font-size:14px; line-height:1.5">{{ .A }}<br>{{ .B }}</div>
           <div style="display:flex; flex-direction:column; gap:3px; padding-top:2px">

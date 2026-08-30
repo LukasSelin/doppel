@@ -9,7 +9,7 @@ structured concurrency library; generics-heavy, one idea, written recently and a
 | Corpus | [conc](https://github.com/sourcegraph/conc) |
 | Pinned at | `v0.3.0` (`7b8c8f2875cb861bb61844c9bcaa1aed070adbd4`) |
 | Project since | 2023 |
-| doppel | `e53d59d` |
+| doppel | `2e3a4cc` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -27,10 +27,10 @@ Habitats: 4 modeled, 16 misfits; most uniform panics (norm 0.94), most diverse p
 Conventions: strongest concurrency (0.37), loosest concurrency (0.37)
 Ecosystems: 8 profiled (8 dominance, 0 coalition, 0 conflict, 0 weak)
 Found 81 functions. Retrieving candidates...
-Retrieval: shape 43, concept 25, call 15 -> 79 unique pairs
-  concept-only 29.1%  call-only 15.2%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 448
-Running structural comparison on 79 pairs...
-Families: 7 over 8 components, 20 functions in a family
+Retrieval: shape 23, concept 25, call 15 -> 60 unique pairs
+  concept-only 40.0%  call-only 20.0%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 448
+Running structural comparison on 60 pairs...
+Families: 3 over 7 components, 12 functions in a family
   6 pairs suppressed by max-per-func=2
 ```
 
@@ -113,7 +113,7 @@ Merge-worthy pairs folded up to their packages. An edge means two packages keep 
 
 ```mermaid
 flowchart LR
-    p0["pool<br/>38 internal"]
+    p0["pool<br/>22 internal"]
     p1["stream"]
     p0 ---|"1"| p1
 ```
@@ -139,7 +139,7 @@ Most uniform is `panics` (norm `0.94`); most varied is `pool` (norm `0.60`). 16 
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **79 candidate pairs** (shape 43, concept 25, call 15), of which 15% arrived on call evidence alone and 29% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **60 candidate pairs** (shape 23, concept 25, call 15), of which 20% arrived on call evidence alone and 40% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 8 functions reached an equilibrium: **8** settled on a single concept, **0** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -167,14 +167,16 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 
 ---
 
-## Match #1 — Code-shape: `0.7259`
+## Match #1 — Code-shape: `0.6118`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
 | **A** | `pool/result_context_pool.go:22` | `pool.*ResultContextPool[T].Go` | `(func(context.Context) (T, error))` | — |
 | **B** | `pool/result_error_pool.go:25` | `pool.*ResultErrorPool[T].Go` | `(func() (T, error))` | — |
 
-**Code similarity:** `ast 0.79  flow 1.00  nesting 1.00  sig 0.00  size 0.87`
+**Code similarity:** `wl 0.60  flow 1.00  nesting 1.00  sig 0.00  size 0.87`
+
+**Containment:** `0.81`
 
 **Evidence:** `146.48` (shape 143.19, concept 0.00, call 3.30)
 
@@ -212,7 +214,9 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 
 **Kind:** interface implementations — both implement `WithContext(context.Context) (*ResultContextPool[T])` on `*ResultErrorPool[T]` and `*ResultPool[T]`, in package `pool`
 
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Containment:** `1.00`
 
 **Evidence:** `94.13` (shape 94.13, concept 0.00, call 0.00)
 
@@ -234,7 +238,7 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 
 ---
 
-## Match #3 — Code-shape: `0.8889`
+## Match #3 — Code-shape: `0.8123`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -243,7 +247,9 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 
 **Kind:** interface implementations — both implement `WithContext(context.Context) (*ContextPool)` on `*ErrorPool` and `*Pool`, in package `pool`
 
-**Code similarity:** `ast 0.81  flow 1.00  nesting 1.00  sig 1.00  size 0.91`
+**Code similarity:** `wl 0.69  flow 1.00  nesting 1.00  sig 1.00  size 0.91`
+
+**Containment:** `0.91`
 
 **Evidence:** `145.33` (shape 141.62, concept 0.00, call 3.70)
 
@@ -278,7 +284,9 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 
 **Kind:** interface implementations — both implement `Wait() ([]T, error)` on `*ResultContextPool[T]` and `*ResultErrorPool[T]`, in package `pool`
 
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Containment:** `1.00`
 
 **Evidence:** `56.28` (shape 56.28, concept 0.00, call 0.00)
 
@@ -300,47 +308,16 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 
 ---
 
-## Match #5 — Code-shape: `0.5864`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `iter/map.go:27` | `iter.Mapper[T, R].Map` | `([]T, func(*T) R) ([]R)` | — |
-| **B** | `iter/map.go:48` | `iter.Mapper[T, R].MapErr` | `([]T, func(*T) (R, error)) ([]R, error)` | concurrency |
-
-**Profile B:** `concurrency` 1.00 (dominance)
-
-**Code similarity:** `ast 0.53  flow 0.82  nesting 0.89  sig 0.40  size 0.50`
-
-**Evidence:** `168.23` (shape 164.53, concept 0.00, call 3.70)
-
-**Trophic:** `0.72`
-
-**Shared structure:**
-
-- `3.42` — `assign=(call:f)`
-- `3.42` — `flow:call:make→return`
-- `3.01` — `do(call:ForEachIdx)`
-
-**Structural overlap:** `0.49` (merge-worthy)
-
-- share 4 callees: [ForEachIdx, f, len, make]
-- overlapping call-graph neighborhoods (1.00): 1 shared
-- both are leaf functions
-- same package
-- same visibility
-- same receiver type: Mapper[T, R]
-- call into same packages: [iter]
-
----
-
-## Match #6 — Code-shape: `0.9000`
+## Match #5 — Code-shape: `0.9000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
 | **A** | `pool/context_pool.go:86` | `pool.*ContextPool.WithMaxGoroutines` | `(int) (*ContextPool)` | — |
 | **B** | `pool/error_pool.go:65` | `pool.*ErrorPool.WithMaxGoroutines` | `(int) (*ErrorPool)` | — |
 
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
+
+**Containment:** `1.00`
 
 **Evidence:** `48.72` (shape 48.72, concept 0.00, call 0.00)
 
@@ -362,14 +339,16 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 
 ---
 
-## Match #7 — Code-shape: `0.9000`
+## Match #6 — Code-shape: `0.9000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
 | **A** | `pool/context_pool.go:86` | `pool.*ContextPool.WithMaxGoroutines` | `(int) (*ContextPool)` | — |
 | **B** | `pool/result_context_pool.go:67` | `pool.*ResultContextPool[T].WithMaxGoroutines` | `(int) (*ResultContextPool[T])` | — |
 
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
+
+**Containment:** `1.00`
 
 **Evidence:** `48.72` (shape 48.72, concept 0.00, call 0.00)
 
@@ -391,14 +370,16 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 
 ---
 
-## Match #8 — Code-shape: `0.9000`
+## Match #7 — Code-shape: `0.9000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
 | **A** | `pool/error_pool.go:65` | `pool.*ErrorPool.WithMaxGoroutines` | `(int) (*ErrorPool)` | — |
 | **B** | `pool/result_context_pool.go:67` | `pool.*ResultContextPool[T].WithMaxGoroutines` | `(int) (*ResultContextPool[T])` | — |
 
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
+
+**Containment:** `1.00`
 
 **Evidence:** `48.72` (shape 48.72, concept 0.00, call 0.00)
 
@@ -420,14 +401,16 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 
 ---
 
-## Match #9 — Code-shape: `0.9000`
+## Match #8 — Code-shape: `0.9000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
 | **A** | `pool/result_error_pool.go:72` | `pool.*ResultErrorPool[T].WithMaxGoroutines` | `(int) (*ResultErrorPool[T])` | — |
 | **B** | `pool/result_pool.go:72` | `pool.*ResultPool[T].WithMaxGoroutines` | `(int) (*ResultPool[T])` | — |
 
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
+
+**Containment:** `1.00`
 
 **Evidence:** `48.72` (shape 48.72, concept 0.00, call 0.00)
 
@@ -449,14 +432,16 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 
 ---
 
-## Match #10 — Code-shape: `0.8500`
+## Match #9 — Code-shape: `0.8500`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
 | **A** | `pool/context_pool.go:64` | `pool.*ContextPool.WithFirstError` | `() (*ContextPool)` | — |
 | **B** | `pool/result_context_pool.go:50` | `pool.*ResultContextPool[T].WithFirstError` | `() (*ResultContextPool[T])` | — |
 
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 0.00  size 1.00`
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 0.00  size 1.00`
+
+**Containment:** `1.00`
 
 **Evidence:** `50.32` (shape 50.32, concept 0.00, call 0.00)
 
@@ -478,9 +463,40 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 
 ---
 
+## Match #10 — Code-shape: `0.8500`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `pool/context_pool.go:64` | `pool.*ContextPool.WithFirstError` | `() (*ContextPool)` | — |
+| **B** | `pool/result_error_pool.go:64` | `pool.*ResultErrorPool[T].WithFirstError` | `() (*ResultErrorPool[T])` | — |
+
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 0.00  size 1.00`
+
+**Containment:** `1.00`
+
+**Evidence:** `50.32` (shape 50.32, concept 0.00, call 0.00)
+
+**Trophic:** `1.00`
+
+**Shared structure:**
+
+- `3.01` — `seq[ do(call:WithFirstError) ; return(id) ]`
+- `3.01` — `seq[ do(call:panicIfInitialized) ; do(call:WithFirstError) ]`
+- `3.01` — `do(call:WithFirstError)`
+
+**Structural overlap:** `0.50` (merge-worthy)
+
+- share 2 callees: [WithFirstError, p.panicIfInitialized]
+- both are leaf functions
+- same package
+- same visibility
+- both are methods, on *ContextPool and *ResultErrorPool[T]
+
+---
+
 ## Families
 
-7 families, 20 functions in a family, largest 5 members
+3 families, 12 functions in a family, largest 5 members
 
 ### Family 1 — 5 members, every pair `>= 0.90` code-shape, evidence `487`
 
@@ -534,48 +550,7 @@ flowchart LR
 | `pool/result_context_pool.go:42` | `pool.*ResultContextPool[T].WithCollectErrored` | `() (*ResultContextPool[T])` | — |
 | `pool/result_error_pool.go:45` | `pool.*ResultErrorPool[T].WithCollectErrored` | `() (*ResultErrorPool[T])` | — |
 
-### Family 3 — 3 members, every pair `>= 0.68` code-shape, evidence `211`
-
-```mermaid
-flowchart LR
-    m0["pool.*ResultErrorPool[T].WithContext"]
-    m1["pool.*ResultPool[T].WithErrors"]
-    m2["pool.*ResultPool[T].WithContext"]
-    m0 --- m1
-    m0 --- m2
-    m1 --- m2
-```
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `pool/result_error_pool.go:55` | `pool.*ResultErrorPool[T].WithContext` | `(context.Context) (*ResultContextPool[T])` | — |
-| `pool/result_pool.go:52` | `pool.*ResultPool[T].WithErrors` | `() (*ResultErrorPool[T])` | — |
-| `pool/result_pool.go:63` | `pool.*ResultPool[T].WithContext` | `(context.Context) (*ResultContextPool[T])` | — |
-
-### Family 4 — 4 members, every pair `>= 0.71` code-shape, evidence `180`
-
-```mermaid
-flowchart LR
-    m0["pool.*ErrorPool.Wait"]
-    m1["pool.*ResultContextPool[T].Wait"]
-    m2["pool.*ResultErrorPool[T].Wait"]
-    m3["pool.*ResultPool[T].Wait"]
-    m0 --- m1
-    m0 --- m2
-    m0 --- m3
-    m1 --- m2
-    m1 --- m3
-    m2 --- m3
-```
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `pool/error_pool.go:36` | `pool.*ErrorPool.Wait` | `() (error)` | — |
-| `pool/result_context_pool.go:34` | `pool.*ResultContextPool[T].Wait` | `() ([]T, error)` | — |
-| `pool/result_error_pool.go:37` | `pool.*ResultErrorPool[T].Wait` | `() ([]T, error)` | — |
-| `pool/result_pool.go:40` | `pool.*ResultPool[T].Wait` | `() ([]T)` | — |
-
-### Family 5 — 3 members, every pair `>= 0.85` code-shape, evidence `151`
+### Family 3 — 3 members, every pair `>= 0.85` code-shape, evidence `151`
 
 ```mermaid
 flowchart LR
@@ -592,6 +567,4 @@ flowchart LR
 | `pool/context_pool.go:64` | `pool.*ContextPool.WithFirstError` | `() (*ContextPool)` | — |
 | `pool/result_context_pool.go:50` | `pool.*ResultContextPool[T].WithFirstError` | `() (*ResultContextPool[T])` | — |
 | `pool/result_error_pool.go:64` | `pool.*ResultErrorPool[T].WithFirstError` | `() (*ResultErrorPool[T])` | — |
-
-_2 more families not listed._
 

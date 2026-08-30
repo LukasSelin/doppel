@@ -68,7 +68,12 @@ type Result struct {
 	// label, counted over exactly the population above. It is a corpus
 	// statistic like TagCounts and IC and is built in the same place, for
 	// the same reason: it must model the population the report describes.
-	// nil for an empty corpus. Nothing consumes it yet.
+	// nil for an empty corpus.
+	//
+	// It is what makes code-shape corpus-dependent: every consumer that
+	// scores a fingerprint pair — retrieval, calibration, family edge
+	// completion, the query probe — is handed this one, so a run has exactly
+	// one answer to what a shared structural label is worth.
 	WL *fingerprint.LabelIDF
 
 	// ConsStats is the corpus-wide hash-cons of every canonical function
@@ -209,8 +214,8 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 	// corpus statistics and after the population filter, so that it models
 	// exactly the population the report describes — and so that a query
 	// probe, which joins the corpus just above, is counted like everyone
-	// else. Nothing consumes it yet.
-	bags := make([]map[uint64]int, len(units))
+	// else. It is what weights the code-shape score.
+	bags := make([][]fingerprint.LabelCount, len(units))
 	for i := range units {
 		bags[i] = units[i].Fingerprint.WL
 	}
@@ -286,7 +291,7 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 	// actually used.
 	forkFloor := analyzer.ForkShapeFloor
 	if p.Calibrate > 0 {
-		r := calibrate.Run(units, docs, comp, calibrate.DefaultOptions(p.Calibrate, p.MinNodes))
+		r := calibrate.Run(units, docs, comp, res.WL, calibrate.DefaultOptions(p.Calibrate, p.MinNodes))
 		res.Calibration = &r
 		printCalibration(progress, r)
 		if r.Applied() {
@@ -307,7 +312,7 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 	if p.Debug {
 		opts.ChainTopN = 20 // the "full list", bounded
 	}
-	cands, stats := retriever.Retrieve(units, cg, onto, ic, opts)
+	cands, stats := retriever.Retrieve(units, cg, onto, ic, res.WL, opts)
 	res.Retrieval = stats
 	printRetrievalStats(progress, stats)
 
