@@ -88,8 +88,25 @@
     <div class="nb-layout">
       <aside class="nb-picker">
         <div class="control">
+          <div class="control-label">Reading this screen</div>
+          <p class="control-note">
+            The map asks where duplication sits; this screen settles one case.
+            Pick a function and you get every other function scored against it,
+            then the whole evidence for whichever of those pairs you select —
+            enough to decide <em>merge these</em> or <em>leave them</em>.
+          </p>
+          <p class="control-note">
+            <strong>The two scores are deliberately not blended.</strong>
+            <em>Code-shape</em> is how alike the two bodies are; <em>overlap</em>
+            is how much architectural context they share. High shape with low
+            overlap is not a weaker finding, it is a different one — lookalike
+            bodies in unrelated subsystems, which is rarely something to merge.
+          </p>
+        </div>
+        <div class="control">
           <label class="control-label" for="search">Function</label>
           <input type="search" id="search" placeholder="filter by name or package" autocomplete="off">
+          <p class="control-note" id="nb-picker-note"></p>
         </div>
         <ol class="nb-units" id="nb-units"></ol>
       </aside>

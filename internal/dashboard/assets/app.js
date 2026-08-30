@@ -792,6 +792,15 @@
       return edges[eb[0]].rank - edges[ea[0]].rank || (a.key < b.key ? -1 : 1);
     });
 
+  /* The picker is not the corpus: it is the units that landed in at least one
+     scored pair, in the order of each one's single best-corroborated pair. Both
+     facts are invisible from the list itself, so the note states them. */
+  function renderPickerNote() {
+    $("nb-picker-note").textContent =
+      plural(pairedUnits.length, "function") + " of " + comma(units.length) +
+      " appear in a scored pair. Listed best-corroborated pair first.";
+  }
+
   function renderUnitList() {
     var host = $("nb-units");
     var q = $("search").value.trim().toLowerCase();
@@ -874,7 +883,10 @@
       var li = el("li", "nb-row");
       li.setAttribute("aria-selected", otherId === selOther ? "true" : "false");
       li.appendChild(el("span", "mono", o.key));
-      var bits = "shape " + fixed(e.shape) + " · overlap " + fixed(e.overlap) +
+      /* Rank is what this list is sorted by, so it leads: without it a sorted
+         list reads as an unsorted one. */
+      var bits = "rank " + fixed(e.rank, 1) + " · shape " + fixed(e.shape) +
+        " · overlap " + fixed(e.overlap) +
         " · evidence " + fixed(e.total, 1) + (e.merge ? " · merge-worthy" : "");
       if (e.kind) bits += " · " + e.kind;
       li.appendChild(el("span", "r-meta", bits));
@@ -905,16 +917,29 @@
        so moving down the neighbour list does not swap the panes underneath. */
     var left = aId, right = bId;
 
+    /* Every tile carries what its number is measured in, and the two with a
+       floor carry this run's floor — derived here rather than pinned, because a
+       calibrated run moves both, which is the whole reason they belong on the
+       tile rather than in the masthead alone. Being under a floor is muted, not
+       flagged: --struct-min filters, but --threshold gates only the structural
+       channel, so a concept- or call-retrieved pair sits under it legitimately. */
     var scores = el("div", "scores");
-    [["code-shape", fixed(e.shape)], ["overlap", fixed(e.overlap)],
-     ["evidence", fixed(e.total, 1)], ["trophic", fixed(e.trophic)],
-     ["call-sim", fixed(e.callSim)], ["rank", fixed(e.rank, 3)]].forEach(function (s) {
+    [["code-shape", fixed(e.shape), "floor " + fixed(facts.threshold), e.shape < facts.threshold],
+     ["overlap", fixed(e.overlap), "gate " + fixed(facts.structMin), e.overlap < facts.structMin],
+     ["evidence", fixed(e.total, 1), "nats"],
+     ["trophic", fixed(e.trophic), "shared / total"],
+     ["call-sim", fixed(e.callSim), "ranks test pairs"],
+     ["rank", fixed(e.rank, 3), "shape × overlap × evidence"]].forEach(function (s) {
       var b = el("div", "score");
-      b.appendChild(el("div", "score-n mono", s[1]));
+      b.appendChild(el("div", "score-n mono" + (s[3] ? " below" : ""), s[1]));
       b.appendChild(el("div", "score-l", s[0]));
+      if (s[2]) b.appendChild(el("div", "score-s", s[2]));
       scores.appendChild(b);
     });
-    var top = panel("This pair", e.kindNote || null);
+    var mergeNote = "Merge-worthy asserts all three: overlap at or above the " +
+      fixed(facts.structMin) + " gate, at least 2 of 5 architectural signals, and " +
+      "code-shape at or above 0.40. It is a gate, not a verdict — the bodies below are.";
+    var top = panel("This pair", e.kindNote ? mergeNote + " " + e.kindNote : mergeNote);
     top.appendChild(scores);
     if (e.channels && e.channels.length) {
       top.appendChild(el("p", "panel-note", "Retrieved via " + e.channels.join(" + ") +
@@ -923,7 +948,10 @@
     }
     host.appendChild(top);
 
-    var comps = panel("Code-shape components");
+    var comps = panel("Code-shape components",
+      "The four weighted parts of the code-shape number above — ast 0.60, flow 0.20, " +
+      "nesting 0.05, sig 0.15 — and size, which is reported but not scored: the ast " +
+      "Jaccard already penalises a size mismatch through its union.");
     var bars = el("div", "bars");
     ["ast", "flow", "nesting", "sig", "size"].forEach(function (name, i) {
       var v = e.breakdown[i];
@@ -1067,6 +1095,7 @@
   renderFacts();
   renderColophon();
   renderLegend();
+  renderPickerNote();
   syncCutRange();
   cutLabel.textContent = fixed(parseFloat(cutEl.value), 2);
   if (pairedUnits.length) selectUnit(pairedUnits[0].id, null);
