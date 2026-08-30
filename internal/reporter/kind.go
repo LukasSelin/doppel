@@ -68,3 +68,15 @@ func joinAnd(items []string, code func(string) string) string {
 	}
 	return strings.Join(out[:len(out)-1], ", ") + " and " + out[len(out)-1]
 }
+
+// KindClause is kindClause as plain prose, for a consumer outside this package.
+//
+// Exported rather than duplicated: the dashboard shows the same sentence the
+// text report does, and two renderers of one KindNote would eventually say
+// different things about the same pair.
+func KindClause(k *analyzer.KindNote) string {
+	if k == nil {
+		return ""
+	}
+	return kindClause(k, false, false)
+}

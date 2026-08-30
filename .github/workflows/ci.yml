@@ -68,6 +68,15 @@ jobs:
           go run . analyze . --format json > /tmp/b.json
           diff /tmp/a.json /tmp/b.json
 
+      # The dashboard inlines a JSON payload of the same run, so it is subject
+      # to the same rule: an unchanged tree must produce an identical page.
+      - name: Dashboard is deterministic
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          go run . analyze . -o /tmp/a.html
+          go run . analyze . -o /tmp/b.html
+          diff /tmp/a.html /tmp/b.html
+
       - name: Hook entry points respond
         if: matrix.os == 'ubuntu-latest'
         run: |

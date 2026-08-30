@@ -88,7 +88,7 @@ cmd/            CLI commands (Cobra).
   analyze.go    Pipeline orchestrator; analyze's own flags (each command registers its own in init)
   families.go   doppel families: the census view, plus analyze's family stage
   overview.go   Queries the corpus model (culture, ontology, call graph) into reporter.Overview
-  htmlreport.go Assembles reporter.HTMLReport; strips.go derives the declaration-span strip view
+  dashboard.go  Assembles dashboard.Payload — the semantic model the HTML page draws
   pipeline.go   index() + finishAnalyze(): the pipeline split into corpus-building prefix and reporting tail; filterByOverlap; snapshotOf
   query.go      doppel query: check a proposed function (a snippet on stdin) against the corpus, locality-weighted
   config.go     .doppel.json loading (AnalysisConfig), flag precedence, hookParams
@@ -112,7 +112,8 @@ internal/
   snapshot/     One analysis run as comparable plain data: schema + Build, and Diff over two of them
   reporter/     Plain-text (stdout), Markdown (--output), JSON (--format json), and the two hook digests
                 overview.go + mermaid.go render the corpus model into the markdown report only
-                html.go + html_template.go + broadsheet.css: the visual report (--output *.html)
+  dashboard/    The HTML dashboard (--output *.html): payload.go is the semantic payload,
+                render.go inlines it into assets/ (shell.html + app.js + app.css + vendor/)
   bench/        Measurement harness: golden-ranking scorer, the pinned public corpus ladder, per-stage benchmarks, example generator
 examples/       Committed real reports for each corpus rung, plus labels/ (committed golden reviews) — see examples/README.md
 ```
@@ -140,7 +141,10 @@ concept names) and nothing imports it except `cmd`, which bridges its findings i
 `analyzer.CultureNote`. `family` imports `parser`, `fingerprint`, `analyzer` and `clique`; `cmd`
 and `reporter` import it. `lexicon` imports `parser`, `fingerprint`, `concepter` and `clique` and
 must never import `ontology` or `tagger` — it learns names, it does not reason about a vocabulary,
-and `cmd` bridges its concepts into an ontology term table. `clique` imports nothing.
+and `cmd` bridges its concepts into an ontology term table. `clique` imports nothing. `dashboard`
+imports **nothing from this module at all** — its payload is plain data and its renderer is
+`html/template` plus `embed` — which is what keeps the page's data contract from quietly acquiring
+pipeline types; `cmd` bridges a finished run into it, exactly as it does for `reporter.Overview`.
 
 ## Two scores, deliberately unblended — and a third quantity that ranks
 
@@ -1008,39 +1012,121 @@ table has to track it.
 
 The derived `RoleThresholds`, computed in `mapper` and discarded, stay unsurfaced.
 
-## The visual report
+## The dashboard
 
-`--output report.html` writes the **Similarity Report**: one self-contained page, no script, no
-fetch, opening from `file://`. Any other extension still writes markdown. The format is chosen by
-extension rather than by `--format`, because `--format` selects what goes to *stdout* and a page of
-markup there helps nobody.
+`--output report.html` writes the **dashboard**: one self-contained page, no fetch, opening from
+`file://`. Any other extension still writes markdown. The format is chosen by extension rather than
+by `--format`, because `--format` selects what goes to *stdout* and a page of markup there helps
+nobody.
 
-It implements a design built in Claude Design (project `6a2b7669`, `Similarity Report.dc.html`) on
-the **Broadsheet** system. The canvas version is a prototype — its runtime interprets the template
-in the browser and it `fetch`es a hand-written `doppel-run.json`. This renders the same page from a
-real run, server-side, with `html/template` doing the escaping (the repo's first use of it, and of
-`//go:embed`; both stdlib, so the Cobra-only rule holds).
+**The split with Go is the whole design.** It replaced a renderer whose page lived in a 276-line
+`html/template` literal fed by a flat struct of render-ready percentages and label strings, so
+every visual decision was Go's and adding one meant editing a template, a struct and an assembler
+across two packages. Now `cmd/dashboard.go` emits a **semantic payload** — raw scores, counts and
+identifiers, no percentages, no labels — and `internal/dashboard/assets/app.js` decides what a
+colour, a radius or a bar means. Iterating on the visuals is an asset edit.
 
-- **`broadsheet.css` is vendored and must not be hand-edited** — re-sync from the design project.
-  It is a deliberate *subset*: tokens, base type, and the four component groups the page emits
-  (`.cmyk-num`, `.card`, `.tag`, `.table`). The form, nav, dialog and image-separation groups are
-  dropped because a generated report never renders them and the file is inlined into every report
-  written. Kept rules are byte-identical, so a re-sync is a diff rather than a merge.
-- **The design's editorial columns are not something doppel can write.** The mockup's `what repeats`
-  column reads "HTTP diagnostic handlers"; the tool has no way to produce that. It carries the pair
-  **kind** instead (`interface implementations`, `diverged copy`) and renders an empty cell when a
-  family has no kind, rather than inventing a description. Each strip's note is generated from its
-  own counts on the same principle.
-- **The strip view is the one piece of new data.** A bar is the gap from one declaration to the
-  next *in the same file*, so strips exist only for families whose members share a file — the rest
-  are still in the census with no silhouette to draw. It is derived, not measured: the gap includes
-  comments and blank lines, and the last declaration in a file has no successor and so no bar. The
-  page says this itself, in the closing note. `stripFullSpan` (70) is a fixed full-width scale
-  rather than a per-strip normalisation, so one family's bars can be read against another's.
-- **The canvas's three props** (`stripSort`, `showPairEvidence`, `driftRows`) are editor controls,
-  not report options, and are not implemented.
+`internal/dashboard` owns the payload types, the renderer and the assets; `cmd/dashboard.go` builds
+the payload. That is the same bridge `cmd/overview.go` makes for the markdown report — `dashboard`
+never learns about `culture`, and `cmd` queries the model.
 
-One naming trap: the design's `components.nesting` is `fingerprint.Breakdown.**Depth**`.
+- **Two screens, and the two that are missing are missing for a reason.** *Map* is a political map
+  of the corpus: every package (or concept — it is a toggle) is a polygon whose area is its share of
+  the functions, polygons tile the canvas with shared borders, and functions are dots inside their
+  own region, coloured by concept, sized by resolved fan-in and ringed when a habitat misfit. Pair
+  evidence is carried by the **borders** rather than by a line layer. *Neighbourhood* takes
+  one function and shows its ranked neighbours, both bodies side by side, and the pair's evidence.
+  A **delta** screen and a **concept-drift** screen were scoped and dropped: both need a snapshot
+  *series*, and there is exactly one baseline per session in tmpdir, no timestamp inside a
+  `Snapshot`, and nothing from `culture` persisted at all. Neither is a small addition.
+- **The page draws `res.Pairs`, not the ranked report list.** Same reasoning as the family stage:
+  `--top` and `--max-per-func` are report-time devices, and a neighbourhood built on a
+  diversity-capped list would hide the neighbour a reader clicked in to find. So those two flags do
+  not bound this page — `--threshold` and `--struct-min` do — and the page's closing note states
+  the difference rather than implying there is none.
+- **`Edge.Rank` is computed in Go on purpose.** `analyzer.RankKey` is this repo's single definition
+  of corroborated evidence; a second one in JavaScript would drift from it silently. It is the one
+  quantity the payload carries that the page could have derived.
+- **Determinism holds, and CI checks it.** `TestPayloadHasNoMaps` mirrors
+  `snapshot.TestSchemaHasNoMaps` by reflection, every slice is sorted before it is emitted, and the
+  ubuntu leg diffs two `-o *.html` runs beside the existing `--format json` one.
+- **Escaping is `encoding/json` with `SetEscapeHTML` left ON** — the opposite of
+  `reporter.encodeJSON`, which turns it off for snapshot byte-comparability. The payload rides
+  inside a `<script>` element, so a `</script>` in an analysed function body must come out as
+  `\u003c/script\u003e` or it ends the page. `TestPrintEscapesScriptClose` pins it, and fails
+  loudly when the flag is flipped.
+- **One vendored asset, not hand-edited** (`internal/dashboard/assets/vendor/`, with a README
+  recording source and licence): `broadsheet.css`, the same design-system subset as before, moved.
+  There is deliberately **no vendored JavaScript**. Cytoscape.js was vendored first and dropped when
+  the map became a power diagram — that is plain SVG, and the neighbourhood screen never used a
+  library at all, so it was ~370 KB in every report written for a screen that no longer needed it.
+  `TestPrintIsSelfContained` pins its absence. The bar for bringing one back is that it does
+  something the page cannot do in a few hundred lines of its own.
+- **The map is a cartogram: a power diagram fitted to area shares.** Every package is a convex
+  polygon, the polygons tile the canvas, and each one's **area is its share of the function count**.
+  Cells fall out of successive half-plane clips (`clipHalfPlane`, `powerDiagram`), because a
+  weighted-Voronoi bisector is still a straight line — only shifted by the weight difference — so
+  weights cost nothing but a constant in the clip. `fitAreas` then alternates Lloyd relaxation with
+  a weight step, both expressed in **radii** and both clamped against the distance to the nearest
+  site. The radius formulation is load-bearing: written additively on raw area, with the clamp as
+  `wᵢ − wⱼ ≤ |pᵢ − pⱼ|²`, it does not converge — that constraint binds hardest exactly where two
+  sites are close, so a large region wedged beside a small one cannot grow. Measured on this repo,
+  that version left `parser` at 0.02% of the canvas against a 4.9% target; the shipped one holds
+  every region of four functions or more inside 0.1%, weighted mean error 0.2%. Residual error is
+  concentrated in regions too small to draw honestly anyway.
+  `cose` was tried before either and is wrong twice over: compound parents pin every function inside
+  its own package box, so a force layout can only jiggle within a territory rather than pull related
+  functions across one; and on a corpus with many disconnected components it detonates (measured at
+  y ≈ 1.3e6 on this repo, off-screen and unfittable).
+- **A shared border is geometry; the paint on it is the evidence.** `clipHalfPlane` carries a tag
+  per polygon edge naming the site that produced it, so a finished cell knows which neighbour every
+  border faces — recovering that afterwards by comparing coordinates would be slower and fuzzier
+  than recording it at the moment it is created. Sites are seeded by a spring embedding of the
+  region coupling graph, so related regions *tend* to adjoin, and where two related regions do meet
+  the border between them is painted by the duplication crossing it. **Adjacency is a tendency, not
+  a claim**: a planar map cannot realise every adjacency a corpus asks for, so related regions the
+  packing could not seat together are drawn as dashed arcs between centroids instead. Without those
+  the map would be quietly lossy, which is the failure mode a political map invites. The page says
+  all of this in its own words, next to the map.
+- **The partition is a control, not a rebuild.** `powerDiagram` does not care what a site is, so the
+  same renderer draws territories by package or by concept. Concept territories force each function
+  into one region where membership is genuinely multi-valued and graded — a real simplification, and
+  the reason package is the default.
+- **The colour channel is a unit's strongest membership, not its arena equilibrium.** The arena was
+  used here first, when concepts were fourteen asserted tags and its job was suppressing the
+  tagger's false positives. A learned lexicon does that job at membership time, with a confidence.
+  What the arena still adds is *invasion* — a concept can win a function through an association
+  without the function carrying it — which is a real finding and a bad colour: measured on this repo
+  it painted 111 functions with a concept only 5 of them carry, and a legend cannot honestly say
+  "leads 111, carried by 5". Taking the head of the ranked memberships keeps `Dominant` a subset of
+  `Carried` by construction, which is the invariant the legend rests on.
+- **The palette does not cycle.** The vocabulary is learned, so its size is a property of the corpus
+  — 71 concepts on this repo against 13 palette entries. Cycling would give two unrelated concepts
+  the same hue and say nothing about it, so the concepts that colour the most functions take the
+  palette and the rest pool into one neutral that the legend counts out loud.
+- **Seeding and fitting are deterministic by construction.** Fixed iteration counts, fixed order,
+  sites started on a ring in size order — no seeded RNG, because there is no RNG. The same payload
+  always draws the same map, which is what lets the page itself stay byte-identical.
+- **Bodies are bounded and the bound is reported.** `parser.CodeUnit.Body` already holds full source
+  text, but it is the only part of the payload that scales with corpus size rather than with the
+  number of findings. Bodies are admitted in descending edge rank until `maxBodyBytes` (4 MB) is
+  spent, so what a reader is most likely to open survives the bound; the count dropped goes to
+  stderr and onto the page, and a function without one shows its `file:line` instead.
+- **The residual-difference view is a text diff, and says so.** Screen 3 was specified to highlight
+  the shared structural patterns inside both bodies. There is no data for that:
+  `analyzer.SharedChain.Render` is a motif string, and `fingerprint.extractPatterns` hashes patterns
+  during `Build` and keeps no mapping back to the tokens that produced them. The page lists the
+  chains beside the bodies (the actual evidence) and runs a line-level LCS diff over the two
+  sources, captioned as a textual comparison rather than the structural claim the score makes.
+  Highlighting would mean carrying source spans through the fingerprint's hot path.
+- **`DOPPEL_DASHBOARD_ASSETS=<dir>`** reads the assets off disk instead of the embedded copy, so
+  editing `app.js` and re-running a prebuilt binary is the whole cycle (`task dashboard-dev`).
+  `TestDevAssetsMatchEmbedded` pins the two paths to the same bytes. Nothing ships depending on it.
+
+Gone with the broadsheet report: the **strip view** (`cmd/strips.go`'s declaration-span
+silhouettes, the one piece of genuinely new data that page invented) and the taxonomy, habitat and
+census panels, which remain in the markdown report. The strips would port cleanly to a dashboard
+panel if they turn out to be missed.
 
 ## Configuration
 
@@ -1103,8 +1189,8 @@ and strict on one of 8000; "admit 1% of random pairs" means the same thing on bo
 default** (`defaultCalibrateRate` = 0.01, in `cmd/config.go`): the three similarity floors are
 corpus-derived unless someone pins one, because a fixed floor is an operating point calibrated for
 somebody else's repo and no end user has a basis for moving it. Measured at
-rate 0.01: the calibrated code-shape threshold is **0.45 on moby, 0.53 on cobra, 0.50 on this
-repo, 0.85 on conc** (where random pool methods genuinely look alike) against the fixed 0.60, and
+rate 0.01: the calibrated code-shape threshold is **0.45 on moby, 0.53 on cobra, 0.85 on conc**
+(where random pool methods genuinely look alike) against the fixed 0.60, and
 struct-min lands between 0.29 and 0.51 against the fixed 0.40 merge gate.
 
 Mechanics, all deterministic by construction: units are put in a canonical order (`package.name`,
@@ -1152,9 +1238,12 @@ That is the evidence that calibration changes *what is admitted and shown*, not 
 which is what made it safe to default on.
 
 **Where it pays is the corpora the fixed floor got wrong, and doppel is not one of them.** On this
-repo the default rate derives threshold 0.50 / struct-min 0.42 / family-min 0.50 and the top 20 is
-**identical** to the fixed-threshold run, pair for pair — a fixed 0.60 was already about right
-here, so calibration correctly changes nothing. conc is the opposite end and the real argument: at
+repo the derived floor lands just under the fixed 0.60 (0.48 at the time of writing; it moves as
+the corpus does, which is the point) and the top 20 comes out **identical** to the fixed-threshold
+run, pair for pair — 0.60 was already about right here, so calibration correctly changes nothing.
+Re-check it with `doppel analyze . --format json` against `--calibrate 0` rather than trusting the
+number above, which is exactly as stable as this repo is. conc is the opposite end and the real
+argument: at
 a fixed 0.60 its report is ten pairs of which seven are one-line builder methods,
 `WithMaxGoroutines` alone four times over. Calibration measures that looking alike is *normal* in
 that corpus, puts the floor at 0.85, and what surfaces instead is the `Go` methods across pool
@@ -1163,8 +1252,8 @@ effect, because the two corpora genuinely differ — which is the whole claim. T
 are still what would turn a direction into a verdict.
 
 **The `--struct-min` change is the largest behavioural one here.** Its flag default is `0.0`,
-meaning no overlap filter ran at all by default; calibration gives it a real value (0.42 on this
-repo, 0.29–0.51 measured across the ladder), so pairs are now dropped that previously reached the
+meaning no overlap filter ran at all by default; calibration gives it a real value (0.29–0.51
+measured across the pinned ladder), so pairs are now dropped that previously reached the
 report. That is the intended behaviour — 0.4 is what the config example and the merge gate always
 suggested — but it is the thing to look at first in a regenerated example.
 
@@ -1329,7 +1418,10 @@ shell and behaves identically on Windows and Unix, and which is also the only fo
   The justification is that a session baseline exists to pin the question being asked, and the
   operating point is part of that question; the alternative is the mid-session incomparability
   described under the hook contract. It is the only such read, and widening it is a design change.
-- Cobra is the only direct dependency. Keep it that way unless there is a strong reason.
+- Cobra is the only direct **Go** dependency. Keep it that way unless there is a strong reason.
+  Browser assets are a separate question and live vendored under
+  `internal/dashboard/assets/vendor/` with their version, source and licence recorded — they never
+  reach `go.mod`, and they are never hand-edited.
 - Skipped directories: anything dot- or underscore-prefixed (the go tool's own ignore rule, so
   `_examples/` demo trees never join the population), plus `vendor`, `testdata`, `build`. The
   walk root itself is exempt — `doppel analyze .` hands the walker a directory named `.`, and a

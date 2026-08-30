@@ -10,6 +10,7 @@ import (
 	"github.com/LukasSelin/doppel/internal/analyzer"
 	"github.com/LukasSelin/doppel/internal/calibrate"
 	"github.com/LukasSelin/doppel/internal/culture"
+	"github.com/LukasSelin/doppel/internal/dashboard"
 	"github.com/LukasSelin/doppel/internal/parser"
 	"github.com/LukasSelin/doppel/internal/reporter"
 	"github.com/LukasSelin/doppel/internal/retriever"
@@ -169,11 +170,18 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		// value: --format selects what goes to stdout, and a page of markup on
 		// stdout helps nobody — the file is the only place it makes sense.
 		if isHTMLPath(outputFile) {
-			r := buildHTMLReport(res, meta.Overview, fams, famStats, pairs, suppressed)
-			if err := reporter.PrintHTML(f, r); err != nil {
-				return fmt.Errorf("write html report: %w", err)
+			payload := buildDashboard(res, meta.Overview, fams, famStats, pairs, suppressed)
+			if err := dashboard.Print(f, payload); err != nil {
+				return fmt.Errorf("write dashboard: %w", err)
 			}
-			fmt.Fprintf(cmd.ErrOrStderr(), "HTML report written to %s\n", outputFile)
+			fmt.Fprintf(cmd.ErrOrStderr(), "Dashboard written to %s (%d functions, %d pairs)\n",
+				outputFile, len(payload.Units), len(payload.Edges))
+			if n := payload.Facts.BodiesOmitted; n > 0 {
+				fmt.Fprintf(cmd.ErrOrStderr(), "  %d function bodies omitted to bound the page size\n", n)
+			}
+			if n := payload.Facts.DetailOmitted; n > 0 {
+				fmt.Fprintf(cmd.ErrOrStderr(), "  %d pairs' shared structure omitted to bound the page size\n", n)
+			}
 		} else {
 			reporter.PrintMarkdown(f, pairs, meta)
 			reporter.PrintMarkdownFamilies(f, fams, famStats, res.Units, familiesN)
