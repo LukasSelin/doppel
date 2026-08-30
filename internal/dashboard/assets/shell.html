@@ -5,13 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>doppel — {{ .Target }}</title>
-  <style>
-    {
-        {
-        .CSS
-      }
-    }
-  </style>
+  <style>{{ .CSS }}</style>
 </head>
 
 <body>
@@ -119,7 +113,7 @@
   </div>
 
   <script type="application/json" id="doppel-data">{{ .Data }}</script>
-  <script>{ { .Script } }</script>
+  <script>{{ .Script }}</script>
 </body>
 
 </html>
