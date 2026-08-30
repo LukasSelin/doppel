@@ -457,7 +457,8 @@ the pattern hierarchy gave it nothing (a one-liner has no loop, no bigram and no
 it could only earn L0/L1 mass, which the df cap ate). On cobra this put `commandSorterByName.Less
 ↔ byName.Less` — a 16-node one-liner, code-shape 1.00, shape mass 107.8 of which every deep label
 is df=2 — at rank 20, tripping the golden benchmark's no-false-positive-in-the-top-20 assertion.
-**`--min-nodes` was recalibrated 12 → 18 in the same change**, being the guard that exists for
+**`--min-nodes` was recalibrated 12 → 18 in the same change** (and later relaxed to 16, the
+lowest value that still holds the pin — see *Fingerprint scoring*), being the guard that exists for
 exactly this ("one-line accessors match each other at 1.0 and flood the channel") and whose 12 was
 calibrated against the retired feature set. See *Fingerprint scoring* for the recall nuance and
 *Rough edges* for the alternatives that were measured and not taken.
@@ -633,24 +634,31 @@ receiver expression dropped (`e`, `s`, `cfg` are arbitrary). The third is the co
 above — the token stream had no way to say that a shared shape was unremarkable, so a body made
 entirely of the repo's own idiom scored as high as a genuine clone.
 
-`--min-nodes` (default `18`) excludes tiny bodies from the **structural retrieval channel** (and
+`--min-nodes` (default `16`) excludes tiny bodies from the **structural retrieval channel** (and
 from `FindSimilar`). Without it one-line accessors match each other at 1.0 and flood the channel.
 Concept and call retrieval deliberately ignore it — a small function with rare tag or call evidence
 is still worth comparing.
 
-**It was `12`, and was recalibrated to `18` when the shape channel moved to WL labels.** The
-number was always a property of the feature set, not of Go: under the pattern multiset a trivial
-body was suppressed *implicitly*, because a one-liner has no loop summary, no statement bigram and
-no def-use edge and could therefore only earn L0/L1 mass, which the df cap ate. A WL bag has no
-such floor — every body emits `wlRounds+1` labels per node, and the deep ones are df 1 or 2
-whenever the body is corpus-unique, so a trivial-but-unique one-liner now earns maximal-IDF
-evidence. The measured case is cobra's `commandSorterByName.Less ↔ doc.byName.Less` (`return
-c[i].Name() < c[j].Name()`, 16 AST nodes, code-shape 1.00, trophic 1.00): at `12` it rose to rank
-20 and tripped the golden benchmark's no-false-positive-in-the-top-20 assertion; at `18` it leaves
-retrieval entirely.
+**It was `12`, went to `18` when the shape channel moved to WL labels, and is `16`.** The number
+was always a property of the feature set, not of Go: under the pattern multiset a trivial body was
+suppressed *implicitly*, because a one-liner has no loop summary, no statement bigram and no
+def-use edge and could therefore only earn L0/L1 mass, which the df cap ate. A WL bag has no such
+floor — every body emits `wlRounds+1` labels per node, and the deep ones are df 1 or 2 whenever
+the body is corpus-unique, so a trivial-but-unique one-liner now earns maximal-IDF evidence. The
+measured case is cobra's `commandSorterByName.Less ↔ doc.byName.Less` (`return c[i].Name() <
+c[j].Name()`, **15** AST nodes a side, code-shape 1.00, trophic 1.00): at `12` it rose to rank 20
+and tripped the golden benchmark's no-false-positive-in-the-top-20 assertion.
+
+`18` cleared that pin but overshot, closing the shape channel on small corpora (see *Rough
+edges*). **`16` is the lowest floor that still holds it**, and it is pinned from both sides now:
+conc's `ResultContextPool.Wait ↔ ResultErrorPool.Wait` is 16 nodes a side and genuinely identical,
+so 16 admits it where 18 did not. The two pins are one node apart, which is what makes an absolute
+constant sufficient — `16`, `17` and `18` score identically on the cobra labels (merge 4.5,
+refactor 13.7, fp 47.0, no violations) while `15` and below re-admit the false positive at rank
+20. `TestMinNodesLadder` is that measurement.
 
 The recall nuance is worth stating plainly, because it cuts the other way: **at `--min-nodes 12`
-all 18 cobra labels reach the comparator; at the shipped `18` one does not — and the one that
+all 18 cobra labels reach the comparator; at the shipped `16` one does not — and the one that
 leaves is the false positive.** Merge recall is 6/6 either way and the merge mean is 4.5 either
 way. A gate measured only as "labelled pairs retrieved" would score the old value higher, which is
 why the golden benchmark asserts on the false-positive side as well.
@@ -1371,9 +1379,9 @@ panel if they turn out to be missed.
 
 ```json
 {
-  "threshold": 0.65,
+  "threshold": 0.38,
   "top": 10,
-  "min-nodes": 18,
+  "min-nodes": 16,
   "struct-min": 0.4,
   "output": "doppel-report.md",
   "channel-k": 5,
@@ -1410,6 +1418,44 @@ each still parses and still has a config key, so `internal/bench` and every scri
 only `--help` shrinks. The three similarity floors stay **visible** because they are the
 documented escape hatch from calibration, and a hidden escape hatch is not one.
 
+### Where the shipped floors come from
+
+`--threshold` defaults to **0.38**: the median of the code-shape floors `--calibrate 0.01` derives
+across the public ladder — prometheus 0.33, moby 0.35, hugo 0.35, gin 0.41, cobra 0.44, chi 0.45,
+with conc declining for want of eligible null pairs (351, against the 1 000 the calibration
+requires). The declined rung is **excluded from the median rather than counted at the old
+default**: a declined calibration is missing data, and letting the incumbent value vote for its own
+retention is not a measurement. Six values, so the median is the midpoint of 0.35 and 0.41.
+
+The old `0.60` was not wrong so much as *differently strict on every corpus* — it admitted far
+fewer than 1% of random unrelated pairs everywhere it was measured, which is exactly the
+"`--threshold 0.60` is loose on 81 functions and strict on 8 000" problem *Calibration* exists to
+name. `TestThresholdLadder` is the evidence that moving it is safe: on the cobra labels **every
+metric is flat across the whole 0.30–0.60 range** (merge 4.5, refactor 13.7, fp 47.0, no
+violations) while the candidate set grows 793 → 1 016. The threshold gates shape-channel admission
+only, and the labeled pairs all reach the comparator through concept or call evidence regardless,
+so the change buys recall at no measured labeled cost. Where it is visible is the small rungs:
+conc's top ten used to bottom out on call-only pairs at code-shape 0.13–0.24 and now ends at
+0.40–0.51.
+
+**`--family-min` deliberately does *not* follow it, and stays `0.60`.** Under `--calibrate` it
+does — `familyMinFor` moves the edge cut to the calibrated value — because that run has opted into
+corpus-relative semantics for every "alike enough" in it. The static default is a different
+question, because the two numbers are different *kinds* of number: `--threshold` is an admission
+gate, where being generous costs compute and lets ranking sort it out, while `--family-min` is the
+floor of a **guarantee the report prints** ("every pair >= 0.72 code-shape"). A cut at the 99th
+percentile of random pairs would make that guarantee read "these functions are not quite random
+with respect to each other", which is not a near-duplicate claim. Measured at 0.38 the census
+degrades exactly as that argument predicts: moby goes 179 families / 636 functions to 670 / 1 554
+with a **77-member** largest family and edge completion supplying 7 653 edges rather than 589, and
+cobra's tightest family — the three `MarkFlags*` bodies at code-shape 1.00 — falls out of the
+default top five, outranked by looser families whose evidence sums over more edges. `ForkShapeFloor`
+stays pinned to it at 0.60 for the same reason.
+
+`--struct-min` keeps its `0.0` default (off). Calibration derives it (0.30–0.44 across the ladder)
+but it is a *selection* stage, and turning a filter on by default would drop pairs from every
+report to no labeled benefit.
+
 `hook-notify` (`agent` | `user` | `off`) is read only by `doppel hook stop` and has no flag — there
 is no CLI surface a hook setting would belong to. `format` (`text` or `json`) is a key like any
 other. Every functional flag except `--config` has a
@@ -1438,15 +1484,15 @@ question now has a different answer, and pinning the old numbers by hand would b
 old one.
 
 **`--min-nodes` and calibration are separate knobs, and the merge made that visible.** Calibration
-derives a *score* floor from the null distribution; `--min-nodes` (18, raised from 12 for the WL
+derives a *score* floor from the null distribution; `--min-nodes` (16, raised from 12 for the WL
 shape channel) is an *eligibility* rule about which functions the channel indexes at all. Neither
 subsumes the other — a corpus of accessors has a null distribution made of accessors, so a rate
 would happily admit them — and the shape null is drawn over exactly the `--min-nodes`-eligible
-units, so raising the floor shrinks the null population. On **conc** (81 functions) that is now
-decisive: at 18 it yields 351 eligible shape null pairs against the 1 000 the calibration needs,
-so calibration is **declined** and conc runs at the fixed 0.60/0.0. At `--min-nodes 12` the same
-corpus calibrates to 0.85. That is the guard doing its job — eight samples above a 1% cut is not
-a calibration — and it is stated on stderr, not silent. Whether 18 is right for a corpus that
+units, so raising the floor shrinks the null population. On **conc** (81 functions) that is
+decisive: too few eligible shape null pairs remain against the 1 000 the calibration needs (351
+measured at floor 18), so calibration is **declined** and conc runs at the static fallbacks
+(threshold 0.38, struct-min 0.0). At `--min-nodes 12` the same corpus calibrates to 0.85. That is the guard doing its job — eight samples above a 1% cut is not
+a calibration — and it is stated on stderr, not silent. Whether 16 is right for a corpus that
 small is a measurement question, not a merge question; the seam is here for it.
 
 Mechanics, all deterministic by construction: units are put in a canonical order (`package.name`,
@@ -1819,13 +1865,44 @@ shell and behaves identically on Windows and Unix, and which is also the only fo
   - `TestCalibrate` (guard `DOPPEL_BENCH_CALIBRATE=1`) scores null calibration at rates 0.005,
     0.01, 0.02 and 0.05: re-retrieves at the calibrated threshold and scores both the candidate set
     and the struct-min-filtered view, listing the labels that moved. Asserts nothing.
+  - `TestThresholdLadder` (guard `DOPPEL_BENCH_THRESHOLD=1`) and `TestMinNodesLadder` /
+    `TestMinNodesDistribution` (guard `DOPPEL_BENCH_MINNODES=1`) are the two floor derivations,
+    kept so the shipped defaults are re-runnable rather than numbers in a commit message. The
+    threshold ladder scores 0.30–0.60 (flat on cobra, which is why the calibrated median was safe
+    to adopt); the min-nodes pair prints each corpus's node quantiles with the two pins that bound
+    the floor from both sides, and scores 12–20. Both assert nothing.
+  - `TestAblateFingerprint` (guard `DOPPEL_BENCH_ABLATE=1`, `task ablate`) zeroes each of the four
+    fingerprint blend components in turn **without** renormalizing the rest — the question is
+    whether a component pulls its own weight, not what happens once the others compensate.
+    **Measured on cobra: nothing is dead and nothing is harmful.** The merge pairs are completely
+    inert (4.5, 6/6, no violations in every row); every single ablation *lowers* the false-positive
+    mean, i.e. each component is pushing false positives down and removing any one brings them up
+    — WL 47.0→31.0, Flow →39.5, Signature →40.0, Depth →41.0. Zeroing WL improves the refactor
+    mean (13.7→11.9) while costing 16 points of false-positive separation, which is a compression
+    of the whole ranking rather than a quality gain. Note the contrast with the shingle metric this
+    replaced, where zeroing the 0.60 slot *improved* the label means: the T3 metric change is what
+    made that slot load-bearing. Depth buys the most separation per unit of weight (6.0 points for
+    0.05) and that is *not* a licence to raise it — a single-point ablation on one corpus is a
+    direction, not a gradient.
+
+    Two further reasons the table must not be read as a tuning gradient. **It is not stable under
+    changes that are not weights**: re-run after the `--threshold`/`--min-nodes` floors moved, the
+    same ablation reads Flow and Depth fully *inert* on the false-positive mean and zeroing
+    Signature as a 2-point *improvement*, where before the floors moved all four cost separation.
+    Only the WL row keeps its sign and magnitude across both. With 2 false-positive and 9 refactor
+    labels on one corpus, a 2-point mean move is one pair shifting four ranks — noise, and the
+    instability is the proof of it. **Halving the `wl` blend weight is the concrete proposal this
+    rejects**: it reads refactor 13.7 → 12.2 (better) against fp 47.0 → 42.0 (worse), and two of
+    the three hard assertions are on the false-positive side, so it trades the corroborated
+    quantity for the uncorroborated one in the same direction the ablation shows WL is carrying.
   - `TestSweep` (guard `DOPPEL_BENCH_SWEEP=1`) is the sensitivity sweep: each hand-set constant
     varied one at a time (±50% or the natural alternatives), only the stages it reaches re-run,
     and the labeled rankings reported with a verdict — `inert` (no label moved), `moves`,
     `load-bearing` (a violation, a presence change, or a merge-mean shift ≥ 1.0) — plus the labels
-    that moved. It asserts nothing, and it is what chose the `--min-nodes` default: the WL
+    that moved. It asserts nothing, and it is what first priced the `--min-nodes` default: the WL
     retrieval change tripped `AssertZeroFPInTop20`, the sweep priced the three constants that
-    could clear it, and 12 → 18 was adopted on that evidence. **Measured on cobra (18 labels):**
+    could clear it, and 12 → 18 was adopted on that evidence (`TestMinNodesLadder` later narrowed
+    it to 16, the lowest value holding the same pin). **Measured on cobra (18 labels):**
     the merge pairs never move under any variant; every sensitivity is in the
     refactor/false-positive tail. Inert in both directions: `MaxConceptDF`, `fp.Depth`. Inert in
     one: `ChannelK`→8, `Threshold`→0.30, `MaxCallDF`→100, `calls_into_concept`×0.5,
@@ -1911,37 +1988,43 @@ Known traps, documented so they aren't rediscovered. None are fixed:
 - **Typicality is corpus-relative, like roles.** A function's typicality — and whether a pair
   carries a culture note — can change when unrelated code shifts the concept's membership or the
   corpus norm. That is what "normal for this repo" means; same caveat as the role thresholds.
-- **The trivial-body floor is one constant on one corpus, and two other constants would have
+- **The trivial-body floor is two labeled pins wide, and a third constant would still have
   served.** A WL bag gives every body `wlRounds+1` labels per node, and the deep ones are df 1 or
   2 whenever the body is corpus-unique, so a trivial-but-unique one-liner earns maximal-IDF
   evidence that the pattern hierarchy never granted it (see *Fingerprint scoring*).
-  `--min-nodes 18` is the shipped answer. It is not the only one the sweep found: on cobra,
-  `MaxLabelDF 50→100` and halving the `wl` blend weight each also clear the false positive
-  (`MinNodes 18`: 0 violations, merge 4.5 6/6, refactor 13.7; `MaxLabelDF 100`: 0 violations,
-  merge 4.5, refactor 13.8, the pair drops to rank 21; `wl ×0.5`: 0 violations, refactor 12.3, fp
-  mean 36.7, the pair drops to rank 23). `--min-nodes` was chosen because it is the gate that
-  already exists for exactly this failure mode and its 12 was demonstrably calibrated against a
-  retired feature set, where the other two would be tuning a cap and a score weight to fix a
-  retrieval symptom. **One corpus is a direction, not a verdict** — cobra is the only rung with
-  labels, and 18 has not been justified on gin, chi or the large rungs. The deeper option, not
-  attempted: count each *node* agreement once at its deepest agreeing round instead of once per
-  round, which would remove the implied-label multiplication (agreeing at h=3 implies agreeing at
-  h=0..2) rather than raising a floor to compensate for it. That changes the mass definition and
-  needs `WLBag` to retain the node→label chain.
-- **`--min-nodes 18` costs conc its shape channel, and that is the shape of the risk on any small
-  library.** The floor is an absolute node count against a corpus-relative problem. On the six
-  larger rungs it trims the channel proportionately — shape admissions fall 5% (cobra) to 27%
-  (hugo), families 0–15% — but conc is 81 functions of three-to-five-line generic pool wrappers,
-  and almost none of them clear 18 nodes: shape admissions **23 → 3**, the union 60 → 40, and its
-  family census **3 families over 12 functions → none at all**. Its top ten now bottoms out at
-  code-shape 0.13 on concept/call-only pairs where the pinned tree's read 0.85 and up, and
-  `ResultContextPool.Wait ↔ ResultErrorPool.Wait` — genuinely identical, code-shape 1.00 — no
-  longer appears. Nothing is *wrong* there (those bodies are three lines; whether two identical
-  three-line generic wrappers are a merge candidate is exactly the judgement the floor exists to
-  make), but a corpus whose functions are uniformly small gets a near-empty structural channel
-  rather than a proportionate one. A relative floor — a quantile of the corpus's own node
-  distribution, the way `calibrate` derives thresholds — is the obvious repair and is not
-  attempted here.
+  `--min-nodes 16` is the shipped answer, and it is now pinned from *both* sides rather than one:
+  cobra's `Less` false positive is 15 nodes and must stay out, conc's `Wait` clone family is 16
+  and should come in. It is still not the only answer the sweep found — at the old `12`,
+  `MaxLabelDF 50→100` also pushed the false positive to rank 21 — but that measurement was taken
+  when the pair was retrieved at all; at 16 it never reaches the comparator, so the cap is no
+  longer doing that job and loosening it would be tuning a cap to fix a retrieval symptom the
+  floor already fixes. Measured on the shipped floors, `MaxLabelDF 100` reads merge 4.5 / refactor
+  13.3 / fp 49.0 / no violations — mildly *better* on the one labeled corpus, and still **not
+  adopted**: it doubles a cap whose job is idiom suppression on the large unlabeled rungs, which is
+  precisely the `MinIDF` situation and gets the same answer. What is missing before it could be
+  taken is the large-corpus union-growth and suppression numbers (there is no flag for the cap, so
+  it cannot be measured from the CLI) and a second labeled corpus. **One corpus is still a
+  direction, not a verdict** — cobra is the only rung
+  with labels, and neither pin has been corroborated on gin, chi or the large rungs. The deeper
+  option, not attempted: count each *node* agreement once at its deepest agreeing round instead of
+  once per round, which would remove the implied-label multiplication (agreeing at h=3 implies
+  agreeing at h=0..2) rather than raising a floor to compensate for it. That changes the mass
+  definition and needs `WLBag` to retain the node→label chain.
+- **The floor is an absolute node count against a corpus-relative problem, and a relative one was
+  measured and not needed.** `--min-nodes 18` used to cost conc its shape channel entirely: 81
+  functions of three-to-five-line generic pool wrappers, almost none clearing 18 nodes, shape
+  admissions **23 → 3**, family census **3 families over 12 functions → none**, and
+  `ResultContextPool.Wait ↔ ResultErrorPool.Wait` — genuinely identical, code-shape 1.00 — gone
+  from the report. The obvious repair was a quantile of the corpus's own node distribution, the
+  way `calibrate` derives thresholds. `TestMinNodesDistribution` measured it and the quantile is
+  **not** needed: the two pins are one node apart (15 out, 16 in), so the absolute **16** already
+  separates them, and it restores conc to 14 shape admissions and one family. A relative floor
+  would also have had to satisfy both pins at once — only `q ∈ [0.38, 0.58]` does — and at
+  `q=0.40` it would set chi's floor to 23 and prometheus's to 24 while dropping gin's to 10,
+  changing five unlabeled corpora to fix a problem an absolute constant fixes exactly. That is the
+  `MinIDF` failure mode, so the same verdict applies: measured, documented, not adopted. What
+  would revive it is a corpus whose pins genuinely straddle — a small library needing a floor
+  below 16 while a large one needs it above.
 - **Trophic similarity of exact mid-frequency twins is 1.0.** Any normalized similarity gives
   identical inputs 1.0; trivia suppression relies on the df cap zeroing *both* sides of the Dice,
   which only engages once the idiom bucket exceeds `MaxLabelDF`. Between df=2 and the cap, exact
@@ -2014,6 +2097,18 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   `task build-stamped` is the mitigation when you are mid-session and changing scoring code; plain
   `task build` deliberately stays unstamped, because `git describe --dirty` collapses every dirty
   tree to one string and would hide the failure rather than fix it.
+
+  Two sharpenings, both measured. First, the `(devel)` in that sentence is the *last* fallback:
+  on a modern toolchain `debug.ReadBuildInfo().Main.Version` usually resolves to a VCS
+  pseudo-version first, so a plain build often does carry a commit. Second, **that commit can be
+  the wrong one.** Built inside a `git worktree`, the stamp resolves against the shared git
+  directory and reports the *main* worktree's HEAD, not the code being compiled — observed here
+  as `v0.1.2-0.…-885cdfc` from a tree whose own HEAD was several commits elsewhere. So the
+  fallback is not merely coarse, it can be confidently wrong in exactly the setup an agent uses.
+  Hardcoding a base version into `cmd.version` would replace one wrong answer with a worse one
+  (every dev build of every tree claiming one identity — the `{{ .Tag }}`-under-`--snapshot`
+  failure the release config exists to avoid), so it stays as-is and `task build-stamped` remains
+  the answer.
 
 - **`v0.1.0` exists but carries no binaries.** `go install github.com/LukasSelin/doppel@latest`
   works again — `v0.1.0` on `a268368` has the correct module path and the `hook` subcommands, so it

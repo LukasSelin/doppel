@@ -76,7 +76,7 @@ var analyzeCmd = &cobra.Command{
 }
 
 func init() {
-	analyzeCmd.Flags().Float64VarP(&threshold, "threshold", "t", 0.60, "Pin the code-shape floor for structural-channel candidates (0.0–1.0), turning off --calibrate. Unset, this value is only the fallback for a corpus too small to calibrate.")
+	analyzeCmd.Flags().Float64VarP(&threshold, "threshold", "t", defaultThreshold, "Pin the code-shape floor for structural-channel candidates (0.0–1.0), turning off --calibrate. Unset, this value is only the fallback for a corpus too small to calibrate.")
 	analyzeCmd.Flags().IntVarP(&topN, "top", "n", 20, "Maximum number of pairs in the final report")
 	analyzeCmd.Flags().IntVar(&minNodes, "min-nodes", defaultMinNodes, "Exclude functions with fewer body AST nodes from structural retrieval")
 	analyzeCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write a report to this file. A .html path renders the full visual report; any other extension writes markdown. Stdout text report is still printed.")
