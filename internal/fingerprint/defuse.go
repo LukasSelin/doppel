@@ -1,6 +1,6 @@
 package fingerprint
 
-import "go/ast"
+import "github.com/LukasSelin/doppel/internal/syntax"
 
 // Crude single-hop def-use flow, as LevelFlow patterns.
 //
@@ -35,8 +35,8 @@ import "go/ast"
 //     err-check idiom flow:call:X→cond fall out for free);
 //   - control-flow sensitivity (a def in one branch reaches uses in another)
 //     and anything cross-function.
-func extractDefUse(fd *ast.FuncDecl, add func(level uint8, render string)) {
-	if fd.Body == nil {
+func extractDefUse(fn *syntax.Func, add func(level uint8, render string)) {
+	if fn == nil || fn.Body == nil {
 		return
 	}
 
@@ -49,31 +49,27 @@ func extractDefUse(fd *ast.FuncDecl, add func(level uint8, render string)) {
 			roles[name] = role
 		}
 	}
-	if fd.Type != nil && fd.Type.Params != nil {
-		for _, field := range fd.Type.Params.List {
-			for _, name := range field.Names {
-				def(name.Name, "param")
-			}
-		}
+	for _, p := range fn.Params {
+		def(p.Name, "param")
 	}
 
 	// firstCall names the first call inside an expression, or "" when the
 	// expression calls nothing.
-	firstCall := func(e ast.Expr) string {
+	firstCall := func(e *syntax.Node) string {
 		label := ""
-		ast.Inspect(e, func(n ast.Node) bool {
-			if label != "" {
+		syntax.Inspect(e, func(n *syntax.Node) bool {
+			if label != "" || n == nil {
 				return false
 			}
-			if call, ok := n.(*ast.CallExpr); ok {
-				label = "call:" + callLabel(call)
+			if n.Kind == syntax.KindCall {
+				label = "call:" + callLabel(n)
 				return false
 			}
 			return true
 		})
 		return label
 	}
-	bind := func(names []string, rhs []ast.Expr) {
+	bind := func(names []string, rhs []*syntax.Node) {
 		switch {
 		case len(rhs) == 1:
 			// One RHS for every name — including x, err := f(), which binds
@@ -95,32 +91,38 @@ func extractDefUse(fd *ast.FuncDecl, add func(level uint8, render string)) {
 	// Pass one: bindings. Textual order is fine — within a function a name
 	// cannot be used before some binding exists, and the name-keyed merge is
 	// documented as crude.
-	ast.Inspect(fd.Body, func(n ast.Node) bool {
-		switch node := n.(type) {
-		case *ast.AssignStmt:
-			names := make([]string, len(node.Lhs))
-			for i, lhs := range node.Lhs {
-				if id, ok := lhs.(*ast.Ident); ok {
-					names[i] = id.Name
+	syntax.Inspect(fn.Body, func(n *syntax.Node) bool {
+		if n == nil {
+			return true
+		}
+		switch n.Kind {
+		case syntax.KindAssign:
+			lhs := n.Slots(syntax.RoleLhs)
+			names := make([]string, len(lhs))
+			for i, l := range lhs {
+				if l.Kind == syntax.KindIdent {
+					names[i] = l.Label
 				}
 			}
-			bind(names, node.Rhs)
-		case *ast.ValueSpec:
-			if len(node.Values) > 0 {
-				names := make([]string, len(node.Names))
-				for i, id := range node.Names {
-					names[i] = id.Name
+			bind(names, n.Slots(syntax.RoleRhs))
+		case syntax.KindValueSpec:
+			values := n.Slots(syntax.RoleValue)
+			if len(values) > 0 {
+				ids := n.Slots(syntax.RoleName)
+				names := make([]string, len(ids))
+				for i, id := range ids {
+					names[i] = id.Label
 				}
-				bind(names, node.Values)
+				bind(names, values)
 			}
 		}
 		return true
 	})
 
 	emit := func(src, sink string) { add(LevelFlow, "flow:"+src+"→"+sink) }
-	useIdent := func(e ast.Expr, sink string) {
-		if id, ok := e.(*ast.Ident); ok {
-			if role, ok := roles[id.Name]; ok {
+	useIdent := func(e *syntax.Node, sink string) {
+		if e != nil && e.Kind == syntax.KindIdent {
+			if role, ok := roles[e.Label]; ok {
 				emit(role, sink)
 			}
 		}
@@ -129,50 +131,56 @@ func extractDefUse(fd *ast.FuncDecl, add func(level uint8, render string)) {
 	// Call subtrees are skipped — their arguments are the call sink's
 	// business, handled by the use pass — and only a selector's receiver is
 	// considered, never its field name (a field can collide with a binding).
-	condIdents := func(e ast.Expr, sink string) {
-		ast.Inspect(e, func(n ast.Node) bool {
-			switch node := n.(type) {
-			case *ast.CallExpr:
+	condIdents := func(e *syntax.Node, sink string) {
+		syntax.Inspect(e, func(n *syntax.Node) bool {
+			if n == nil {
+				return true
+			}
+			switch n.Kind {
+			case syntax.KindCall:
 				return false
-			case *ast.SelectorExpr:
-				useIdent(node.X, sink)
+			case syntax.KindSelector:
+				useIdent(n.Slot(syntax.RoleX), sink)
 				return false
-			case *ast.Ident:
-				useIdent(node, sink)
+			case syntax.KindIdent:
+				useIdent(n, sink)
 			}
 			return true
 		})
 	}
 
 	// Pass two: uses.
-	ast.Inspect(fd.Body, func(n ast.Node) bool {
-		switch node := n.(type) {
-		case *ast.CallExpr:
-			sink := "call:" + callLabel(node)
-			for _, arg := range node.Args {
+	syntax.Inspect(fn.Body, func(n *syntax.Node) bool {
+		if n == nil {
+			return true
+		}
+		switch n.Kind {
+		case syntax.KindCall:
+			sink := "call:" + callLabel(n)
+			for _, arg := range n.Slots(syntax.RoleArg) {
 				useIdent(arg, sink)
 			}
-			if sel, ok := node.Fun.(*ast.SelectorExpr); ok {
-				useIdent(sel.X, sink)
+			if fun := n.Slot(syntax.RoleFun); fun != nil && fun.Kind == syntax.KindSelector {
+				useIdent(fun.Slot(syntax.RoleX), sink)
 			}
-		case *ast.ReturnStmt:
-			for _, res := range node.Results {
+		case syntax.KindReturn:
+			for _, res := range n.Slots(syntax.RoleResult) {
 				useIdent(res, "return")
 			}
-		case *ast.IfStmt:
-			if node.Cond != nil {
-				condIdents(node.Cond, "cond")
+		case syntax.KindIf:
+			if cond := n.Slot(syntax.RoleCond); cond != nil {
+				condIdents(cond, "cond")
 			}
-		case *ast.ForStmt:
-			if node.Cond != nil {
-				condIdents(node.Cond, "cond")
+		case syntax.KindFor:
+			if cond := n.Slot(syntax.RoleCond); cond != nil {
+				condIdents(cond, "cond")
 			}
-		case *ast.SwitchStmt:
-			if node.Tag != nil {
-				condIdents(node.Tag, "cond")
+		case syntax.KindSwitch:
+			if tag := n.Slot(syntax.RoleTag); tag != nil {
+				condIdents(tag, "cond")
 			}
-		case *ast.RangeStmt:
-			condIdents(node.X, "cond")
+		case syntax.KindRange:
+			condIdents(n.Slot(syntax.RoleX), "cond")
 		}
 		return true
 	})

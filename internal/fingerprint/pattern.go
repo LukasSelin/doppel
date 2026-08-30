@@ -1,10 +1,11 @@
 package fingerprint
 
 import (
-	"go/ast"
 	"hash/fnv"
 	"sort"
 	"strings"
+
+	"github.com/LukasSelin/doppel/internal/syntax"
 )
 
 // Pattern levels: each level metabolizes the one below it — tokens feed
@@ -93,8 +94,8 @@ func widthTag(w int) string { return "w" + string(rune('0'+w)) }
 // windows; the declaration's signature feeds the L4 def-use pass its
 // parameter names. Output is sorted by (Hash, Level, Render) — a total
 // order, so the accumulator map cannot leak iteration order.
-func extractPatterns(fd *ast.FuncDecl, tokens []string) []Pattern {
-	body := fd.Body
+func extractPatterns(fn *syntax.Func, tokens []string) []Pattern {
+	body := fn.Body
 	acc := make(map[uint64]*Pattern)
 	add := func(hash uint64, level uint8, render string) {
 		if p, ok := acc[hash]; ok {
@@ -137,27 +138,31 @@ func extractPatterns(fd *ast.FuncDecl, tokens []string) []Pattern {
 		}
 	}
 
-	ast.Inspect(body, func(n ast.Node) bool {
-		switch node := n.(type) {
-		case *ast.CallExpr:
-			addRendered(LevelExpr, "call:"+callLabel(node))
-		case *ast.BinaryExpr:
-			addRendered(LevelExpr, binRender(node))
-		case *ast.ForStmt:
-			if r := loopSummary("for", node.Init, node.Cond, node.Post, node.Body); r != "" {
+	syntax.Inspect(body, func(n *syntax.Node) bool {
+		if n == nil {
+			return true
+		}
+		switch n.Kind {
+		case syntax.KindCall:
+			addRendered(LevelExpr, "call:"+callLabel(n))
+		case syntax.KindBinary:
+			addRendered(LevelExpr, binRender(n))
+		case syntax.KindFor:
+			if r := loopSummary("for", n.Slot(syntax.RoleInit), n.Slot(syntax.RoleCond),
+				n.Slot(syntax.RolePost), n.Slot(syntax.RoleBody)); r != "" {
 				addRendered(LevelMotif, r)
 			}
-		case *ast.RangeStmt:
-			if r := loopSummary("range", node.X, node.Body); r != "" {
+		case syntax.KindRange:
+			if r := loopSummary("range", n.Slot(syntax.RoleX), n.Slot(syntax.RoleBody)); r != "" {
 				addRendered(LevelMotif, r)
 			}
-		case *ast.BlockStmt:
-			for _, r := range seqBigrams(node) {
+		case syntax.KindBlock:
+			for _, r := range seqBigrams(n) {
 				addRendered(LevelMotif, r)
 			}
 		default:
-			if s, ok := n.(ast.Stmt); ok {
-				if r := stmtRender(s); r != "" {
+			if n.Kind.IsStmt() {
+				if r := stmtRender(n); r != "" {
 					addRendered(LevelAction, r)
 				}
 			}
@@ -165,7 +170,7 @@ func extractPatterns(fd *ast.FuncDecl, tokens []string) []Pattern {
 		return true
 	})
 
-	extractDefUse(fd, addRendered)
+	extractDefUse(fn, addRendered)
 
 	if len(acc) == 0 {
 		return nil
@@ -189,8 +194,8 @@ func extractPatterns(fd *ast.FuncDecl, tokens []string) []Pattern {
 // callLabel names a call for pattern purposes: the callee name when one is
 // syntactically visible, "funclit" for immediately-invoked literals, "?"
 // otherwise. Receiver expressions stay dropped, same rule as calleeName.
-func callLabel(call *ast.CallExpr) string {
-	if _, ok := call.Fun.(*ast.FuncLit); ok {
+func callLabel(call *syntax.Node) string {
+	if fun := call.Slot(syntax.RoleFun); fun != nil && fun.Kind == syntax.KindFuncLit {
 		return "funclit"
 	}
 	if name := calleeName(call); name != "" {
@@ -203,76 +208,82 @@ func callLabel(call *ast.CallExpr) string {
 // nil/true/false keep their names — that is what makes the err != nil idiom
 // fall out as its own pattern with no special case — while every other
 // identifier collapses to "id".
-func exprKind(e ast.Expr) string {
-	switch v := e.(type) {
-	case *ast.ParenExpr:
-		return exprKind(v.X)
-	case *ast.Ident:
-		switch v.Name {
+func exprKind(e *syntax.Node) string {
+	if e == nil {
+		return "expr"
+	}
+	switch e.Kind {
+	case syntax.KindParen:
+		return exprKind(e.Slot(syntax.RoleX))
+	case syntax.KindIdent:
+		switch e.Label {
 		case "nil", "true", "false":
-			return v.Name
+			return e.Label
 		}
 		return "id"
-	case *ast.BasicLit:
-		return "lit:" + v.Kind.String()
-	case *ast.CallExpr:
-		return "call:" + callLabel(v)
-	case *ast.SelectorExpr:
+	case syntax.KindLit:
+		return "lit:" + e.Label
+	case syntax.KindCall:
+		return "call:" + callLabel(e)
+	case syntax.KindSelector:
 		return "sel"
-	case *ast.BinaryExpr:
+	case syntax.KindBinary:
 		return "bin"
-	case *ast.UnaryExpr:
+	case syntax.KindUnary:
 		return "unary"
-	case *ast.CompositeLit:
+	case syntax.KindComposite:
 		return "composite"
-	case *ast.FuncLit:
+	case syntax.KindFuncLit:
 		return "funclit"
-	case *ast.IndexExpr:
+	case syntax.KindIndex:
 		return "index"
-	case *ast.SliceExpr:
+	case syntax.KindSlice:
 		return "slice"
-	case *ast.StarExpr:
+	case syntax.KindStar:
 		return "star"
-	case *ast.TypeAssertExpr:
+	case syntax.KindAssert:
 		return "assert"
 	}
 	return "expr"
 }
 
-func binRender(b *ast.BinaryExpr) string {
-	return "bin:" + b.Op.String() + "(" + exprKind(b.X) + "," + exprKind(b.Y) + ")"
+func binRender(b *syntax.Node) string {
+	return "bin:" + b.Label + "(" + exprKind(b.Slot(syntax.RoleX)) + "," + exprKind(b.Slot(syntax.RoleY)) + ")"
 }
 
 // stmtRender is the L2 vocabulary: a statement kind with its salient
 // structure. Loops and switches render nothing here — summarizing what
 // happens inside them is the motif level's job.
-func stmtRender(s ast.Stmt) string {
-	switch v := s.(type) {
-	case *ast.ReturnStmt:
-		parts := make([]string, 0, len(v.Results))
-		for _, r := range v.Results {
+func stmtRender(s *syntax.Node) string {
+	switch s.Kind {
+	case syntax.KindReturn:
+		results := s.Slots(syntax.RoleResult)
+		parts := make([]string, 0, len(results))
+		for _, r := range results {
 			parts = append(parts, exprKind(r))
 		}
 		return "return(" + strings.Join(parts, ",") + ")"
-	case *ast.AssignStmt:
-		parts := make([]string, 0, len(v.Rhs))
-		for _, r := range v.Rhs {
+	case syntax.KindAssign:
+		rhs := s.Slots(syntax.RoleRhs)
+		parts := make([]string, 0, len(rhs))
+		for _, r := range rhs {
 			parts = append(parts, exprKind(r))
 		}
-		return "assign" + v.Tok.String() + "(" + strings.Join(parts, ",") + ")"
-	case *ast.DeferStmt:
-		return "defer(" + callInner(v.Call) + ")"
-	case *ast.GoStmt:
-		return "go(" + callInner(v.Call) + ")"
-	case *ast.IfStmt:
-		if cond, ok := v.Cond.(*ast.BinaryExpr); ok {
+		return "assign" + s.Label + "(" + strings.Join(parts, ",") + ")"
+	case syntax.KindDefer:
+		return "defer(" + callInner(s.Slot(syntax.RoleCall)) + ")"
+	case syntax.KindGo:
+		return "go(" + callInner(s.Slot(syntax.RoleCall)) + ")"
+	case syntax.KindIf:
+		cond := s.Slot(syntax.RoleCond)
+		if cond != nil && cond.Kind == syntax.KindBinary {
 			return "if(" + binRender(cond) + ")"
 		}
-		return "if(" + exprKind(v.Cond) + ")"
-	case *ast.SendStmt:
-		return "send(" + exprKind(v.Value) + ")"
-	case *ast.ExprStmt:
-		if call, ok := v.X.(*ast.CallExpr); ok {
+		return "if(" + exprKind(cond) + ")"
+	case syntax.KindSend:
+		return "send(" + exprKind(s.Slot(syntax.RoleValue)) + ")"
+	case syntax.KindExprStmt:
+		if call := s.Slot(syntax.RoleX); call != nil && call.Kind == syntax.KindCall {
 			return "do(" + callInner(call) + ")"
 		}
 	}
@@ -282,8 +293,11 @@ func stmtRender(s ast.Stmt) string {
 // callInner renders a called thing for defer/go/do contexts: "funclit" for
 // literals (the interesting fact is that a literal runs there), otherwise the
 // call pattern.
-func callInner(call *ast.CallExpr) string {
-	if _, ok := call.Fun.(*ast.FuncLit); ok {
+func callInner(call *syntax.Node) string {
+	if call == nil {
+		return "?"
+	}
+	if fun := call.Slot(syntax.RoleFun); fun != nil && fun.Kind == syntax.KindFuncLit {
 		return "funclit"
 	}
 	return "call:" + callLabel(call)
@@ -295,26 +309,21 @@ func callInner(call *ast.CallExpr) string {
 // call in the condition — so the summary reads the way the loop behaves:
 // "for{ call:Scan call:TrimSpace call:Atoi call:append }". Empty for loops
 // that call nothing named.
-func loopSummary(keyword string, parts ...ast.Node) string {
+func loopSummary(keyword string, parts ...*syntax.Node) string {
 	var names []string
 	seen := make(map[string]bool)
 	truncated := false
 	for _, part := range parts {
-		// Init/Cond/Post/X are interface fields: absent means a nil
-		// interface, caught here. Body is a concrete pointer, so guard the
-		// typed-nil wrap explicitly.
+		// An absent slot is a nil node — the IR has no typed-nil hazard, so
+		// one check covers what used to need two.
 		if part == nil {
 			continue
 		}
-		if b, ok := part.(*ast.BlockStmt); ok && b == nil {
-			continue
-		}
-		ast.Inspect(part, func(n ast.Node) bool {
-			call, ok := n.(*ast.CallExpr)
-			if !ok {
+		syntax.Inspect(part, func(n *syntax.Node) bool {
+			if n == nil || n.Kind != syntax.KindCall {
 				return true
 			}
-			name := calleeName(call)
+			name := calleeName(n)
 			if name == "" || seen[name] {
 				return true
 			}
@@ -340,19 +349,20 @@ func loopSummary(keyword string, parts ...ast.Node) string {
 // block, where each statement is its L2 render or a container keyword.
 // Statements with neither break the window, so bigrams never bridge over
 // unmodeled structure.
-func seqBigrams(block *ast.BlockStmt) []string {
-	items := make([]string, len(block.List))
-	for i, s := range block.List {
-		switch s.(type) {
-		case *ast.ForStmt:
+func seqBigrams(block *syntax.Node) []string {
+	stmts := block.Slots(syntax.RoleList)
+	items := make([]string, len(stmts))
+	for i, s := range stmts {
+		switch s.Kind {
+		case syntax.KindFor:
 			items[i] = "for"
-		case *ast.RangeStmt:
+		case syntax.KindRange:
 			items[i] = "range"
-		case *ast.SwitchStmt:
+		case syntax.KindSwitch:
 			items[i] = "switch"
-		case *ast.TypeSwitchStmt:
+		case syntax.KindTypeSwitch:
 			items[i] = "typeswitch"
-		case *ast.SelectStmt:
+		case syntax.KindSelect:
 			items[i] = "select"
 		default:
 			items[i] = stmtRender(s)

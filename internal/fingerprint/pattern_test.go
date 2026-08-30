@@ -2,30 +2,19 @@ package fingerprint
 
 import (
 	"fmt"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/LukasSelin/doppel/internal/gofront"
+	"github.com/LukasSelin/doppel/internal/syntax"
 )
 
 // buildFrom parses one fixture and fingerprints its first function. Local to
 // the pattern tests so the existing fixtures stay untouched.
 func buildFrom(t *testing.T, src string) Fingerprint {
 	t.Helper()
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "fix.go", "package fix\n"+src, 0)
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	for _, decl := range file.Decls {
-		if fd, ok := decl.(*ast.FuncDecl); ok {
-			return Build(fd)
-		}
-	}
-	t.Fatal("no function in fixture")
-	return Fingerprint{}
+	return Build(fixture(t, src))
 }
 
 func renders(fp Fingerprint, level uint8) []string {
@@ -183,18 +172,21 @@ func drop(x int) {
 // walkFixture exposes the walk() token stream for a fixture.
 func walkFixture(t *testing.T, src string) ([]string, []int, []int, int) {
 	t.Helper()
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "fix.go", "package fix\n"+src, 0)
+	return walk(fixture(t, src).Body)
+}
+
+// fixture parses one snippet through the Go frontend and returns its first
+// function in neutral form.
+func fixture(t *testing.T, src string) *syntax.Func {
+	t.Helper()
+	f, err := gofront.Parse("fix.go", []byte("package fix\n"+src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	for _, decl := range file.Decls {
-		if fd, ok := decl.(*ast.FuncDecl); ok {
-			return walk(fd.Body)
-		}
+	if f == nil || len(f.Funcs) == 0 {
+		t.Fatal("no function in fixture")
 	}
-	t.Fatal("no function in fixture")
-	return nil, nil, nil, 0
+	return &f.Funcs[0]
 }
 
 // A trivial Sprintf method: L1 call pattern, L2 return-of-call, and no motif

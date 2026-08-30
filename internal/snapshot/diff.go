@@ -241,7 +241,7 @@ func incomparable(base, head Snapshot) string {
 		// Every relation weight and the taxonomy shape feed OverlapScore, so a
 		// vocabulary change moves scores that no edit touched.
 		return fmt.Sprintf("baseline used ontology %s, current %s", base.Ontology, head.Ontology)
-	case base.Params != head.Params:
+	case !base.Params.Equal(head.Params):
 		return fmt.Sprintf("baseline params %+v, current %+v", base.Params, head.Params)
 	}
 	return ""

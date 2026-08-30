@@ -1,6 +1,6 @@
 # doppel
 
-**doppel measures architectural erosion in a Go codebase — the widening gap between the structure a
+**doppel measures architectural erosion in a codebase — the widening gap between the structure a
 project intends and the one it actually has.**
 
 Nobody erodes an architecture deliberately. Someone needs a retry loop and writes one, because
@@ -50,7 +50,15 @@ something and that one of them is odd.
 go run . analyze .
 ```
 
-This scans the current directory, fingerprints every Go function, and prints the most similar pairs with the evidence behind each match. Add `--output report.md` to also write a Markdown report.
+This scans the current directory, fingerprints every function, and prints the most similar pairs with the evidence behind each match. Add `--output report.md` to also write a Markdown report.
+
+Go is read with `go/ast` at full fidelity. Thirteen other languages — Python, TypeScript,
+JavaScript, Rust, Java, C#, Kotlin, Swift, PHP, Ruby, C, C++, Scala — are read by a frontend
+that has no grammar for them, only a tokenizer and a block rule; it finds 99.4–99.9% of the
+functions `go/ast` finds when both are pointed at Go, at 100% precision, losing types and
+therefore the signature component of the score. Functions in different languages are never
+paired with each other. `--languages go` (or a `languages` key in `.doppel.json`) narrows the
+corpus to one language.
 
 ## Real-world examples
 
