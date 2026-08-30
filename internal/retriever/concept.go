@@ -22,6 +22,14 @@ import (
 // quantity the cap is stated in. Confidence bends the evidence, not the index. This channel has
 // no similarity floor and no size gate — admitting structurally dissimilar
 // pairs with informative shared meaning is its entire purpose.
+//
+// A BelowFloor membership does not post. It is a membership the unit did not
+// earn — the concept explains more of it than any other does, but not enough —
+// and it reaches this channel the way it reaches every other consumer that
+// counts rather than weights: not at all. It still contributes to a pair's
+// *evidence* if some other posting proposed the pair, because that arithmetic
+// is graded and a barely-held membership earns barely anything. Proposing is
+// the boolean act; scoring is the graded one.
 type conceptIndex struct {
 	scorer   *ontology.Scorer
 	concepts [][]parser.Concept        // per unit: its memberships, as learned
@@ -47,6 +55,9 @@ func buildConceptIndex(units []parser.CodeUnit, onto *ontology.Ontology,
 		}
 		seen := make(map[ontology.TermID]bool)
 		for _, c := range units[i].Concepts {
+			if c.BelowFloor {
+				continue
+			}
 			id := ontology.TermID(c.ID)
 			seen[id] = true
 			for _, anc := range onto.Ancestors(id) {

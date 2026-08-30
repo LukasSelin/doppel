@@ -27,18 +27,41 @@ import (
 type Concept struct {
 	ID         string
 	Confidence float64
+
+	// BelowFloor marks a membership the unit did not earn: the concept
+	// explains more of this function than any other does, but not enough to
+	// clear the concept's own bar. It exists so the two views of a membership
+	// can disagree — see ConceptIDs — and it is set only by lexicon's
+	// backfill, which is off by default.
+	BelowFloor bool
 }
 
 // ConceptIDs projects memberships back to bare IDs, ascending. It is the
 // boolean view of a graded fact, and every caller of it is a place that must
 // not see corpus-relative weights — the merge-signal gate above all.
+//
+// It drops BelowFloor memberships, and that is the whole mechanism behind the
+// backfill: a membership admitted only because the unit had nothing else is
+// real evidence to a consumer that weights it and misleading to one that does
+// not. Five consumers read a membership as a bare boolean — the retrieval
+// channel's postings (and so the df its idiom cap is stated in), the
+// merge-signal gate, culture's PMI ecology and prototypes, the concept arena's
+// candidate set, and the report's practice section — and every one of them
+// reaches the fact through here. Filtering once, at the projection, is what
+// keeps the option out of all five.
 func ConceptIDs(cs []Concept) []string {
 	if len(cs) == 0 {
 		return nil
 	}
-	out := make([]string, len(cs))
-	for i, c := range cs {
-		out[i] = c.ID
+	out := make([]string, 0, len(cs))
+	for _, c := range cs {
+		if c.BelowFloor {
+			continue
+		}
+		out = append(out, c.ID)
+	}
+	if len(out) == 0 {
+		return nil
 	}
 	return out
 }

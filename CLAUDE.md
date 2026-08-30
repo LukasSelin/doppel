@@ -853,7 +853,7 @@ Stages, all deterministic counting:
    `lift × idf` rather than `idf`, so coverage has no natural maximum either, and pretending it had
    one would make the number a rank in disguise.
 
-Eight decisions here were **measured, not assumed**, and each was wrong the first time:
+Nine decisions here were **measured, not assumed**, and each was wrong the first time:
 
 - **A fixed confidence cut cannot decide membership.** Confidence saturates around the median
   founding member, so `conf >= 0.5` means "at least the median founding member" and discards half
@@ -932,6 +932,39 @@ Eight decisions here were **measured, not assumed**, and each was wrong the firs
   `MinIDF`: `FloorRule` stays an Options-only seam, default `FloorFounding`, and
   `TestLexiconMembershipLadder` re-runs the question. What would settle it is a second labeled
   corpus, and a reason to care about floor comparability that is not aesthetic.
+- **Membership is a hard cut in a graded system, and softening it is nearly free — nearly.**
+  A unit clearing no floor gets nothing, and that is 198 of doppel's 869 functions (moby 9.4%,
+  cobra 21.9%) — not because no concept describes them but because none describes them *enough*.
+  `Options.BackfillN` gives such a unit its best N concepts anyway, at the confidence it earned.
+
+  The premise it rests on — "a low-confidence membership is cheap, a missing one is invisible" — is
+  true only of the consumers that *weight* a membership. **Five read it as a bare boolean**: the
+  retrieval channel's postings (and so the df its idiom cap is stated in), the merge-signal gate,
+  culture's PMI ecology and prototypes, the arena's candidate set, and the report's practice
+  section. `parser.Concept.BelowFloor` marks a backfilled membership and `parser.ConceptIDs` drops
+  it, which handles four of the five in one edit; the retriever needed its own skip, because it
+  reads `Unit.Concepts` directly and never goes through that projection — **measured, and the first
+  version of this was wrong about it**: marked and visible scored identically until the postings
+  learned to skip.
+
+  Marked, it does what it promises. On this repo, unlabelled **198 → 4** (the four touch no concept
+  vocabulary at all, so there is nothing to backfill from) with `Culture:` and `Ecosystems:`
+  **byte-identical** — 95 concepts modeled, 309 associations, 51 realizations, 459/418 dominance and
+  coalition, all unchanged — and cobra's candidate union moving 1419 → 1420. Visible, the same
+  coverage costs culture (309 → 326 associations, 95 → 98 concepts modeled) and shifts the arena
+  hard (459 → 592 dominance, 418 → 285 coalition), which is the whole argument for the mark.
+
+  **Not adopted**, and the reason is the one path a mark cannot close: `SetRelatednessW` is weighted,
+  so a backfilled membership still moves `PatternRelatedness`, `OverlapScore` and therefore the
+  ranking key — and on cobra it costs refactor 12.8 → 13.8 and false-positive separation 50.5 → 46.5
+  (merge 5.3 → 5.2, no violations), with 8 gate flips on and 4 off across 1419 pairs. Both label
+  means move the wrong way and do so consistently across N=1 and N=2, which is not the shape of
+  noise even at this sample size. `BackfillAlways` buys nothing over `BackfillN` — the same coverage
+  at 2.5 assignments per function instead of 2.2 and three times the gate flips — so it is a seam
+  and not a candidate.
+
+  This is the closest of the three membership proposals to adoptable: the structural cost really is
+  about zero, and what would settle it is a second labeled corpus showing the ranking move is noise.
 - **The feature co-occurrence graph is not sparse.** Features co-occur far more freely than
   functions resemble each other, so the unbounded graph is one blob: it tripped `MaxComponent` and
   produced one emergent concept, and none at all with no seeds. Each feature keeps its `EdgeK` (8)
