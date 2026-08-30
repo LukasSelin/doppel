@@ -22,7 +22,7 @@ import (
 // report's practice section already learned. The weight is lift × idf, so a
 // feature must be both distinctive *to the concept* and rare *in the corpus*.
 //
-// It returns the vocabulary, the median founding evidence (the half-point the
+// It returns the vocabulary, the median founding coverage (the half-point the
 // reported confidence saturates around) and the membership floor at
 // Options.FloorQuantile — see assign for why those are two numbers.
 func fit(c *corpus, members []int, opt Options) ([]Feature, float64, float64) {
@@ -68,32 +68,35 @@ func fit(c *corpus, members []int, opt Options) ([]Feature, float64, float64) {
 	})
 
 	w := weightsOf(features)
-	ev := make([]float64, 0, len(members))
+	cov := make([]float64, 0, len(members))
 	for _, mi := range members {
-		ev = append(ev, c.evidence(mi, w))
+		cov = append(cov, c.cover(mi, w))
 	}
-	sort.Float64s(ev)
-	scale := median(ev)
+	sort.Float64s(cov)
+	scale := median(cov)
 	if scale <= 0 {
 		// Every founding member scored zero, which can only happen when the
 		// vocabulary is empty; guard anyway so confidence never divides by
 		// zero and every member does not read 1.0.
 		scale = math.SmallestNonzeroFloat64
 	}
-	floor := quantile(ev, opt.FloorQuantile)
-	if floor <= 0 {
-		// A concept whose bar is zero would admit every function carrying any
-		// of its vocabulary at all, which is not membership in anything. The
-		// weakest positive founding evidence is the honest floor.
-		floor = math.SmallestNonzeroFloat64
-		for _, e := range ev {
-			if e > 0 {
-				floor = e
-				break
-			}
+	return features, scale, positiveFloor(quantile(cov, opt.FloorQuantile), cov)
+}
+
+// positiveFloor keeps a membership bar above zero. A concept whose bar is zero
+// would admit every function carrying any of its vocabulary at all, which is
+// not membership in anything; the weakest positive founding value is the honest
+// floor. sorted must be ascending.
+func positiveFloor(q float64, sorted []float64) float64 {
+	if q > 0 {
+		return q
+	}
+	for _, v := range sorted {
+		if v > 0 {
+			return v
 		}
 	}
-	return features, scale, floor
+	return math.SmallestNonzeroFloat64
 }
 
 // expandSeeds turns each seed label into a concept whose vocabulary is learned

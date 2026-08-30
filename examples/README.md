@@ -28,13 +28,13 @@ corpus is a decade of accretion". Both ends are visible below.
 <!-- BEGIN generated ladder -->
 | Corpus | Since | Pinned | Functions | Pairs compared | Kept | Code-shape floor | Concepts learned | Concepts modeled | Habitats |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| [moby](moby.md) | 2013 | `v28.5.2` | 7658 | 28065 | 13627 | 0.36 | 519 | 393 | 167 |
-| [prometheus](prometheus.md) | 2012 | `v3.14.0` | 5623 | 20492 | 9643 | 0.33 | 390 | 337 | 97 |
-| [hugo](hugo.md) | 2013 | `v0.165.0` | 5737 | 21425 | 8591 | 0.34 | 547 | 441 | 129 |
-| [gin](gin.md) | 2014 | `v1.12.0` | 497 | 2046 | 437 | 0.41 | 46 | 36 | 5 |
-| [cobra](cobra.md) | 2015 | `v1.10.2` | 269 | 1155 | 206 | 0.44 | 26 | 23 | 2 |
-| [chi](chi.md) | 2015 | `v5.3.2` | 183 | 761 | 116 | 0.45 | 21 | 19 | 2 |
-| [conc](conc.md) | 2023 | `v0.3.0` | 81 | 152 | 152 | declined | 6 | 6 | 4 |
+| [moby](moby.md) | 2013 | `v28.5.2` | 7658 | 40225 | 18461 | 0.36 | 519 | 488 | 167 |
+| [prometheus](prometheus.md) | 2012 | `v3.14.0` | 5623 | 29105 | 13079 | 0.33 | 390 | 360 | 97 |
+| [hugo](hugo.md) | 2013 | `v0.165.0` | 5737 | 32238 | 13571 | 0.34 | 547 | 501 | 129 |
+| [gin](gin.md) | 2014 | `v1.12.0` | 497 | 2116 | 570 | 0.41 | 46 | 37 | 5 |
+| [cobra](cobra.md) | 2015 | `v1.10.2` | 269 | 1401 | 239 | 0.44 | 26 | 26 | 2 |
+| [chi](chi.md) | 2015 | `v5.3.2` | 183 | 814 | 124 | 0.45 | 21 | 20 | 2 |
+| [conc](conc.md) | 2023 | `v0.3.0` | 81 | 155 | 155 | declined | 6 | 4 | 4 |
 <!-- END generated ladder -->
 
 The table between those markers is generated: `task examples` rewrites it from

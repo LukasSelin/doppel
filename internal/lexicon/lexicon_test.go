@@ -260,3 +260,178 @@ func describe(assign [][]parser.Concept, units []parser.CodeUnit) string {
 	}
 	return b.String()
 }
+
+// TestMembershipIgnoresSize is the regression the coverage rule exists for.
+//
+// The concept's founding members are verbose: each reaches the store through
+// the same two calls and then does a great deal of unrelated work. A seventh
+// function reaches the store the same way and does nothing else — it carries
+// the concept's whole vocabulary and none of the noise.
+//
+// Under a floor stated in raw evidence the terse one is not a member, because
+// the bar was set by how much its founders carry *in total* rather than by how
+// much of them the concept accounts for. That arithmetic is what left 451 of
+// doppel's own 866 functions unlabelled: measured on this corpus, the labelled
+// units carried a median of 48 features and the unlabelled ones 21.
+//
+// Coverage is size-free on both sides, so the terse reader is a member of the
+// concept its verbose siblings founded.
+func TestMembershipIgnoresSize(t *testing.T) {
+	var b strings.Builder
+	b.WriteString("package app\n\nimport \"strings\"\n")
+
+	// 0-5: verbose store readers. The store calls are the only thing they have
+	// in common; the padding is deliberately per-function so it founds nothing.
+	readers := []string{"LoadUser", "LoadOrder", "LoadInvoice", "LoadShipment", "LoadAddress", "LoadCarrier"}
+	for i, name := range readers {
+		fmt.Fprintf(&b, `
+func %s(ref string) (string, error) {
+	v, err := store.Get(ref)
+	if err != nil {
+		return "", err
+	}
+	out, err := store.Decode(v)
+	if err != nil {
+		return "", err
+	}
+	for i := 0; i < %d; i++ {
+		out = strings.TrimSpace(out)
+		out = strings.ToUpper(out)
+		if strings.Contains(out, "z%d") {
+			out = strings.TrimSuffix(out, "z%d")
+		}
+		switch {
+		case strings.HasPrefix(out, "q%d"):
+			out = strings.TrimPrefix(out, "q%d")
+		default:
+			out += strings.Repeat("x", i)
+		}
+	}
+	return out, nil
+}
+`, name, 3+i, i, i, i, i)
+	}
+
+	// 6: the same practice, and nothing else.
+	b.WriteString(`
+func LoadTerse(ref string) (string, error) {
+	v, err := store.Get(ref)
+	if err != nil {
+		return "", err
+	}
+	return store.Decode(v)
+}
+`)
+
+	// Filler, so the store practice is rare enough in the corpus to be
+	// evidence at all — the reason storeCorpus carries filler too.
+	for i := 0; i < 24; i++ {
+		fmt.Fprintf(&b, "\nfunc Filler%02d(x int) int { return alpha%02d(x) + beta%02d(x) }\n", i, i, i)
+	}
+
+	m, units := build(t, b.String(), nil, testOptions())
+
+	idx := make(map[string]int, len(units))
+	for i := range units {
+		idx[units[i].Name] = i
+	}
+	terse, ok := idx["LoadTerse"]
+	if !ok {
+		t.Fatal("fixture did not parse the terse reader")
+	}
+	founder, ok := idx[readers[0]]
+	if !ok {
+		t.Fatal("fixture did not parse the verbose readers")
+	}
+	if len(units[founder].Body) <= 3*len(units[terse].Body) {
+		t.Fatal("fixture is not lopsided enough to be measuring anything")
+	}
+
+	assign := m.Assignments()
+	shared := ""
+	for _, c := range assign[terse] {
+		if parser.ConfidenceOf(assign[founder], c.ID) > 0 {
+			shared = c.ID
+			break
+		}
+	}
+	if shared == "" {
+		t.Fatalf("the terse reader shares no concept with the verbose ones it copies: terse %v, verbose %v",
+			parser.ConceptIDs(assign[terse]), parser.ConceptIDs(assign[founder]))
+	}
+}
+
+// TestMaxMemberships pins the bound: a unit keeps its strongest memberships
+// and no more, ascending by ID as every consumer expects.
+//
+// The fixture needs units that genuinely carry more than one concept, so six
+// functions here do both practices — read the store and clean the string — and
+// they are what the bound has to choose between.
+func TestMaxMemberships(t *testing.T) {
+	var b strings.Builder
+	b.WriteString(storeCorpus())
+	for _, name := range []string{"BothOne", "BothTwo", "BothThree", "BothFour", "BothFive", "BothSix"} {
+		fmt.Fprintf(&b, `
+func %s(ref string) (string, error) {
+	v, err := store.Get(ref)
+	if err != nil {
+		return "", err
+	}
+	out, err := store.Decode(v)
+	if err != nil {
+		return "", err
+	}
+	return strings.ToUpper(strings.TrimSpace(out)), nil
+}
+`, name)
+	}
+	src := b.String()
+
+	opt := testOptions()
+	opt.MaxMemberships = 0
+	unbounded, _ := build(t, src, nil, opt)
+
+	widest := 0
+	for _, cs := range unbounded.Assignments() {
+		if len(cs) > widest {
+			widest = len(cs)
+		}
+	}
+	if widest < 2 {
+		t.Fatalf("fixture assigns at most %d concept to any unit; the bound cannot be measured", widest)
+	}
+
+	opt.MaxMemberships = 1
+	bounded, _ := build(t, src, nil, opt)
+	for i, cs := range bounded.Assignments() {
+		if len(cs) > 1 {
+			t.Errorf("unit %d kept %d memberships under MaxMemberships=1", i, len(cs))
+		}
+		for j := 1; j < len(cs); j++ {
+			if cs[j-1].ID >= cs[j].ID {
+				t.Errorf("unit %d memberships are not ascending by ID: %v", i, parser.ConceptIDs(cs))
+			}
+		}
+	}
+
+	// The bound selects, it does not invent: every membership it keeps is one
+	// the unbounded run also assigned, at the same confidence. (Which one it
+	// keeps is decided on coverage, and coverage is not recoverable from a
+	// Model — confidence is monotone in it within a concept but not across
+	// concepts, since each has its own Scale — so the ranking itself is pinned
+	// by the corpus measurement in internal/bench, not from out here.)
+	for i, cs := range bounded.Assignments() {
+		for _, c := range cs {
+			if got := parser.ConfidenceOf(unbounded.Assignments()[i], c.ID); got != c.Confidence {
+				t.Errorf("unit %d kept %q at confidence %v; unbounded read %v", i, c.ID, c.Confidence, got)
+			}
+		}
+	}
+
+	// Nothing may be lost entirely: the bound trims a unit's memberships, it
+	// never empties them.
+	if bounded.Stats().Untagged != unbounded.Stats().Untagged {
+		t.Errorf("untagged moved with the bound: %d bounded, %d unbounded",
+			bounded.Stats().Untagged, unbounded.Stats().Untagged)
+	}
+}

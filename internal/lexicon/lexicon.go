@@ -62,16 +62,41 @@ type Options struct {
 	MinMembers int
 
 	// FloorQuantile places each concept's membership bar inside its own
-	// founding evidence distribution: the quantile of founding-member evidence
+	// founding coverage distribution: the quantile of founding-member coverage
 	// a unit must reach to be a member. 0.25 admits the founding set bar its
-	// weakest quarter, plus everyone else who carries as much.
+	// weakest quarter, plus everyone else the concept explains as much of.
 	//
 	// A fixed confidence cut was the first design and it was wrong. Confidence
-	// saturates around the *median* founding evidence, so "confidence >= 0.5"
+	// saturates around the *median* founding member, so "confidence >= 0.5"
 	// means "at least the median founding member" — which throws away half of
 	// every concept's own seed set by construction, and did: on this repo it
 	// left 527 of 546 functions with no concept at all.
+	//
+	// Lowering this quantile is not the repair for a corpus that is largely
+	// unlabelled, and measuring it is what moved the bar into coverage: with an
+	// evidence floor, 0.25 left 451 of 866 functions unlabelled here and 0.15
+	// let one concept swallow 649 of them. The bar was not too high, it was
+	// stated in a quantity that is not comparable between two functions.
 	FloorQuantile float64
+
+	// MaxMemberships bounds how many concepts one unit may belong to, keeping
+	// its strongest by coverage. 0 is unbounded, which is not a working
+	// setting: coverage removes the size term from the membership bar and with
+	// it the accidental ceiling that bar was providing, so the tail runs away
+	// on a wide corpus. Measured unbounded across the pinned ladder, hugo
+	// assigns 7.4 concepts per function and grows a 1 268-member concept — 22%
+	// of the corpus, which is not a practice — while moby reaches 4.8 per
+	// function and gin lets one concept claim 37%.
+	//
+	// Three, and the value is the same bounded-per-item idiom the retrieval
+	// channels apply to their postings: recall is per item. Every K measured
+	// (2, 3, 4, 6) fixes the runaway tail and none of them moves a single
+	// labeled pair on cobra — merge 5.3 (6/6), refactor 12.8, fp 50.5, no
+	// violations, identically — so the labels do not decide it and the corpus
+	// statistics do: at 3, hugo's largest concept is 4.5% of the corpus and its
+	// assignments 2.4 per function. Below 3 a function may not do more than a
+	// couple of things, which MaxOverlap already assumes it does.
+	MaxMemberships int
 
 	// EdgeK bounds the emergent feature graph: each feature keeps its EdgeK
 	// strongest associations. Without it the graph is not sparse — features
@@ -129,6 +154,7 @@ func DefaultOptions() Options {
 		EdgeK:               8,
 		MaxEmergentFeatures: 2000,
 		MaxUnitFeatures:     64,
+		MaxMemberships:      3,
 		MinCliqueSize:       2,
 		MaxOverlap:          0.6,
 		MaxSearch:           200000,
@@ -151,8 +177,8 @@ type Concept struct {
 	Seed     string    // the seed tag it grew from; "" when emergent
 	Anchor   string    // for an emergent concept: the seed of the concept it most resembles
 	Features []Feature // sorted by (Weight desc, Name asc)
-	Scale    float64   // median founding-member evidence: the confidence half-point
-	Floor    float64   // evidence a unit must carry to be a member at all
+	Scale    float64   // median founding-member coverage: the confidence half-point
+	Floor    float64   // coverage a unit must reach to be a member at all
 	Members  int       // units at or above Floor
 }
 
@@ -219,6 +245,7 @@ type corpus struct {
 	idf       map[string]float64 // surviving features only
 	surviving []string           // sorted
 	cap       int
+	mass      []float64 // per unit, Σ idf over its surviving features
 }
 
 // Build learns the lexicon. seeds[i] is the seed labels the rule tagger fired
@@ -301,6 +328,17 @@ func buildCorpus(units []parser.CodeUnit, g *concepter.Graph, opt Options) *corp
 		c.surviving = append(c.surviving, f)
 		c.idf[f] = math.Log(float64(c.n) / float64(d))
 	}
+
+	// Every unit's own information, in the same currency a concept's evidence
+	// is paid in. It can only be summed once the window is settled, because a
+	// feature outside it has no idf and contributes to neither side — the same
+	// "surviving features only" rule fit counts under.
+	c.mass = make([]float64, c.n)
+	for i := range c.features {
+		for _, f := range c.features[i] { // ascending: addition order is fixed
+			c.mass[i] += c.idf[f]
+		}
+	}
 	return c
 }
 
@@ -316,6 +354,28 @@ func (c *corpus) evidence(idx int, weights map[string]float64) float64 {
 	return sum
 }
 
+// cover is evidence as a fraction of the unit's own information: how much of
+// what this function carries the concept explains.
+//
+// It is what membership is decided on, and the reason is that a bare sum is
+// not comparable between two functions. Evidence scales with how many features
+// a unit has, so an absolute bar is largely a bar on size: measured on doppel's
+// own corpus the labelled units carried a median of 48 features and the
+// unlabelled ones 21, and 447 of the 451 unlabelled functions carried real
+// evidence for some concept and simply could not reach its floor. Dividing by
+// the unit's mass removes the length term from both sides — a five-line
+// function that does one thing is fully explained by one concept, and a long
+// one is not merely by being long.
+//
+// Zero mass means the unit carries nothing inside the information window, so
+// no concept explains any of it: the honest cover is 0, not an infinity.
+func (c *corpus) cover(idx int, weights map[string]float64) float64 {
+	if c.mass[idx] <= 0 {
+		return 0
+	}
+	return c.evidence(idx, weights) / c.mass[idx]
+}
+
 // weightsOf indexes a concept's vocabulary for evidence lookups.
 func weightsOf(features []Feature) map[string]float64 {
 	w := make(map[string]float64, len(features))
@@ -326,19 +386,26 @@ func weightsOf(features []Feature) map[string]float64 {
 }
 
 // assign computes every unit's memberships. Two corpus-derived quantities do
-// two different jobs, which is what keeps either from having to do both badly.
+// two different jobs, which is what keeps either from having to do both badly,
+// and both are stated in *coverage* — the fraction of a unit's own information
+// a concept explains — rather than in raw evidence. See corpus.cover for why.
 //
-// Floor decides membership: the concept's own founding evidence at
-// FloorQuantile, so the bar is set by how much evidence this concept's
-// functions actually carry rather than by a number chosen in advance.
+// Floor decides membership: the concept's own founding coverage at
+// FloorQuantile, so the bar is set by how much of its members a concept
+// actually accounts for rather than by a number chosen in advance.
 //
-// Scale decides what the confidence reads: conf = E/(E+Scale) with Scale the
-// median founding evidence, so a unit carrying the concept's typical evidence
-// reads about 0.5 and one carrying far more approaches 1. Saturating rather
-// than normalized, because there is no maximum evidence a function could carry
-// and pretending there is would make the number a rank in disguise.
+// Scale decides what the confidence reads: conf = C/(C+Scale) with Scale the
+// median founding coverage, so a unit the concept explains as much of as it
+// explains of its typical member reads about 0.5, and one it explains far more
+// of approaches 1. Saturating rather than normalized, because coverage has no
+// natural maximum either — a concept's weights are lift×idf, not idf, so a unit
+// can be explained past its own mass — and pretending it had one would make the
+// number a rank in disguise.
+//
+// The number that admits a unit and the number that grades it are therefore the
+// same quantity. Deciding on coverage and grading on evidence would leave the
+// size bias in the grade after removing it from the gate.
 func assign(c *corpus, concepts []Concept, opt Options) [][]parser.Concept {
-	_ = opt
 	// Inverted, not nested. The direct form — every unit against every
 	// concept's vocabulary — is units × concepts × features, and on prometheus
 	// (5.5k functions, ~380 concepts) that alone cost most of a minute. Walking
@@ -369,16 +436,49 @@ func assign(c *corpus, concepts []Concept, opt Options) [][]parser.Concept {
 		}
 		sort.Ints(touched) // concepts are sorted by ID, so this is ID order
 		var got []parser.Concept
+		var covers []float64
 		for _, j := range touched {
-			if e := evidence[j]; e >= concepts[j].Floor {
-				got = append(got, parser.Concept{
-					ID:         concepts[j].ID,
-					Confidence: e / (e + concepts[j].Scale),
-				})
-			}
+			e := evidence[j]
 			evidence[j] = 0 // reset only what was touched
+			cov := 0.0
+			if c.mass[i] > 0 {
+				cov = e / c.mass[i] // one division at the end: accumulation order is untouched
+			}
+			if cov < concepts[j].Floor {
+				continue
+			}
+			got = append(got, parser.Concept{
+				ID:         concepts[j].ID,
+				Confidence: cov / (cov + concepts[j].Scale),
+			})
+			covers = append(covers, cov)
 		}
-		out[i] = got
+		out[i] = topMemberships(got, covers, opt.MaxMemberships)
+	}
+	return out
+}
+
+// topMemberships keeps a unit's k strongest memberships by coverage, the same
+// bounded-per-item rule the retrieval channels apply to their postings — a
+// function does several things, not several dozen, and an unbounded assignment
+// lets one broad concept claim a third of a corpus.
+//
+// Ties go to the lower concept ID, which is the order got already carries, so
+// the selection is stable without a second key. k <= 0 keeps everything.
+func topMemberships(got []parser.Concept, covers []float64, k int) []parser.Concept {
+	if k <= 0 || len(got) <= k {
+		return got
+	}
+	idx := make([]int, len(got))
+	for i := range idx {
+		idx[i] = i
+	}
+	sort.SliceStable(idx, func(a, b int) bool { return covers[idx[a]] > covers[idx[b]] })
+	keep := append([]int(nil), idx[:k]...)
+	sort.Ints(keep) // back to ascending concept ID, the order every consumer expects
+	out := make([]parser.Concept, k)
+	for i, j := range keep {
+		out[i] = got[j]
 	}
 	return out
 }

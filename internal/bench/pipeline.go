@@ -107,6 +107,11 @@ type Run struct {
 	Stats     retriever.Stats
 	Pairs     []analyzer.SimilarPair
 
+	// LexOpt overrides the lexicon settings StageTag builds under. Nil is
+	// lexicon.DefaultOptions(), which is what production runs — it is the
+	// membership seam, the same shape Onto is for the vocabulary.
+	LexOpt *lexicon.Options
+
 	// WL is the corpus label weighting the code-shape score reads. It is
 	// counted over r.Units after Load's population filter, which is where
 	// cmd's index() counts it too — a harness weighting shapes against a
@@ -140,7 +145,11 @@ func (r *Run) StageTag() {
 	for i := range r.Units {
 		seeds[i] = tagger.Tag(r.Units[i])
 	}
-	r.Lexicon = lexicon.Build(r.Units, r.Graph, seeds, lexicon.DefaultOptions())
+	lexOpt := lexicon.DefaultOptions()
+	if r.LexOpt != nil {
+		lexOpt = *r.LexOpt
+	}
+	r.Lexicon = lexicon.Build(r.Units, r.Graph, seeds, lexOpt)
 	assignments := r.Lexicon.Assignments()
 
 	r.TagCounts = make(map[ontology.TermID]int)
@@ -234,7 +243,18 @@ func Analyze(units []parser.CodeUnit, opt retriever.Options) *Run {
 // AnalyzeWith runs every stage under a custom vocabulary — the seam the
 // ablation and fitting harness scores through. A nil onto is Analyze exactly.
 func AnalyzeWith(units []parser.CodeUnit, opt retriever.Options, onto *ontology.Ontology) *Run {
-	r := &Run{Units: units, Onto: onto}
+	return analyze(&Run{Units: units, Onto: onto}, opt)
+}
+
+// AnalyzeLexicon runs every stage under custom lexicon settings — the
+// membership seam. The vocabulary is derived from the resulting lexicon, as
+// production does, so a variant is measured end to end rather than only at the
+// assignment step.
+func AnalyzeLexicon(units []parser.CodeUnit, opt retriever.Options, lexOpt lexicon.Options) *Run {
+	return analyze(&Run{Units: units, LexOpt: &lexOpt}, opt)
+}
+
+func analyze(r *Run, opt retriever.Options) *Run {
 	// Mirrors cmd's index(): the WL corpus weighting is a purely structural
 	// statistic and comes first, then the call graph, then the lexicon that
 	// reads it.
