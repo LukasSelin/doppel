@@ -1440,6 +1440,17 @@ shell and behaves identically on Windows and Unix, and which is also the only fo
     made that slot load-bearing. Depth buys the most separation per unit of weight (6.0 points for
     0.05) and that is *not* a licence to raise it — a single-point ablation on one corpus is a
     direction, not a gradient.
+
+    Two further reasons the table must not be read as a tuning gradient. **It is not stable under
+    changes that are not weights**: re-run after the `--threshold`/`--min-nodes` floors moved, the
+    same ablation reads Flow and Depth fully *inert* on the false-positive mean and zeroing
+    Signature as a 2-point *improvement*, where before the floors moved all four cost separation.
+    Only the WL row keeps its sign and magnitude across both. With 2 false-positive and 9 refactor
+    labels on one corpus, a 2-point mean move is one pair shifting four ranks — noise, and the
+    instability is the proof of it. **Halving the `wl` blend weight is the concrete proposal this
+    rejects**: it reads refactor 13.7 → 12.2 (better) against fp 47.0 → 42.0 (worse), and two of
+    the three hard assertions are on the false-positive side, so it trades the corroborated
+    quantity for the uncorroborated one in the same direction the ablation shows WL is carrying.
   - `TestSweep` (guard `DOPPEL_BENCH_SWEEP=1`) is the sensitivity sweep: each hand-set constant
     varied one at a time (±50% or the natural alternatives), only the stages it reaches re-run,
     and the labeled rankings reported with a verdict — `inert` (no label moved), `moves`,
@@ -1543,7 +1554,13 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   `MaxLabelDF 50→100` also pushed the false positive to rank 21 — but that measurement was taken
   when the pair was retrieved at all; at 16 it never reaches the comparator, so the cap is no
   longer doing that job and loosening it would be tuning a cap to fix a retrieval symptom the
-  floor already fixes. **One corpus is still a direction, not a verdict** — cobra is the only rung
+  floor already fixes. Measured on the shipped floors, `MaxLabelDF 100` reads merge 4.5 / refactor
+  13.3 / fp 49.0 / no violations — mildly *better* on the one labeled corpus, and still **not
+  adopted**: it doubles a cap whose job is idiom suppression on the large unlabeled rungs, which is
+  precisely the `MinIDF` situation and gets the same answer. What is missing before it could be
+  taken is the large-corpus union-growth and suppression numbers (there is no flag for the cap, so
+  it cannot be measured from the CLI) and a second labeled corpus. **One corpus is still a
+  direction, not a verdict** — cobra is the only rung
   with labels, and neither pin has been corroborated on gin, chi or the large rungs. The deeper
   option, not attempted: count each *node* agreement once at its deepest agreeing round instead of
   once per round, which would remove the implied-label multiplication (agreeing at h=3 implies
