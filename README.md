@@ -17,9 +17,11 @@ list of merge candidates with the evidence behind each one.
 
 Everything runs locally and offline: no models, no network, no cache. The same source always produces the same report.
 
-**[See doppel's report on its own source](https://lukasselin.github.io/doppel/)** — the
-interactive dashboard, regenerated from `master` on every push. The tool analysing itself, so
-every pair it names can be opened in this repository.
+**[Open the interactive report for this repository](https://lukasselin.github.io/doppel/report.html)** —
+doppel's own source, analysed by itself and regenerated from `master` on every push. The map
+screen draws every package as a region sized by its share of the functions, with duplication
+painted on the borders between them; the neighbourhood screen puts any two candidate bodies
+side by side with the evidence for the match. ([What the screens show](https://lukasselin.github.io/doppel/).)
 
 For a detailed breakdown of the pipeline internals, see [How Doppel Works](.github/wiki/how-it-works.md).
 

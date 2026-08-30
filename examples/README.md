@@ -10,7 +10,7 @@ directory outside the repository.
 
 These are the Markdown reports. The interactive counterpart — the HTML dashboard, on
 doppel's own corpus rather than one of these — is hosted at
-[lukasselin.github.io/doppel](https://lukasselin.github.io/doppel/).
+[lukasselin.github.io/doppel/report.html](https://lukasselin.github.io/doppel/report.html).
 
 The point of a ladder rather than a single showcase corpus: doppel's models are
 all corpus-relative. Information content, df caps, role thresholds, habitat
