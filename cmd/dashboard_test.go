@@ -31,7 +31,8 @@ func pair(units []parser.CodeUnit, a, b int, shape, total float64) analyzer.Simi
 	ev := comparator.StructuralEvidence{OverlapScore: 0.5}
 	return analyzer.SimilarPair{
 		A: units[a], B: units[b], AIdx: a, BIdx: b, Score: shape,
-		Breakdown: fingerprint.Breakdown{AST: shape, Flow: 1, Depth: 1, Signature: 1, SizeRatio: 0.9},
+		Breakdown: fingerprint.Breakdown{WL: shape, Flow: 1, Depth: 1, Signature: 1, SizeRatio: 0.9,
+			Containment: 0.95},
 		Evidence:  &ev,
 		Retrieval: &analyzer.Retrieval{Total: total, TrophicSim: 1, Channels: []string{"shape"}},
 	}
@@ -190,6 +191,34 @@ func TestBuildDashboardRanksEdges(t *testing.T) {
 	}
 	if p.Edges[1].Cross {
 		t.Error("a pair wholly inside alpha should not be cross-package")
+	}
+}
+
+// Containment and the rule-attributed explanation are reported quantities,
+// never scored ones, and the page is one of the four surfaces that must carry
+// them. This replaces the assertion that used to live against the broadsheet
+// report's pair card, which the dashboard superseded.
+func TestDashboardCarriesContainmentAndExplain(t *testing.T) {
+	res := sampleResult()
+	res.Pairs[1].Explain = "identical after rename, commutative-reorder" // the top-ranked pair
+	res.ConsStats = fingerprint.ConsStats{TotalNodes: 60, UniqueSubtrees: 20}
+	res.NN = NNStats{Total: 3, Scored: 3, P50: 0.7, P90: 0.9}
+	p := buildDashboard(res, nil, nil, familyStatsZero(), nil, 0)
+
+	e := p.Edges[0]
+	if e.Explain != "identical after rename, commutative-reorder" {
+		t.Errorf("Edge.Explain = %q, want the pipeline's sentence", e.Explain)
+	}
+	if e.Containment != 0.95 {
+		t.Errorf("Edge.Containment = %v, want 0.95", e.Containment)
+	}
+	// Containment also rides in the breakdown, as its sixth component, so the
+	// page's bar list and its score row cannot disagree about it.
+	if e.Breakdown[5] != 0.95 {
+		t.Errorf("Breakdown[5] = %v, want the containment 0.95", e.Breakdown[5])
+	}
+	if p.Facts.Compression == 0 || p.Facts.NNP50 == 0 {
+		t.Errorf("corpus metrics missing from Facts: %+v", p.Facts)
 	}
 }
 

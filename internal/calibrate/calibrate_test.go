@@ -7,9 +7,21 @@ import (
 
 	"github.com/LukasSelin/doppel/internal/comparator"
 	"github.com/LukasSelin/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/fingerprint"
 	"github.com/LukasSelin/doppel/internal/ontology"
 	"github.com/LukasSelin/doppel/internal/parser"
 )
+
+// labelWeights counts the WL surprisals over a corpus the way cmd's index()
+// does. Calibration must read the same weights the run it calibrates will
+// score with, or the null distribution belongs to a different question.
+func labelWeights(units []parser.CodeUnit) *fingerprint.LabelIDF {
+	bags := make([][]fingerprint.LabelCount, len(units))
+	for i := range units {
+		bags[i] = units[i].Fingerprint.WL
+	}
+	return fingerprint.LabelWeights(bags)
+}
 
 // fixture builds n synthetic units with varied fingerprints: half big (shape
 // eligible), half tiny, every fifth one a test file. No real corpus names.
@@ -126,7 +138,7 @@ func TestRunMirrorsEligibilityAndPopulation(t *testing.T) {
 			t.Fatalf("cross test/prod pair sampled: %v", p)
 		}
 	}
-	res := Run(units, docs, comp(), o)
+	res := Run(units, docs, comp(), labelWeights(units), o)
 	if !res.Applied() {
 		t.Fatalf("declined: %s", res.Declined)
 	}
@@ -142,9 +154,9 @@ func TestRunMirrorsEligibilityAndPopulation(t *testing.T) {
 func TestRunDeterministic(t *testing.T) {
 	units, docs := fixture(120)
 	o := Options{Rate: 0.01, MaxPairs: 3000, MinNodes: 12, MinNullPairs: 100}
-	first := Run(units, docs, comp(), o)
+	first := Run(units, docs, comp(), labelWeights(units), o)
 	for i := 0; i < 25; i++ {
-		if again := Run(units, docs, comp(), o); again != first {
+		if again := Run(units, docs, comp(), labelWeights(units), o); again != first {
 			t.Fatalf("run %d differs: %+v vs %+v", i, again, first)
 		}
 	}
@@ -154,21 +166,21 @@ func TestRunDeterministic(t *testing.T) {
 	for i := range units {
 		rev[len(units)-1-i], revDocs[len(units)-1-i] = units[i], docs[i]
 	}
-	if got := Run(rev, revDocs, comp(), o); got != first {
+	if got := Run(rev, revDocs, comp(), labelWeights(rev), o); got != first {
 		t.Errorf("reversed unit order changed the calibration: %+v vs %+v", got, first)
 	}
 }
 
 func TestRunDeclinesSmallCorpora(t *testing.T) {
 	units, docs := fixture(20)
-	res := Run(units, docs, comp(), DefaultOptions(0.01, 12))
+	res := Run(units, docs, comp(), labelWeights(units), DefaultOptions(0.01, 12))
 	if res.Applied() {
 		t.Fatalf("20-unit corpus calibrated: %+v", res)
 	}
 	if res.Threshold != 0 || res.StructMin != 0 {
 		t.Error("declined result must carry zero thresholds")
 	}
-	if bad := Run(units, docs, comp(), Options{Rate: 0}); bad.Applied() {
+	if bad := Run(units, docs, comp(), labelWeights(units), Options{Rate: 0}); bad.Applied() {
 		t.Error("rate 0 must decline")
 	}
 }

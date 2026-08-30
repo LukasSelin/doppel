@@ -8,6 +8,7 @@ import (
 	"github.com/LukasSelin/doppel/internal/analyzer"
 	"github.com/LukasSelin/doppel/internal/comparator"
 	"github.com/LukasSelin/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/fingerprint"
 	"github.com/LukasSelin/doppel/internal/lexicon"
 	"github.com/LukasSelin/doppel/internal/mapper"
 	"github.com/LukasSelin/doppel/internal/ontology"
@@ -105,6 +106,13 @@ type Run struct {
 	Cands     []retriever.Candidate
 	Stats     retriever.Stats
 	Pairs     []analyzer.SimilarPair
+
+	// WL is the corpus label weighting the code-shape score reads. It is
+	// counted over r.Units after Load's population filter, which is where
+	// cmd's index() counts it too — a harness weighting shapes against a
+	// different population than the tool would measure a different corpus,
+	// the same failure the shared walk rule exists to prevent.
+	WL *fingerprint.LabelIDF
 }
 
 // The stages below are the pipeline's ranking-relevant half, as a library at
@@ -169,12 +177,23 @@ func derivedConcepts(lex *lexicon.Model) []ontology.DerivedConcept {
 	return out
 }
 
+// StageWL counts the Weisfeiler-Lehman label surprisals over the corpus. It
+// must run before StageRetrieve: code shape is corpus-weighted, and every
+// exact similarity the retriever computes reads these weights.
+func (r *Run) StageWL() {
+	bags := make([][]fingerprint.LabelCount, len(r.Units))
+	for i := range r.Units {
+		bags[i] = r.Units[i].Fingerprint.WL
+	}
+	r.WL = fingerprint.LabelWeights(bags)
+}
+
 // StageMap builds and enriches the concept documents.
 func (r *Run) StageMap() { r.Docs = mapper.Map(r.Units, r.Graph, concepter.New()) }
 
 // StageRetrieve runs the three retrieval channels.
 func (r *Run) StageRetrieve(opt retriever.Options) {
-	r.Cands, r.Stats = retriever.Retrieve(r.Units, r.Graph, r.Onto, r.IC, opt)
+	r.Cands, r.Stats = retriever.Retrieve(r.Units, r.Graph, r.Onto, r.IC, r.WL, opt)
 }
 
 // StagePairs materializes candidates into pairs, dropping cross test/prod
@@ -216,6 +235,10 @@ func Analyze(units []parser.CodeUnit, opt retriever.Options) *Run {
 // ablation and fitting harness scores through. A nil onto is Analyze exactly.
 func AnalyzeWith(units []parser.CodeUnit, opt retriever.Options, onto *ontology.Ontology) *Run {
 	r := &Run{Units: units, Onto: onto}
+	// Mirrors cmd's index(): the WL corpus weighting is a purely structural
+	// statistic and comes first, then the call graph, then the lexicon that
+	// reads it.
+	r.StageWL()
 	r.StageGraph()
 	r.StageTag()
 	r.StageMap()

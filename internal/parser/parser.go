@@ -66,6 +66,25 @@ type CodeUnit struct {
 	Fingerprint  fingerprint.Fingerprint // deterministic static summary of the body
 	Signals      TagSignals              // AST-level evidence channels the tagger reads
 	Generated    bool                    // the file carries Go's "Code generated ... DO NOT EDIT." marker
+
+	// Canonical is the unit's body in the canonical shape its frontend
+	// normalizes to — syntax.Func.Canon, projected. nil when the
+	// declaration has no body, and equal to the plain body for a frontend
+	// with no canonicalizer of its own (see syntax.Func.Shape).
+	//
+	// It is the tree the Weisfeiler-Lehman bag and the hash-cons are
+	// computed over, never the tree the token stream and the signals were
+	// read from: a shape key should not carry the incidental choices
+	// canonicalization exists to remove, and the code as written is what
+	// every other component measures.
+	Canonical *syntax.Node
+
+	// CanonRules names the canonicalization rules that fired on this
+	// function, in the frontend canonicalizer's declaration order. It is
+	// the evidence half of Canonical: whatever the canonical tree is later
+	// used to claim, this says which normalizations were needed to get
+	// there. Empty for a language with no canonicalizer.
+	CanonRules []string
 }
 
 // MethodName returns the bare method name of a method unit ("Start" for
@@ -177,6 +196,8 @@ func unitsFrom(f syntax.File) []CodeUnit {
 			Fingerprint:  fingerprint.Build(&fn),
 			Signals:      extractSignals(fn, f),
 			Generated:    f.Generated,
+			Canonical:    fn.Shape(),
+			CanonRules:   fn.CanonRules,
 		})
 	}
 	return units

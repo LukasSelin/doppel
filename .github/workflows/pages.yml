@@ -39,13 +39,14 @@ jobs:
     # cold, it is a few hundred megabytes of shallow clone first.
     timeout-minutes: 45
 
-    env:
-      # Must stay outside the working tree, or a corpus would be walked by the
-      # `doppel analyze .` run below — the same reason bench.Root() defaults
-      # outside the module.
-      DOPPEL_CORPORA: ${{ runner.temp }}/doppel-corpora
-
     steps:
+      # `runner.temp` is not available in a job-level `env:` block, so the
+      # variable is exported here instead. It must stay outside the working
+      # tree, or a corpus would be walked by the `doppel analyze .` run below
+      # — the same reason bench.Root() defaults outside the module.
+      - name: Point the corpus cache outside the working tree
+        run: echo "DOPPEL_CORPORA=$RUNNER_TEMP/doppel-corpora" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v4
 
       - name: Set up Go

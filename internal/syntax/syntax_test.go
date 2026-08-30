@@ -101,18 +101,33 @@ func TestNilReceiversAreSafe(t *testing.T) {
 	Inspect(nil, func(*Node) bool { t.Fatal("f called for nil root"); return true })
 }
 
-// TestIsStmt guards the gate extractPatterns' default branch reads: an
-// unclassified node must not be treated as a statement, or it renders
-// something a frontend never claimed.
-func TestIsStmt(t *testing.T) {
-	for _, k := range []Kind{KindIf, KindFor, KindReturn, KindBlock, KindAssign, KindExprStmt} {
-		if !k.IsStmt() {
-			t.Errorf("%v should be a statement", k)
-		}
+// TestKindsAreDistinct is what is left of TestIsStmt once the predicate it
+// guarded lost its only consumer. What still matters about the vocabulary is
+// that no two names collide: the label bag hashes a kind's *name*, so two
+// kinds sharing one would silently hash to the same label and merge two
+// different shapes.
+func TestKindsAreDistinct(t *testing.T) {
+	kinds := []Kind{
+		KindOther, KindIf, KindFor, KindRange, KindSwitch, KindTypeSwitch,
+		KindSelect, KindReturn, KindDefer, KindGo, KindBlock, KindAssign,
+		KindBranch, KindIncDec, KindSend, KindExprStmt, KindDeclStmt,
+		KindLabeled, KindEmpty, KindCaseClause, KindCommClause, KindBadStmt,
+		KindCall, KindBinary, KindUnary, KindIdent, KindLit, KindSelector,
+		KindIndex, KindSlice, KindStar, KindAssert, KindComposite,
+		KindKeyValue, KindFuncLit, KindParen, KindEllipsis, KindIndexList,
+		KindArrayType, KindStructType, KindFuncType, KindInterfaceType,
+		KindMapType, KindChanType, KindValueSpec, KindTypeSpec,
+		KindImportSpec, KindField, KindFieldList, KindGenDecl, KindBadExpr,
+		KindBadDecl,
 	}
-	for _, k := range []Kind{KindOther, KindCall, KindIdent, KindBinary, KindLit, KindValueSpec} {
-		if k.IsStmt() {
-			t.Errorf("%v should not be a statement", k)
+	seen := make(map[Kind]bool, len(kinds))
+	for _, k := range kinds {
+		if seen[k] {
+			t.Errorf("kind %d listed twice", k)
 		}
+		seen[k] = true
+	}
+	if len(seen) != len(kinds) {
+		t.Errorf("%d distinct kinds from %d listed", len(seen), len(kinds))
 	}
 }

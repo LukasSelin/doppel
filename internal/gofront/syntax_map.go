@@ -132,14 +132,49 @@ func kindOf(n ast.Node) syntax.Kind {
 		return syntax.KindValueSpec
 	case *ast.ChanType:
 		return syntax.KindChanType
+	case *ast.Ellipsis:
+		return syntax.KindEllipsis
+	case *ast.IndexListExpr:
+		return syntax.KindIndexList
+	case *ast.ArrayType:
+		return syntax.KindArrayType
+	case *ast.StructType:
+		return syntax.KindStructType
+	case *ast.FuncType:
+		return syntax.KindFuncType
+	case *ast.InterfaceType:
+		return syntax.KindInterfaceType
+	case *ast.MapType:
+		return syntax.KindMapType
+	case *ast.Field:
+		return syntax.KindField
+	case *ast.FieldList:
+		return syntax.KindFieldList
+	case *ast.GenDecl:
+		return syntax.KindGenDecl
+	case *ast.TypeSpec:
+		return syntax.KindTypeSpec
+	case *ast.ImportSpec:
+		return syntax.KindImportSpec
+	case *ast.BadExpr:
+		return syntax.KindBadExpr
+	case *ast.BadDecl:
+		return syntax.KindBadDecl
 	}
 	return syntax.KindOther
 }
 
 // labelOf carries the one lexical detail each kind needs. The strings are
-// hashed downstream (walk's token stream, the L1/L2 renders), so they must
-// stay exactly what the Go-typed code used to read: Op.String(), Tok.String(),
-// Kind.String(), and the bare identifier name.
+// hashed downstream (walk's token stream, the label bag's label_0), so they
+// must stay exactly what the Go-typed code used to read: Op.String(),
+// Tok.String(), Kind.String(), and the bare identifier name.
+//
+// IncDecStmt, GenDecl and ChanType are here for the label bag alone — the
+// token stream emits none of the three, or emits them without their token.
+// Where go/ast folds several constructs into one struct behind a token
+// field, that token is part of the node's kind: ++ and -- are not one
+// statement, const and var are not one declaration, and a receive-only
+// channel is not a send-only one.
 func labelOf(n ast.Node) string {
 	switch v := n.(type) {
 	case *ast.Ident:
@@ -154,12 +189,30 @@ func labelOf(n ast.Node) string {
 		return v.Tok.String()
 	case *ast.BranchStmt:
 		return v.Tok.String()
+	case *ast.IncDecStmt:
+		return v.Tok.String()
+	case *ast.GenDecl:
+		return v.Tok.String()
+	case *ast.ChanType:
+		return chanDir(v.Dir)
 	case *ast.SelectorExpr:
 		if v.Sel != nil {
 			return v.Sel.Name
 		}
 	}
 	return ""
+}
+
+// chanDir names a channel direction. ast.ChanDir is a bit set, so the
+// bidirectional case is both bits.
+func chanDir(d ast.ChanDir) string {
+	switch d {
+	case ast.SEND:
+		return "send"
+	case ast.RECV:
+		return "recv"
+	}
+	return "both"
 }
 
 // textOf decodes a literal's value. Unquoting is lexical work only the

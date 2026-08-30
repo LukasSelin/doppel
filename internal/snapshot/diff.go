@@ -121,6 +121,10 @@ func (d Delta) Empty() bool {
 // tempt a caller into exiting non-zero over it. A mismatched schema, build,
 // ontology or param set means the two runs measured different things, and a
 // diff across them would be confidently wrong rather than merely unavailable.
+//
+// The full refusal list is Schema, Doppel, Ontology, RuleSet and Params — the
+// union of two development lines' conditions, kept whole because each line
+// refused for something the other could not see.
 func Diff(base, head Snapshot) Delta {
 	d := Delta{
 		Comparable:      true,
@@ -241,6 +245,13 @@ func incomparable(base, head Snapshot) string {
 		// Every relation weight and the taxonomy shape feed OverlapScore, so a
 		// vocabulary change moves scores that no edit touched.
 		return fmt.Sprintf("baseline used ontology %s, current %s", base.Ontology, head.Ontology)
+	case base.RuleSet != head.RuleSet:
+		// A canonicalization rule added or changed moves every WL label a
+		// body produces, so the same two untouched functions would score a
+		// different WL Jaccard and Containment under the two rule sets —
+		// exactly the schema-4-vs-5 failure this check's siblings exist to
+		// prevent, one layer lower.
+		return fmt.Sprintf("baseline used canon rule set %s, current %s", base.RuleSet, head.RuleSet)
 	case !base.Params.Equal(head.Params):
 		return fmt.Sprintf("baseline params %+v, current %+v", base.Params, head.Params)
 	}

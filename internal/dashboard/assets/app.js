@@ -104,6 +104,15 @@
       pct(facts.onlyConcept || 0, facts.candidatePairs || 0) + "% concept-only"));
     host.appendChild(fact(fixed(facts.threshold), "threshold",
       "struct-min " + fixed(facts.structMin) + (facts.calibrate > 0 ? " · calibrated" : "")));
+    /* How repetitive the corpus is at all, and how close a typical function
+       already sits to its nearest scored neighbour. Neither number moved a
+       pair; they say what the pair list was drawn out of. The percentile is
+       over the functions retrieval actually paired, which is why the label
+       says so rather than implying every function was measured. */
+    host.appendChild(fact(fixed(facts.compression, 2) + "×", "compression",
+      "canonical nodes per distinct subtree"));
+    host.appendChild(fact(fixed(facts.nnP50), "median nearest",
+      "p90 " + fixed(facts.nnP90) + " · over " + comma(facts.nnScored || 0) + " paired"));
   }
 
   function renderColophon() {
@@ -924,12 +933,17 @@
        flagged: --struct-min filters, but --threshold gates only the structural
        channel, so a concept- or call-retrieved pair sits under it legitimately. */
     var scores = el("div", "scores");
+    /* Containment sits beside code-shape and is never blended into it: a
+       symmetric Jaccard and "how much of the smaller side is inside the
+       larger" are different findings about the same pair. It has no floor of
+       its own — nothing gates on it — so it carries a reading, not a number. */
     [["code-shape", fixed(e.shape), "floor " + fixed(facts.threshold), e.shape < facts.threshold],
+     ["containment", fixed(e.containment), "smaller side inside larger"],
      ["overlap", fixed(e.overlap), "gate " + fixed(facts.structMin), e.overlap < facts.structMin],
      ["evidence", fixed(e.total, 1), "nats"],
      ["trophic", fixed(e.trophic), "shared / total"],
      ["call-sim", fixed(e.callSim), "ranks test pairs"],
-     ["rank", fixed(e.rank, 3), "shape × overlap × evidence"]].forEach(function (s) {
+     ["rank", fixed(e.rank, 3), "evidence × shape × overlap × trophic²"]].forEach(function (s) {
       var b = el("div", "score");
       b.appendChild(el("div", "score-n mono" + (s[3] ? " below" : ""), s[1]));
       b.appendChild(el("div", "score-l", s[0]));
@@ -949,11 +963,14 @@
     host.appendChild(top);
 
     var comps = panel("Code-shape components",
-      "The four weighted parts of the code-shape number above — ast 0.60, flow 0.20, " +
-      "nesting 0.05, sig 0.15 — and size, which is reported but not scored: the ast " +
-      "Jaccard already penalises a size mismatch through its union.");
+      "The four weighted parts of the code-shape number above — wl 0.60, flow 0.20, " +
+      "nesting 0.05, sig 0.15 — and two that are reported but never scored. Size, " +
+      "because the WL Jaccard already penalises a size mismatch through its union; " +
+      "containment, because it answers a different question, and a 40-line function " +
+      "whose whole shape reappears inside a 400-line one is a finding no blended " +
+      "number states.");
     var bars = el("div", "bars");
-    ["ast", "flow", "nesting", "sig", "size"].forEach(function (name, i) {
+    ["wl", "flow", "nesting", "sig", "size", "containment"].forEach(function (name, i) {
       var v = e.breakdown[i];
       var row = el("div", "bar-row");
       row.appendChild(el("span", null, name));
@@ -968,15 +985,20 @@
     comps.appendChild(bars);
     host.appendChild(comps);
 
+    if (e.explain) {
+      host.appendChild(panel("What the canonicalizer did", e.explain));
+    }
+
     if (e.chains && e.chains.length) {
       var ch = panel("Shared structure",
-        "The highest-energy patterns both bodies contain — the evidence the score rests on. " +
-        "These are structural motifs, not source spans, so they are listed rather than highlighted below.");
+        "The highest-energy labels both bodies carry — the evidence the score rests on. " +
+        "A label is a hash of a whole subtree, so it can be named and counted but not " +
+        "pointed at; they are listed rather than highlighted below.");
       var ol = el("ol", "chains");
       e.chains.forEach(function (c) {
         var li = el("li");
         li.appendChild(el("span", "c-energy", fixed(c.energy)));
-        li.appendChild(el("span", "c-level", "L" + c.level));
+        li.appendChild(el("span", "c-level", "h" + c.depth));
         li.appendChild(el("span", "c-render", c.render));
         ol.appendChild(li);
       });

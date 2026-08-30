@@ -119,7 +119,7 @@ func TestReretrieveRoundTrip(t *testing.T) {
 	// so any blend summing to 1 still scores 1.0. Probe with a blend that
 	// does not sum to 1, which only the seam can see.
 	opt := retriever.DefaultOptions()
-	opt.Weights = fingerprint.Weights{AST: 0.3, Flow: 0.2, Depth: 0.05, Signature: 0.15}
+	opt.Weights = fingerprint.Weights{WL: 0.3, Flow: 0.2, Depth: 0.05, Signature: 0.15}
 	run.Reretrieve(opt)
 	changed := false
 	for i, p := range run.Pairs {
