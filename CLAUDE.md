@@ -1046,9 +1046,12 @@ never learns about `culture`, and `cmd` queries the model.
 
 - **Two screens, and the two that are missing are missing for a reason.** *Map* is a political map
   of the corpus: every package (or concept — it is a toggle) is a polygon whose area is its share of
-  the functions, polygons tile the canvas with shared borders, and functions are dots inside their
-  own region, coloured by concept, sized by resolved fan-in and ringed when a habitat misfit. Pair
-  evidence is carried by the **borders** rather than by a line layer. *Neighbourhood* takes
+  the functions, polygons tile the canvas with shared borders, and each region is tinted by the
+  concept most of its functions carry. Pair evidence is carried by the **borders** rather than by
+  a line layer. Individual functions are deliberately **not** drawn: a per-function dot inside a
+  region encodes nothing the region does not already say — its position is an arbitrary spiral —
+  so it was clutter with a redundant click target, and the border/arc pair lists and the
+  neighbourhood picker remain the ways into a single function. *Neighbourhood* takes
   one function and shows its ranked neighbours, both bodies side by side, and the pair's evidence.
   A **delta** screen and a **concept-drift** screen were scoped and dropped: both need a snapshot
   *series*, and there is exactly one baseline per session in tmpdir, no timestamp inside a

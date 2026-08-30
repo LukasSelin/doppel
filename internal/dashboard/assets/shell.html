@@ -52,7 +52,6 @@
         </div>
         <div class="control control-checks">
           <label><input type="checkbox" id="merge-only"> merge-worthy pairs only</label>
-          <label><input type="checkbox" id="show-dots" checked> show functions</label>
           <label><input type="checkbox" id="show-arcs" checked> show non-neighbour links</label>
         </div>
         <div class="control" id="selection-panel"></div>
@@ -64,9 +63,8 @@
           <div class="control-label">Reading the map</div>
           <p class="control-note">
             Every region is a package, and its <em>area</em> is its share of the
-            functions — the map is a cartogram, not a floor plan. Dots are
-            functions, coloured by concept and ringed where one fits its package
-            poorly.
+            functions — the map is a cartogram, not a floor plan. A region is
+            tinted by the concept most of its functions carry.
           </p>
           <p class="control-note">
             <strong>A shared border is geometry; its weight is the data.</strong>
@@ -81,7 +79,7 @@
       <div class="map-canvas">
         <svg id="map" role="img" aria-label="Package territories"></svg>
         <div class="map-empty" id="map-empty" hidden></div>
-        <div class="map-hint">scroll to zoom · drag to pan · click a region, a border or a function</div>
+        <div class="map-hint">scroll to zoom · drag to pan · click a region or a border</div>
       </div>
     </div>
   </section>

@@ -127,8 +127,8 @@ type Unit struct {
 	Concepts []UnitConcept `json:"concepts,omitempty"`
 
 	// Concept is the map's colour channel: the head of Concepts, so it is
-	// always one the unit actually carries. Denormalised rather than derived in
-	// the page because the map reads it per function per redraw.
+	// always one the unit actually carries. The map tints a region by the
+	// concept most of its members carry, and the legend counts the same field.
 	Concept string `json:"concept,omitempty"`
 
 	FanIn  int `json:"fanIn"`  // resolved callers
