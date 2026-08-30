@@ -19,8 +19,11 @@ import (
 // vocabulary and one carrying the least of it that still counts are no longer
 // indistinguishable.
 //
-// Confidence is in (0,1] and saturating: 0.5 is a unit carrying the concept's
-// typical evidence for this corpus, not a probability.
+// Confidence is in (0,1] and saturating: 0.5 is a unit the concept explains as
+// much of as it explains of its typical member in this corpus, not a
+// probability. It grades *coverage* — the fraction of the unit's own
+// information the concept accounts for — so it says nothing about how large the
+// function is, which is the whole reason it is not a bare sum of evidence.
 type Concept struct {
 	ID         string
 	Confidence float64

@@ -134,7 +134,19 @@ import (
 // invent: a run that read one language and a run that read four measured
 // different corpora, and every corpus-relative number in the file follows from
 // which one it was.
-const Schema = 8
+//
+// 9 is a meaning change with no shape change, the same kind of bump as 3.
+// Concept membership is decided on *coverage* now — the fraction of a
+// function's own information a concept explains — rather than on an
+// unnormalized sum of feature weights, and Unit.Concepts[].Conf is stated in
+// that quantity too. Nothing about the file's shape moves: the same field
+// holds the same kind of number in the same place. What moves is every
+// membership and every confidence in it, corpus-wide and for reasons no
+// session caused, which is exactly what would otherwise let a schema-8
+// baseline and a schema-9 run compare cleanly and report drift nobody made.
+// A unit also keeps at most Options.MaxMemberships concepts, so the lists are
+// shorter as well as differently graded.
+const Schema = 9
 
 // Snapshot is one full analysis run.
 //

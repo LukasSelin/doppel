@@ -844,18 +844,66 @@ Stages, all deterministic counting:
 4. **Emergence** (`emerge.go`). Features no seed claimed are clustered on their own co-occurrence:
    an edge at `PMI >= ln 2` with `count >= MinSupport`, then **maximal cliques**, then the same
    `fit` as a seed. This is the path that makes an unseeded corpus work at all.
-5. **Membership.** `E(u,c) = Σ w(c,f)` over the features the unit carries. Two corpus-derived
-   quantities then do two different jobs: `Floor` (the founding evidence at `FloorQuantile`, 0.25)
-   decides membership, and `Scale` (the founding median) sets what the confidence reads,
-   `conf = E/(E+Scale)`. Saturating, not normalized — there is no maximum evidence a function could
-   carry, and pretending there is would make the number a rank in disguise.
+5. **Membership.** `E(u,c) = Σ w(c,f)` over the features the unit carries, divided by the unit's
+   own information `Σ ln(N/df)` over its surviving features: **coverage**, the fraction of what a
+   function carries that the concept explains. Two corpus-derived quantities then do two different
+   jobs — `Floor` (the founding coverage at `FloorQuantile`, 0.25) decides membership, `Scale` (the
+   founding median coverage) sets what the confidence reads, `conf = C/(C+Scale)` — and a unit keeps
+   its `MaxMemberships` (3) strongest. Saturating, not normalized: a concept's weights are
+   `lift × idf` rather than `idf`, so coverage has no natural maximum either, and pretending it had
+   one would make the number a rank in disguise.
 
-Five decisions here were **measured, not assumed**, and each was wrong the first time:
+Seven decisions here were **measured, not assumed**, and each was wrong the first time:
 
 - **A fixed confidence cut cannot decide membership.** Confidence saturates around the median
-  founding evidence, so `conf >= 0.5` means "at least the median founding member" and discards half
+  founding member, so `conf >= 0.5` means "at least the median founding member" and discards half
   of every concept's own seed set by construction. On doppel's own corpus it left 527 of 546
   functions with no concept at all. Hence the separate quantile floor.
+- **A membership bar cannot be stated in raw evidence, and lowering the quantile is not the
+  repair.** An unnormalized `Σ w(c,f)` scales with how many features a unit has, so an absolute
+  floor is largely a floor on *size*: measured on doppel's own corpus the labelled units carried a
+  median of 48 features and the unlabelled 21, and **451 of 866 functions were unlabelled** — of
+  which 447 carried real evidence for some concept and simply could not reach its bar (best
+  `evidence/Floor` p50 0.37, p90 0.87). The floors themselves ranged from 1.285 to 94.8 across
+  concepts, because `fit` draws them from a founding set that is by construction the units carrying
+  the clique — so one `FloorQuantile` is at once far too strict and far too loose, and dropping it
+  is a cliff rather than a dial: at 0.15 the `caching`-seeded `ontology+fingerprint` concept
+  swallowed 649 functions. Coverage removes the length term from both sides and takes this corpus to
+  197 unlabelled. `TestMembershipIgnoresSize` is the regression as a test: a terse function
+  carrying a concept's whole vocabulary and nothing else, against verbose founders. On cobra's
+  labels the move is neutral where it matters and better where it does not: merge 5.3 → 5.3
+  (6/6), refactor 12.8 → 12.8, false-positive separation **43.5 → 50.5**.
+
+  It is also *cheaper*, which is not the direction more coverage suggests. The union grows — moby
+  compares 40 225 pairs against 28 065, +43%, because the concept channel has more memberships to
+  retrieve on — and the run still halves, moby 11.0s → 5.2s end to end. An evidence floor admitted
+  a big function to a great many concepts at once, and the stages downstream of membership
+  (culture's prototypes, the arena, the comparator's concept signals) pay per membership rather
+  than per pair.
+- **Coverage needs a per-unit bound, and the raw-evidence bar had been supplying one by
+  accident.** Unbounded, coverage assigns hugo **7.4 concepts per function** and grows a
+  1 268-member concept (22% of that corpus); moby reaches 4.8 per function, gin lets one concept
+  claim 37%. `MaxMemberships` (3, the bounded-per-item idiom the retrieval channels use) is the
+  bound. `TestLexiconMembershipLadder`/`Labels` in `internal/bench` (guard
+  `DOPPEL_BENCH_LEXICON=1`) is the measurement: every K tried (2, 3, 4, 6) fixes the tail and
+  **none moves a single labeled pair on cobra** — merge 5.3 (6/6), refactor 12.8, fp 50.5, no
+  violations, identically — so the labels do not choose K and the corpus statistics do. At 3,
+  hugo's largest concept is 4.5% and its assignments 2.4 per function.
+
+  Two alternatives were measured on the same harness and **not adopted**. Requiring *both* the
+  coverage floor and the old evidence floor doubles the unlabelled share everywhere (moby 9.4% →
+  50.0%, cobra 21.9% → 49.1%) — it is strictly stricter than either, so it can only reintroduce the
+  bias coverage removes. Admitting on *either* floor is the more tempting one, and it does buy
+  coverage (moby 9.4% → 7.0%, hugo 6.3% → 4.8%, gin 15.3% → 9.9%): it costs 4 points of
+  false-positive separation on the one labeled corpus (fp 50.5 → 46.5, merge and refactor
+  unchanged), and two of the three hard assertions are on the false-positive side. Both seams were
+  deleted rather than kept, since neither is an operating point anybody should reach for; the
+  variants live in the bench test.
+
+  The flip side is real and is the price: a function that does the concept **and** a great deal
+  else now covers less of itself with it and can lose the membership, where the old bar would have
+  admitted it for sheer bulk. That is the intended reading of "how much of this function is this
+  concept", and it is the direction the labels prefer.
 - **The feature co-occurrence graph is not sparse.** Features co-occur far more freely than
   functions resemble each other, so the unbounded graph is one blob: it tripped `MaxComponent` and
   produced one emergent concept, and none at all with no seeds. Each feature keeps its `EdgeK` (8)
@@ -2276,6 +2324,13 @@ moved; the hook path does not have this, because it snapshots the full candidate
     surviving labels per floor on every fetched corpus, plus the labeled rankings where labels
     exist. Asserts nothing; see *Candidate retrieval* for the measured result and why the caps
     stayed absolute.
+  - `TestLexiconMembershipLadder` and `TestLexiconMembershipLabels` (guard
+    `DOPPEL_BENCH_LEXICON=1`) measure the membership rule: per corpus and per variant, the
+    unlabelled share, assignments per function, concept count and largest concept as a share of
+    the corpus, plus the labeled rankings where labels exist. `Run.LexOpt` (and
+    `AnalyzeLexicon`) is the seam they score through, the membership analogue of `AnalyzeWith`'s
+    vocabulary seam. They assert nothing; see *The learned lexicon* for the measured result and
+    why `MaxMemberships` is 3.
   - `TestCalibrate` (guard `DOPPEL_BENCH_CALIBRATE=1`) scores null calibration at rates 0.005,
     0.01, 0.02 and 0.05: re-retrieves at the calibrated threshold and scores both the candidate set
     and the struct-min-filtered view, listing the labels that moved. Asserts nothing.
