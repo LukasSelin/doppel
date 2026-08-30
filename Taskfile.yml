@@ -90,3 +90,17 @@ tasks:
     desc: Report whether examples/ is stale, without writing anything
     cmds:
       - DOPPEL_BENCH_EXAMPLES=1 DOPPEL_BENCH_EXAMPLES_CHECK=1 go test ./internal/bench/ -run TestGenerateExamples -v -timeout 30m
+
+  pages:
+    desc: Build the published site into _site/, exactly as the Pages workflow does
+    vars:
+      OUT: '{{.OUT | default "_site"}}'
+    cmds:
+      # The provenance placeholders stay unsubstituted locally: the workflow
+      # fills them from the pushed commit, and inventing a value here would
+      # make a local build claim an identity it does not have.
+      - mkdir -p {{.OUT}}
+      - go run . analyze . -o {{.OUT}}/report.html
+      - DOPPEL_BENCH_PAGES={{.OUT}} go test ./internal/bench/ -run TestGeneratePagesSite -v -timeout 30m
+      - cp internal/dashboard/assets/vendor/broadsheet.css {{.OUT}}/
+      - cp .github/pages/index.html {{.OUT}}/index.html
