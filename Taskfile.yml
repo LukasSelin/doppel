@@ -69,3 +69,13 @@ tasks:
     desc: Regenerate examples/ from the fetched corpora
     cmds:
       - DOPPEL_BENCH_EXAMPLES=1 go test ./internal/bench/ -run TestGenerateExamples -v -timeout 30m
+
+  baseline:
+    desc: Score the golden labels and regenerate+checksum every fetched corpus's example report (in memory, self-contained) into examples/baseline.json; also refreshes examples/baseline-timings.json (machine-dependent, not part of the determinism guarantee)
+    cmds:
+      - DOPPEL_BENCH_BASELINE=1 go test ./internal/bench/ -run TestGenerateBaseline -v -timeout 30m
+
+  ablate:
+    desc: Zero each fingerprint blend component (AST/flow/depth/signature) in turn and score the labeled corpora — a measurement, not a gate
+    cmds:
+      - DOPPEL_BENCH_ABLATE=1 go test ./internal/bench/ -run TestAblateFingerprint -v -timeout 30m
