@@ -127,7 +127,7 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 		fmt.Fprintf(w, "## Match #%d — Code-shape: `%.4f`\n\n", i+1, p.Score)
 
 		// Table header
-		fmt.Fprintf(w, "| | Location | Function | Signature | Patterns |\n")
+		fmt.Fprintf(w, "| | Location | Function | Signature | Concepts |\n")
 		fmt.Fprintf(w, "|---|---|---|---|---|\n")
 		mdTableRow(w, "A", p.A)
 		mdTableRow(w, "B", p.B)

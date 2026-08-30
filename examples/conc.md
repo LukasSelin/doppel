@@ -9,7 +9,7 @@ structured concurrency library; generics-heavy, one idea, written recently and a
 | Corpus | [conc](https://github.com/sourcegraph/conc) |
 | Pinned at | `v0.3.0` (`7b8c8f2875cb861bb61844c9bcaa1aed070adbd4`) |
 | Project since | 2023 |
-| doppel | `7c27a17` |
+| doppel | `95071c4` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -22,24 +22,24 @@ The corpus-level models doppel builds before ranking anything, as printed to std
 ```
 Scanning . ...
 Learning concept vocabulary...
-Lexicon: 6 concepts (1 seeded, 5 emergent), 196/428 features above 29 df, 44 functions unlabeled
+Lexicon: 6 concepts (1 seeded, 5 emergent), 171/407 features above 29 df, 43 functions unlabeled
 Generating concept documents...
 Culture: 6 concepts modeled, 1 associations, 4 unusual realizations
-Habitats: 4 modeled, 15 misfits; most uniform iter (norm 0.95), most diverse stream (norm 0.71)
+Habitats: 4 modeled, 15 misfits; most uniform iter (norm 0.96), most diverse stream (norm 0.71)
 Conventions: strongest p.pool+multierror (0.53), loosest lock+unlock (0.33)
-Ecosystems: 38 profiled (36 dominance, 2 coalition, 0 conflict, 0 weak)
-Calibration: rate 0.01 over 1830 shape / 3240 overlap null pairs -> threshold 0.85, struct-min 0.51, family-min 0.85
+Ecosystems: 40 profiled (39 dominance, 1 coalition, 0 conflict, 0 weak)
+Calibration: rate 0.01 declined (only 351 eligible shape null pairs (need 1000)); defaults kept
 Found 81 functions. Retrieving candidates...
-Retrieval: shape 22, concept 117, call 15 -> 151 unique pairs
-  concept-only 76.2%  call-only 7.9%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 448
-Running structural comparison on 151 pairs...
-  10 pairs remain after struct-min=0.51 filter
-  2 pairs suppressed by max-per-func=2
+Retrieval: shape 3, concept 120, call 15 -> 133 unique pairs
+  concept-only 88.0%  call-only 8.3%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 313
+Running structural comparison on 133 pairs...
+Families: 0 over 3 components, 0 functions in a family
+  3 pairs suppressed by max-per-func=2
 ```
 
 # Code Similarity Report
 
-**Functions analyzed:** 81 | **Threshold:** 0.60 | **Pairs found:** 8
+**Functions analyzed:** 81 | **Threshold:** 0.60 | **Pairs found:** 10
 
 ---
 
@@ -62,7 +62,7 @@ flowchart LR
     c6(["fault_tolerance"])
     c7(["error_handling"])
     c8["fmt+debug<br/>11"]
-    c9["lock+unlock<br/>11"]
+    c9["lock+unlock<br/>12"]
     c10["p.limiter+conc<br/>5"]
     c11["p.pool+multierror<br/>5"]
     c12["p.tasks+conc<br/>5"]
@@ -86,8 +86,8 @@ flowchart LR
 
 | Concept | Functions | Convention |
 |---|---:|---|
+| `lock+unlock` | 12 | `0.33` (loose) |
 | `fmt+debug` | 11 | `0.36` (loose) |
-| `lock+unlock` | 11 | `0.33` (loose) |
 | `s.pool+s.queue` | 7 | `0.37` (loose) |
 | `p.limiter+conc` | 5 | `0.42` (loose) |
 | `p.pool+multierror` | 5 | `0.53` (settled) |
@@ -99,6 +99,13 @@ Convention is how uniformly this corpus realizes a concept: `1.00` means every f
 
 Merge-worthy pairs folded up to their packages. An edge means two packages keep solving the same problem separately; a count on a node means the repetition is inside one package.
 
+```mermaid
+flowchart LR
+    p0["pool<br/>2 internal"]
+    p1["stream"]
+    p0 ---|"1"| p1
+```
+
 ### How settled each package is
 
 A package with at least five functions gets a habitat model: doppel learns what is normal there and measures how surprising each member is against it. **Norm** is how uniform the package's practice is. A **misfit** is a function alien to its package *and* to the wider subsystem around it — one that fits its neighbours a directory up is normal for this codebase and is not reported.
@@ -107,8 +114,8 @@ A package with at least five functions gets a habitat model: doppel learns what 
 flowchart TD
     h0["stream<br/>8 functions · norm 0.71<br/>3 misfits"]
     h1["pool<br/>50 functions · norm 0.72<br/>12 misfits"]
-    h2["panics<br/>10 functions · norm 0.91"]
-    h3["iter<br/>9 functions · norm 0.95"]
+    h2["panics<br/>10 functions · norm 0.92"]
+    h3["iter<br/>9 functions · norm 0.96"]
     classDef good fill:#d7ecd9,color:#1b3d20
     classDef warn fill:#fbeecb,color:#4a3a12
     classDef hot fill:#f7d6d6,color:#4a1c1c
@@ -116,15 +123,21 @@ flowchart TD
     class h0,h1 warn
 ```
 
-Most uniform is `iter` (norm `0.95`); most varied is `stream` (norm `0.71`). 15 functions are alien to their package and to the subsystem around it.
+Most uniform is `iter` (norm `0.96`); most varied is `stream` (norm `0.71`). 15 functions are alien to their package and to the subsystem around it.
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **151 candidate pairs** (shape 22, concept 117, call 15), of which 8% arrived on call evidence alone and 76% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **133 candidate pairs** (shape 3, concept 120, call 15), of which 8% arrived on call evidence alone and 88% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
-Each function is also an arena where its candidate concepts compete for its evidence. 38 functions reached an equilibrium: **36** settled on a single concept, **2** on a coalition, **0** hold concepts this corpus says do not go together.
+Each function is also an arena where its candidate concepts compete for its evidence. 40 functions reached an equilibrium: **39** settled on a single concept, **1** on a coalition, **0** hold concepts this corpus says do not go together.
 
-_2 further pairs were held back so no single function fills the report._
+_3 further pairs were held back so no single function fills the report._
+
+### Corpus metrics
+
+**Compression ratio:** `3.64`x — this corpus's canonical function bodies contain **1694 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **466 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
+
+**Nearest-neighbour code-shape:** of **81 functions**, **49** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.27` / `0.61` / `1.00`, and 12% of them (6 of 49) already clear this run's threshold of `0.60`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 32 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -136,21 +149,22 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 Only what is **distinctive**. A feature earns a row by being carried by this concept's members at least twice as often as by the corpus at large — nearly every Go function has a `return` and an `if`, so prevalence alone would describe the language rather than this codebase. Weights are how much a channel counts toward whether a member looks normal — calls 40, control flow 20, co-occurring tags 15, role 15, package 10.
 
+**`lock+unlock`** — 12 functions
+
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| flow ×20 | `funclit` | `████████··` | 9 of 12 | 4.3× |
+|  | `if` | `███████···` | 8 of 12 | 3.6× |
+| package ×10 | `iter` | `███·······` | 3 of 12 | 2.2× |
+
 **`fmt+debug`** — 11 functions
 
 | Channel | Feature | | Members | vs corpus |
 |---|---|---|---|---|
 | flow ×20 | `if` | `█████·····` | 5 of 11 | 2.5× |
-| role ×15 | `utility` | `████······` | 4 of 11 | 4.2× |
-| package ×10 | `panics` | `███████···` | 8 of 11 | 5.9× |
-|  | `iter` | `███·······` | 3 of 11 | 2.5× |
-
-**`lock+unlock`** — 11 functions
-
-| Channel | Feature | | Members | vs corpus |
-|---|---|---|---|---|
-| flow ×20 | `funclit` | `███████···` | 8 of 11 | 4.2× |
-|  | `if` | `███████···` | 8 of 11 | 3.9× |
+| role ×15 | `utility` | `███·······` | 3 of 11 | 3.2× |
+| package ×10 | `panics` | `██████····` | 7 of 11 | 5.2× |
+|  | `iter` | `████······` | 4 of 11 | 3.3× |
 
 **`s.pool+s.queue`** — 7 functions
 
@@ -158,7 +172,6 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 |---|---|---|---|---|
 | flow ×20 | `defer` | `████······` | 3 of 7 | 4.3× |
 |  | `funclit` | `████······` | 3 of 7 | 2.5× |
-| cotags ×15 | `lock+unlock` | `███·······` | 2 of 7 | 2.1× |
 | package ×10 | `stream` | `██████████` | 7 of 7 | 10× |
 
 **`p.limiter+conc`** — 5 functions
@@ -178,7 +191,7 @@ Nothing distinctive: its members do what the rest of the corpus does. The tag gr
 |---|---|---|---|---|
 | flow ×20 | `if` | `████······` | 2 of 5 | 2.2× |
 | cotags ×15 | `p.limiter+conc` | `████······` | 2 of 5 | 6.5× |
-|  | `lock+unlock` | `████······` | 2 of 5 | 2.9× |
+|  | `lock+unlock` | `████······` | 2 of 5 | 2.7× |
 
 ### What travels with what
 
@@ -186,45 +199,47 @@ Co-occurrence measured against chance across every function. Only relationships 
 
 **Together more than chance — tag~role**
 
-- 4 of 11 `fmt+debug` functions also `utility` — 4.2× chance
+- 3 of 11 `fmt+debug` functions also `utility` — 3.2× chance
 
 ### Functions drifting from their own concept
 
 These carry a tag but look nothing like the other functions carrying it. Typicality is measured against the concept's own median, so a genuinely varied concept lowers its own bar and a tight one can flag nobody.
 
-| Function | Concept | Typicality | Concept median | |
-|---|---|---:|---:|---|
-| `stream.*Stream.callbacker` <br/>`stream/stream.go:121` | `s.pool+s.queue` | `0.23` | `0.59` | no near-duplicate |
-| `pool.*Pool.worker` <br/>`pool/pool.go:148` | `p.tasks+conc` | `0.29` | `0.59` | no near-duplicate |
-| `stream.*Stream.Go` <br/>`stream/stream.go:62` | `s.pool+s.queue` | `0.29` | `0.59` | no near-duplicate |
-| `iter.Iterator[T].ForEachIdx` <br/>`iter/iter.go:59` | `fmt+debug` | `0.14` | `0.38` | no near-duplicate |
-
-A row marked _no near-duplicate_ appears in no reported pair: nothing else in this report explains it, which makes it drift rather than duplication.
+| Function | Concept | Typicality | Concept median |
+|---|---|---:|---:|
+| `stream.*Stream.callbacker` <br/>`stream/stream.go:121` | `s.pool+s.queue` | `0.23` | `0.59` |
+| `pool.*Pool.worker` <br/>`pool/pool.go:148` | `p.tasks+conc` | `0.29` | `0.59` |
+| `stream.*Stream.Go` <br/>`stream/stream.go:62` | `s.pool+s.queue` | `0.29` | `0.59` |
+| `iter.Iterator[T].ForEachIdx` <br/>`iter/iter.go:59` | `fmt+debug` | `0.17` | `0.38` |
 
 ---
 
-## Match #1 — Code-shape: `0.7259`
+## Match #1 — Code-shape: `0.6118`
 
-| | Location | Function | Signature | Patterns |
+| | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
-| **A** | `pool/result_context_pool.go:22` | `pool.*ResultContextPool[T].Go` | `(func(context.Context) (T, error))` | lock+unlock 0.47 |
-| **B** | `pool/result_error_pool.go:25` | `pool.*ResultErrorPool[T].Go` | `(func() (T, error))` | lock+unlock 0.47 |
+| **A** | `pool/result_context_pool.go:22` | `pool.*ResultContextPool[T].Go` | `(func(context.Context) (T, error))` | lock+unlock 0.43 |
+| **B** | `pool/result_error_pool.go:25` | `pool.*ResultErrorPool[T].Go` | `(func() (T, error))` | lock+unlock 0.43 |
+
+**Explain:** differs by one extra selector, four extra ident, one extra field
 
 **Profile A:** `lock+unlock` 1.00 (dominance)
 
 **Profile B:** `lock+unlock` 1.00 (dominance)
 
-**Code similarity:** `ast 0.79  flow 1.00  nesting 1.00  sig 0.00  size 0.87`
+**Code similarity:** `wl 0.60  flow 1.00  nesting 1.00  sig 0.00  size 0.87`
 
-**Evidence:** `147.15` (shape 143.19, concept 0.66, call 3.30)
+**Containment:** `0.81`
 
-**Trophic:** `0.94`
+**Evidence:** `112.30` (shape 108.39, concept 0.61, call 3.30)
+
+**Trophic:** `0.93`
 
 **Shared structure:**
 
-- `3.42` — `seq[ assign:=(call:f) ; if(bin:\|\|(bin,sel)) ]`
-- `3.42` — `seq[ if(bin:\|\|(bin,sel)) ; return(id) ]`
-- `3.42` — `if(bin:\|\|(bin,sel))`
+- `2.60` — `depth-3 BIN`
+- `2.60` — `depth-3 CALL`
+- `2.60` — `depth-3 IF`
 
 **Habitat:** A fits poorly in `pool` (fit 0.11, package norm 0.72)
 
@@ -244,31 +259,112 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #2 — Code-shape: `0.5864`
+## Match #2 — Code-shape: `1.0000`
 
-| | Location | Function | Signature | Patterns |
+| | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
-| **A** | `iter/map.go:27` | `iter.Mapper[T, R].Map` | `([]T, func(*T) R) ([]R)` | — |
-| **B** | `iter/map.go:48` | `iter.Mapper[T, R].MapErr` | `([]T, func(*T) (R, error)) ([]R, error)` | lock+unlock 0.76 |
+| **A** | `pool/result_error_pool.go:55` | `pool.*ResultErrorPool[T].WithContext` | `(context.Context) (*ResultContextPool[T])` | — |
+| **B** | `pool/result_pool.go:63` | `pool.*ResultPool[T].WithContext` | `(context.Context) (*ResultContextPool[T])` | — |
 
-**Profile B:** `lock+unlock` 1.00 (dominance)
+**Kind:** interface implementations — both implement `WithContext(context.Context) (*ResultContextPool[T])` on `*ResultErrorPool[T]` and `*ResultPool[T]`, in package `pool`
 
-**Code similarity:** `ast 0.53  flow 0.82  nesting 0.89  sig 0.40  size 0.50`
+**Explain:** identical after rename
 
-**Evidence:** `168.23` (shape 164.53, concept 0.00, call 3.70)
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Trophic:** `0.72`
+**Containment:** `1.00`
+
+**Evidence:** `75.33` (shape 75.33, concept 0.00, call 0.00)
+
+**Trophic:** `1.00`
 
 **Shared structure:**
 
-- `3.42` — `assign=(call:f)`
-- `3.42` — `flow:call:make→return`
-- `3.01` — `do(call:ForEachIdx)`
+- `2.60` — `depth-3 COMPOSITE`
+- `2.60` — `depth-3 KV`
+- `2.60` — `depth-3 CALL`
 
-**Structural overlap:** `0.54` (merge-worthy)
+**Structural overlap:** `0.50` (merge-worthy)
+
+- share 2 callees: [WithContext, p.panicIfInitialized]
+- both are leaf functions
+- same package
+- same visibility
+- both are methods, on *ResultErrorPool[T] and *ResultPool[T]
+
+---
+
+## Match #3 — Code-shape: `0.8123`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `pool/error_pool.go:45` | `pool.*ErrorPool.WithContext` | `(context.Context) (*ContextPool)` | — |
+| **B** | `pool/pool.go:138` | `pool.*Pool.WithContext` | `(context.Context) (*ContextPool)` | — |
+
+**Kind:** interface implementations — both implement `WithContext(context.Context) (*ContextPool)` on `*ErrorPool` and `*Pool`, in package `pool`
+
+**Explain:** differs by one extra call, one extra selector, one extra ident
+
+**Code similarity:** `wl 0.69  flow 1.00  nesting 1.00  sig 1.00  size 0.91`
+
+**Containment:** `0.91`
+
+**Evidence:** `92.93` (shape 89.23, concept 0.00, call 3.70)
+
+**Trophic:** `0.97`
+
+**Shared structure:**
+
+- `4.51` — `depth-0 KV` ×3
+- `4.39` — `depth-3 KV` ×2
+- `4.39` — `depth-2 KV` ×2
+
+**Habitat:** A fits poorly in `pool` (fit 0.18, package norm 0.72)
+
+**Habitat:** B fits poorly in `pool` (fit 0.18, package norm 0.72)
+
+**Structural overlap:** `0.40` (not merge-worthy)
+
+- share 2 callees: [context.WithCancel, p.panicIfInitialized]
+- both are leaf functions
+- same package
+- same visibility
+- both are methods, on *ErrorPool and *Pool
+
+---
+
+## Match #4 — Code-shape: `0.4657`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `iter/map.go:27` | `iter.Mapper[T, R].Map` | `([]T, func(*T) R) ([]R)` | lock+unlock 0.39 |
+| **B** | `iter/map.go:48` | `iter.Mapper[T, R].MapErr` | `([]T, func(*T) (R, error)) ([]R, error)` | lock+unlock 0.69 |
+
+**Explain:** differs by two extra assign, two extra declaration, one extra if, and 8 more kinds
+
+**Profile A:** `lock+unlock` 1.00 (dominance)
+
+**Profile B:** `lock+unlock` 1.00 (dominance)
+
+**Code similarity:** `wl 0.33  flow 0.82  nesting 0.89  sig 0.40  size 0.50`
+
+**Containment:** `0.73` — most of the smaller body's shape is inside the larger
+
+**Evidence:** `124.82` (shape 120.56, concept 0.55, call 3.70)
+
+**Trophic:** `0.76`
+
+**Shared structure:**
+
+- `3.01` — `depth-3 INDEX` ×2
+- `3.01` — `depth-2 INDEX` ×2
+- `3.01` — `depth-1 INDEX` ×2
+
+**Structural overlap:** `0.64` (merge-worthy)
 
 - share 4 callees: [ForEachIdx, f, len, make]
 - overlapping call-graph neighborhoods (1.00): 1 shared
+- share patterns: [lock+unlock]
 - both are leaf functions
 - same package
 - callees do related work (1.00): [fmt+debug]
@@ -278,210 +374,257 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #3 — Code-shape: `0.2690`
+## Match #5 — Code-shape: `0.5436`
 
-| | Location | Function | Signature | Patterns |
+| | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
-| **A** | `pool/error_pool.go:85` | `pool.*ErrorPool.addErr` | `(error)` | lock+unlock 0.74 |
-| **B** | `pool/result_pool.go:89` | `pool.*resultAggregator[T].add` | `(T)` | lock+unlock 0.72 |
+| **A** | `pool/pool.go:100` | `pool.*Pool.init` | `()` | lock+unlock 0.50, p.tasks+conc 0.50 |
+| **B** | `stream/stream.go:110` | `stream.*Stream.init` | `()` | s.pool+s.queue 0.63, lock+unlock 0.50 |
 
-**Profile A:** `lock+unlock` 0.68, `fmt+debug` 0.32 (dominance)
+**Kind:** interface implementations — both implement `init()` on `*Pool` and `*Stream`, sibling packages `pool` and `stream`
 
-**Profile B:** `lock+unlock` 0.54, `fmt+debug` 0.46 (coalition)
+**Explain:** differs by five extra selector, two extra call, one extra binary, and 5 more kinds
 
-**Code similarity:** `ast 0.45  flow 0.00  nesting 0.00  sig 0.00  size 0.50`
+**Profile A:** `p.tasks+conc` 1.00 (dominance)
 
-**Evidence:** `79.26` (shape 78.24, concept 1.02, call 0.00)
+**Profile B:** `s.pool+s.queue` 1.00 (dominance)
 
-**Trophic:** `0.54`
+**Code similarity:** `wl 0.24  flow 1.00  nesting 1.00  sig 1.00  size 0.55`
+
+**Containment:** `0.46`
+
+**Evidence:** `40.30` (shape 39.26, concept 1.04, call 0.00)
+
+**Trophic:** `0.67`
 
 **Shared structure:**
 
-- `3.01` — `do(call:Lock)`
-- `3.01` — `do(call:Unlock)`
+- `2.60` — `depth-3 BLOCK`
+- `2.60` — `depth-3 EXPRSTMT`
+- `2.60` — `depth-2 CALL`
+
+**Structural overlap:** `0.41` (merge-worthy)
+
+- share 2 callees: [Do, make]
+- share patterns: [lock+unlock]
+- related patterns: p.tasks+conc ≈ s.pool+s.queue (both control_flow, 0.33)
+- both are leaf functions
+- same visibility
+- both are methods, on *Pool and *Stream
+
+---
+
+## Match #6 — Code-shape: `0.3155`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `pool/context_pool.go:24` | `pool.*ContextPool.Go` | `(func(ctx context.Context) error)` | lock+unlock 0.43 |
+| **B** | `pool/result_error_pool.go:25` | `pool.*ResultErrorPool[T].Go` | `(func() (T, error))` | lock+unlock 0.43 |
+
+**Explain:** differs by two extra if, one extra assign, one extra defer, and 10 more kinds
+
+**Profile A:** `lock+unlock` 1.00 (dominance)
+
+**Profile B:** `lock+unlock` 1.00 (dominance)
+
+**Code similarity:** `wl 0.15  flow 0.95  nesting 0.70  sig 0.00  size 0.51`
+
+**Containment:** `0.42`
+
+**Evidence:** `52.98` (shape 52.36, concept 0.61, call 0.00)
+
+**Trophic:** `0.38`
+
+**Shared structure:**
+
+- `2.60` — `depth-3 FUNCTYPE`
+- `2.60` — `depth-2 FUNCTYPE`
+- `2.20` — `depth-3 FIELDLIST`
+
+**Habitat:** A fits poorly in `pool` (fit 0.07, package norm 0.72)
+
+**Habitat:** B fits poorly in `pool` (fit 0.11, package norm 0.72)
+
+**Structural overlap:** `0.61` (not merge-worthy)
+
+- share 2 callees: [Go, f]
+- share patterns: [lock+unlock]
+- both are leaf functions
+- same package
+- callees do related work (0.94): [lock+unlock]
+- same visibility
+- both are methods, on *ContextPool and *ResultErrorPool[T]
+- call into same packages: [pool]
+
+---
+
+## Match #7 — Code-shape: `0.1291`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `pool/error_pool.go:85` | `pool.*ErrorPool.addErr` | `(error)` | lock+unlock 0.65 |
+| **B** | `pool/result_pool.go:89` | `pool.*resultAggregator[T].add` | `(T)` | lock+unlock 0.62 |
+
+**Explain:** differs by three extra if, one extra assign, four extra selector, and 4 more kinds
+
+**Profile A:** `lock+unlock` 0.83, `fmt+debug` 0.17 (dominance)
+
+**Profile B:** `lock+unlock` 0.62, `fmt+debug` 0.38 (dominance)
+
+**Code similarity:** `wl 0.22  flow 0.00  nesting 0.00  sig 0.00  size 0.50`
+
+**Containment:** `0.57`
+
+**Evidence:** `38.25` (shape 37.37, concept 0.88, call 0.00)
+
+**Trophic:** `0.59`
+
+**Shared structure:**
+
+- `2.60` — `depth-3 CALL`
+- `2.60` — `depth-3 CALL`
+- `2.60` — `depth-3 EXPRSTMT`
 
 **Habitat:** A fits poorly in `pool` (fit 0.02, package norm 0.72)
 
 **Habitat:** B fits poorly in `pool` (fit 0.27, package norm 0.72)
 
-**Structural overlap:** `0.65` (not merge-worthy)
+**Structural overlap:** `0.64` (not merge-worthy)
 
 - share 2 callees: [Lock, Unlock]
 - share patterns: [lock+unlock]
 - both are utility functions
 - same package
-- callers do related work (0.39): [lock+unlock]
+- callers do related work (0.37): [lock+unlock]
 - same visibility
 - both are methods, on *ErrorPool and *resultAggregator[T]
 - called from same packages: [pool]
 
 ---
 
-## Match #4 — Code-shape: `0.3823`
+## Match #8 — Code-shape: `0.2966`
 
-| | Location | Function | Signature | Patterns |
+| | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
-| **A** | `pool/result_error_pool.go:25` | `pool.*ResultErrorPool[T].Go` | `(func() (T, error))` | lock+unlock 0.47 |
-| **B** | `pool/result_pool.go:32` | `pool.*ResultPool[T].Go` | `(func() T)` | — |
+| **A** | `pool/context_pool.go:24` | `pool.*ContextPool.Go` | `(func(ctx context.Context) error)` | lock+unlock 0.43 |
+| **B** | `pool/result_context_pool.go:22` | `pool.*ResultContextPool[T].Go` | `(func(context.Context) (T, error))` | lock+unlock 0.43 |
+
+**Explain:** differs by two extra if, one extra assign, one extra defer, and 11 more kinds
 
 **Profile A:** `lock+unlock` 1.00 (dominance)
 
-**Code similarity:** `ast 0.41  flow 0.58  nesting 0.45  sig 0.00  size 0.54`
+**Profile B:** `lock+unlock` 1.00 (dominance)
 
-**Evidence:** `46.90` (shape 43.60, concept 0.00, call 3.30)
+**Code similarity:** `wl 0.12  flow 0.95  nesting 0.70  sig 0.00  size 0.58`
 
-**Trophic:** `0.44`
+**Containment:** `0.31`
+
+**Evidence:** `45.19` (shape 44.57, concept 0.61, call 0.00)
+
+**Trophic:** `0.33`
 
 **Shared structure:**
 
-- `3.01` — `do(call:add)`
-- `1.91` — `do(call:Go)`
+- `2.20` — `depth-3 FIELDLIST`
+- `2.20` — `depth-3 FIELD`
+- `2.20` — `depth-2 FIELDLIST`
 
-**Habitat:** A fits poorly in `pool` (fit 0.11, package norm 0.72)
+**Habitat:** A fits poorly in `pool` (fit 0.07, package norm 0.72)
 
-**Habitat:** B fits poorly in `pool` (fit 0.13, package norm 0.72)
+**Habitat:** B fits poorly in `pool` (fit 0.11, package norm 0.72)
 
-**Structural overlap:** `0.60` (not merge-worthy)
+**Structural overlap:** `0.61` (not merge-worthy)
 
-- share 3 callees: [Go, add, f]
-- overlapping call-graph neighborhoods (1.00): 2 shared
+- share 2 callees: [Go, f]
+- share patterns: [lock+unlock]
 - both are leaf functions
 - same package
-- callees do related work (1.00): [lock+unlock]
+- callees do related work (0.94): [lock+unlock]
 - same visibility
-- both are methods, on *ResultErrorPool[T] and *ResultPool[T]
+- both are methods, on *ContextPool and *ResultContextPool[T]
 - call into same packages: [pool]
 
 ---
 
-## Match #5 — Code-shape: `0.3654`
+## Match #9 — Code-shape: `0.2697`
 
-| | Location | Function | Signature | Patterns |
+| | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
-| **A** | `pool/result_context_pool.go:22` | `pool.*ResultContextPool[T].Go` | `(func(context.Context) (T, error))` | lock+unlock 0.47 |
-| **B** | `pool/result_pool.go:32` | `pool.*ResultPool[T].Go` | `(func() T)` | — |
+| **A** | `stream/stream.go:62` | `stream.*Stream.Go` | `(Task)` | s.pool+s.queue 0.61, lock+unlock 0.46 |
+| **B** | `stream/stream.go:91` | `stream.*Stream.Wait` | `()` | s.pool+s.queue 0.62 |
 
-**Profile A:** `lock+unlock` 1.00 (dominance)
+**Explain:** differs by three extra assign, three extra send, one extra if, and 9 more kinds
 
-**Code similarity:** `ast 0.38  flow 0.58  nesting 0.45  sig 0.00  size 0.47`
+**Profile A:** `s.pool+s.queue` 1.00 (dominance)
 
-**Evidence:** `46.90` (shape 43.60, concept 0.00, call 3.30)
+**Profile B:** `s.pool+s.queue` 1.00 (dominance)
 
-**Trophic:** `0.40`
+**Code similarity:** `wl 0.13  flow 0.85  nesting 0.38  sig 0.00  size 0.55`
+
+**Containment:** `0.40`
+
+**Evidence:** `38.02` (shape 36.90, concept 1.12, call 0.00)
+
+**Trophic:** `0.31`
 
 **Shared structure:**
 
-- `3.01` — `do(call:add)`
-- `1.91` — `do(call:Go)`
+- `2.20` — `depth-3 DEFER`
+- `2.20` — `depth-2 DEFER`
+- `2.20` — `depth-1 DEFER`
 
-**Habitat:** A fits poorly in `pool` (fit 0.11, package norm 0.72)
+**Culture:** A realizes `s.pool+s.queue` atypically (typicality 0.29, concept median 0.59, convention 0.37)
 
-**Habitat:** B fits poorly in `pool` (fit 0.13, package norm 0.72)
+**Habitat:** A fits poorly in `stream` (fit 0.33, package norm 0.71)
 
-**Structural overlap:** `0.60` (not merge-worthy)
+**Structural overlap:** `0.46` (not merge-worthy)
 
-- share 3 callees: [Go, add, f]
-- overlapping call-graph neighborhoods (1.00): 2 shared
+- share 1 callees: [s.init]
+- share patterns: [s.pool+s.queue]
 - both are leaf functions
 - same package
-- callees do related work (1.00): [lock+unlock]
 - same visibility
-- both are methods, on *ResultContextPool[T] and *ResultPool[T]
-- call into same packages: [pool]
+- same receiver type: Stream
 
 ---
 
-## Match #6 — Code-shape: `0.2803`
+## Match #10 — Code-shape: `0.1210`
 
-| | Location | Function | Signature | Patterns |
+| | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
-| **A** | `pool/pool.go:89` | `pool.*Pool.WithMaxGoroutines` | `(int) (*Pool)` | p.limiter+conc 0.50 |
-| **B** | `pool/pool.go:127` | `pool.*Pool.deref` | `() (Pool)` | p.limiter+conc 0.50 |
+| **A** | `pool/pool.go:39` | `pool.*Pool.Go` | `(func())` | p.limiter+conc 0.50, p.tasks+conc 0.50, lock+unlock 0.39 |
+| **B** | `stream/stream.go:62` | `stream.*Stream.Go` | `(Task)` | s.pool+s.queue 0.61, lock+unlock 0.46 |
 
-**Profile A:** `p.limiter+conc` 1.00 (dominance)
+**Explain:** differs by four extra comm, three extra assign, two extra select, and 12 more kinds
 
-**Profile B:** `p.limiter+conc` 1.00 (dominance)
+**Profile A:** `p.limiter+conc` 0.50, `p.tasks+conc` 0.50 (coalition)
 
-**Code similarity:** `ast 0.15  flow 0.71  nesting 1.00  sig 0.00  size 0.56`
+**Profile B:** `s.pool+s.queue` 1.00 (dominance)
 
-**Evidence:** `6.91` (shape 5.86, concept 1.05, call 0.00)
+**Code similarity:** `wl 0.08  flow 0.12  nesting 0.93  sig 0.00  size 0.83`
 
-**Trophic:** `0.12`
+**Containment:** `0.16`
+
+**Evidence:** `38.01` (shape 37.12, concept 0.89, call 0.00)
+
+**Trophic:** `0.29`
 
 **Shared structure:**
 
-- `1.07` — `do(call:panicIfInitialized)`
+- `7.81` — `depth-0 SEND` ×3
+- `2.60` — `depth-3 SEND`
+- `2.60` — `depth-2 SEND`
 
-**Structural overlap:** `0.52` (not merge-worthy)
+**Habitat:** B fits poorly in `stream` (fit 0.33, package norm 0.71)
 
-- share 1 callees: [p.panicIfInitialized]
-- share patterns: [p.limiter+conc]
+**Structural overlap:** `0.30` (not merge-worthy)
+
+- share 1 callees: [Go]
+- share patterns: [lock+unlock]
+- related patterns: p.tasks+conc ≈ s.pool+s.queue (both control_flow, 0.33)
 - both are leaf functions
-- same package
-- same receiver type: Pool
-
----
-
-## Match #7 — Code-shape: `0.1167`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `panics/panics.go:21` | `panics.*Catcher.Try` | `(func())` | fmt+debug 0.51 |
-| **B** | `panics/panics.go:36` | `panics.*Catcher.Repanic` | `()` | fmt+debug 0.49 |
-
-**Profile A:** `fmt+debug` 1.00 (dominance)
-
-**Profile B:** `fmt+debug` 1.00 (dominance)
-
-**Code similarity:** `ast 0.11  flow 0.00  nesting 1.00  sig 0.00  size 0.56`
-
-**Evidence:** `0.71` (shape 0.00, concept 0.71, call 0.00)
-
-**Trophic:** `0.00`
-
-**Structural overlap:** `0.68` (not merge-worthy)
-
-- share 1 callers: [stream.*Stream.callbacker]
-- overlapping call-graph neighborhoods (0.57): 4 shared
-- share patterns: [fmt+debug]
-- both are utility functions
-- same package
-- callers do related work (1.00): [s.pool+s.queue]
-- callees do related work (1.00): [fmt+debug]
 - same visibility
-- same receiver type: Catcher
-- called from same packages: [conc, stream]
-- call into same packages: [panics]
-
----
-
-## Match #8 — Code-shape: `0.1000`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `panics/panics.go:21` | `panics.*Catcher.Try` | `(func())` | fmt+debug 0.51 |
-| **B** | `panics/panics.go:44` | `panics.*Catcher.Recovered` | `() (*Recovered)` | fmt+debug 0.49 |
-
-**Profile A:** `fmt+debug` 1.00 (dominance)
-
-**Profile B:** `fmt+debug` 1.00 (dominance)
-
-**Code similarity:** `ast 0.08  flow 0.00  nesting 1.00  sig 0.00  size 0.89`
-
-**Evidence:** `0.71` (shape 0.00, concept 0.71, call 0.00)
-
-**Trophic:** `0.00`
-
-**Structural overlap:** `0.56` (not merge-worthy)
-
-- share 1 callers: [panics.Try]
-- overlapping call-graph neighborhoods (0.43): 3 shared
-- share patterns: [fmt+debug]
-- both are utility functions
-- same package
-- same visibility
-- same receiver type: Catcher
-- called from same packages: [conc, panics]
+- both are methods, on *Pool and *Stream
 
 ---
 

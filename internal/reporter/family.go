@@ -80,7 +80,7 @@ func PrintMarkdownFamilies(w io.Writer, fams []family.Family, stats family.Stats
 		fmt.Fprintf(w, "### Family %d — %d members, every pair `>= %.2f` code-shape, evidence `%.0f`%s%s\n\n",
 			i+1, len(f.Members), f.MinEdge, f.Evidence, completedNote(f.Completed), familyKindNote(f, true))
 		mdFamilyDiagram(w, f, units)
-		fmt.Fprintf(w, "| Location | Function | Signature | Patterns |\n")
+		fmt.Fprintf(w, "| Location | Function | Signature | Concepts |\n")
 		fmt.Fprintf(w, "|---|---|---|---|\n")
 		listed := memberLimit(f, show)
 		for _, m := range f.Members[:listed] {
