@@ -239,6 +239,18 @@ doppel ontology --defs                                # print the vocabulary and
   (`how-it-works.md` → `How-it-works`, which GitHub titles "How it works"), so the directory must
   stay **flat**: wiki page names cannot nest, and the job fails loudly rather than silently
   collapsing `a/page.md` and `b/page.md` onto one page. It pushes only when something changed.
+- `.github/workflows/pages.yml` publishes the site at `lukasselin.github.io/doppel`:
+  `.github/pages/index.html` (the landing page) and `examples.html` (the ladder index, with one
+  `@@CARDS@@` slot) are authored here, and the reports are generated — doppel's own source at
+  `/report.html`, and every rung of the pinned ladder under `/examples/`. Those seven come from
+  the **same corpora cache `examples.yml` writes**, restored under the same key, so the site and
+  the committed Markdown reports describe the same seven trees; a rung that is not fetched fails
+  the job rather than publishing a shorter ladder than the manifest pins. Output goes to `_site`
+  because `parser.ShouldSkipDir` skips underscore-prefixed directories, so the site cannot join
+  the corpus of the run writing into it. `@@COMMIT@@`/`@@BUILT@@` are substituted here and never
+  inside a report, because an unchanged tree must render byte-identical HTML. Deliberately no
+  `paths:` filter, unlike `examples.yml`: the landing page and the report both move with any
+  commit, and a stale published page looks current.
 - `.github/workflows/examples.yml` regenerates `examples/` from the pinned corpus ladder on
   every push to `master` that touches Go code, and commits the result as `github-actions[bot]`.
   The ladder is restored by `actions/cache` keyed on `internal/bench/corpora.go`, so the
@@ -1535,6 +1547,12 @@ shell and behaves identically on Windows and Unix, and which is also the only fo
     which makes the recorded revision mean "where this report's content last moved" and makes
     regeneration idempotent enough for CI to commit. `DOPPEL_BENCH_EXAMPLES_CHECK=1` compares
     instead of writing (`task examples-check`).
+  - `TestGeneratePagesSite` (guard `DOPPEL_BENCH_PAGES=<site root>`, relative to the module)
+    renders the published site's examples section from the same manifest: one dashboard per
+    rung via the built binary, plus the index, whose per-corpus counts are read back out of
+    the committed Markdown reports rather than measured again — one analysis per corpus, and a
+    card that cannot disagree with the report it links to. `task pages` builds the whole site
+    locally.
   - `TestExamplesManifest` and `TestLadderMatchesReports` are the offline half, unguarded and
     in every `go test ./...`: the first asserts each rung has a report quoting the manifest's
     pinned tag and commit and that the ladder markers exist, the second re-derives the whole

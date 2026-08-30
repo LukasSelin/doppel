@@ -2,8 +2,11 @@ name: Pages
 
 # The repo is the source of truth for the site, exactly as it is for the wiki:
 # .github/pages/index.html is authored and reviewed like code, and
-# lukasselin.github.io/doppel is a rendered view of it plus one generated
-# artifact — doppel's report on its own source.
+# lukasselin.github.io/doppel is a rendered view of it plus the generated
+# reports — doppel's own source, and every rung of the pinned public ladder
+# under /examples/. Those come from the same corpora examples.yml analyses,
+# restored from the same cache, so the site and the committed Markdown reports
+# describe the same seven trees.
 #
 # Requires Settings → Pages → Source set to "GitHub Actions". Nothing here can
 # set that; until it is set the deploy job fails with "Pages is not enabled".
@@ -32,6 +35,15 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # The examples section analyses seven repositories. Warm, that is seconds;
+    # cold, it is a few hundred megabytes of shallow clone first.
+    timeout-minutes: 45
+
+    env:
+      # Must stay outside the working tree, or a corpus would be walked by the
+      # `doppel analyze .` run below — the same reason bench.Root() defaults
+      # outside the module.
+      DOPPEL_CORPORA: ${{ runner.temp }}/doppel-corpora
 
     steps:
       - uses: actions/checkout@v4
@@ -40,6 +52,22 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+
+      # The same key examples.yml writes, and deliberately the same cache
+      # rather than a second copy: both jobs want the ladder at the manifest's
+      # pinned commits, and caches are shared across workflows on a branch.
+      # Whichever runs first on a new manifest pays the clone and saves it.
+      - name: Restore the pinned corpora
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/doppel-corpora
+          key: doppel-corpora-${{ hashFiles('internal/bench/corpora.go') }}
+
+      # A no-op per corpus already present, and still verifies every HEAD
+      # against the manifest — a moved tag fails here rather than publishing a
+      # report of a tree nobody pinned.
+      - name: Fetch whatever the cache did not carry
+        run: DOPPEL_BENCH_FETCH=1 go test ./internal/bench/ -run TestFetchCorpora -v -timeout 30m
 
       # `_site` rather than `site`: parser.ShouldSkipDir skips underscore-
       # prefixed directories (the go tool's own ignore rule), so the output
@@ -51,6 +79,13 @@ jobs:
           mkdir -p _site
           go run . analyze . -o _site/report.html
 
+      # The same dashboard, over every rung of the pinned ladder: the site's
+      # one report on doppel's own source shows the tool working on a corpus
+      # its author wrote, which is the least persuasive corpus available.
+      # Fails rather than shipping a partial ladder.
+      - name: Render the ladder
+        run: DOPPEL_BENCH_PAGES=_site go test ./internal/bench/ -run TestGeneratePagesSite -v -timeout 30m
+
       - name: Assemble the landing page
         run: |
           set -euo pipefail
@@ -58,10 +93,16 @@ jobs:
           # the two read as one document.
           cp internal/dashboard/assets/vendor/broadsheet.css _site/
           # Provenance lives here and never in the report — an unchanged tree
-          # must render byte-identical HTML, which ci.yml asserts.
-          sed -e "s/@@COMMIT@@/${GITHUB_SHA:0:7}/g" \
-              -e "s/@@BUILT@@/$(date -u +%Y-%m-%d)/g" \
-              .github/pages/index.html > _site/index.html
+          # must render byte-identical HTML, which ci.yml asserts. The examples
+          # index carries the same two placeholders and is substituted the same
+          # way; the generator asserts they survived it.
+          stamp() {
+            sed -e "s/@@COMMIT@@/${GITHUB_SHA:0:7}/g" \
+                -e "s/@@BUILT@@/$(date -u +%Y-%m-%d)/g" "$1" > "$2"
+          }
+          stamp .github/pages/index.html _site/index.html
+          stamp _site/examples/index.html _site/examples/index.stamped.html
+          mv _site/examples/index.stamped.html _site/examples/index.html
 
       # Deliberately no vet/test here: ci.yml already gates every push to
       # master, and duplicating it would double the runner cost of a push for
