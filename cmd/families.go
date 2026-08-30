@@ -68,8 +68,8 @@ functions.`,
 }
 
 func init() {
-	familiesCmd.Flags().Float64VarP(&familiesThreshold, "threshold", "t", 0.60, "Minimum code-shape score for structural-channel candidates (0.0–1.0)")
-	familiesCmd.Flags().IntVar(&familiesMinNodes, "min-nodes", 18, "Exclude functions with fewer body AST nodes from structural retrieval")
+	familiesCmd.Flags().Float64VarP(&familiesThreshold, "threshold", "t", 0.38, "Minimum code-shape score for structural-channel candidates (0.0–1.0)")
+	familiesCmd.Flags().IntVar(&familiesMinNodes, "min-nodes", 16, "Exclude functions with fewer body AST nodes from structural retrieval")
 	familiesCmd.Flags().IntVar(&familiesChannelK, "channel-k", 5, "Candidates each function keeps per retrieval channel")
 	familiesCmd.Flags().StringVar(&familiesTests, "tests", "exclude", "Test-function population: include, exclude, or only")
 	familiesCmd.Flags().StringVar(&familiesGenerated, "generated", "exclude", "Generated-file population: include, exclude, or only")

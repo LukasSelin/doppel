@@ -73,9 +73,9 @@ var analyzeCmd = &cobra.Command{
 }
 
 func init() {
-	analyzeCmd.Flags().Float64VarP(&threshold, "threshold", "t", 0.60, "Minimum code-shape score for structural-channel candidates (0.0–1.0)")
+	analyzeCmd.Flags().Float64VarP(&threshold, "threshold", "t", 0.38, "Minimum code-shape score for structural-channel candidates (0.0–1.0)")
 	analyzeCmd.Flags().IntVarP(&topN, "top", "n", 20, "Maximum number of pairs in the final report")
-	analyzeCmd.Flags().IntVar(&minNodes, "min-nodes", 18, "Exclude functions with fewer body AST nodes from structural retrieval")
+	analyzeCmd.Flags().IntVar(&minNodes, "min-nodes", 16, "Exclude functions with fewer body AST nodes from structural retrieval")
 	analyzeCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write a report to this file. A .html path renders the full visual report; any other extension writes markdown. Stdout text report is still printed.")
 	analyzeCmd.Flags().StringVar(&configFile, "config", "", "Path to JSON config file (default: .doppel.json if present)")
 	analyzeCmd.Flags().Float64Var(&structMin, "struct-min", 0.0, "Minimum structural overlap score (0.0–1.0) to keep a pair")

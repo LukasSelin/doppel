@@ -60,24 +60,42 @@ func (o Options) weights() fingerprint.Weights {
 	return o.Weights
 }
 
-// DefaultOptions returns the production defaults. ChannelK and MinNodes
-// mirror the --channel-k and --min-nodes flag defaults; the caps are fixed
-// constants chosen so that corpus-wide idioms (Error() shapes, fmt.Sprintf)
-// drop out of the indexes entirely while genuinely shared machinery stays in.
+// DefaultOptions returns the production defaults. ChannelK, Threshold and
+// MinNodes mirror the --channel-k, --threshold and --min-nodes flag defaults;
+// the caps are fixed constants chosen so that corpus-wide idioms (Error()
+// shapes, fmt.Sprintf) drop out of the indexes entirely while genuinely
+// shared machinery stays in.
 //
-// MinNodes was 12 while the shape channel indexed the pattern multiset, and
-// is 18 now that it indexes WL labels. A body produces wlRounds+1 labels per
-// node, so a *trivial* body that happens to be corpus-unique earns
-// maximal-IDF evidence at the deep rounds — where the pattern hierarchy gave
-// it nothing at all, a one-liner having no loop summary, no statement bigram
-// and no def-use edge to offer. This gate is the only thing that ever
-// suppressed those bodies, and 12 was calibrated against a feature set that
-// no longer exists.
+// Threshold is 0.38, the median of the code-shape floors `--calibrate 0.01`
+// derives across the public ladder (prometheus 0.33, moby and hugo 0.35, gin
+// 0.41, cobra 0.44, chi 0.45; conc declines for want of null pairs). It was
+// 0.60, which admitted far fewer than 1% of random pairs on every corpus
+// measured — one number that meant a different strictness on each. The
+// labeled corpus is flat across the whole 0.30..0.60 range, so this buys
+// shape-channel recall at no measured labeled cost; see TestThresholdLadder.
+//
+// MinNodes was 12 while the shape channel indexed the pattern multiset, then
+// 18 when it moved to WL labels. A body produces wlRounds+1 labels per node,
+// so a *trivial* body that happens to be corpus-unique earns maximal-IDF
+// evidence at the deep rounds — where the pattern hierarchy gave it nothing
+// at all, a one-liner having no loop summary, no statement bigram and no
+// def-use edge to offer. This gate is the only thing that ever suppressed
+// those bodies.
+//
+// It is 16 because that is the lowest floor that still holds the pin 18 was
+// set for. Cobra's `commandSorterByName.Less ↔ doc.byName.Less` false
+// positive is 15 nodes a side and must stay out; conc's `ResultContextPool.
+// Wait ↔ ResultErrorPool.Wait` clone family is 16 and should be let in. The
+// two pins are one node apart, so 16 separates them exactly: 16, 17 and 18
+// score identically on the cobra labels (merge 4.5, refactor 13.7, fp 47.0,
+// no violations) while 15 and below admit the false positive at rank 20. See
+// TestMinNodesLadder. 18 was closing the shape channel on small corpora for
+// no labeled benefit — conc retrieved 3 shape candidates at 18 and 14 at 16.
 func DefaultOptions() Options {
 	return Options{
 		ChannelK:     5,
-		Threshold:    0.60,
-		MinNodes:     18,
+		Threshold:    0.38,
+		MinNodes:     16,
 		MaxLabelDF:   50,
 		MaxCallDF:    50,
 		MaxConceptDF: 250,

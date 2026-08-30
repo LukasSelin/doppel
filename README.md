@@ -106,8 +106,11 @@ doppel analyze <path> [flags]
 # Analyze current directory with defaults
 doppel analyze .
 
-# Lower the threshold to catch more subtle similarities
-doppel analyze ./src --threshold 0.50
+# Raise the threshold to keep only closely-shaped bodies
+doppel analyze ./src --threshold 0.60
+
+# Or let the corpus set its own floors: admit 1% of random unrelated pairs
+doppel analyze . --calibrate 0.01
 
 # Keep only pairs that also share architectural context, and save a report
 doppel analyze . --struct-min 0.4 --output report.md
@@ -187,10 +190,10 @@ inline; `doppel families` is the whole census, with `--format json` for a machin
 
 | Flag                | Default | Description                                                                 |
 | ------------------- | ------- | --------------------------------------------------------------------------- |
-| `-t`, `--threshold` | `0.60`  | Minimum code similarity score to report (0.0–1.0)                           |
+| `-t`, `--threshold` | `0.38`  | Minimum code similarity score to report (0.0–1.0)                           |
 | `-n`, `--top`       | `20`    | Maximum number of pairs to show (`0` for no limit)                          |
 | `--struct-min`      | `0.0`   | Minimum structural overlap score (0.0–1.0) to keep a pair                   |
-| `--min-nodes`       | `18`    | Skip functions whose body has fewer than this many AST nodes. Guards against one-line accessors, which match each other perfectly and would otherwise flood the report |
+| `--min-nodes`       | `16`    | Skip functions whose body has fewer than this many AST nodes. Guards against one-line accessors, which match each other perfectly and would otherwise flood the report |
 | `-o`, `--output`    | *(disabled)* | Write a report to this file. **A `.html` path renders the full visual report** — one self-contained page, no scripts, opens from `file://`. Any other extension writes Markdown, which opens with what doppel understands about the corpus — concept vocabulary, duplication map, package habitats — as mermaid diagrams, then how this codebase *writes* things. The stdout report is still printed |
 | `--format`          | `text`  | Stdout format: `text` or `json`. The JSON form is a deterministic snapshot of the whole run — every function, its concept tags and role, and every reported pair |
 | `--families`        | `5`     | Near-duplicate families to show after the pair list (`0` removes the section) |
@@ -204,7 +207,7 @@ Any flag above except `--config` can be set in a `.doppel.json` at the repo root
 
 ```json
 {
-  "threshold": 0.65,
+  "threshold": 0.38,
   "top": 10,
   "families": 5,
   "struct-min": 0.4,
