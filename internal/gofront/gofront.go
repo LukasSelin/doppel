@@ -21,11 +21,27 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/LukasSelin/doppel/internal/canon"
 	"github.com/LukasSelin/doppel/internal/syntax"
 )
 
 // Lang is the language tag every unit from this frontend carries.
 const Lang = "go"
+
+// ruleNames projects canon's rule IDs onto the neutral strings syntax.Func
+// carries. The IDs are already stable strings — canon documents them as API
+// precisely because they are recorded and rendered — so this is a conversion
+// and not an encoding.
+func ruleNames(ids []canon.RuleID) []string {
+	if len(ids) == 0 {
+		return nil
+	}
+	out := make([]string, len(ids))
+	for i, id := range ids {
+		out[i] = string(id)
+	}
+	return out
+}
 
 // ParseFile reads and parses one Go file.
 func ParseFile(filename string) (*syntax.File, error) {
@@ -84,6 +100,25 @@ func Parse(filename string, src []byte) (*syntax.File, error) {
 		}
 		if fd.Body != nil {
 			fn.Body = toSyntax(fd.Body)
+			// Canonicalization is Go semantics, so it happens here, in the
+			// Go frontend, on go/ast — and its *output* is what crosses into
+			// the neutral IR. Two orderings were possible and only this one
+			// is honest: a rule like "an if with a negated condition and an
+			// else is the same shape as the swapped one" is a claim about
+			// what Go code means, and the IR deliberately carries no
+			// semantics to make it with.
+			//
+			// canon works on a deep copy and never touches fd, which matters
+			// exactly here: fn.Body, the token stream, the signals and the
+			// callees all read the same declaration, so an in-place rewrite
+			// would change every score and every concept in the tool without
+			// a line of scoring code changing. internal/canon owns that
+			// guarantee and proves it over every function in this repo.
+			res := canon.Canonicalize(fd)
+			if res.Decl != nil && res.Decl.Body != nil {
+				fn.Canon = toSyntax(res.Decl.Body)
+			}
+			fn.CanonRules = ruleNames(res.Fired)
 			fn.StartOffset = fset.Position(fd.Pos()).Offset
 			fn.EndOffset = fset.Position(fd.End()).Offset
 		} else {

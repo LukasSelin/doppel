@@ -57,9 +57,12 @@ type Result struct {
 // Applied reports whether the calibration produced thresholds.
 func (r Result) Applied() bool { return r.Declined == "" }
 
-// Run calibrates over a corpus. comp is the run's own comparator, so the
-// overlap null is corpus-weighted exactly like the pairs it will gate.
-func Run(units []parser.CodeUnit, docs []concepter.ConceptDoc, comp *comparator.Comparator, o Options) Result {
+// Run calibrates over a corpus. comp is the run's own comparator and wl the
+// run's own label weighting, so both nulls are corpus-weighted exactly like
+// the pairs they will gate. Passing a different wl than the run scores with
+// would calibrate a threshold against a distribution nothing is measured on.
+func Run(units []parser.CodeUnit, docs []concepter.ConceptDoc, comp *comparator.Comparator,
+	wl *fingerprint.LabelIDF, o Options) Result {
 	res := Result{Rate: o.Rate}
 	if o.Rate <= 0 || o.Rate >= 1 {
 		res.Declined = "rate must be in (0, 1)"
@@ -88,7 +91,7 @@ func Run(units []parser.CodeUnit, docs []concepter.ConceptDoc, comp *comparator.
 	}
 	shape := make([]float64, 0, len(shapePairs))
 	for _, p := range shapePairs {
-		shape = append(shape, fingerprint.SimilarityWith(units[p[0]].Fingerprint, units[p[1]].Fingerprint, w).Score)
+		shape = append(shape, fingerprint.SimilarityWith(units[p[0]].Fingerprint, units[p[1]].Fingerprint, wl, w).Score)
 	}
 
 	// Overlap null: every unit, the way the comparator sees pairs.

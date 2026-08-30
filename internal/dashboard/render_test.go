@@ -27,8 +27,9 @@ func samplePayload() Payload {
 		},
 		Edges: []Edge{{
 			A: 0, B: 1, Shape: 0.8, Overlap: 0.5, Total: 12, Trophic: 0.7, Rank: 3.4,
-			Channels: []string{"shape"}, Breakdown: [5]float64{0.8, 0.9, 1, 1, 0.9},
-			Chains: []Chain{{Level: 2, Energy: 4.5, Render: "if(bin:!=(id,nil))"}},
+			Channels: []string{"shape"}, Containment: 0.95, Explain: "canonical after one rewrite",
+			Breakdown: [6]float64{0.8, 0.9, 1, 1, 0.9, 0.95},
+			Chains:    []Chain{{Depth: 2, Energy: 4.5, Render: "depth-2 IF"}},
 		}},
 		Bodies: []Body{
 			{Unit: 0, Text: "func First() {}"},

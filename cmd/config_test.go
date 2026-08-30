@@ -200,7 +200,7 @@ func TestHookParamsWithoutConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("hookParams with no config: %v", err)
 	}
-	if p.Threshold != 0.60 || p.MinNodes != 12 || p.ChannelK != 5 || p.TestsMode != "exclude" {
+	if p.Threshold != defaultThreshold || p.MinNodes != defaultMinNodes || p.ChannelK != 5 || p.TestsMode != "exclude" {
 		t.Errorf("defaults wrong: %+v", p)
 	}
 }

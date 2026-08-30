@@ -284,15 +284,18 @@ func dashboardEdges(res Result) []dashboard.Edge {
 			a, b = b, a
 		}
 		e := dashboard.Edge{
-			A:     a,
-			B:     b,
-			Shape: round4(pair.Score),
-			Rank:  round4(analyzer.RankKey(pair, opts)),
-			Merge: pair.MergeWorthy(),
-			Cross: pair.A.Package != pair.B.Package,
-			Breakdown: [5]float64{
-				round4(pair.Breakdown.AST), round4(pair.Breakdown.Flow), round4(pair.Breakdown.Depth),
+			A:           a,
+			B:           b,
+			Shape:       round4(pair.Score),
+			Rank:        round4(analyzer.RankKey(pair, opts)),
+			Merge:       pair.MergeWorthy(),
+			Cross:       pair.A.Package != pair.B.Package,
+			Containment: round4(pair.Breakdown.Containment),
+			Explain:     pair.Explain,
+			Breakdown: [6]float64{
+				round4(pair.Breakdown.WL), round4(pair.Breakdown.Flow), round4(pair.Breakdown.Depth),
 				round4(pair.Breakdown.Signature), round4(pair.Breakdown.SizeRatio),
+				round4(pair.Breakdown.Containment),
 			},
 		}
 		if pair.Evidence != nil {
@@ -306,7 +309,7 @@ func dashboardEdges(res Result) []dashboard.Edge {
 			e.Channels = pair.Retrieval.Channels
 			for _, c := range pair.Retrieval.Chains {
 				e.Chains = append(e.Chains, dashboard.Chain{
-					Level: c.Level, Energy: round4(c.Energy), Render: c.Render,
+					Depth: c.Depth, Energy: round4(c.Energy), Render: c.Render,
 				})
 			}
 		}
@@ -422,6 +425,14 @@ func dashboardFacts(res Result, ov *reporter.Overview, famStats family.Stats,
 		FamilyFuncs:   famStats.Members,
 		FamilyLargest: largestFamily(fams),
 		EdgesAdded:    famStats.Completed,
+
+		// From Result directly, not from the Overview: these are corpus
+		// statistics index() computed, and they exist on a run whose caller
+		// asked for no overview at all.
+		Compression: round4(res.ConsStats.Ratio()),
+		NNScored:    res.NN.Scored,
+		NNP50:       round4(res.NN.P50),
+		NNP90:       round4(res.NN.P90),
 	}
 	if ov == nil {
 		return f

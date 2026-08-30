@@ -26,7 +26,7 @@ func TestMinIDF(t *testing.T) {
 		base := Score(lc.run, lc.lf)
 		st := lc.run.Stats
 		t.Logf("[%s] fixed caps 50/50      union %5d  suppressed %4d  patterns %6d  %s",
-			lc.name, st.Union, st.Suppressed, st.SurvivingPatterns, scLine(base))
+			lc.name, st.Union, st.Suppressed, st.SurvivingLabels, scLine(base))
 		saved := snapshotRetrieval(lc.run)
 		for _, floor := range []float64{1, 1.5, 2, 3, 4} {
 			opt := retriever.DefaultOptions()
@@ -36,7 +36,7 @@ func TestMinIDF(t *testing.T) {
 			st := lc.run.Stats
 			moved, _, _ := movement(base, sc)
 			t.Logf("[%s] min-idf %-4g caps %3d/%-4d union %5d  suppressed %4d  patterns %6d  %s",
-				lc.name, floor, st.PatternCap, st.CallCap, st.Union, st.Suppressed, st.SurvivingPatterns, scLine(sc))
+				lc.name, floor, st.LabelCap, st.CallCap, st.Union, st.Suppressed, st.SurvivingLabels, scLine(sc))
 			if len(moved) > 0 {
 				t.Logf("[%s]              moved: %v", lc.name, moved)
 			}
@@ -67,14 +67,14 @@ func TestMinIDFLadder(t *testing.T) {
 		run := Analyze(units, retriever.DefaultOptions())
 		st := run.Stats
 		t.Logf("[%s] %5d funcs  fixed 50/50      union %6d  shape %5d  suppressed %4d  patterns %6d",
-			c.Name, len(units), st.Union, st.ShapePairs, st.Suppressed, st.SurvivingPatterns)
+			c.Name, len(units), st.Union, st.ShapePairs, st.Suppressed, st.SurvivingLabels)
 		for _, floor := range []float64{1, 1.5, 2, 3} {
 			opt := retriever.DefaultOptions()
 			opt.MinIDF = floor
 			run.Reretrieve(opt)
 			st := run.Stats
 			t.Logf("[%s]             min-idf %-4g caps %4d/%-5d union %6d  shape %5d  suppressed %4d  patterns %6d",
-				c.Name, floor, st.PatternCap, st.CallCap, st.Union, st.ShapePairs, st.Suppressed, st.SurvivingPatterns)
+				c.Name, floor, st.LabelCap, st.CallCap, st.Union, st.ShapePairs, st.Suppressed, st.SurvivingLabels)
 		}
 	}
 }

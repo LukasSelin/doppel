@@ -83,8 +83,8 @@ func TestPrintTrophicAndSharedStructure(t *testing.T) {
 	pairs := []analyzer.SimilarPair{samplePair(&analyzer.Retrieval{
 		Total: 25.1, Shape: 23.7, TrophicSim: 0.43,
 		Chains: []analyzer.SharedChain{
-			{Level: 3, Energy: 6.2, Render: "for{ call:TrimSpace call:Atoi call:append }"},
-			{Level: 3, Energy: 1.8, Render: "seq[ assign:=(call:Atoi) ; if(bin:!=(id,nil)) ]"},
+			{Depth: 3, Count: 2, Energy: 6.2, Render: "depth-3 FOR", Label: 0x11},
+			{Depth: 2, Count: 1, Energy: 1.8, Render: "depth-2 IF", Label: 0x22},
 		},
 	})}
 	var b strings.Builder
@@ -93,7 +93,10 @@ func TestPrintTrophicAndSharedStructure(t *testing.T) {
 	if !strings.Contains(out, "trophic: 0.43") {
 		t.Errorf("missing trophic line:\n%s", out)
 	}
-	if !strings.Contains(out, "shared structure:\n    6.20  for{ call:TrimSpace call:Atoi call:append }\n    1.80  seq[") {
+	// The multiplicity suffix appears only above 1: the energy on the line is
+	// idf·min(count), so the count is the one factor of it a reader cannot
+	// otherwise see, and "×1" on every ordinary line would be noise.
+	if !strings.Contains(out, "shared structure:\n    6.20  depth-3 FOR ×2\n    1.80  depth-2 IF\n") {
 		t.Errorf("missing shared-structure block:\n%s", out)
 	}
 }
@@ -112,7 +115,7 @@ func TestPrintNoChainsOmitsSharedStructure(t *testing.T) {
 func TestPrintMarkdownTrophic(t *testing.T) {
 	pairs := []analyzer.SimilarPair{samplePair(&analyzer.Retrieval{
 		TrophicSim: 0.43,
-		Chains:     []analyzer.SharedChain{{Level: 3, Energy: 6.2, Render: "for{ call:Scan }"}},
+		Chains:     []analyzer.SharedChain{{Depth: 3, Count: 1, Energy: 6.2, Render: "depth-3 FOR"}},
 	})}
 	var b strings.Builder
 	PrintMarkdown(&b, pairs, Meta{})
@@ -120,7 +123,7 @@ func TestPrintMarkdownTrophic(t *testing.T) {
 	if !strings.Contains(out, "**Trophic:** `0.43`") {
 		t.Errorf("markdown missing trophic:\n%s", out)
 	}
-	if !strings.Contains(out, "- `6.20` — `for{ call:Scan }`") {
+	if !strings.Contains(out, "- `6.20` — `depth-3 FOR`") {
 		t.Errorf("markdown missing shared-structure bullet:\n%s", out)
 	}
 }
@@ -217,7 +220,7 @@ func TestPrintProfileNotes(t *testing.T) {
 		t.Errorf("arena detail shown without Debug:\n%s", out)
 	}
 	// Placement: profile precedes the breakdown line.
-	if strings.Index(out, "profile A:") > strings.Index(out, "ast ") {
+	if strings.Index(out, "profile A:") > strings.Index(out, "wl ") {
 		t.Errorf("profile line rendered after the breakdown:\n%s", out)
 	}
 

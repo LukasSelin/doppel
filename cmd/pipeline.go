@@ -12,12 +12,14 @@ import (
 	"github.com/LukasSelin/doppel/internal/comparator"
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/culture"
+	"github.com/LukasSelin/doppel/internal/fingerprint"
 	"github.com/LukasSelin/doppel/internal/lexicon"
 	"github.com/LukasSelin/doppel/internal/mapper"
 	"github.com/LukasSelin/doppel/internal/ontology"
 	"github.com/LukasSelin/doppel/internal/parser"
 	"github.com/LukasSelin/doppel/internal/retriever"
 	"github.com/LukasSelin/doppel/internal/snapshot"
+	"github.com/LukasSelin/doppel/internal/syntax"
 	"github.com/LukasSelin/doppel/internal/tagger"
 )
 
@@ -95,10 +97,57 @@ type Result struct {
 	IC          *ontology.IC
 	Pairs       []analyzer.SimilarPair
 
+	// WL is the corpus surprisal of every Weisfeiler-Lehman structural
+	// label, counted over exactly the population above. It is a corpus
+	// statistic like TagCounts and IC and is built in the same place, for
+	// the same reason: it must model the population the report describes.
+	// nil for an empty corpus.
+	//
+	// It is what makes code-shape corpus-dependent: every consumer that
+	// scores a fingerprint pair — retrieval, calibration, family edge
+	// completion, the query probe — is handed this one, so a run has exactly
+	// one answer to what a shared structural label is worth.
+	WL *fingerprint.LabelIDF
+
+	// ConsStats is the corpus-wide hash-cons of every canonical function
+	// body: total canonical AST nodes, and how many distinct subtree shapes
+	// (by structural hash) those nodes reduce to. TotalNodes/UniqueSubtrees
+	// is the compression ratio the markdown/HTML preamble and the JSON
+	// snapshot report — see fingerprint.ConsStats.Ratio. It never feeds any
+	// score: it is a corpus-health number, computed once alongside WL.
+	ConsStats fingerprint.ConsStats
+
 	// Retrieval is how the candidate set was found — which channels admitted
 	// how much. It rides on Result because the report explains its own pair
 	// list with it; before that it was computed, printed to stderr and dropped.
 	Retrieval retriever.Stats
+
+	// NN is the nearest-neighbour code-shape distribution: for each function,
+	// its best code-shape score among the pairs retrieval actually scored —
+	// the retrieval union, before any --struct-min filter, since that is the
+	// full set every union pair got an exact fingerprint.Breakdown for. It is
+	// deliberately NOT an exhaustive nearest-neighbour search (O(n^2) is not
+	// acceptable at corpus scale): a function retrieval never paired with
+	// anyone is excluded from the percentiles and counted separately. See
+	// nnDistribution.
+	NN NNStats
+}
+
+// NNStats is the corpus-wide nearest-neighbour code-shape summary — see
+// Result.NN for what population it is (and is not) drawn from.
+type NNStats struct {
+	Total  int // functions in the run
+	Scored int // of Total, how many appeared in at least one pair retrieval scored
+
+	// P50/P90/P99 are nearest-rank percentiles (calibrate.Quantile's
+	// convention: a rank, never an interpolation, so the reported value is a
+	// score some function's best neighbour actually had) over the Scored
+	// functions' best code-shape scores, ascending.
+	P50, P90, P99 float64
+
+	// AtOrAboveThreshold is, of the Scored functions, how many had a best
+	// score >= the run's effective threshold (post-config, post-calibrate).
+	AtOrAboveThreshold int
 }
 
 // analyze runs the pipeline over root and returns everything downstream stages
@@ -206,7 +255,35 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 		return res, nil
 	}
 
-	// The call graph comes first now, because the lexicon reads it: a
+	// Corpus surprisal of the Weisfeiler-Lehman structural labels: ln(N/df)
+	// over presence df, the same information measure and the same unit
+	// (nats) the retrieval channels use. It is computed here, with the other
+	// corpus statistics and after the population filter, so that it models
+	// exactly the population the report describes — and so that a query
+	// probe, which joins the corpus just above, is counted like everyone
+	// else. It is what weights the code-shape score.
+	bags := make([][]fingerprint.LabelCount, len(units))
+	for i := range units {
+		bags[i] = units[i].Fingerprint.WL
+	}
+	res.WL = fingerprint.LabelWeights(bags)
+
+	// Corpus-wide compression: hash-cons every canonical body's subtrees and
+	// keep the two totals the ratio needs. Computed alongside WL because it
+	// is the same kind of fact — a static property of the canonical AST
+	// forest over exactly this population — and never feeds any score.
+	canonical := make([]*syntax.Node, len(units))
+	for i := range units {
+		canonical[i] = units[i].Canonical
+	}
+	res.ConsStats = fingerprint.ConsCorpus(canonical)
+
+	// The two statistics above are structural: they read each unit's own
+	// canonical AST and nothing else, so they are computed here, first, where
+	// the population is already final and no concept vocabulary exists yet.
+	// Everything below is conceptual and depends on the call graph.
+	//
+	// The call graph comes before the lexicon, because the lexicon reads it: a
 	// function's resolved callees are one of the evidence channels a concept
 	// can be learned from, and the strongest one on most corpora.
 	cg := concepter.BuildCallGraph(units)
@@ -306,7 +383,11 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 		forkFloor = p.Threshold
 	}
 	if p.Calibrate > 0 && !p.Pinned {
-		r := calibrate.Run(units, docs, comp, calibrate.DefaultOptions(p.Calibrate, p.MinNodes))
+		// res.WL is what makes the null distribution the run's own: the same
+		// corpus-weighted code-shape metric scores the random pairs as scores
+		// the real ones, so the derived floor is a quantile of the very
+		// quantity it will be compared against.
+		r := calibrate.Run(units, docs, comp, res.WL, calibrate.DefaultOptions(p.Calibrate, p.MinNodes))
 		res.Calibration = &r
 		printCalibration(progress, r)
 		if r.Applied() {
@@ -330,7 +411,7 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 	if p.Debug {
 		opts.ChainTopN = 20 // the "full list", bounded
 	}
-	cands, stats := retriever.Retrieve(units, cg, onto, ic, opts)
+	cands, stats := retriever.Retrieve(units, cg, onto, ic, res.WL, opts)
 	res.Retrieval = stats
 	printRetrievalStats(progress, stats)
 
@@ -377,10 +458,19 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 			pairs[i].Evidence = &ev
 		}
 
+		// Nearest-neighbour code-shape distribution, over exactly this set:
+		// the retrieval union with every pair's exact fingerprint.Breakdown
+		// already attached, before --struct-min can drop any of them. That
+		// filter is a selection stage for the *report*, not a reason to
+		// declare a function neighbourless.
+		res.NN = nnDistribution(pairs, len(units), p.Threshold)
+
 		if p.StructMin > 0 {
 			pairs = filterByOverlap(pairs, p.StructMin)
 			fmt.Fprintf(progress, "  %d pairs remain after struct-min=%.2f filter\n", len(pairs), p.StructMin)
 		}
+	} else {
+		res.NN = nnDistribution(nil, len(units), p.Threshold)
 	}
 
 	// Annotate surviving pairs with unusual concept realizations and habitat
@@ -391,6 +481,7 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 		pairs[i].Habitat = habitatNotes(cult, pairs[i].AIdx, pairs[i].BIdx,
 			pairs[i].A.Package, pairs[i].B.Package)
 		pairs[i].Kind = analyzer.ClassifyPairWith(pairs[i].A, pairs[i].B, pairs[i].Score, forkFloor)
+		pairs[i].Explain = analyzer.Explain(pairs[i].A, pairs[i].B)
 		pairs[i].Profile = profileNotes(cult, pairs[i].AIdx, pairs[i].BIdx,
 			parser.ConceptIDs(pairs[i].A.Concepts), parser.ConceptIDs(pairs[i].B.Concepts))
 	}
@@ -437,6 +528,57 @@ func languageSelection(p Params) parser.Selection {
 	return sel
 }
 
+// nnDistribution computes each function's best code-shape score among pairs,
+// which must be the retrieval union with Score already set on every entry
+// (true of both branches that call this: the full pre-struct-min set, and
+// nil when retrieval found nothing to compare).
+//
+// A function's best score is the maximum Score over every pair it appears in
+// as either side, tracked in a plain index-sized slice rather than a map: the
+// result is a pointwise maximum, so it cannot depend on the order pairs
+// arrive in, and no sort is needed to make that true. total is len(units) —
+// the population Scored is drawn from and NOT how many were scored, since a
+// function retrieval never paired with anyone contributes nothing here. That
+// is the recall bound every renderer of NNStats must repeat: this is the
+// distribution over what retrieval's three bounded channels actually found,
+// never an exhaustive O(n^2) nearest-neighbour search.
+func nnDistribution(pairs []analyzer.SimilarPair, total int, threshold float64) NNStats {
+	best := make([]float64, total)
+	has := make([]bool, total)
+	for _, p := range pairs {
+		for _, idx := range [2]int{p.AIdx, p.BIdx} {
+			if idx < 0 || idx >= total {
+				continue
+			}
+			if !has[idx] || p.Score > best[idx] {
+				best[idx], has[idx] = p.Score, true
+			}
+		}
+	}
+	scores := make([]float64, 0, total)
+	for i := 0; i < total; i++ {
+		if has[i] {
+			scores = append(scores, best[i])
+		}
+	}
+	sort.Float64s(scores)
+
+	atOrAbove := 0
+	for _, s := range scores {
+		if s >= threshold {
+			atOrAbove++
+		}
+	}
+	return NNStats{
+		Total:              total,
+		Scored:             len(scores),
+		P50:                calibrate.Quantile(scores, 0.50),
+		P90:                calibrate.Quantile(scores, 0.90),
+		P99:                calibrate.Quantile(scores, 0.99),
+		AtOrAboveThreshold: atOrAbove,
+	}
+}
+
 // snapshotOf converts a run into the comparable record of it.
 func snapshotOf(res Result, pairs []analyzer.SimilarPair) snapshot.Snapshot {
 	return snapshot.Build(res.Units, res.Docs, pairs, res.TagCounts, res.UnusedSeeds, res.Root, buildVersion(),
@@ -455,6 +597,16 @@ func snapshotOf(res Result, pairs []analyzer.SimilarPair) snapshot.Snapshot {
 			// was built in" — which would compare equal across two builds
 			// that read different corpora.
 			Languages: languageSelection(res.Params).Names(),
+		},
+		snapshot.CorpusMetrics{
+			TotalNodes:           res.ConsStats.TotalNodes,
+			UniqueSubtrees:       res.ConsStats.UniqueSubtrees,
+			NNTotal:              res.NN.Total,
+			NNScored:             res.NN.Scored,
+			NNP50:                res.NN.P50,
+			NNP90:                res.NN.P90,
+			NNP99:                res.NN.P99,
+			NNAtOrAboveThreshold: res.NN.AtOrAboveThreshold,
 		})
 }
 

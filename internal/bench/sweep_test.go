@@ -65,10 +65,13 @@ func sweepVariants() []sweepVariant {
 	retrieval("ChannelK 5", "8", func(o *retriever.Options) { o.ChannelK = 8 })
 	retrieval("Threshold 0.60", "0.30", func(o *retriever.Options) { o.Threshold = 0.30 })
 	retrieval("Threshold 0.60", "0.90", func(o *retriever.Options) { o.Threshold = 0.90 })
-	retrieval("MinNodes 12", "6", func(o *retriever.Options) { o.MinNodes = 6 })
-	retrieval("MinNodes 12", "18", func(o *retriever.Options) { o.MinNodes = 18 })
-	retrieval("MaxPatternDF 50", "25", func(o *retriever.Options) { o.MaxPatternDF = 25 })
-	retrieval("MaxPatternDF 50", "100", func(o *retriever.Options) { o.MaxPatternDF = 100 })
+	// 12 is kept as a variant rather than dropped: it is the value this knob
+	// held while the shape channel indexed the pattern multiset, and the
+	// sweep is the record of why it moved.
+	retrieval("MinNodes 18", "12", func(o *retriever.Options) { o.MinNodes = 12 })
+	retrieval("MinNodes 18", "24", func(o *retriever.Options) { o.MinNodes = 24 })
+	retrieval("MaxLabelDF 50", "25", func(o *retriever.Options) { o.MaxLabelDF = 25 })
+	retrieval("MaxLabelDF 50", "100", func(o *retriever.Options) { o.MaxLabelDF = 100 })
 	retrieval("MaxCallDF 50", "25", func(o *retriever.Options) { o.MaxCallDF = 25 })
 	retrieval("MaxCallDF 50", "100", func(o *retriever.Options) { o.MaxCallDF = 100 })
 	retrieval("MaxConceptDF 250", "125", func(o *retriever.Options) { o.MaxConceptDF = 125 })

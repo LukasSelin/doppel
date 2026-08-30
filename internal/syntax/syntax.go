@@ -2,11 +2,10 @@
 // generic syntax tree that carries exactly what the fingerprint stages read,
 // and nothing about any one language.
 //
-// It exists because internal/fingerprint used to be typed on *ast.FuncDecl.
-// Build, walk, extractPatterns and extractDefUse all took Go AST directly, so
-// the similarity score, the retrieval shape channel and all five pattern
-// levels were Go-only — a second language frontend could not produce a
-// Fingerprint at all, whatever else it filled in.
+// It exists because internal/fingerprint used to be typed on *ast.FuncDecl:
+// Build and walk took Go AST directly, so the similarity score and the
+// retrieval shape channel were Go-only — a second language frontend could not
+// produce a Fingerprint at all, whatever else it filled in.
 //
 // The contract a frontend must honour is deliberately narrow but it is not
 // loose: a Node exists for every node the frontend's own traversal would
@@ -17,15 +16,32 @@
 // quietly, so mirroring the source traversal exactly is the requirement, not
 // an optimization.
 //
+// Func.Canon is the one optional half of that contract: a frontend that can
+// canonicalize its language records the rewritten body there, and Shape()
+// hands whichever tree exists to the structural key. Canonicalization is a
+// claim about what code *means*, which this package deliberately carries
+// nothing to express, so it belongs to the frontend and never here.
+//
 // This package imports nothing from this module, the same rule ontology and
 // clique follow.
 package syntax
 
 // Kind is the node vocabulary. It is a union of what every consumer switches
 // on: the ten control-flow kinds the flow histogram counts, the expression
-// and statement shapes the L1/L2 renders name, and KindOther for everything a
-// frontend visits but nobody scores — those still count toward Nodes, which
-// is why they are represented rather than dropped.
+// and statement shapes the token stream names, the type-expression and
+// declaration kinds the Weisfeiler-Lehman label bag distinguishes, and
+// KindOther for everything a frontend visits but nobody names — those still
+// count toward Nodes, which is why they are represented rather than dropped.
+//
+// The vocabulary is wider than the token stream needs because the label bag
+// reads *every* node's kind: a node whose kind collapses to KindOther does
+// not vanish from its parent's child multiset, it merges with every other
+// unnamed node there. That coarsens the bag rather than shrinking it, so a
+// frontend that can tell an array type from a map type should say so.
+//
+// The values are positional and are never serialized: the label bag hashes
+// a kind's *name*, and nothing else stores one. Reordering this block is
+// safe; renaming a kind is a scoring change.
 type Kind uint8
 
 const (
@@ -69,28 +85,38 @@ const (
 	KindKeyValue
 	KindFuncLit
 	KindParen
+	KindEllipsis
+	KindIndexList
+
+	// Type expressions. A frontend without a type grammar leaves these
+	// KindOther; a frontend that has one names them, because the structural
+	// label bag reads every node's kind and a collapsed vocabulary is a
+	// coarser bag rather than a smaller one.
+	KindArrayType
+	KindStructType
+	KindFuncType
+	KindInterfaceType
+	KindMapType
+	KindChanType
 
 	// Neither, but visited.
 	KindValueSpec
-	KindChanType
+	KindTypeSpec
+	KindImportSpec
+	KindField
+	KindFieldList
+	KindGenDecl
+	KindBadExpr
+	KindBadDecl
 )
 
-// IsStmt reports whether the kind is a statement. It mirrors Go's ast.Stmt
-// interface because extractPatterns' default branch is gated on exactly that
-// question: a node that is a statement gets an L2 render attempt, and one
-// that is not is skipped. Kinds a frontend cannot classify are KindOther,
-// which is not a statement — an unclassified node renders nothing rather
-// than rendering something wrong.
-func (k Kind) IsStmt() bool {
-	switch k {
-	case KindIf, KindFor, KindRange, KindSwitch, KindTypeSwitch, KindSelect,
-		KindReturn, KindDefer, KindGo, KindBlock, KindAssign, KindBranch,
-		KindIncDec, KindSend, KindExprStmt, KindDeclStmt, KindLabeled,
-		KindEmpty, KindCaseClause, KindCommClause, KindBadStmt:
-		return true
-	}
-	return false
-}
+// A Kind.IsStmt predicate lived here, mirroring Go's ast.Stmt interface. Its
+// only consumer was the multi-level pattern extractor's default branch — "a
+// node that is a statement gets an L2 render attempt" — and that extractor is
+// gone, replaced by the Weisfeiler-Lehman label bag, which asks every node the
+// same question and needs no statement/expression split. A predicate with no
+// reader is surface, so it went with it. The statement kinds are still grouped
+// in the const block above, which is where the distinction is documented now.
 
 // Role names which slot of its parent a child fills. Position alone cannot
 // carry this: a Go for-loop omits absent Init/Cond/Post entirely, so the
@@ -136,7 +162,9 @@ type Child struct {
 //
 // Label carries the one piece of lexical detail a kind needs, and what it
 // means is fixed per kind: the operator for KindBinary and KindUnary, the
-// assignment or branch token for KindAssign and KindBranch, the literal kind
+// assignment, branch, increment or declaration token for KindAssign,
+// KindBranch, KindIncDec and KindGenDecl, the direction ("send", "recv",
+// "both") for KindChanType, the literal kind
 // ("STRING", "INT", …) for KindLit, the name for KindIdent, and the selected
 // name for KindSelector. Every other kind leaves it empty.
 //
@@ -239,6 +267,13 @@ type Param struct {
 // evidence channels that must see a type the body never mentions — a function
 // taking a channel is coordinating concurrent work whether or not it says so
 // in its body.
+//
+// Canon is the body rewritten into the frontend's canonical shape, and
+// CanonRules names the normalizations that got it there. Both are optional:
+// canonicalization is a *semantics* question — whether two spellings of a
+// guard mean the same thing — so it can only be answered by the language,
+// which is why it belongs to the frontend and not here. A frontend without
+// one leaves Canon nil, and Shape then falls back to the body as written.
 type Func struct {
 	Name        string
 	Receiver    string
@@ -247,12 +282,32 @@ type Func struct {
 	Results     []Param
 	Body        *Node
 	Type        *Node
+	Canon       *Node
+	CanonRules  []string
 	Source      string
 	StartLine   int
 	StartOffset int
 	EndOffset   int
 	Exported    bool
 	Callees     []string
+}
+
+// Shape is the tree a structural key is computed over: the canonical body
+// when the frontend produced one, and the body as written otherwise.
+//
+// The fallback is not a degradation to nothing. A bag over the raw body is a
+// perfectly well-formed shape key; it simply carries whichever incidental
+// choices a canonicalizer would have removed, so two spellings of one shape
+// stay apart. What a language gains by having a canonicalizer is recall on
+// exactly those pairs — never correctness.
+func (f *Func) Shape() *Node {
+	if f == nil {
+		return nil
+	}
+	if f.Canon != nil {
+		return f.Canon
+	}
+	return f.Body
 }
 
 // Import is one resolved import binding: the name it is reachable by inside

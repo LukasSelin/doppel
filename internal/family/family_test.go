@@ -28,17 +28,24 @@ func units(n int) []parser.CodeUnit {
 
 // shape is a fingerprint whose content is decided by seed: two units built
 // with the same seed score 1.0 against each other, two with different seeds
-// share no shingles and no types.
+// share no labels and no types.
 func shape(seed uint64) fingerprint.Fingerprint {
 	sh := make([]uint64, 0, 8)
+	wl := make([]fingerprint.LabelCount, 0, 8)
 	for i := uint64(0); i < 8; i++ {
 		sh = append(sh, seed+i)
+		// Ascending by construction, which is WLBag's contract.
+		wl = append(wl, fingerprint.LabelCount{Label: seed + i, Count: 1})
 	}
 	flow := make([]int, len(fingerprint.FlowLabels))
 	flow[0] = 1
 	return fingerprint.Fingerprint{
 		Shingles: sh,
-		Flow:     flow,
+		// The WL bag is what the 0.60 component scores. A fixture without
+		// one caps every pair at 0.40 and no family can ever form — the same
+		// trap the depth histogram note below describes, one component over.
+		WL:   wl,
+		Flow: flow,
 		// Real Build output always carries a depth histogram; a fixture
 		// without one loses the depth component's weight (empty-vs-empty
 		// cosine is 0) and can never reach the exact 1.0 the completion
@@ -48,6 +55,12 @@ func shape(seed uint64) fingerprint.Fingerprint {
 		Nodes: 40,
 	}
 }
+
+// Family tests pass a nil LabelIDF to Build: these are synthetic shapes with
+// no corpus behind them, so every label is worth 1 and completion scores a
+// plain multiset Jaccard. That is exactly the property the completion tests
+// are about — whether an edge gets scored at all, not what the corpus thinks
+// its labels are worth.
 
 func pair(a, b int, score float64) analyzer.SimilarPair {
 	return analyzer.SimilarPair{AIdx: a, BIdx: b, Score: score}
@@ -62,7 +75,7 @@ func TestChainingIsNotAFamily(t *testing.T) {
 	u := units(3)
 	pairs := []analyzer.SimilarPair{pair(0, 1, 0.70), pair(1, 2, 0.70)}
 
-	fams, stats := Build(u, pairs, DefaultOptions())
+	fams, stats := Build(u, pairs, nil, DefaultOptions())
 
 	if len(fams) != 0 {
 		t.Errorf("chained pairs formed %d families, want none: %+v", len(fams), fams)
@@ -87,7 +100,7 @@ func TestCompletionRecoversTheMissingEdge(t *testing.T) {
 	}
 	pairs := []analyzer.SimilarPair{pair(0, 1, 1.0), pair(1, 2, 1.0)}
 
-	fams, stats := Build(u, pairs, DefaultOptions())
+	fams, stats := Build(u, pairs, nil, DefaultOptions())
 
 	if len(fams) != 1 {
 		t.Fatalf("got %d families, want 1: %+v", len(fams), fams)
@@ -113,7 +126,7 @@ func TestCompletionDoesNotInventEdges(t *testing.T) {
 	u := units(3) // three distinct shapes
 	pairs := []analyzer.SimilarPair{pair(0, 1, 0.90), pair(1, 2, 0.90)}
 
-	fams, stats := Build(u, pairs, DefaultOptions())
+	fams, stats := Build(u, pairs, nil, DefaultOptions())
 
 	if len(fams) != 0 {
 		t.Errorf("unalike units were joined into %d families: %+v", len(fams), fams)
@@ -134,7 +147,7 @@ func TestOverlappingFamiliesAreBothReported(t *testing.T) {
 		pair(2, 3, 0.80), pair(2, 4, 0.80), pair(3, 4, 0.80),
 	}
 
-	fams, stats := Build(u, pairs, DefaultOptions())
+	fams, stats := Build(u, pairs, nil, DefaultOptions())
 
 	if len(fams) != 2 {
 		t.Fatalf("got %d families, want 2: %+v", len(fams), fams)
@@ -164,7 +177,7 @@ func TestBuildIsDeterministic(t *testing.T) {
 		pairs = append(pairs, pair(p[0], p[1], 1.0))
 	}
 
-	want, wantStats := Build(u, pairs, DefaultOptions())
+	want, wantStats := Build(u, pairs, nil, DefaultOptions())
 	for i := 0; i < 20; i++ {
 		// Reverse the input each round: Build must not depend on pair order,
 		// which SortForReport changes in place on the real slice.
@@ -172,7 +185,7 @@ func TestBuildIsDeterministic(t *testing.T) {
 		for j := range pairs {
 			rev[j] = pairs[len(pairs)-1-j]
 		}
-		got, gotStats := Build(u, rev, DefaultOptions())
+		got, gotStats := Build(u, rev, nil, DefaultOptions())
 		if !reflect.DeepEqual(got, want) {
 			t.Fatalf("run %d differed:\n got %+v\nwant %+v", i, got, want)
 		}
@@ -190,7 +203,7 @@ func TestBuildDoesNotMutateItsInput(t *testing.T) {
 	pairs := []analyzer.SimilarPair{pair(0, 1, 1.0), pair(1, 2, 1.0)}
 	before := append([]analyzer.SimilarPair(nil), pairs...)
 
-	Build(u, pairs, DefaultOptions())
+	Build(u, pairs, nil, DefaultOptions())
 
 	if !reflect.DeepEqual(pairs, before) {
 		t.Error("Build reordered or rewrote its input pair slice")
@@ -213,7 +226,7 @@ func TestOversizedComponentIsSkippedAndCounted(t *testing.T) {
 	o := DefaultOptions()
 	o.MaxComponent = 5
 
-	fams, stats := Build(u, pairs, o)
+	fams, stats := Build(u, pairs, nil, o)
 
 	if len(fams) != 0 {
 		t.Errorf("got %d families past the component guard", len(fams))
@@ -242,7 +255,7 @@ func TestSearchBudgetSkipsRatherThanTruncates(t *testing.T) {
 	o := DefaultOptions()
 	o.MaxSearch = 1
 
-	fams, stats := Build(u, pairs, o)
+	fams, stats := Build(u, pairs, nil, o)
 
 	if len(fams) != 0 {
 		t.Errorf("a partial enumeration was reported as the answer: %+v", fams)
@@ -266,7 +279,7 @@ func TestEdgesBelowTheCutAreIgnored(t *testing.T) {
 	// Completion is per component, and with no edge at the cut there is no
 	// component to complete: three identical functions nobody retrieved above
 	// 0.95 stay invisible.
-	if fams, stats := Build(u, pairs, o); len(fams) != 0 || stats.Components != 0 {
+	if fams, stats := Build(u, pairs, nil, o); len(fams) != 0 || stats.Components != 0 {
 		t.Errorf("got %d families in %d components, want 0 in 0", len(fams), stats.Components)
 	}
 }
@@ -294,7 +307,7 @@ func TestFamiliesOrderBySizeThenTightness(t *testing.T) {
 		}
 	}
 
-	fams, _ := Build(u, pairs, DefaultOptions())
+	fams, _ := Build(u, pairs, nil, DefaultOptions())
 
 	if len(fams) != 2 {
 		t.Fatalf("got %d families, want 2", len(fams))
@@ -324,7 +337,7 @@ func TestBuildLabelsInterfaceFamily(t *testing.T) {
 		u[i].File = "carrier/" + u[i].Package + "/x.go"
 	}
 	pairs := []analyzer.SimilarPair{pair(0, 1, 1.0), pair(1, 2, 1.0), pair(0, 2, 1.0)}
-	fams, _ := Build(u, pairs, DefaultOptions())
+	fams, _ := Build(u, pairs, nil, DefaultOptions())
 	if len(fams) != 1 || fams[0].Kind == nil || fams[0].Kind.Kind != analyzer.KindInterfaceImpl {
 		t.Fatalf("families = %+v, want one interface-implementation family", fams)
 	}

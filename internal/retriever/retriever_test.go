@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/LukasSelin/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/fingerprint"
 	"github.com/LukasSelin/doppel/internal/ontology"
 	"github.com/LukasSelin/doppel/internal/parser"
 )
@@ -31,7 +32,11 @@ func parseUnits(t *testing.T, files ...string) []parser.CodeUnit {
 }
 
 // retrieveAll wires the same corpus statistics the pipeline builds: call
-// graph from the units, IC from their (possibly hand-assigned) patterns.
+// graph from the units, IC from their (possibly hand-assigned) patterns, and
+// the WL label weighting the code-shape score reads. All three are counted
+// over exactly these units, which is index()'s rule — a test corpus scored
+// against weights from some other population would not be testing the
+// pipeline.
 func retrieveAll(t *testing.T, units []parser.CodeUnit, opt Options) ([]Candidate, Stats) {
 	t.Helper()
 	g := concepter.BuildCallGraph(units)
@@ -43,7 +48,17 @@ func retrieveAll(t *testing.T, units []parser.CodeUnit, opt Options) ([]Candidat
 		}
 	}
 	ic := ontology.NewCorpusIC(onto, counts)
-	return Retrieve(units, g, onto, ic, opt)
+	return Retrieve(units, g, onto, ic, labelWeights(units), opt)
+}
+
+// labelWeights counts the WL surprisals over a test corpus the way index()
+// does over a real one.
+func labelWeights(units []parser.CodeUnit) *fingerprint.LabelIDF {
+	bags := make([][]fingerprint.LabelCount, len(units))
+	for i := range units {
+		bags[i] = units[i].Fingerprint.WL
+	}
+	return fingerprint.LabelWeights(bags)
 }
 
 func findCandidate(cands []Candidate, a, b int) (Candidate, bool) {
@@ -120,7 +135,7 @@ func SquashRepeats(vals []int) []int {
 	opt := DefaultOptions()
 	opt.ChannelK = 3
 	opt.MinNodes = 8
-	opt.MaxPatternDF = 20
+	opt.MaxLabelDF = 20
 
 	cands, _ := retrieveAll(t, units, opt)
 	a := unitIndex(t, units, "CollapseRuns")

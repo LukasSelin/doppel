@@ -2,6 +2,7 @@ package lexicon
 
 import (
 	"sort"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -15,8 +16,8 @@ import (
 // conflated, and a name always says which evidence produced it.
 //
 // Every channel is filled from material the frontend already produces —
-// TagSignals, the resolved call graph, and the fingerprint's pattern multiset.
-// None of it is a rule about what any of these strings *mean*, which is the
+// TagSignals, the resolved call graph, and the fingerprint's Weisfeiler-Lehman
+// label bag. None of it is a rule about what any of these strings *mean*, which is the
 // whole point: a new language frontend that fills TagSignals and Fingerprint
 // gets concepts without anyone writing a vocabulary for it.
 const (
@@ -25,7 +26,7 @@ const (
 	ChanIdent    = "id"   // identifier name stems, camel/underscore split
 	ChanLiteral  = "lit"  // the leading token of a string literal
 	ChanCall     = "call" // resolved call tokens, internal qualified or import-pathed
-	ChanAction   = "act"  // L2/L3/L4 pattern renders — statements, motifs, def-use edges
+	ChanAction   = "act"  // Weisfeiler-Lehman labels of whole statements — what a body does, structurally
 	ChanFlow     = "flow" // binarized control-flow labels plus the node-kind flags
 )
 
@@ -84,12 +85,11 @@ func unitFeatures(u parser.CodeUnit, g *concepter.Graph, internal map[string]boo
 	for _, tok := range concepter.CallTokens(u, g, internal) {
 		add(ChanCall, tok)
 	}
-	for _, p := range u.Fingerprint.Patterns {
-		// Levels 0 and 1 carry no render by construction — their hashes are
-		// not human-readable and a concept named after one would be unusable.
-		if p.Level >= fingerprint.LevelAction && p.Render != "" {
-			add(ChanAction, p.Render)
+	for _, l := range u.Fingerprint.WL {
+		if !isActionLabel(l) {
+			continue
 		}
+		add(ChanAction, fingerprint.DescribeLabel(l.H, l.Kind)+"#"+strconv.FormatUint(l.Label, 16))
 	}
 	for k, n := range u.Fingerprint.Flow {
 		if n > 0 && k < len(fingerprint.FlowLabels) {
@@ -112,6 +112,49 @@ func unitFeatures(u parser.CodeUnit, g *concepter.Graph, internal map[string]boo
 	}
 	sort.Strings(out)
 	return out
+}
+
+// actionRound is the Weisfeiler-Lehman refinement round the action channel
+// reads. At h=0 a label is a bare node kind and at h=1 it adds only the kinds
+// of the immediate children — both far too coarse to be an action, and both
+// carried by nearly every function, so the df window would discard them
+// anyway. h=2 is where a label folds in the grandchildren, which for a
+// statement node is the statement *with its structure*: the granularity the
+// retired pattern multiset called L2.
+//
+// Only h=2, not h>=2. An h=3 label at a statement describes a region rather
+// than a statement, and every h=3 label's evidence is already implied by the
+// h=2 labels beneath it — indexing both would double-count one piece of
+// structure in a channel whose weights are lifts.
+const actionRound = 2
+
+// actionKinds are the node kinds whose h=2 label is worth calling an action:
+// the statement forms, plus calls and assignments, which are the two
+// expression shapes a reader would describe as something a function does.
+// Everything else — identifiers, literals, blocks, type nodes — is grammar
+// the function had no choice about.
+//
+// This is the one judgement in this file, and it is deliberately about *shape*
+// rather than about meaning: no entry here says what any construct is for.
+var actionKinds = map[fingerprint.LabelKind]bool{
+	fingerprint.KindCall:       true,
+	fingerprint.KindAssign:     true,
+	fingerprint.KindIf:         true,
+	fingerprint.KindFor:        true,
+	fingerprint.KindRange:      true,
+	fingerprint.KindSwitch:     true,
+	fingerprint.KindTypeSwitch: true,
+	fingerprint.KindSelect:     true,
+	fingerprint.KindReturn:     true,
+	fingerprint.KindDefer:      true,
+	fingerprint.KindGo:         true,
+	fingerprint.KindSend:       true,
+	fingerprint.KindBranch:     true,
+}
+
+// isActionLabel reports whether a WL label belongs in the action channel.
+func isActionLabel(l fingerprint.LabelCount) bool {
+	return l.H == actionRound && actionKinds[l.Kind]
 }
 
 // stems splits an identifier into lower-cased word stems on camel-case and

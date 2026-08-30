@@ -138,6 +138,11 @@ doppel query --near billing . < draft.go
 
 # Census: every group of 3+ mutually similar functions, not just pairs
 doppel families .
+
+# What happened to each function between two runs — renames and moves included
+doppel analyze . --format json > before.json
+doppel analyze . --format json > after.json
+doppel diff before.json after.json
 ```
 
 ### Querying before you write
@@ -167,7 +172,7 @@ import that binds them is present.
 
 Every reported pair carries two independent numbers:
 
-- **Code similarity** (`Score`, gated by `--threshold`) — how alike the two bodies are, from the AST fingerprint. The report breaks it into its components: `ast` (3-gram shingle overlap), `flow` (control-flow shape), `sig` (parameter and result types), and `size` (relative body size, shown for context but not scored).
+- **Code similarity** (`Score`, gated by `--threshold`, printed as `code-shape:`) — how alike the two bodies are, from the structural fingerprint. The report breaks it into its components: `wl` (corpus-weighted overlap of Weisfeiler-Lehman label bags over the canonical body), `flow` (control-flow shape), `nesting` (how deeply that control flow sits), `sig` (parameter and result types), and `size` (relative body size, shown for context but not scored). `containment` is shown beside them and also not scored — it asks how much of the *smaller* body's shape the larger one has, which is a different finding.
 - **Structural overlap** (gated by `--struct-min`) — how much architectural context the two share: callees, callers, concepts, role, package, and what their own callers and callees do. Concepts, roles and receiver types are matched through a concept hierarchy rather than compared as strings, so two functions doing related work — one hitting a database, the other a cache — score partial credit instead of zero. Every graded match comes with an evidence line saying which ancestor relates the two and how strongly.
 
   The concepts themselves are **learned from your codebase**, not read off a fixed list. doppel finds
@@ -207,16 +212,88 @@ whose every member pair satisfies one of the pair kinds says so on its line (`ki
 implementations of Flush()`), and in the JSON as `kind`. `analyze` shows the most informative few
 inline; `doppel families` is the whole census, with `--format json` for a machine.
 
+### Comparing two runs
+
+`doppel diff` takes two snapshots written by `doppel analyze --format json` and matches their
+functions to each other by **body**, not by name — so a rename reads as a rename rather than as a
+deletion and an unrelated arrival. Every function lands in exactly one of eight classes and every
+line prints the evidence that produced it:
+
+```
+$ doppel diff before.json after.json
+Delta since the baseline
+========================
+269 functions before, 269 after
+split 1, merged 0, moved 1, renamed 2, edited 0, new 0, deleted 1, unchanged 264
+
+split 1
+  cobra.defaultUsageFunc (command.go:1974)  -> 2 bodies
+      -> cobra.usageBody (command.go:1994)  containment 0.9906
+      -> cobra.usageHeader (command.go:1974)  containment 0.9670
+
+moved 1
+  cobra.stringInSlice (cobra.go:225) -> sliceutil.stringInSlice (sliceutil/slice.go:3)
+      jaccard 1.0000  containment 1.0000  digests equal
+
+renamed 2
+  cobra.GetActiveHelpConfig (active_help.go:47) -> cobra.ActiveHelpConfig (active_help.go:47)  (body edited)
+      jaccard 0.6798  containment 0.9082  digests differ
+  cobra.OnlyValidArgs (args.go:51) -> cobra.ValidateArgs (args.go:51)
+      jaccard 1.0000  containment 1.0000  digests equal
+
+deleted 1
+  cobra.ExactValidArgs (args.go:129)  (no counterpart above the match floor)
+
+unchanged 264
+
+pairs created 1, dissolved 1
+
+pairs created 1
+  cobra.ValidateArgs <-> cobra.usageBody  shape 1.00  overlap 0.70  (merge-worthy)
+      cobra.ValidateArgs renamed
+      explain: identical after rename
+
+pairs dissolved 1
+  cobra.ExactValidArgs <-> cobra.OnlyValidArgs  shape 1.00  overlap 0.68  (merge-worthy)
+      cobra.ExactValidArgs deleted, cobra.OnlyValidArgs renamed
+      explain: identical after rename
+```
+
+The second half is the one a plain diff cannot produce: the near-duplicate **pairs those changes
+created or dissolved**, each attributed to the classified function that explains it and each
+carrying the stored sentence saying what the canonicalizer did for it. A pair that moved with
+nothing classified on either side says so — that is retrieval re-ranking around your change rather
+than a consequence of it — and sorts after everything that is attributable.
+
+`--output <file.md>` writes the same report as markdown. There is no HTML form: the dashboard
+describes one run, and a two-run page would be a different artifact.
+
+A function that both moved and was renamed carries one class — the move — with the rename printed
+alongside it, and the same goes for a rename that also edited the body. `--unchanged` lists the
+unchanged functions instead of only counting them; `--format json` emits the whole result,
+unchanged findings included and both pair lists appended, with every slice already in a total
+order.
+
+Exit codes: **0** compared, **1** a file could not be read, **2** the two snapshots refuse
+comparison — a different schema, or a different canonicalization rule set, either of which would
+make the same untouched bodies look different. A different threshold, ontology or doppel build does
+*not* refuse: matching reads only each function's own body, so those are noted in the report and the
+comparison runs.
+
+This is a different question from what the Claude Code hooks answer. Those measure a session's
+impact on the pair list and deliberately claim nothing they cannot attribute to an edit.
+
 ### Flags
 
 | Flag                | Default | Description                                                                 |
 | ------------------- | ------- | --------------------------------------------------------------------------- |
 | `--calibrate`       | `0.01`  | **The one knob that sets the others.** Fraction of random unrelated pairs the thresholds may admit. Doppel measures what an unrelated pair scores *in your repo* and derives `--threshold`, `--struct-min` and `--family-min` from it, so the setting means the same thing on 80 functions and on 8000. `0` falls back to the fixed defaults below |
 | `-n`, `--top`       | `20`    | Maximum number of pairs to show (`0` for no limit)                          |
-| `-t`, `--threshold` | *(calibrated)* | Pin the minimum code similarity to report (0.0–1.0). Setting it turns calibration off for the run, so the number you give is the number used. Falls back to `0.60` on a corpus too small to calibrate |
+| `-t`, `--threshold` | *(calibrated)* | Pin the minimum code similarity to report (0.0–1.0). Setting it turns calibration off for the run, so the number you give is the number used. Falls back to `0.38` on a corpus too small to calibrate — the median of the six ladder corpora that do calibrate |
 | `--struct-min`      | *(calibrated)* | Pin the minimum structural overlap (0.0–1.0) to keep a pair. Turns calibration off; falls back to `0.0` |
+| `--min-nodes`       | `16`    | Skip functions whose body has fewer than this many AST nodes. A separate knob from `--calibrate`, which derives a *score* floor: this is an eligibility rule about which functions the shape channel indexes at all, and it guards against one-line accessors, which match each other perfectly and would otherwise flood the channel |
 | `-o`, `--output`    | *(disabled)* | Write a report to this file. **A `.html` path renders the interactive dashboard** — one self-contained page that opens from `file://`, showing your packages as a political map (each region's area is its share of the functions, and a painted border is duplication crossing it) plus a per-function neighbourhood view with both bodies side by side. Any other extension writes Markdown, which opens with what doppel understands about the corpus — learned concepts, duplication map, package habitats — as mermaid diagrams, then how this codebase *writes* things. The stdout report is still printed |
-| `--format`          | `text`  | Stdout format: `text` or `json`. The JSON form is a deterministic snapshot of the whole run — every function, its concepts with confidence, its role, and every reported pair |
+| `--format`          | `text`  | Stdout format: `text` or `json`. The JSON form is a deterministic snapshot of the whole run — every function, its concepts with confidence, its role, its Weisfeiler-Lehman label bag, and every reported pair with its containment and its rule-attributed explanation |
 | `--families`        | `5`     | Near-duplicate families to show after the pair list (`0` removes the section) |
 | `--family-min`      | *(calibrated)* | Pin the code similarity every two members of a family must reach. Turns calibration off; falls back to `0.60` |
 | `--config`          | `.doppel.json` if present | Path to a JSON config file                                |

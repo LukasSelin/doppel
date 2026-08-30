@@ -20,7 +20,7 @@ func queryFixture() (parser.CodeUnit, concepter.ConceptDoc, []QueryMatch) {
 	}
 	m.Candidate = retriever.Candidate{Total: 14.2, Shape: 6.1, Concept: 3.0, Call: 5.1}
 	m.Candidate.Breakdown.Score = 0.82
-	m.Candidate.Chains = []retriever.SharedPattern{{Energy: 2.8, Render: "if(bin:!=(id,nil))"}}
+	m.Candidate.Chains = []retriever.SharedLabel{{Energy: 2.8, Depth: 2, Count: 3, Render: "depth-2 IF"}}
 	return probe, probeDoc, m.wrap()
 }
 
@@ -42,7 +42,7 @@ func TestPrintQueryStatesEvidenceAndLocalityUnblended(t *testing.T) {
 		"code-shape: 0.82",
 		"locality: 0.40",
 		"shared structure:",
-		"if(bin:!=(id,nil))",
+		"2.80  depth-2 IF ×3",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output missing %q:\n%s", want, out)

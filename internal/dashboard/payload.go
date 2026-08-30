@@ -89,6 +89,23 @@ type Facts struct {
 	Misfits        int `json:"misfits"`
 	MisfitsExcused int `json:"misfitsExcused"`
 
+	// The two corpus-health numbers, carried on the page for the same reason
+	// they are carried in the markdown preamble and the JSON snapshot: they
+	// describe the corpus the findings were drawn from, and a reader weighing
+	// a pair list is entitled to know how repetitive the corpus is at all.
+	// Neither ever moved a pair, a score or a rank.
+	//
+	// Compression is canonical AST nodes over distinct subtree shapes — 1.0
+	// would be a corpus with no repeated structure anywhere. NNP50/NNP90 are
+	// nearest-rank percentiles of each function's best code-shape score, over
+	// the NNScored functions retrieval actually paired: a recall-bounded
+	// population, not an exhaustive nearest-neighbour search, which is why
+	// NNScored is carried beside them rather than assumed to be Functions.
+	Compression float64 `json:"compression"`
+	NNScored    int     `json:"nnScored"`
+	NNP50       float64 `json:"nnP50"`
+	NNP90       float64 `json:"nnP90"`
+
 	ArenaProfiled  int `json:"arenaProfiled"`
 	ArenaDominance int `json:"arenaDominance"`
 	ArenaCoalition int `json:"arenaCoalition"`
@@ -162,17 +179,33 @@ type Edge struct {
 	Merge    bool     `json:"merge"`
 	Cross    bool     `json:"cross"` // the two sides live in different packages
 
-	// Breakdown is the five fingerprint components in their fixed order:
-	// ast, flow, nesting, sig, size. An array rather than a struct because the
-	// page draws them as one bar list and the names are constant.
-	Breakdown [5]float64 `json:"breakdown"`
+	// Containment is the shared Weisfeiler-Lehman mass over the *smaller*
+	// side's, so a small function wholly absorbed into a large one reads near
+	// 1.00 where Shape — a symmetric Jaccard — reads low. Reported beside
+	// Shape and never blended into it: "these two are alike" and "this one is
+	// inside that one" are different findings, and one number cannot say both.
+	Containment float64 `json:"containment"`
+
+	// Explain is the rule-attributed sentence about the pair: what the
+	// canonicalizer had to do to the two bodies before they matched. It is the
+	// only place the canonical rewrite is legible to a reader of this page.
+	Explain string `json:"explain,omitempty"`
+
+	// Breakdown is the six fingerprint components in their fixed order:
+	// wl, flow, nesting, sig, size, containment. An array rather than a struct
+	// because the page draws them as one bar list and the names are constant.
+	//
+	// The first component is a corpus-weighted multiset Jaccard over the two
+	// Weisfeiler-Lehman label bags — it was a Jaccard over token 3-grams when
+	// this payload was first written, which is why the name changed with it.
+	Breakdown [6]float64 `json:"breakdown"`
 
 	Chains  []Chain  `json:"chains,omitempty"`
 	Reasons []string `json:"reasons,omitempty"`
 }
 
 // BreakdownNames labels Edge.Breakdown, in its fixed order.
-var BreakdownNames = [5]string{"ast", "flow", "nesting", "sig", "size"}
+var BreakdownNames = [6]string{"wl", "flow", "nesting", "sig", "size", "containment"}
 
 // UnitConcept is one graded concept membership.
 //
@@ -185,15 +218,17 @@ type UnitConcept struct {
 	Confidence float64 `json:"confidence"`
 }
 
-// Chain is one shared structural pattern behind a pair — the evidence its
-// score actually rests on.
+// Chain is one shared structural label behind a pair — the evidence its score
+// actually rests on.
 //
-// Render is a motif string (`if(bin:!=(id,nil))`), not a source span: the
-// fingerprint hashes patterns and keeps no mapping back to the tokens that
-// produced them, so the page lists chains beside the bodies rather than
-// highlighting them inside.
+// Render names the label rather than reproducing it (`depth-2 IF`): a
+// Weisfeiler-Lehman label is a hash of a whole subtree, and the fingerprint
+// keeps no mapping back to the tokens that produced it. So the page lists
+// chains beside the bodies rather than highlighting them inside, and Depth is
+// how much structure the shared label covers — the refinement round, not a
+// pattern level.
 type Chain struct {
-	Level  int     `json:"level"`
+	Depth  int     `json:"depth"`
 	Energy float64 `json:"energy"`
 	Render string  `json:"render"`
 }
