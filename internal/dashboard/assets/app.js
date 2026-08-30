@@ -77,7 +77,6 @@
     if (i < PALETTE.length && row.dominant > 0) conceptColor[row.id] = PALETTE[i];
   });
   function colorFor(id) { return (id && conceptColor[id]) || OTHER; }
-  function colorOf(u) { return colorFor(u.concept); }
 
   /* ── Facts header ────────────────────────────────────────────────────── */
 
@@ -126,9 +125,8 @@
     if (!facts.debug) {
       bits.push("Shared structure lists the top 3 patterns per pair; run with --debug for 20.");
     }
-    bits.push("Concept colours come from each function's arena equilibrium where it settled on one, " +
-      "otherwise its first tag. Habitat fit, roles and concept typicality are all corpus-relative — " +
-      "they move when unrelated code moves.");
+    bits.push("A region is tinted by the concept most of its functions carry. Habitat fit, roles " +
+      "and concept typicality are all corpus-relative — they move when unrelated code moves.");
     clear(host);
     host.appendChild(el("p", null, bits.join(" ")));
   }
@@ -174,15 +172,6 @@
     if (Math.abs(a) < 1e-9) return poly.length ? poly[0].slice() : [0, 0];
     a *= 3;
     return [cx / a, cy / a];
-  }
-
-  function inPolygon(poly, x, y) {
-    var inside = false;
-    for (var i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-      var xi = poly[i][0], yi = poly[i][1], xj = poly[j][0], yj = poly[j][1];
-      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
-    }
-    return inside;
   }
 
   /* Clip a tagged polygon by the half-plane a·x + b·y <= c.
@@ -392,7 +381,7 @@
   /* ── The region model ────────────────────────────────────────────────── */
 
   var partitionEl = $("partition"), metricEl = $("metric"), cutEl = $("cut"), cutLabel = $("cut-label");
-  var mergeOnly = $("merge-only"), showDots = $("show-dots"), showArcs = $("show-arcs");
+  var mergeOnly = $("merge-only"), showArcs = $("show-arcs");
 
   function regionKeyOf(u) {
     if (partitionEl.value === "concept") return u.concept || "untagged";
@@ -512,12 +501,12 @@
     host.setAttribute("preserveAspectRatio", "xMidYMid meet");
 
     var view = svg("g", { id: "map-view" });
-    var gFill = svg("g"), gBorder = svg("g"), gArc = svg("g"), gDot = svg("g"), gLabel = svg("g");
+    var gFill = svg("g"), gBorder = svg("g"), gArc = svg("g"), gLabel = svg("g");
     view.appendChild(gFill); view.appendChild(gBorder); view.appendChild(gArc);
-    view.appendChild(gDot); view.appendChild(gLabel);
+    view.appendChild(gLabel);
     host.appendChild(view);
 
-    drawTerritories(gFill, gLabel, gDot, model, fit.cells);
+    drawTerritories(gFill, gLabel, model, fit.cells);
     drawBorders(gBorder, model, fit.cells);
     if (showArcs.checked) drawArcs(gArc, model, fit.cells);
 
@@ -529,7 +518,7 @@
     return poly.map(function (p) { return p[0].toFixed(2) + "," + p[1].toFixed(2); }).join(" ");
   }
 
-  function drawTerritories(gFill, gLabel, gDot, model, cells) {
+  function drawTerritories(gFill, gLabel, model, cells) {
     model.regions.forEach(function (r, i) {
       var cell = cells[i];
       if (!cell.poly.length) return;
@@ -548,10 +537,8 @@
       poly.appendChild(title);
       gFill.appendChild(poly);
 
-      var c = centroid(cell.poly);
-      if (showDots.checked) drawDots(gDot, r, cell, c);
-
       // A label only where its own region can hold it.
+      var c = centroid(cell.poly);
       var size = Math.max(8, Math.min(20, Math.sqrt(cell.area) / 7));
       if (cell.area > 900) {
         var label = svg("text", {
@@ -569,37 +556,6 @@
           gLabel.appendChild(sub);
         }
       }
-    });
-  }
-
-  /* Functions on a golden-angle spiral inside their own region, pulled back to
-     the centroid when the spiral leaves the polygon — cells are convex but not
-     round, so a radius that fits one direction overshoots another. */
-  function drawDots(gDot, r, cell, c) {
-    var m = r.members.length;
-    var rad = Math.sqrt(cell.area / Math.PI) * 0.86;
-    r.members.forEach(function (id, j) {
-      var u = units[id];
-      var angle = j * 2.39996;
-      var rr = rad * Math.sqrt((j + 0.5) / m);
-      var x = c[0] + rr * Math.cos(angle), y = c[1] + rr * Math.sin(angle);
-      for (var k = 0; k < 14 && !inPolygon(cell.poly, x, y); k++) {
-        x = c[0] + (x - c[0]) * 0.72; y = c[1] + (y - c[1]) * 0.72;
-      }
-      var size = 1.6 + 1.15 * Math.sqrt(u.fanIn);
-      var dot = svg("circle", {
-        cx: x.toFixed(2), cy: y.toFixed(2), r: Math.min(size, 7).toFixed(2),
-        fill: colorOf(u), class: u.misfit ? "dot misfit" : "dot"
-      });
-      var t = svg("title");
-      t.textContent = u.key + " — " + u.file + ":" + u.line +
-        " · fan-in " + u.fanIn + (u.misfit ? " · misfit" : "");
-      dot.appendChild(t);
-      dot.addEventListener("click", function (ev) {
-        ev.stopPropagation();
-        selectUnit(u.id, null); show("neighbourhood"); writeHash();
-      });
-      gDot.appendChild(dot);
     });
   }
 
@@ -820,7 +776,7 @@
     cutLabel.textContent = fixed(parseFloat(cutEl.value), metricEl.value === "rank" ? 1 : 2);
     scheduleDraw();
   });
-  [partitionEl, mergeOnly, showDots, showArcs].forEach(function (n) {
+  [partitionEl, mergeOnly, showArcs].forEach(function (n) {
     n.addEventListener("change", scheduleDraw);
   });
 
@@ -879,7 +835,7 @@
     clear(head); clear(listHost); clear(detail); clear(bodies);
 
     if (selUnit === null || !units[selUnit]) {
-      head.appendChild(el("p", "empty", "Pick a function on the left, or click a dot on the map."));
+      head.appendChild(el("p", "empty", "Pick a function on the left."));
       return;
     }
     var u = units[selUnit];

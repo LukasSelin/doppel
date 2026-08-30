@@ -169,10 +169,6 @@ input[type="range"] { accent-color: var(--color-accent); width: 100%; }
 .arc.merge { stroke: var(--color-accent-2); stroke-opacity: 0.75; }
 .arc:hover { stroke-opacity: 1; }
 
-.dot { cursor: pointer; }
-.dot.misfit { stroke: var(--color-text); stroke-opacity: 0.6; stroke-width: 1.2; }
-.dot:hover { stroke: var(--color-accent-2); stroke-width: 2; stroke-opacity: 1; }
-
 .region-label {
   font-family: var(--font-heading);
   font-weight: var(--font-heading-weight);
