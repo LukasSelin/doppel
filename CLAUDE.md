@@ -1071,7 +1071,35 @@ to rewrite on every turn:
   requires: containment is reported on every pair in all four output formats now, and
   `--format json` is the machine-readable form of that same report, so the field has a reader
   rather than being write-only. (`README.md`'s `--format` row describes the payload in prose and
-  never enumerated pair fields; naming containment there is a doc follow-up.)
+  never enumerated pair fields; naming containment there is a doc follow-up.) `Schema` 6 adds
+  `Unit.WL` — every unit's Weisfeiler-Lehman label bag — and `Snapshot.RuleSet` (`canon.Version`,
+  recorded once per run rather than per unit, since every unit in a run shares one canonicalizer).
+  The bag's encoding is not a plain per-unit delta-varint of raw labels: a WL label is an FNV hash,
+  essentially a uniform random 64-bit value, so the gap between two labels in one function's own
+  small bag is itself close to the full 64-bit range — sorting cannot cluster values that were
+  never clustered — and measured naively this put moby's `--format json` at just over 5x its
+  schema-5 size. `internal/fingerprint/wlcodec.go` instead builds one corpus-wide dictionary of
+  every distinct label the run's bags carry (`Snapshot.Labels`, via `EncodeLabelDict` — 131,350
+  entries behind 648,305 total bag occurrences on moby, a ~4.9x reduction before a byte is counted,
+  because the same structural labels recur across many functions) and encodes each `Unit.WL`
+  as delta-varint over that dictionary's *positions*, not the raw hashes (`EncodeWLBagIndexed`) —
+  positions range over the dictionary's size rather than 2^64, so they compress far more tightly.
+  base64.RawStdEncoding throughout — picked once, documented, fixed forever. Measured end to end:
+  moby's `--format json` is 5,877,513 bytes against a schema-5 baseline of 2,077,641 — 2.83x,
+  inside the `<3x` budget; the baseline-wrapper file (pretty-printed) is 1.60x. Both fields earn
+  their bytes the way rule four requires: the bag is what lets a consumer of `--format json` or a
+  session baseline recompute the WL Jaccard and Containment components of a stored pair from
+  stored data alone, rather than only reading the two floats the pipeline already produced —
+  `fingerprint.WLOverlap` (a thin export of the same `wlOverlap` the pipeline calls) plus a
+  `LabelIDF` rebuilt with `fingerprint.LabelWeights` over every decoded bag in the snapshot's own
+  `Units` is that computation, and the round trip is exact because that population is exactly what
+  the live run's `res.WL` was built from. RuleSet is what makes a canon rule-set change an
+  incomparability result instead of silent drift: adding or changing a canonicalization rule moves
+  every WL label a body produces, which is the schema-4-vs-5 failure one layer lower — the same two untouched functions
+  scoring a different WL Jaccard and Containment under two rule sets — so `Diff` refuses across it
+  exactly like Schema, Doppel and Ontology. Score itself still cannot be recomputed from a
+  snapshot: Flow, Depth and Signature are not stored (no reader needs them back), so the bag only
+  ever reconstructs the WL component and Containment, never the four-term composite.
 
 **What a delta may and may not claim.** `UnitsAdded`, `UnitsRemoved` and `BodiesChanged` are solid:
 they come from names and from `Digest`, an FNV-1a hash of the unit's own fingerprint, so nothing
@@ -1081,8 +1109,8 @@ set without either side being touched. Everything else corpus-relative — role 
 counts, overlap movement, tag totals — is deliberately **absent from `Delta`**: those move when code
 nobody touched moves, and reporting them would blame a session for something it did not do.
 
-Incomparability is a result, not an error. A mismatched schema, doppel build, ontology version or
-param set means the two runs measured different questions, so `Diff` sets `Comparable=false` with a
+Incomparability is a result, not an error. A mismatched schema, doppel build, ontology version,
+canon rule-set version or param set means the two runs measured different questions, so `Diff` sets `Comparable=false` with a
 reason rather than returning a partial delta.
 
 **The hook contract**, in `cmd/hook.go`:

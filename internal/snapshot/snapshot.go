@@ -37,6 +37,7 @@ import (
 	"sort"
 
 	"github.com/LukasSelin/doppel/internal/analyzer"
+	"github.com/LukasSelin/doppel/internal/canon"
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/fingerprint"
 	"github.com/LukasSelin/doppel/internal/ontology"
@@ -68,7 +69,16 @@ import (
 // corpus-relative, so a schema-4 baseline and a schema-5 run would disagree
 // about pairs nobody edited. The bump turns that into an incomparability
 // result rather than a delta full of movement no session caused.
-const Schema = 5
+//
+// 6 gives every Unit its own WL label bag (Unit.WL, see EncodeWLBag) and adds
+// RuleSet at the Snapshot level. Both earn their bytes the way rule four
+// requires: a bag is what lets a stored run's WL Jaccard and Containment be
+// recomputed rather than merely replayed, and a diff across two different
+// canon rule-set versions would be exactly the schema-4-vs-5 failure again —
+// the same pair of untouched bodies canonicalizing differently and disagreeing
+// about a score nobody edited — so RuleSet joins Schema, Doppel, Ontology and
+// Params as a fifth thing Diff refuses to compare across.
+const Schema = 6
 
 // Snapshot is one full analysis run.
 //
@@ -89,12 +99,23 @@ type Snapshot struct {
 	Schema    int         `json:"schema"`
 	Doppel    string      `json:"doppel"`   // doppel build version
 	Ontology  string      `json:"ontology"` // ontology.Version the run reasoned with
+	RuleSet   string      `json:"ruleSet"`  // canon.Version the run canonicalized bodies with
 	Params    Params      `json:"params"`
 	Functions int         `json:"functions"`
 	Concepts  []TagCount  `json:"concepts"` // sorted by tag
 	Roles     []RoleCount `json:"roles"`    // sorted by role
 	Units     []Unit      `json:"units"`    // sorted by key
 	Pairs     []Pair      `json:"pairs"`    // sorted by score desc, then a, then b
+
+	// Labels is the corpus-wide Weisfeiler-Lehman label dictionary — every
+	// distinct label carried by any Unit.WL in this run, sorted ascending,
+	// encoded once by fingerprint.EncodeLabelDict. Every Unit.WL is indexed
+	// against exactly this slice (see EncodeWLBagIndexed), so a consumer
+	// decoding any unit's bag must decode this field first. It exists purely
+	// so Unit.WL is affordable: see fingerprint's package doc for the
+	// measurement that makes a shared dictionary necessary rather than a
+	// nicety. Empty for a corpus with no bodies.
+	Labels string `json:"labels,omitempty"`
 
 	// CorpusMetrics carries the two T10 corpus-health numbers: hash-cons
 	// compression of the canonical AST forest, and the nearest-neighbour
@@ -175,6 +196,16 @@ type RoleCount struct {
 // because `analyze --format json` documents it, not because anything here
 // needs it — see the --format row in README.md before removing it.
 //
+// WL is this unit's Weisfeiler-Lehman label bag (fingerprint.Fingerprint.WL),
+// compactly encoded by fingerprint.EncodeWLBagIndexed against the run's
+// shared Snapshot.Labels dictionary — decode that first. It earns its bytes
+// the same way Containment did at schema 5: it is what a consumer of
+// --format json needs to recompute the WL Jaccard and Containment
+// components of a stored pair, rather than merely reading the two floats
+// the pipeline already computed. A unit whose Fingerprint has no body —
+// Nodes == 0 — carries no bag and encodes to "", mirroring Digest's
+// empty-string convention.
+//
 // Earlier schemas also carried Qualified, Exported, Receiver, Nodes, Callers
 // and Callees. Nothing ever read them.
 type Unit struct {
@@ -184,8 +215,9 @@ type Unit struct {
 	File     string   `json:"file"` // relative to root, slash-separated
 	Line     int      `json:"line"` // display only, never diffed
 	Patterns []string `json:"patterns,omitempty"`
-	Digest   string   `json:"digest"` // fingerprint hash: the exact "body changed" bit
-	Role     string   `json:"role"`   // corpus-relative; documented output only
+	Digest   string   `json:"digest"`       // fingerprint hash: the exact "body changed" bit
+	Role     string   `json:"role"`         // corpus-relative; documented output only
+	WL       string   `json:"wl,omitempty"` // encoded Weisfeiler-Lehman label bag, indexed against Snapshot.Labels
 }
 
 // Pair is one reported near-duplicate. A and B are Unit keys, ordered A < B so
@@ -237,16 +269,19 @@ func Build(units []parser.CodeUnit, docs []concepter.ConceptDoc, pairs []analyze
 	tagCounts map[ontology.TermID]int, root, version string, p Params, metrics CorpusMetrics) Snapshot {
 
 	keys := unitKeys(units, root)
+	dict := labelDict(units)
 
 	s := Snapshot{
 		Schema:        Schema,
 		Doppel:        version,
 		Ontology:      ontology.Version,
+		RuleSet:       canon.Version,
 		Params:        p,
 		Functions:     len(units),
 		Concepts:      tagCountsOf(tagCounts),
 		Units:         make([]Unit, 0, len(units)),
 		Pairs:         make([]Pair, 0, len(pairs)),
+		Labels:        fingerprint.EncodeLabelDict(dict),
 		CorpusMetrics: metrics,
 	}
 
@@ -266,6 +301,7 @@ func Build(units []parser.CodeUnit, docs []concepter.ConceptDoc, pairs []analyze
 			Patterns: append([]string(nil), u.Patterns...),
 			Digest:   Digest(u.Fingerprint),
 			Role:     doc.Role,
+			WL:       fingerprint.EncodeWLBagIndexed(u.Fingerprint.WL, dict),
 		})
 	}
 	s.Roles = roleCountsOf(roleCounts)
@@ -360,6 +396,30 @@ func RelSlash(root, path string) string {
 		return filepath.ToSlash(path)
 	}
 	return filepath.ToSlash(rel)
+}
+
+// labelDict collects the corpus-wide Weisfeiler-Lehman label dictionary:
+// every distinct label carried by any unit's bag, sorted ascending. It is
+// what makes Unit.WL affordable — see fingerprint's package doc — and it
+// must be built before any unit is encoded, so that every bag's labels are
+// guaranteed present in it (EncodeWLBagIndexed's whole contract).
+//
+// The intermediate set is a plain map: it never reaches JSON, and the value
+// that does — dict — is a sorted, deduped slice, so nothing here can make an
+// unchanged tree's output depend on map iteration order.
+func labelDict(units []parser.CodeUnit) []uint64 {
+	seen := make(map[uint64]struct{})
+	for _, u := range units {
+		for _, lc := range u.Fingerprint.WL {
+			seen[lc.Label] = struct{}{}
+		}
+	}
+	dict := make([]uint64, 0, len(seen))
+	for label := range seen {
+		dict = append(dict, label)
+	}
+	sort.Slice(dict, func(i, j int) bool { return dict[i] < dict[j] })
+	return dict
 }
 
 // unitKeys assigns every unit a corpus-unique identity.

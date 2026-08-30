@@ -241,6 +241,13 @@ func incomparable(base, head Snapshot) string {
 		// Every relation weight and the taxonomy shape feed OverlapScore, so a
 		// vocabulary change moves scores that no edit touched.
 		return fmt.Sprintf("baseline used ontology %s, current %s", base.Ontology, head.Ontology)
+	case base.RuleSet != head.RuleSet:
+		// A canonicalization rule added or changed moves every WL label a
+		// body produces, so the same two untouched functions would score a
+		// different WL Jaccard and Containment under the two rule sets —
+		// exactly the schema-4-vs-5 failure this check's siblings exist to
+		// prevent, one layer lower.
+		return fmt.Sprintf("baseline used canon rule set %s, current %s", base.RuleSet, head.RuleSet)
 	case base.Params != head.Params:
 		return fmt.Sprintf("baseline params %+v, current %+v", base.Params, head.Params)
 	}

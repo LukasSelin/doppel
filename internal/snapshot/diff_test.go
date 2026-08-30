@@ -7,6 +7,7 @@ func snap(mut func(*Snapshot)) Snapshot {
 		Schema:    Schema,
 		Doppel:    "test",
 		Ontology:  "1.0.0",
+		RuleSet:   "1",
 		Params:    Params{Threshold: 0.6, MinNodes: 12, TestsMode: "exclude"},
 		Functions: 2,
 		Units: []Unit{
@@ -173,6 +174,7 @@ func TestDiffIncomparable(t *testing.T) {
 		{"schema", func(s *Snapshot) { s.Schema = Schema + 1 }},
 		{"doppel build", func(s *Snapshot) { s.Doppel = "other" }},
 		{"ontology", func(s *Snapshot) { s.Ontology = "9.9.9" }},
+		{"rule set", func(s *Snapshot) { s.RuleSet = "2" }},
 		{"threshold", func(s *Snapshot) { s.Params.Threshold = 0.9 }},
 		{"min nodes", func(s *Snapshot) { s.Params.MinNodes = 99 }},
 		{"tests mode", func(s *Snapshot) { s.Params.TestsMode = "include" }},
