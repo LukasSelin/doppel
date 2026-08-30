@@ -108,8 +108,13 @@ type HTMLPairCard struct {
 	// second.
 	ContainmentLabel string
 	OverlapLabel     string
-	Components       []HTMLComponent
-	Footer           string
+	// Explain is the pair's one-sentence account of what canonicalization
+	// did for it and what it left behind. It sits above the component bars
+	// rather than in the Footer, which carries counts: this is the premise
+	// those numbers were computed on, and it is a sentence, not a statistic.
+	Explain    string
+	Components []HTMLComponent
+	Footer     string
 }
 
 // HTMLComponent is one of the fingerprint components behind a pair's

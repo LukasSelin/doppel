@@ -68,7 +68,17 @@ import (
 // corpus-relative, so a schema-4 baseline and a schema-5 run would disagree
 // about pairs nobody edited. The bump turns that into an incomparability
 // result rather than a delta full of movement no session caused.
-const Schema = 5
+//
+// 6 added Pair.Explain, the rule-attributed sentence about a pair. It is the
+// one field on this struct that is prose, and it earns its bytes the way rule
+// four demands: --format json is a documented payload with readers outside
+// this process, and the sentence is the only place the canonicalizer's work on
+// a pair is legible at all — the score it produced says nothing about which
+// normalizations got it there. Diff does not diff it, for the reason Reasons
+// was dropped in schema 2: it restates facts about the corpus in English, and
+// a delta reporting that a sentence changed would blame a session for a
+// rewording.
+const Schema = 6
 
 // Snapshot is one full analysis run.
 //
@@ -219,6 +229,7 @@ type Pair struct {
 	Containment float64 `json:"containment"` // reported, never scored or diffed
 	Overlap     float64 `json:"overlap"`     // corpus-relative
 	MergeWorthy bool    `json:"mergeWorthy"` // half corpus-relative
+	Explain     string  `json:"explain"`     // annotation; never diffed
 }
 
 // Build assembles a Snapshot from one pipeline run.
@@ -276,7 +287,7 @@ func Build(units []parser.CodeUnit, docs []concepter.ConceptDoc, pairs []analyze
 		if a > b {
 			a, b = b, a
 		}
-		rec := Pair{A: a, B: b, Score: pr.Score, Containment: pr.Breakdown.Containment}
+		rec := Pair{A: a, B: b, Score: pr.Score, Containment: pr.Breakdown.Containment, Explain: pr.Explain}
 		if pr.Evidence != nil {
 			rec.Overlap = pr.Evidence.OverlapScore
 			rec.MergeWorthy = pr.MergeWorthy()
