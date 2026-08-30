@@ -435,3 +435,109 @@ func %s(ref string) (string, error) {
 			bounded.Stats().Untagged, unbounded.Stats().Untagged)
 	}
 }
+
+// TestCorpusFloorRulesAreSeams pins the measurement seams as seams: they change
+// what is admitted, they are off by default, and the default is untouched by
+// their existence.
+//
+// The verdict itself is corpus-scale and lives in internal/bench — one
+// 48-function fixture cannot say whether a floor rule is better. What this
+// pins is that the alternatives are reachable, deterministic, and inert until
+// asked for.
+func TestCorpusFloorRulesAreSeams(t *testing.T) {
+	src := storeCorpus()
+	base, _ := build(t, src, nil, testOptions())
+
+	for _, tc := range []struct {
+		name string
+		opt  func(Options) Options
+	}{
+		{"relmax", func(o Options) Options { o.FloorRule = FloorRelMax; o.RelMaxFraction = 0.25; return o }},
+		{"touched", func(o Options) Options { o.FloorRule = FloorTouched; o.TouchedQuantile = 0.5; return o }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			opt := tc.opt(testOptions())
+			m, _ := build(t, src, nil, opt)
+			again, _ := build(t, src, nil, opt)
+			if !reflect.DeepEqual(m.Assignments(), again.Assignments()) {
+				t.Error("two builds under the same options disagree")
+			}
+			for _, c := range m.Concepts() {
+				if c.Floor <= 0 {
+					t.Errorf("concept %q has a non-positive floor %v", c.ID, c.Floor)
+				}
+			}
+		})
+	}
+
+	// The default is unchanged by any of it.
+	after, _ := build(t, src, nil, testOptions())
+	if !reflect.DeepEqual(base.Assignments(), after.Assignments()) {
+		t.Error("the default rule is not stable across builds")
+	}
+}
+
+// TestFloorOfDegenerateCurves covers the shapes a corpus-derived bar has to
+// survive: nothing reached, one unit reached, and a curve every unit sits on
+// the same point of.
+func TestFloorOfDegenerateCurves(t *testing.T) {
+	opt := testOptions()
+	opt.FloorRule = FloorRelMax
+	opt.RelMaxFraction = 0.5
+
+	if got := floorOf(nil, opt); got <= 0 {
+		t.Errorf("an unreached concept floors at %v; want a positive bar", got)
+	}
+	if got := floorOf([]float64{2}, opt); got != 1 {
+		t.Errorf("floorOf([2]) at half the max = %v, want 1", got)
+	}
+	if got := floorOf([]float64{3, 3, 3}, opt); got != 1.5 {
+		t.Errorf("floorOf(flat 3) at half the max = %v, want 1.5", got)
+	}
+
+	opt.FloorRule = FloorTouched
+	opt.TouchedQuantile = 0.5
+	// Nearest-rank upper: rank ceil(0.5*4) = 2, ascending.
+	if got := floorOf([]float64{1, 2, 3, 4}, opt); got != 2 {
+		t.Errorf("upper quantile 0.5 of [1 2 3 4] = %v, want 2", got)
+	}
+}
+
+// TestCorpusFloorDropsUnfoundedConcepts pins the rule taken with the corpus
+// bar: a concept whose own founders cannot clear it is dropped, counted, and —
+// if it grew from a seed — no longer reported as a grown seed, because
+// UnusedSeeds is what answers "does this repository already do X".
+func TestCorpusFloorDropsUnfoundedConcepts(t *testing.T) {
+	units, err := parser.ParseSource("app.go", []byte(storeCorpus()))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	seeds := make([][]string, len(units))
+	for i := firstStore; i < afterStore; i++ {
+		seeds[i] = []string{"db_access"}
+	}
+	g := concepter.BuildCallGraph(units)
+
+	opt := testOptions()
+	opt.FloorRule = FloorRelMax
+	opt.RelMaxFraction = 0.25
+	kept := Build(units, g, seeds, opt)
+
+	// A bar no founder can clear must take the concept with it.
+	opt.RelMaxFraction = 1000
+	gone := Build(units, g, seeds, opt)
+
+	if gone.Stats().FloorDropped <= kept.Stats().FloorDropped {
+		t.Errorf("an unreachable bar dropped %d concepts, an ordinary one %d; want more",
+			gone.Stats().FloorDropped, kept.Stats().FloorDropped)
+	}
+	if len(gone.Concepts()) != 0 {
+		t.Errorf("concepts survived an unreachable bar: %v", ids(gone))
+	}
+	if got := gone.GrownSeeds(); len(got) != 0 {
+		t.Errorf("GrownSeeds = %v after every concept was dropped; want none", got)
+	}
+	if got := kept.GrownSeeds(); len(got) == 0 {
+		t.Error("GrownSeeds is empty though the seeded concept survived")
+	}
+}

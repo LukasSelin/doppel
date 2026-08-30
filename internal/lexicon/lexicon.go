@@ -34,6 +34,35 @@ import (
 	"github.com/LukasSelin/doppel/internal/parser"
 )
 
+// FloorRule selects where a concept's membership bar comes from. The zero
+// value is the shipped rule; the others are measurement seams, Options-only and
+// never reached by cmd, in the same shape retriever.Options.MinIDF has — and
+// with the same verdict recorded beside them in CLAUDE.md.
+type FloorRule int
+
+const (
+	// FloorFounding is the shipped rule: the FloorQuantile of the concept's own
+	// founding members' coverage.
+	//
+	// It is open to an obvious objection — founding members are by construction
+	// the units that already carry the concept, so a quantile of their coverage
+	// asks the elite where the entry line is, and one quantile over each
+	// concept's own sample leaves the floors spread 5-6x from p10 to p90 across
+	// the ladder. The alternatives below are that objection, made concrete and
+	// measured. None of them was adopted; see floors.
+	FloorFounding FloorRule = iota
+
+	// FloorRelMax anchors the bar to the concept's own best-covered unit: a
+	// member must be covered at least RelMaxFraction as much as the unit this
+	// concept explains the most of. The only measured rule that narrows the
+	// floor spread (to 1.7-2.2x) rather than widening it.
+	FloorRelMax
+
+	// FloorTouched is the upper quantile, at TouchedQuantile, of the coverage
+	// of every unit the concept reaches at all.
+	FloorTouched
+)
+
 // Options tunes the learner. Like culture's, the cutoffs prefer silence over
 // noise: a feature too rare to recur or too common to discriminate is not
 // evidence, and a concept whose vocabulary does not separate its members from
@@ -77,7 +106,24 @@ type Options struct {
 	// evidence floor, 0.25 left 451 of 866 functions unlabelled here and 0.15
 	// let one concept swallow 649 of them. The bar was not too high, it was
 	// stated in a quantity that is not comparable between two functions.
+	//
+	// It is read only under FloorRule FloorFounding now. The shipped rule draws
+	// the bar from the corpus instead — see floors — because a quantile of the
+	// founders asks the elite where the entry line is, and because one quantile
+	// over each concept's own sample still produced floors spread 5-6x from p10
+	// to p90 across the ladder.
 	FloorQuantile float64
+
+	// FloorRule selects where the membership bar comes from. Zero value
+	// FloorKnee is what production runs.
+	FloorRule FloorRule
+
+	// TouchedQuantile is the quantile FloorTouched applies to a concept's reach,
+	// and that FloorCliff falls back to for a curve with no cliff in it.
+	TouchedQuantile float64
+
+	// RelMaxFraction is FloorRelMax's anchor.
+	RelMaxFraction float64
 
 	// MaxMemberships bounds how many concepts one unit may belong to, keeping
 	// its strongest by coverage. 0 is unbounded, which is not a working
@@ -151,6 +197,8 @@ func DefaultOptions() Options {
 		MinLift:             math.Ln2,
 		MinMembers:          5,
 		FloorQuantile:       0.25,
+		TouchedQuantile:     0.25,
+		RelMaxFraction:      0.5,
 		EdgeK:               8,
 		MaxEmergentFeatures: 2000,
 		MaxUnitFeatures:     64,
@@ -192,6 +240,7 @@ type Stats struct {
 	SeedsDropped      int // seeds whose members shared no distinctive feature
 	Emergent          int // concepts from the unclaimed-feature cliques
 	EmergentDropped   int // cliques that failed the membership floor
+	FloorDropped      int // concepts whose own founders could not clear the corpus bar
 	Skipped           int // feature neighbourhoods abandoned by the search guard
 	Edges             int // surviving edges in the emergent feature graph
 	Assignments       int // (unit, concept) memberships
@@ -263,9 +312,28 @@ func Build(units []parser.CodeUnit, g *concepter.Graph, seeds [][]string, opt Op
 	}}
 
 	claimed := make(map[string]bool)
-	concepts := expandSeeds(c, seeds, claimed, &m.stats, opt)
+	concepts, founders := expandSeeds(c, seeds, claimed, &m.stats, opt)
+	emerged, emergedFounders := emergeConcepts(c, claimed, &m.stats, opt)
+	concepts = append(concepts, emerged...)
+	founders = append(founders, emergedFounders...)
+
+	// The membership bar comes from the corpus, so it can only be derived once
+	// every concept's vocabulary exists — and a concept whose own founders
+	// cannot clear a corpus-relative bar was not distinctive enough to be one,
+	// which is the same finding SeedsDropped reports one stage earlier. The
+	// drop runs before naming and sorting so the parallel founder slice never
+	// has to be permuted alongside a reorder.
+	if opt.FloorRule != FloorFounding {
+		floors(c, concepts, opt)
+		concepts = dropUnfounded(c, concepts, founders, &m.stats, opt)
+	}
+
+	// grownSeeds is counted here rather than before the emergent pass, because
+	// a seeded concept can now die at the floor: reporting it as grown would
+	// put a practice this corpus does not have into Result.UnusedSeeds, the
+	// report overview and the session-start digest — the one surface that
+	// answers "does this repository already do X".
 	m.unused = grownSeeds(concepts)
-	concepts = append(concepts, emergeConcepts(c, claimed, &m.stats, opt)...)
 
 	anchorEmergent(concepts)
 	nameConcepts(concepts)
@@ -385,32 +453,24 @@ func weightsOf(features []Feature) map[string]float64 {
 	return w
 }
 
-// assign computes every unit's memberships. Two corpus-derived quantities do
-// two different jobs, which is what keeps either from having to do both badly,
-// and both are stated in *coverage* — the fraction of a unit's own information
-// a concept explains — rather than in raw evidence. See corpus.cover for why.
+// forEachCoverage walks every unit's coverage of every concept whose vocabulary
+// it touches at all, in ascending unit order and ascending concept order.
 //
-// Floor decides membership: the concept's own founding coverage at
-// FloorQuantile, so the bar is set by how much of its members a concept
-// actually accounts for rather than by a number chosen in advance.
+// It is one loop because there are two callers — floors derives each concept's
+// membership bar from the corpus's own distribution, assign then applies it —
+// and two hand-maintained copies of an accumulation whose *order* is the
+// determinism guarantee is exactly the clone this tool exists to find.
 //
-// Scale decides what the confidence reads: conf = C/(C+Scale) with Scale the
-// median founding coverage, so a unit the concept explains as much of as it
-// explains of its typical member reads about 0.5, and one it explains far more
-// of approaches 1. Saturating rather than normalized, because coverage has no
-// natural maximum either — a concept's weights are lift×idf, not idf, so a unit
-// can be explained past its own mass — and pretending it had one would make the
-// number a rank in disguise.
+// Inverted, not nested. The direct form — every unit against every concept's
+// vocabulary — is units × concepts × features, and on prometheus (5.5k
+// functions, ~380 concepts) that alone cost most of a minute. Walking each
+// unit's own features into the concepts that use them is the same arithmetic in
+// the order the data is sparse in.
 //
-// The number that admits a unit and the number that grades it are therefore the
-// same quantity. Deciding on coverage and grading on evidence would leave the
-// size bias in the grade after removing it from the gate.
-func assign(c *corpus, concepts []Concept, opt Options) [][]parser.Concept {
-	// Inverted, not nested. The direct form — every unit against every
-	// concept's vocabulary — is units × concepts × features, and on prometheus
-	// (5.5k functions, ~380 concepts) that alone cost most of a minute. Walking
-	// each unit's own features into the concepts that use them is the same
-	// arithmetic in the order the data is sparse in.
+// The callback receives the concept indices the unit touched and their
+// coverages, positionally aligned; both slices are scratch and must not be
+// retained.
+func forEachCoverage(c *corpus, concepts []Concept, fn func(unit int, touched []int, cover []float64)) {
 	type weighted struct {
 		concept int
 		weight  float64
@@ -422,10 +482,12 @@ func assign(c *corpus, concepts []Concept, opt Options) [][]parser.Concept {
 		}
 	}
 
-	out := make([][]parser.Concept, c.n)
 	evidence := make([]float64, len(concepts))
+	var touched []int
+	var cover []float64
 	for i := 0; i < c.n; i++ {
-		var touched []int
+		touched = touched[:0]
+		cover = cover[:0]
 		for _, f := range c.features[i] { // ascending: the addition order is fixed
 			for _, w := range byFeature[f] {
 				if evidence[w.concept] == 0 {
@@ -435,8 +497,6 @@ func assign(c *corpus, concepts []Concept, opt Options) [][]parser.Concept {
 			}
 		}
 		sort.Ints(touched) // concepts are sorted by ID, so this is ID order
-		var got []parser.Concept
-		var covers []float64
 		for _, j := range touched {
 			e := evidence[j]
 			evidence[j] = 0 // reset only what was touched
@@ -444,6 +504,155 @@ func assign(c *corpus, concepts []Concept, opt Options) [][]parser.Concept {
 			if c.mass[i] > 0 {
 				cov = e / c.mass[i] // one division at the end: accumulation order is untouched
 			}
+			cover = append(cover, cov)
+		}
+		fn(i, touched, cover)
+	}
+}
+
+// floors sets every concept's membership bar from the corpus's own distribution
+// of coverage for it, rather than from its founding members'. It runs only
+// under a non-default FloorRule: **this was measured and not adopted**, and the
+// seam is kept so the question is re-runnable rather than re-argued.
+//
+// The objection it answers is real. Founding members are by construction the
+// units that already carry the concept, so a quantile of *their* coverage asks
+// the elite where the entry line is; and because each concept's founders are a
+// different sample, one FloorQuantile produces a different kind of number per
+// concept — measured across the pinned ladder, the founding floors spread 5-6x
+// from p10 to p90 (moby 0.44 to 2.27). Deriving the bar from the population
+// being judged is what internal/calibrate does for a threshold, and it is the
+// obvious repair.
+//
+// What the measurement found is that the reached population is the wrong
+// reference, because it is dominated by units carrying a trace of the
+// vocabulary. Any rank-based bar over it lands at 2-5% coverage, and membership
+// stops meaning anything: FloorTouched at every quantile tried takes moby and
+// hugo to **0.0% unlabelled** with every function saturating MaxMemberships,
+// mean confidence falling 0.49 -> 0.40, and the largest concept growing (cobra
+// 19.3% -> 33.5% of the corpus, chi 15.3% -> 23.5%). A knee — largest relative
+// drop in the curve — was tried first and is worse in the goal's own terms: it
+// widens the floor spread to 700x, because a curve with no cliff still has a
+// largest step.
+//
+// FloorRelMax is the one that works as intended. Anchored to the concept's own
+// best-covered unit at 0.25 it narrows the spread to 1.7-2.2x — the only rule
+// that moves the number this change exists to move — at neutral coverage (moby
+// 9.4% -> 8.8% unlabelled) and neutral labels (cobra merge 5.3 -> 5.2, refactor
+// 12.8 -> 13.1, fp 50.5 -> 51.0, no violations). It was still not adopted: it
+// drops ~30% of the learned vocabulary on the large corpora (moby 519 -> 365
+// concepts, whose founders cannot clear a bar set by one dominant member) and
+// grows the largest concept where the founding rule shrank it (moby 9.0% ->
+// 12.3%, hugo 4.5% -> 7.9%). One labeled corpus cannot certify that trade, and
+// a comparable floor is a property rather than a result — nothing downstream
+// was shown to get better for having one.
+//
+// Zeros are not part of the distribution. A unit touching none of a concept's
+// vocabulary covers none of it, which is a statement about the unit and not a
+// point on the curve the concept's own members lie on.
+func floors(c *corpus, concepts []Concept, opt Options) {
+	if len(concepts) == 0 {
+		return
+	}
+	curves := make([][]float64, len(concepts))
+	forEachCoverage(c, concepts, func(_ int, touched []int, cover []float64) {
+		for k, j := range touched {
+			if cover[k] > 0 {
+				curves[j] = append(curves[j], cover[k])
+			}
+		}
+	})
+	for j := range concepts {
+		sort.Float64s(curves[j])
+		concepts[j].Floor = floorOf(curves[j], opt)
+	}
+}
+
+// dropUnfounded removes concepts whose own founding members cannot clear the
+// corpus-derived bar, in the number MinMembers asks of an emergent concept.
+//
+// founders is positional with concepts. The result keeps concepts' order, so
+// nothing downstream has to know a drop happened.
+func dropUnfounded(c *corpus, concepts []Concept, founders [][]int, stats *Stats, opt Options) []Concept {
+	kept := retainedFounders(c, concepts, founders)
+	out := concepts[:0]
+	for j := range concepts {
+		if kept[j] < opt.MinMembers {
+			stats.FloorDropped++
+			continue
+		}
+		out = append(out, concepts[j])
+	}
+	return out
+}
+
+// retainedFounders counts, per concept, how many of its founding members clear
+// the floor now that the floor comes from the corpus.
+//
+// The lookup is inverted for the same reason every other pass here is: a
+// per-unit list of the concepts it founded is the sparse direction, where a
+// concepts × units membership table is not. A founder always carries at least
+// two of its concept's clique features, so it is always among the unit's
+// touched concepts and the binary search always finds it.
+func retainedFounders(c *corpus, concepts []Concept, founders [][]int) []int {
+	founded := make([][]int, c.n)
+	for j := range founders {
+		for _, u := range founders[j] {
+			founded[u] = append(founded[u], j)
+		}
+	}
+	kept := make([]int, len(concepts))
+	forEachCoverage(c, concepts, func(i int, touched []int, cover []float64) {
+		for _, j := range founded[i] {
+			k := sort.SearchInts(touched, j)
+			if k < len(touched) && touched[k] == j && cover[k] >= concepts[j].Floor {
+				kept[j]++
+			}
+		}
+	})
+	return kept
+}
+
+// floorOf turns one concept's coverage curve into its membership bar under a
+// corpus-derived rule. v must be ascending; it is not modified.
+func floorOf(v []float64, opt Options) float64 {
+	if len(v) == 0 {
+		// The concept's vocabulary reaches nobody. Any positive bar is
+		// equivalent; the smallest keeps the field non-zero, which every reader
+		// of Floor already assumes.
+		return math.SmallestNonzeroFloat64
+	}
+	if opt.FloorRule == FloorRelMax {
+		return v[len(v)-1] * opt.RelMaxFraction
+	}
+	return upperQuantile(v, opt.TouchedQuantile)
+}
+
+// assign computes every unit's memberships. Two corpus-derived quantities do
+// two different jobs, which is what keeps either from having to do both badly,
+// and both are stated in *coverage* — the fraction of a unit's own information
+// a concept explains — rather than in raw evidence. See corpus.cover for why.
+//
+// Floor decides membership, and floors derives it from the corpus's own
+// distribution of coverage for that concept rather than from the concept's
+// founders.
+//
+// Scale decides what the confidence reads: conf = C/(C+Scale) with Scale the
+// median founding coverage, so a unit the concept explains as much of as it
+// explains of its typical member reads about 0.5, and one it explains far more
+// of approaches 1. Founding-derived on purpose, unlike Floor: Scale is the
+// *grading* reference, and a concept's founders are exactly its typical
+// members. Saturating rather than normalized, because coverage has no natural
+// maximum either — a concept's weights are lift×idf, not idf, so a unit can be
+// explained past its own mass — and pretending it had one would make the number
+// a rank in disguise.
+func assign(c *corpus, concepts []Concept, opt Options) [][]parser.Concept {
+	out := make([][]parser.Concept, c.n)
+	forEachCoverage(c, concepts, func(i int, touched []int, cover []float64) {
+		var got []parser.Concept
+		var covers []float64
+		for k, j := range touched {
+			cov := cover[k]
 			if cov < concepts[j].Floor {
 				continue
 			}
@@ -454,7 +663,7 @@ func assign(c *corpus, concepts []Concept, opt Options) [][]parser.Concept {
 			covers = append(covers, cov)
 		}
 		out[i] = topMemberships(got, covers, opt.MaxMemberships)
-	}
+	})
 	return out
 }
 
@@ -493,6 +702,28 @@ func median(v []float64) float64 {
 		return v[mid]
 	}
 	return (v[mid-1] + v[mid]) / 2
+}
+
+// upperQuantile is the nearest-rank upper quantile of an ascending slice: the
+// value at rank ceil(q·n). It is the mirror of quantile below, and it is
+// deliberately not calibrate.Quantile, which is the same arithmetic — that
+// package imports comparator, so depending on it from here would run the
+// dependency the wrong way through a package that has to finish before
+// retrieval starts. Two directions of one idea in two packages that cannot see
+// each other is not the kind of clone the shared helpers list exists to
+// prevent.
+func upperQuantile(v []float64, q float64) float64 {
+	if len(v) == 0 {
+		return 0
+	}
+	r := int(math.Ceil(q * float64(len(v))))
+	if r < 1 {
+		r = 1
+	}
+	if r > len(v) {
+		r = len(v)
+	}
+	return v[r-1]
 }
 
 // quantile is the nearest-rank lower quantile of a sorted slice: a value some

@@ -29,10 +29,10 @@ import (
 // count is quadratic in a unit's feature count and a large corpus has units
 // with hundreds, and each feature keeps only its EdgeK strongest associations,
 // without which the graph is one blob (see buildFeatureGraph).
-func emergeConcepts(c *corpus, claimed map[string]bool, stats *Stats, opt Options) []Concept {
+func emergeConcepts(c *corpus, claimed map[string]bool, stats *Stats, opt Options) ([]Concept, [][]int) {
 	cand := candidateFeatures(c, claimed, opt)
 	if len(cand) < opt.MinCliqueSize {
-		return nil
+		return nil, nil
 	}
 	index := make(map[string]int, len(cand))
 	for i, f := range cand {
@@ -45,6 +45,7 @@ func emergeConcepts(c *corpus, claimed map[string]bool, stats *Stats, opt Option
 	hits := make([]int, c.n) // scratch for foundingMembers, reset by it
 
 	var out []Concept
+	var founders [][]int
 	var kept [][]int // founding member sets already turned into a concept
 	for a := 0; a < len(cand); a++ {
 		nbrs := g.Neighbors(a)
@@ -90,10 +91,11 @@ func emergeConcepts(c *corpus, claimed map[string]bool, stats *Stats, opt Option
 			}
 			kept = append(kept, members)
 			out = append(out, Concept{Features: features, Scale: scale, Floor: floor})
+			founders = append(founders, members)
 			stats.Emergent++
 		}
 	}
-	return out
+	return out, founders
 }
 
 // duplicate reports whether a candidate member set is close enough to one
