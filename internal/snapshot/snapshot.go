@@ -70,7 +70,7 @@ import (
 // about pairs nobody edited. The bump turns that into an incomparability
 // result rather than a delta full of movement no session caused.
 //
-// 6 is three changes shipped as one bump. The shape retrieval channel moved to
+// 6 is four changes shipped as one bump. The shape retrieval channel moved to
 // the same Weisfeiler-Lehman labels, retiring the multi-level pattern multiset
 // it used to index — retrieval decides which pairs exist at all, so a schema-5
 // baseline and a schema-6 run hold different candidate sets: pairs appear and
@@ -82,6 +82,13 @@ import (
 // versions would be the schema-4-vs-5 failure again (the same pair of
 // untouched bodies canonicalizing differently), so RuleSet joins Schema,
 // Doppel, Ontology and Params as a fifth thing Diff refuses to compare across.
+// And Pair gained Explain, the rule-attributed sentence about a pair — the one
+// prose field on the struct, earning its bytes the way rule four demands:
+// --format json is a documented payload with readers outside this process, and
+// the sentence is the only place the canonicalizer's work on a pair is legible
+// at all. Diff does not diff it, for the reason Reasons was dropped in schema
+// 2: it restates facts about the corpus in English, and a delta reporting that
+// a sentence changed would blame a session for a rewording.
 const Schema = 6
 
 // Snapshot is one full analysis run.
@@ -255,6 +262,7 @@ type Pair struct {
 	Containment float64 `json:"containment"` // reported, never scored or diffed
 	Overlap     float64 `json:"overlap"`     // corpus-relative
 	MergeWorthy bool    `json:"mergeWorthy"` // half corpus-relative
+	Explain     string  `json:"explain"`     // annotation; never diffed
 }
 
 // Build assembles a Snapshot from one pipeline run.
@@ -316,7 +324,7 @@ func Build(units []parser.CodeUnit, docs []concepter.ConceptDoc, pairs []analyze
 		if a > b {
 			a, b = b, a
 		}
-		rec := Pair{A: a, B: b, Score: pr.Score, Containment: pr.Breakdown.Containment}
+		rec := Pair{A: a, B: b, Score: pr.Score, Containment: pr.Breakdown.Containment, Explain: pr.Explain}
 		if pr.Evidence != nil {
 			rec.Overlap = pr.Evidence.OverlapScore
 			rec.MergeWorthy = pr.MergeWorthy()

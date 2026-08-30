@@ -98,13 +98,14 @@ cmd/            CLI commands (Cobra).
 internal/
   parser/       parser.go is a thin dispatcher (and owns ShouldSkipDir, the walk rule cmd and bench share); go_parser.go does the go/ast work; signals.go extracts the tagger's evidence channels → CodeUnit
   fingerprint/  AST token shingles + control-flow histogram + signature types; the code-similarity score
+                wl.go is the WL label bag; wlexplain.go names its shallow labels for reports
   ontology/     The formal vocabulary: entity kinds, typed relations, concept taxonomy, roles, axioms
   tagger/       AST-signal intent detection → 14 pattern tags
   concepter/    ConceptDoc; callgraph.go (BuildCallGraph); role.go (ClassifyRole, role constants)
   mapper/       Where enrichment actually happens: callers, role classification, aggregated patterns/packages
   retriever/    Multi-channel candidate retrieval: shape.go / concept.go / calls.go inverted indexes, retriever.go union + evidence
   culture/      Corpus-culture model: ecology.go (PMI), prototype.go (prototypes + typicality), habitat.go (fit), convention.go
-  analyzer/     SimilarPair + Retrieval types; FindSimilar (library API); SortByEvidence (final ranking); kind.go + stem.go (pair kinds)
+  analyzer/     SimilarPair + Retrieval types; FindSimilar (library API); SortByEvidence (final ranking); kind.go + stem.go (pair kinds); explain.go (rule-attributed pair sentences)
   comparator/   Weighted structural overlap scoring (9 signals → 0.0–1.0 composite)
   family/       Near-duplicate families: components + edge completion + maximal cliques over the pair graph
   snapshot/     One analysis run as comparable plain data: schema + Build, and Diff over two of them
@@ -850,6 +851,53 @@ the F-line, in the markdown heading, and as `kind`/`kindLabel` in `doppel famili
 rules land where intended: hugo's `evalCall`/`evalField` pairs read `diverged copy`, conc's pool
 `WithContext`/`Wait`, gin's `Render`, chi's `Flush` and moby's 11-member `UnmarshalJSON` family read
 `interface implementations`.
+
+## Pair explanations
+
+`analyzer.Explain` puts one sentence on **every** reported pair, saying what canonicalization did
+for it and what it left behind. It is the only place canon's work is legible: a pair scores 1.00
+and the number alone cannot say whether the two bodies were identical or merely converged after a
+rename and an operand swap.
+
+```
+explain: identical after rename, commutative-reorder
+explain: differs by one extra defer, two extra if
+```
+
+Two tiers, decided on **WL bag equality**. Equal bags means the canonical trees agree, and the
+sentence names the union of `CodeUnit.CanonRules` from both sides — "fired on either side" — in
+canon's declaration order, under reader-facing names (`alpha-rename`→rename,
+`unwrap-block`→block-unwrap, `negated-if`→negation-flip, `guard-return`→guard-form,
+`incdec`→increment-form, `commutative-sort`→commutative-reorder). That is how "a rule whose
+reversal would lower the score" is implemented: **asserted, not measured** — literally reversing a
+rule would mean re-canonicalizing under a modified rule set and re-scoring, per rule, per pair.
+Two known overstatements, both documented at the function and neither able to move a number: bag
+equality is a proxy for tree equality (hash collisions, and WL's own indistinguishability limit),
+and a rule that fired on one side into what would have been a no-op on the other still gets
+credit, because `canon.Canonicalize` does not keep the per-rule before/after trees that would tell
+them apart.
+
+Unequal bags render the **residual**, and the h-split there is load-bearing.
+`fingerprint.LowLabels` (in `wlexplain.go`, a new file — it calls `wlLabel0`/`wlHash` rather than
+re-implementing them) re-derives the h≤1 labels of a canonical tree *with* the node kind each was
+computed at, kind names taken from go/ast's own type names by reflection so no parallel switch can
+drift from the node set. Counting is over **h=0 only** — a node's kind and nothing else, so the
+multiset difference is literally "one more defer". h=1 labels fold in a node's immediate children
+and therefore change for every *ancestor* of a changed node too; counting them would report one
+added defer as "one extra defer, one extra for, one extra block". They are used only to split the
+no-count case in two: same kinds arranged differently *locally*, or beyond what shallow labels can
+name. Kinds sort statements first, then expressions, then scaffolding (blocks, bare identifiers,
+and the `ExprStmt`/`DeclStmt` wrappers, which always accompany what they wrap), capped at three
+plus a count — an explanation is a sentence, not a dump. Sides are not named: the difference is
+symmetric.
+
+Where it renders: the text pair list (`explain:`), the markdown pair list (`**Explain:**`), the
+HTML pair cards, and `snapshot.Pair.Explain` — which is why the schema is **6**. `Diff` does not
+diff it, for the reason `Reasons` was dropped in schema 2. The hook digests deliberately do **not**
+carry it (they are bounded summaries), and neither do the census F-lines. Like culture, habitat,
+profile and kind notes, it annotates: no score, no ranking key and no filter reads it, and the
+golden scorecard is byte-identical with it in place.
+
 ## The report overview
 
 The markdown report (`--output`) opens with a **What doppel sees** section: the concept vocabulary

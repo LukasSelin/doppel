@@ -164,6 +164,7 @@ func pairCard(n int, p analyzer.SimilarPair) reporter.HTMLPairCard {
 		// containment comes from the same two bags the shape score does, so
 		// there is no pair that has one and not the other.
 		ContainmentLabel: fmt.Sprintf("%.2f", p.Breakdown.Containment),
+		Explain:          p.Explain,
 	}
 	// "nesting" is the design's name for the depth component; the fingerprint
 	// calls the field Depth and its own comment says it reports as nesting.

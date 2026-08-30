@@ -20,6 +20,12 @@ type SimilarPair struct {
 	Habitat    []HabitatNote                  // habitat misfits; nil when neither side misfits — set by the pipeline
 	Profile    []ProfileNote                  // equilibrium concept profiles; nil when neither side qualifies
 	Kind       *KindNote                      // what the pair is — interface implementations, a diverged copy; nil when unlabeled
+
+	// Explain is one sentence saying what canonicalization did for this pair
+	// and what it left behind — see Explain. Empty for a pair the pipeline
+	// has not annotated; like every other note on this struct it never
+	// reaches a score, a ranking key or a filter.
+	Explain string
 }
 
 // MergeWorthy is the whole merge verdict, and SimilarPair is the only type

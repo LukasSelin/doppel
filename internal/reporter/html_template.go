@@ -122,6 +122,7 @@ var htmlTemplate = template.Must(template.New("report").Funcs(template.FuncMap{
             <span class="mono" style="font-size:13px">shape {{ .ShapeLabel }} · containment {{ .ContainmentLabel }} · overlap {{ .OverlapLabel }}</span>
           </div>
           <div class="mono" style="font-size:14px; line-height:1.5">{{ .A }}<br>{{ .B }}</div>
+          {{ if .Explain }}<p style="font-size:12px; margin:0; color:var(--color-neutral-700); line-height:1.5">{{ .Explain }}</p>{{ end }}
           <div style="display:flex; flex-direction:column; gap:3px; padding-top:2px">
           {{ range .Components }}
             <div style="display:grid; grid-template-columns:4.5em 1fr 3em; align-items:center; gap:8px">

@@ -46,6 +46,12 @@ func Print(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 		if p.Kind != nil {
 			fmt.Fprintf(w, "  kind: %s\n", kindClause(p.Kind, false, false))
 		}
+		// Above the numbers rather than below them: the explain line says what
+		// the canonicalizer did to these two bodies, which is the premise every
+		// score under it is computed on.
+		if p.Explain != "" {
+			fmt.Fprintf(w, "  explain: %s\n", p.Explain)
+		}
 		for _, note := range p.Profile {
 			fmt.Fprintf(w, "  profile %s: %s (%s)\n", note.Side, profileMassLine(note.Concepts, "  "), note.State)
 			if meta.Debug {
@@ -129,6 +135,12 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 
 		if p.Kind != nil {
 			fmt.Fprintf(w, "**Kind:** %s\n\n", kindClause(p.Kind, false, true))
+		}
+		if p.Explain != "" {
+			// Escaped like every other sentence carrying names from the
+			// analysed source: a residual names node kinds, but a rule name
+			// or a future kind could carry a pipe.
+			fmt.Fprintf(w, "**Explain:** %s\n\n", mdEscape(p.Explain))
 		}
 		for _, note := range p.Profile {
 			fmt.Fprintf(w, "**Profile %s:** %s (%s)\n\n", note.Side, mdProfileMassLine(note.Concepts), note.State)
