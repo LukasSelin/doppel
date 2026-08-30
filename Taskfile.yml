@@ -85,3 +85,8 @@ tasks:
     desc: Regenerate examples/ from the fetched corpora
     cmds:
       - DOPPEL_BENCH_EXAMPLES=1 go test ./internal/bench/ -run TestGenerateExamples -v -timeout 30m
+
+  examples-check:
+    desc: Report whether examples/ is stale, without writing anything
+    cmds:
+      - DOPPEL_BENCH_EXAMPLES=1 DOPPEL_BENCH_EXAMPLES_CHECK=1 go test ./internal/bench/ -run TestGenerateExamples -v -timeout 30m
