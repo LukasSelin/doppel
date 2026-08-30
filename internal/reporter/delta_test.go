@@ -190,7 +190,7 @@ func TestAgentDeltaDigestLeadsWithTheDeltaAndLedgersBothHalves(t *testing.T) {
 			t.Errorf("ledgered a finding that was not rendered: %q", f.Line)
 		}
 	}
-	if !strings.Contains(note, "(1 further changes not listed)") {
+	if !strings.Contains(note, "(1 further delta findings not listed)") {
 		t.Errorf("the delta half must say what it omitted:\n%s", note)
 	}
 }

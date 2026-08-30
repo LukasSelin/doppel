@@ -14,8 +14,17 @@ import (
 // printed.
 const (
 	// The user digest can afford the fuller list — it lets the turn end.
+	//
+	// The two bounds are different numbers because the two lines cost
+	// different amounts. A classified change is two lines; a pair change is
+	// three, since it carries both its attribution and its stored
+	// explanation. Three pairs each way is nine lines, which is the same
+	// weight the impact half's six one-line entries carry. It is also enough:
+	// a rename re-keys every pair its function held, so the tail of these
+	// lists is one fact restated, and the head is where the new duplication
+	// is.
 	maxDeltaChanges = 6
-	maxDeltaPairs   = 6
+	maxDeltaPairs   = 3
 	// The agent note costs part of a model turn per line, so it gets the same
 	// three-finding budget the notable list has.
 	maxAgentDelta = 3
@@ -222,7 +231,10 @@ func AgentDeltaDigest(d identity.Delta, fresh, notable []Finding) (string, []Fin
 			fmt.Fprintf(&b, "  %s\n", f.Line)
 		}
 		if more := len(fresh) - len(shown); more > 0 {
-			fmt.Fprintf(&b, "  (%d further changes not listed)\n", more)
+			// "delta findings" rather than "changes": most of a rename's tail
+			// is its own pairs re-keyed, and calling those changes would read
+			// as 237 things to look at.
+			fmt.Fprintf(&b, "  (%d further delta findings not listed)\n", more)
 		}
 	}
 

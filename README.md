@@ -209,6 +209,8 @@ line prints the evidence that produced it:
 
 ```
 $ doppel diff before.json after.json
+Delta since the baseline
+========================
 269 functions before, 269 after
 split 1, merged 0, moved 1, renamed 2, edited 0, new 0, deleted 1, unchanged 264
 
@@ -231,12 +233,34 @@ deleted 1
   cobra.ExactValidArgs (args.go:129)  (no counterpart above the match floor)
 
 unchanged 264
+
+pairs created 1, dissolved 1
+
+pairs created 1
+  cobra.ValidateArgs <-> cobra.usageBody  shape 1.00  overlap 0.70  (merge-worthy)
+      cobra.ValidateArgs renamed
+      explain: identical after rename
+
+pairs dissolved 1
+  cobra.ExactValidArgs <-> cobra.OnlyValidArgs  shape 1.00  overlap 0.68  (merge-worthy)
+      cobra.ExactValidArgs deleted, cobra.OnlyValidArgs renamed
+      explain: identical after rename
 ```
+
+The second half is the one a plain diff cannot produce: the near-duplicate **pairs those changes
+created or dissolved**, each attributed to the classified function that explains it and each
+carrying the stored sentence saying what the canonicalizer did for it. A pair that moved with
+nothing classified on either side says so — that is retrieval re-ranking around your change rather
+than a consequence of it — and sorts after everything that is attributable.
+
+`--output <file.md>` writes the same report as markdown. There is no HTML form: the dashboard
+describes one run, and a two-run page would be a different artifact.
 
 A function that both moved and was renamed carries one class — the move — with the rename printed
 alongside it, and the same goes for a rename that also edited the body. `--unchanged` lists the
 unchanged functions instead of only counting them; `--format json` emits the whole result,
-unchanged findings included, with every slice already in a total order.
+unchanged findings included and both pair lists appended, with every slice already in a total
+order.
 
 Exit codes: **0** compared, **1** a file could not be read, **2** the two snapshots refuse
 comparison — a different schema, or a different canonicalization rule set, either of which would
