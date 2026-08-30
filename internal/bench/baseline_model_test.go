@@ -124,10 +124,17 @@ const checksumRevLine = "| doppel | `<normalized-for-checksum>` |"
 // would make the checksum indistinguishable from noise. Every other line —
 // the corpus metadata, the run diagnostics, the whole pair and family
 // list — is hashed byte for byte.
+// It substitutes rather than deletes, where the drift check deletes: both are
+// "the provenance row is not content", but a checksum over a report with the
+// line removed and one over a report with it replaced are different hashes,
+// and the substituted form keeps the line count stable so a diff of two
+// normalized reports still lines up. What must not drift is *which* line that
+// is, so both spellings key on provenanceRow, defined once in examples_test.go
+// beside the generator that writes it.
 func normalizeForChecksum(content []byte) []byte {
 	lines := strings.Split(string(content), "\n")
 	for i, line := range lines {
-		if strings.HasPrefix(line, "| doppel | `") {
+		if strings.HasPrefix(line, provenanceRow) {
 			lines[i] = checksumRevLine
 		}
 	}
