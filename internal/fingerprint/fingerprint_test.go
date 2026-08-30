@@ -343,9 +343,18 @@ func TestBuildDeterministic(t *testing.T) {
 
 // Trivial accessors must stay under the default --min-nodes guard, otherwise
 // they pairwise match at 1.0 and flood the report.
+//
+// The constant tracks retriever.DefaultOptions().MinNodes, which moved 12 → 18
+// when the shape channel started indexing WL labels. It is spelled out rather
+// than imported because fingerprint must not depend on retriever, and the
+// accessor this asserts about is well under either value — the test is about
+// the body being trivial, not about the exact floor.
+const defaultMinNodes = 18
+
 func TestBuildTrivialAccessorIsSmall(t *testing.T) {
-	if nodes := build(t, srcGetter).Nodes; nodes >= 12 {
-		t.Errorf("trivial accessor has %d nodes, expected fewer than the default min-nodes of 12", nodes)
+	if nodes := build(t, srcGetter).Nodes; nodes >= defaultMinNodes {
+		t.Errorf("trivial accessor has %d nodes, expected fewer than the default min-nodes of %d",
+			nodes, defaultMinNodes)
 	}
 }
 

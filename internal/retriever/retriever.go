@@ -60,15 +60,24 @@ func (o Options) weights() fingerprint.Weights {
 	return o.Weights
 }
 
-// DefaultOptions returns the production defaults. ChannelK mirrors the
-// --channel-k flag default; the caps are fixed constants chosen so that
-// corpus-wide idioms (Error() shapes, fmt.Sprintf) drop out of the indexes
-// entirely while genuinely shared machinery stays in.
+// DefaultOptions returns the production defaults. ChannelK and MinNodes
+// mirror the --channel-k and --min-nodes flag defaults; the caps are fixed
+// constants chosen so that corpus-wide idioms (Error() shapes, fmt.Sprintf)
+// drop out of the indexes entirely while genuinely shared machinery stays in.
+//
+// MinNodes was 12 while the shape channel indexed the pattern multiset, and
+// is 18 now that it indexes WL labels. A body produces wlRounds+1 labels per
+// node, so a *trivial* body that happens to be corpus-unique earns
+// maximal-IDF evidence at the deep rounds — where the pattern hierarchy gave
+// it nothing at all, a one-liner having no loop summary, no statement bigram
+// and no def-use edge to offer. This gate is the only thing that ever
+// suppressed those bodies, and 12 was calibrated against a feature set that
+// no longer exists.
 func DefaultOptions() Options {
 	return Options{
 		ChannelK:     5,
 		Threshold:    0.60,
-		MinNodes:     12,
+		MinNodes:     18,
 		MaxLabelDF:   50,
 		MaxCallDF:    50,
 		MaxConceptDF: 250,

@@ -147,7 +147,7 @@ func applyConfig(cmd *cobra.Command, cfg *AnalysisConfig) {
 func hookParams(root string) (Params, error) {
 	p := Params{
 		Threshold:  0.60,
-		MinNodes:   12,
+		MinNodes:   18,
 		ChannelK:   5,
 		TestsMode:  "exclude",
 		Generated:  "exclude",

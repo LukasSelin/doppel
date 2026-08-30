@@ -75,7 +75,7 @@ func init() {
 	queryCmd.Flags().StringVar(&queryFile, "file", "", "Read the snippet from this file instead of stdin")
 	queryCmd.Flags().IntVarP(&queryTop, "top", "n", 5, "Maximum related functions to report per probe")
 	queryCmd.Flags().Float64VarP(&queryThreshold, "threshold", "t", 0.60, "Minimum code-shape score for structural-channel candidates (0.0–1.0)")
-	queryCmd.Flags().IntVar(&queryMinNodes, "min-nodes", 12, "Exclude functions with fewer body AST nodes from structural retrieval")
+	queryCmd.Flags().IntVar(&queryMinNodes, "min-nodes", 18, "Exclude functions with fewer body AST nodes from structural retrieval")
 	// 10, not analyze's 5: a probe's retrieval costs one function's worth, so
 	// a wider net is nearly free — and an exact-clone family larger than K gets
 	// cut on an index tie-break, which is how the nearest match goes missing.

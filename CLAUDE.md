@@ -389,15 +389,16 @@ Three quantities per pair, all from one sorted-intersection pass (`pairEvidence`
 Trophic explains; it never ranks (`Total` stays Shape+Concept+Call) and never blends into
 code-shape or overlap.
 
-**Known consequence, unresolved.** Because every body produces `wlRounds+1` labels per node, a
-*trivial* body that happens to be corpus-unique now earns maximal-IDF evidence at h≥2, where the
-pattern hierarchy gave it nothing (a one-liner has no loop, no bigram and no def-use edge, so it
-could only earn L0/L1 mass, which the df cap ate). `--min-nodes` is the guard for exactly this
-("one-line accessors match each other at 1.0 and flood the channel") and its 12 was calibrated
-against the shingle/pattern feature set. On cobra this puts `commandSorterByName.Less ↔
-byName.Less` — a 16-node one-liner, code-shape 1.00, shape mass 107.8 of which every deep label is
-df=2 — at rank 20, tripping the golden benchmark's no-false-positive-in-the-top-20 assertion by
-one place. See *Rough edges*.
+**The consequence that moved a default.** Because every body produces `wlRounds+1` labels per
+node, a *trivial* body that happens to be corpus-unique earns maximal-IDF evidence at h≥2, where
+the pattern hierarchy gave it nothing (a one-liner has no loop, no bigram and no def-use edge, so
+it could only earn L0/L1 mass, which the df cap ate). On cobra this put `commandSorterByName.Less
+↔ byName.Less` — a 16-node one-liner, code-shape 1.00, shape mass 107.8 of which every deep label
+is df=2 — at rank 20, tripping the golden benchmark's no-false-positive-in-the-top-20 assertion.
+**`--min-nodes` was recalibrated 12 → 18 in the same change**, being the guard that exists for
+exactly this ("one-line accessors match each other at 1.0 and flood the channel") and whose 12 was
+calibrated against the retired feature set. See *Fingerprint scoring* for the recall nuance and
+*Rough edges* for the alternatives that were measured and not taken.
 
 ### Corpus culture
 
@@ -570,10 +571,27 @@ receiver expression dropped (`e`, `s`, `cfg` are arbitrary). The third is the co
 above — the token stream had no way to say that a shared shape was unremarkable, so a body made
 entirely of the repo's own idiom scored as high as a genuine clone.
 
-`--min-nodes` (default `12`) excludes tiny bodies from the **structural retrieval channel** (and
+`--min-nodes` (default `18`) excludes tiny bodies from the **structural retrieval channel** (and
 from `FindSimilar`). Without it one-line accessors match each other at 1.0 and flood the channel.
 Concept and call retrieval deliberately ignore it — a small function with rare tag or call evidence
 is still worth comparing.
+
+**It was `12`, and was recalibrated to `18` when the shape channel moved to WL labels.** The
+number was always a property of the feature set, not of Go: under the pattern multiset a trivial
+body was suppressed *implicitly*, because a one-liner has no loop summary, no statement bigram and
+no def-use edge and could therefore only earn L0/L1 mass, which the df cap ate. A WL bag has no
+such floor — every body emits `wlRounds+1` labels per node, and the deep ones are df 1 or 2
+whenever the body is corpus-unique, so a trivial-but-unique one-liner now earns maximal-IDF
+evidence. The measured case is cobra's `commandSorterByName.Less ↔ doc.byName.Less` (`return
+c[i].Name() < c[j].Name()`, 16 AST nodes, code-shape 1.00, trophic 1.00): at `12` it rose to rank
+20 and tripped the golden benchmark's no-false-positive-in-the-top-20 assertion; at `18` it leaves
+retrieval entirely.
+
+The recall nuance is worth stating plainly, because it cuts the other way: **at `--min-nodes 12`
+all 18 cobra labels reach the comparator; at the shipped `18` one does not — and the one that
+leaves is the false positive.** Merge recall is 6/6 either way and the merge mean is 4.5 either
+way. A gate measured only as "labelled pairs retrieved" would score the old value higher, which is
+why the golden benchmark asserts on the false-positive side as well.
 
 ### Comparator weights
 
@@ -982,7 +1000,7 @@ One naming trap: the design's `components.nesting` is `fingerprint.Breakdown.**D
 {
   "threshold": 0.65,
   "top": 10,
-  "min-nodes": 12,
+  "min-nodes": 18,
   "struct-min": 0.4,
   "output": "doppel-report.md",
   "channel-k": 5,
@@ -1282,13 +1300,16 @@ shell and behaves identically on Windows and Unix, and which is also the only fo
     varied one at a time (±50% or the natural alternatives), only the stages it reaches re-run,
     and the labeled rankings reported with a verdict — `inert` (no label moved), `moves`,
     `load-bearing` (a violation, a presence change, or a merge-mean shift ≥ 1.0) — plus the labels
-    that moved. It asserts nothing. **Measured on cobra (18 labels):** the merge pairs never move
-    under any variant; every sensitivity is in the refactor/false-positive tail. Inert in both
-    directions: `MaxConceptDF`, `fp.Depth`. Inert in one: `ChannelK`→8, `Threshold`→0.30,
-    `MaxCallDF`→100, `calls_into_concept`×0.5, `shares_neighborhood`×0.5,
-    `calls_into_package`×0.5, `called_from_concept`×2; `TestCallDiscount` (no test pairs under
-    `exclude`). Load-bearing: `MinNodes`→18 (drops a labeled pair from retrieval). Largest movers:
-    `fp.AST`, `MaxLabelDF`, `calls`, `exhibits`, `TrophicPower`. Not swept: `ChainTopN`
+    that moved. It asserts nothing, and it is what chose the `--min-nodes` default: the WL
+    retrieval change tripped `AssertZeroFPInTop20`, the sweep priced the three constants that
+    could clear it, and 12 → 18 was adopted on that evidence. **Measured on cobra (18 labels):**
+    the merge pairs never move under any variant; every sensitivity is in the
+    refactor/false-positive tail. Inert in both directions: `MaxConceptDF`, `fp.Depth`. Inert in
+    one: `ChannelK`→8, `Threshold`→0.30, `MaxCallDF`→100, `calls_into_concept`×0.5,
+    `shares_neighborhood`×0.5, `calls_into_package`×0.5, `called_from_concept`×2;
+    `TestCallDiscount` (no test pairs under `exclude`). Load-bearing: `MinNodes` in either
+    direction (it changes which pairs retrieval sees at all — this is the knob, so it should be).
+    Largest movers: `fp.AST`, `MaxLabelDF`, `calls`, `exhibits`, `TrophicPower`. Not swept: `ChainTopN`
     (explanation only), `struct-min`/`family-min` (no bench analogue / census only),
     `ForkShapeFloor` (annotation). One corpus is a direction, not a verdict; the gin/chi labels
     are what would make it one.
@@ -1367,21 +1388,37 @@ Known traps, documented so they aren't rediscovered. None are fixed:
 - **Typicality is corpus-relative, like roles.** A function's typicality — and whether a pair
   carries a culture note — can change when unrelated code shifts the concept's membership or the
   corpus norm. That is what "normal for this repo" means; same caveat as the role thresholds.
-- **`--min-nodes 12` is calibrated for a feature set that no longer exists, and the golden
-  benchmark says so.** The shape channel indexes WL labels now, and every body — however trivial —
-  produces `wlRounds+1` labels per node, of which the h≥2 ones are df 1 or 2 whenever the body is
-  corpus-unique. The pattern hierarchy suppressed trivial bodies *implicitly*: a one-liner has no
-  loop summary, no statement bigram and no def-use edge, so it could only earn L0/L1 mass, which
-  the df cap ate. Nothing suppresses it now except `--min-nodes`, whose 12 was chosen against the
-  shingle/pattern features. On cobra the measured cost is one place: `commandSorterByName.Less ↔
-  doc.byName.Less` (`return c[i].Name() < c[j].Name()`, 16 AST nodes, code-shape 1.00, trophic
-  1.00, shape mass 107.8 against 98.2 under patterns) sits at rank 20 and trips
-  `AssertZeroFPInTop20`. The sweep says `MinNodes 18` puts it back out of retrieval entirely with
-  every merge and refactor label still present and their means unmoved (merge 4.5 6/6, refactor
-  13.7); `MaxLabelDF 100` and halving the `wl` blend weight also clear it. All three are
-  recalibrations of a constant against a new feature set, not fixes, and none has been adopted:
-  one corpus is a direction, not a verdict, and the labelled set as a whole got *better* under WL
-  (merge 4.8 → 4.5, refactor 16.7 → 13.9, false-positive mean 38.3 → 40.0, recall 18/18).
+- **The trivial-body floor is one constant on one corpus, and two other constants would have
+  served.** A WL bag gives every body `wlRounds+1` labels per node, and the deep ones are df 1 or
+  2 whenever the body is corpus-unique, so a trivial-but-unique one-liner earns maximal-IDF
+  evidence that the pattern hierarchy never granted it (see *Fingerprint scoring*).
+  `--min-nodes 18` is the shipped answer. It is not the only one the sweep found: on cobra,
+  `MaxLabelDF 50→100` and halving the `wl` blend weight each also clear the false positive
+  (`MinNodes 18`: 0 violations, merge 4.5 6/6, refactor 13.7; `MaxLabelDF 100`: 0 violations,
+  merge 4.5, refactor 13.8, the pair drops to rank 21; `wl ×0.5`: 0 violations, refactor 12.3, fp
+  mean 36.7, the pair drops to rank 23). `--min-nodes` was chosen because it is the gate that
+  already exists for exactly this failure mode and its 12 was demonstrably calibrated against a
+  retired feature set, where the other two would be tuning a cap and a score weight to fix a
+  retrieval symptom. **One corpus is a direction, not a verdict** — cobra is the only rung with
+  labels, and 18 has not been justified on gin, chi or the large rungs. The deeper option, not
+  attempted: count each *node* agreement once at its deepest agreeing round instead of once per
+  round, which would remove the implied-label multiplication (agreeing at h=3 implies agreeing at
+  h=0..2) rather than raising a floor to compensate for it. That changes the mass definition and
+  needs `WLBag` to retain the node→label chain.
+- **`--min-nodes 18` costs conc its shape channel, and that is the shape of the risk on any small
+  library.** The floor is an absolute node count against a corpus-relative problem. On the six
+  larger rungs it trims the channel proportionately — shape admissions fall 5% (cobra) to 27%
+  (hugo), families 0–15% — but conc is 81 functions of three-to-five-line generic pool wrappers,
+  and almost none of them clear 18 nodes: shape admissions **23 → 3**, the union 60 → 40, and its
+  family census **3 families over 12 functions → none at all**. Its top ten now bottoms out at
+  code-shape 0.13 on concept/call-only pairs where the pinned tree's read 0.85 and up, and
+  `ResultContextPool.Wait ↔ ResultErrorPool.Wait` — genuinely identical, code-shape 1.00 — no
+  longer appears. Nothing is *wrong* there (those bodies are three lines; whether two identical
+  three-line generic wrappers are a merge candidate is exactly the judgement the floor exists to
+  make), but a corpus whose functions are uniformly small gets a near-empty structural channel
+  rather than a proportionate one. A relative floor — a quantile of the corpus's own node
+  distribution, the way `calibrate` derives thresholds — is the obvious repair and is not
+  attempted here.
 - **Trophic similarity of exact mid-frequency twins is 1.0.** Any normalized similarity gives
   identical inputs 1.0; trivia suppression relies on the df cap zeroing *both* sides of the Dice,
   which only engages once the idiom bucket exceeds `MaxLabelDF`. Between df=2 and the cap, exact
