@@ -33,10 +33,10 @@ flowchart TD
     rank --> out
 ```
 
-1. **Parse** — walks the target directory and extracts all Go function/method bodies, names, signatures, doc comments, visibility, receiver types, and AST-derived callees using the `go/ast` package; files no frontend claims are skipped
-2. **Fingerprint** — while the AST is still in hand, summarises each body into a `Fingerprint`: hashed 3-grams over a canonicalized AST token stream, a control-flow histogram, the normalized parameter/result types, a node count, and the multi-level pattern multiset the shape channel retrieves on
+1. **Parse** — walks the target directory and extracts every function/method body, name, signature, doc comment, visibility, receiver type and derived callee into one language-neutral tree. Go goes through `go/ast`; thirteen other languages go through a tokenizer and a block rule. Files no frontend claims are skipped, and `--languages` narrows which frontends run
+2. **Fingerprint** — summarises each body into a `Fingerprint`: a control-flow histogram, a nesting-depth histogram, the normalized parameter/result types, a node count, hashed 3-grams over a canonicalized token stream (which now feeds only the change digest), and the Weisfeiler-Lehman label bag that both scores code shape and drives the shape retrieval channel. Go bodies are canonicalized first — renamed, guards normalized, commutative operands ordered — so two spellings of one shape produce one bag
 3. **Choose the population** — `--tests` and `--generated` (`include`, `exclude`, `only` each; both default `exclude`) decide which functions exist for the rest of the run: tests are conventionally similar by design, and files carrying Go's "Code generated ... DO NOT EDIT." marker are near-identical by construction (left in, protobuf `Unmarshal` methods owned moby's entire top ten). This runs *before* any corpus statistic is computed, so tag frequencies, document frequencies and every culture model describe exactly the population the report describes. Cross test/production pairs are never reported in any mode — different build units are not merge candidates
-4. **Tag** — detects intent patterns (`retry`, `http_call`, `db_access`, `validation`, `mapping`, `transaction`, `caching`, `concurrency`, `error_wrapping`, `grpc_call`, `circuit_breaker`, `serialization`, `file_io`, `logging`) from AST evidence: call selectors, imports, string-literal contents, identifier names, and node kinds. Comments are not evidence, so SQL in a comment tags nothing. Each tag is a leaf of the concept taxonomy described below, which is what lets two different tags still score against each other. Tag frequencies over the whole corpus then weight concept matching in step 7 — sharing a near-universal tag is weak evidence, sharing a rare one is strong
+4. **Learn concepts** — grows the corpus's *own* concept vocabulary rather than asserting a fixed one, and gives each function a graded membership in the concepts it belongs to. Fourteen hand-written rules (`retry`, `http_call`, `db_access`, `validation`, `mapping`, `transaction`, `caching`, `concurrency`, `error_wrapping`, `grpc_call`, `circuit_breaker`, `serialization`, `file_io`, `logging`) survive only as *seeds* — the founding members a concept search starts from — and the rest emerge from the corpus, so a router with no database earns a vocabulary about routing. The evidence is structural: call selectors, imports, string-literal contents, identifier names and node kinds; comments are not evidence, so SQL in a comment names nothing. Learned concepts become the taxonomy's leaves for the run, which is what lets two different concepts still score against each other, and their frequencies weight concept matching in step 7 — sharing a near-universal concept is weak evidence, sharing a rare one is strong
 5. **Map** — builds a resolved, repo-internal call graph (qualified names; import-aware; method calls resolved when unambiguous; no stdlib noise) and enriches each concept doc with callers, resolved callees, the depth-2 call-graph neighbourhood, aggregated caller/callee patterns and packages, and a structural role (`leaf`, `utility`, `orchestrator`, or `passthrough`). Role thresholds adapt to the repo: high fan-in/fan-out means above this corpus's median resolved degree, floored at 2. The role is really two independent booleans, which is why two different roles can still partly agree
 6. **Retrieve candidates** — three independent channels propose the pairs worth the expense of a full comparison; see below. This is a *recall* stage, not a ranking one
 7. **Structural comparison** — scores each candidate pair across 12 weighted signals (shared callees 21%, concepts 18%, role 13.5%, callers 12%, package 9%, caller concepts 5%, callee concepts 5%, visibility 4.5%, receiver type 4.5%, neighbourhood overlap 3%, caller packages 2.25%, callee packages 2.25%) producing a 0.0–1.0 overlap score and a merge-worthiness flag; pairs below `--struct-min` are dropped. Concepts, roles and receiver types are matched through the ontology rather than by string equality, so related-but-not-identical work earns partial credit, and two functions sitting in overlapping call-graph neighbourhoods share context even when their direct edges differ
@@ -50,7 +50,7 @@ Comparing every pair of functions is quadratic, and most pairs share nothing. In
 flowchart LR
     fns["N functions"]
 
-    fns --> shape["shape channel<br/>multi-level AST patterns"]
+    fns --> shape["shape channel<br/>Weisfeiler-Lehman labels"]
     fns --> con["concept channel<br/>tags + taxonomy ancestors"]
     fns --> calls["call channel<br/>resolved and import-qualified calls"]
 
@@ -75,19 +75,22 @@ Each channel keeps only its top `--channel-k` (default 5) neighbours per functio
 
 ## The fingerprint
 
-The fingerprint is what replaces text matching. Each body is walked in pre-order and reduced to a stream of short tokens, which are then windowed, hashed and compared as sets:
+The fingerprint is what replaces text matching. Each body is walked in pre-order and reduced to a stream of short tokens; the tokens now feed the "did this body change" digest, while the score's 0.60 component reads a label bag over the body's canonical *tree*:
 
 ```mermaid
 flowchart LR
-    src["function body"] --> walk["pre-order AST walk"]
+    src["function body"] --> walk["pre-order walk"]
     walk -->|"identifiers → ID<br/>call selectors survive as CALL:Errorf"| toks["token stream<br/>IF · RANGE · BIN:+ · LIT:STRING · CALL:Errorf"]
-    toks -->|"sliding windows of 3"| sh["hashed, deduped, sorted shingles"]
+    toks -->|"sliding windows of 3"| sh["hashed shingles<br/>change digest only"]
+
+    src --> canon["canonical body<br/>Go only"]
+    canon -->|"labels at h = 0..3"| wl["Weisfeiler-Lehman label bag"]
 
     walk --> flow["control-flow histogram"]
     walk --> depth["nesting-depth histogram"]
     src --> sig["normalized param and result types"]
 
-    sh -->|"Jaccard · 0.60"| score(["code-shape score"])
+    wl -->|"corpus-weighted Jaccard · 0.60"| score(["code-shape score"])
     flow -->|"cosine · 0.20"| score
     depth -->|"cosine · 0.05"| score
     sig -->|"Jaccard · 0.15"| score
@@ -100,11 +103,14 @@ Two canonicalization rules do the heavy lifting:
 
 | Component | Metric | Weight |
 | --- | --- | --- |
-| AST shingles | Jaccard | 0.60 |
-| Control flow | cosine over the node-kind histogram | 0.25 |
+| WL labels | corpus-weighted multiset Jaccard over Weisfeiler-Lehman label bags | 0.60 |
+| Control flow | cosine over the node-kind histogram | 0.20 |
+| Nesting depth | cosine over the entry-depth histogram | 0.05 |
 | Signature | Jaccard over normalized param/result types | 0.15 |
 
-The relative body size is reported alongside these but is not scored — Jaccard already penalizes size mismatch through the union.
+The 0.60 component is a *subtree* summary, not a window over a flattened stream: a shingle cannot tell a condition from the statement it guards, where a Weisfeiler-Lehman label at round *h* summarises everything within *h* edges of a node. It is corpus-weighted, so sharing a shape every function in the repo has is worth nothing and sharing a rare one is worth a lot — which means the same two bodies score differently in different repositories, deliberately.
+
+The relative body size is reported alongside these but is not scored — Jaccard already penalizes size mismatch through the union. Containment — how much of the *smaller* body's shape the larger one also has — is reported for the same reason and scored for none: a helper inlined into a long function reads low on the blend and high on containment, and collapsing the two would destroy the finding.
 
 ## The ontology
 

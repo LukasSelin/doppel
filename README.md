@@ -169,7 +169,7 @@ import that binds them is present.
 
 Every reported pair carries two independent numbers:
 
-- **Code similarity** (`Score`, gated by `--threshold`) — how alike the two bodies are, from the AST fingerprint. The report breaks it into its components: `ast` (3-gram shingle overlap), `flow` (control-flow shape), `sig` (parameter and result types), and `size` (relative body size, shown for context but not scored).
+- **Code similarity** (`Score`, gated by `--threshold`, printed as `code-shape:`) — how alike the two bodies are, from the structural fingerprint. The report breaks it into its components: `wl` (corpus-weighted overlap of Weisfeiler-Lehman label bags over the canonical body), `flow` (control-flow shape), `nesting` (how deeply that control flow sits), `sig` (parameter and result types), and `size` (relative body size, shown for context but not scored). `containment` is shown beside them and also not scored — it asks how much of the *smaller* body's shape the larger one has, which is a different finding.
 - **Structural overlap** (gated by `--struct-min`) — how much architectural context the two share: callees, callers, concepts, role, package, and what their own callers and callees do. Concepts, roles and receiver types are matched through a concept hierarchy rather than compared as strings, so two functions doing related work — one hitting a database, the other a cache — score partial credit instead of zero. Every graded match comes with an evidence line saying which ancestor relates the two and how strongly.
 
   The concepts themselves are **learned from your codebase**, not read off a fixed list. doppel finds

@@ -2,11 +2,10 @@
 // generic syntax tree that carries exactly what the fingerprint stages read,
 // and nothing about any one language.
 //
-// It exists because internal/fingerprint used to be typed on *ast.FuncDecl.
-// Build, walk, extractPatterns and extractDefUse all took Go AST directly, so
-// the similarity score, the retrieval shape channel and all five pattern
-// levels were Go-only — a second language frontend could not produce a
-// Fingerprint at all, whatever else it filled in.
+// It exists because internal/fingerprint used to be typed on *ast.FuncDecl:
+// Build and walk took Go AST directly, so the similarity score and the
+// retrieval shape channel were Go-only — a second language frontend could not
+// produce a Fingerprint at all, whatever else it filled in.
 //
 // The contract a frontend must honour is deliberately narrow but it is not
 // loose: a Node exists for every node the frontend's own traversal would
@@ -16,6 +15,12 @@
 // frontend that collapses nodes changes scores rather than losing detail
 // quietly, so mirroring the source traversal exactly is the requirement, not
 // an optimization.
+//
+// Func.Canon is the one optional half of that contract: a frontend that can
+// canonicalize its language records the rewritten body there, and Shape()
+// hands whichever tree exists to the structural key. Canonicalization is a
+// claim about what code *means*, which this package deliberately carries
+// nothing to express, so it belongs to the frontend and never here.
 //
 // This package imports nothing from this module, the same rule ontology and
 // clique follow.
@@ -105,22 +110,13 @@ const (
 	KindBadDecl
 )
 
-// IsStmt reports whether the kind is a statement. It mirrors Go's ast.Stmt
-// interface because extractPatterns' default branch is gated on exactly that
-// question: a node that is a statement gets an L2 render attempt, and one
-// that is not is skipped. Kinds a frontend cannot classify are KindOther,
-// which is not a statement — an unclassified node renders nothing rather
-// than rendering something wrong.
-func (k Kind) IsStmt() bool {
-	switch k {
-	case KindIf, KindFor, KindRange, KindSwitch, KindTypeSwitch, KindSelect,
-		KindReturn, KindDefer, KindGo, KindBlock, KindAssign, KindBranch,
-		KindIncDec, KindSend, KindExprStmt, KindDeclStmt, KindLabeled,
-		KindEmpty, KindCaseClause, KindCommClause, KindBadStmt:
-		return true
-	}
-	return false
-}
+// A Kind.IsStmt predicate lived here, mirroring Go's ast.Stmt interface. Its
+// only consumer was the multi-level pattern extractor's default branch — "a
+// node that is a statement gets an L2 render attempt" — and that extractor is
+// gone, replaced by the Weisfeiler-Lehman label bag, which asks every node the
+// same question and needs no statement/expression split. A predicate with no
+// reader is surface, so it went with it. The statement kinds are still grouped
+// in the const block above, which is where the distinction is documented now.
 
 // Role names which slot of its parent a child fills. Position alone cannot
 // carry this: a Go for-loop omits absent Init/Cond/Post entirely, so the
