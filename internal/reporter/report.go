@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/LukasSelin/doppel/internal/analyzer"
@@ -65,7 +66,7 @@ func Print(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 			if len(p.Retrieval.Chains) > 0 {
 				fmt.Fprintf(w, "  shared structure:\n")
 				for _, ch := range p.Retrieval.Chains {
-					fmt.Fprintf(w, "    %.2f  %s\n", ch.Energy, ch.Render)
+					fmt.Fprintf(w, "    %.2f  %s%s\n", ch.Energy, ch.Render, chainTimes(ch))
 				}
 			}
 			if meta.Debug {
@@ -147,7 +148,8 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 			if len(p.Retrieval.Chains) > 0 {
 				fmt.Fprintf(w, "**Shared structure:**\n\n")
 				for _, ch := range p.Retrieval.Chains {
-					fmt.Fprintf(w, "- `%.2f` — `%s`\n", ch.Energy, mdEscape(ch.Render))
+					fmt.Fprintf(w, "- `%.2f` — `%s`%s\n",
+						ch.Energy, mdEscape(ch.Render), mdEscape(chainTimes(ch)))
 				}
 				fmt.Fprintln(w)
 			}
@@ -282,6 +284,17 @@ func habitatChannelLine(channels []analyzer.HabitatChannel) string {
 // report says so in words. Containment always sits at or above the Jaccard —
 // same numerator, a smaller denominator — so the bare comparison is never
 // news; the size of the gap is.
+// chainTimes suffixes a shared-structure line with the multiplicity when the
+// label matched more than once — " ×3". The energy on the line is
+// idf · min(count), so the count is the only factor of it a reader cannot
+// otherwise see, and printing "×1" on the common case would be noise.
+func chainTimes(ch analyzer.SharedChain) string {
+	if ch.Count <= 1 {
+		return ""
+	}
+	return " ×" + strconv.Itoa(ch.Count)
+}
+
 const containmentGap = 0.25
 
 // containmentClause names the one reading of containment a pair list would

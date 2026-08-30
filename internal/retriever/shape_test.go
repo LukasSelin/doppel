@@ -80,7 +80,7 @@ func TestShapeChannelSuppressesTrivialCloneBuckets(t *testing.T) {
 	units := parseUnits(t, "fix.go", trivialCloneSource())
 	opt := DefaultOptions()
 	opt.MinNodes = 8
-	opt.MaxPatternDF = 8
+	opt.MaxLabelDF = 8
 	// The clones also share fmt.Sprintf (df=12 in this 16-unit fixture); cap
 	// it out so this test isolates the structural channel.
 	opt.MaxCallDF = 3
@@ -165,7 +165,7 @@ func Common%d(xs []int) int {
 	units := parseUnits(t, "fix.go", b.String())
 	opt := DefaultOptions()
 	opt.MinNodes = 8
-	opt.MaxPatternDF = 20
+	opt.MaxLabelDF = 20
 
 	cands, _ := retrieveAll(t, units, opt)
 
@@ -234,15 +234,15 @@ func Filler(m map[string]int) string {
 	units := parseUnits(t, "fix.go", b.String())
 	fixed := DefaultOptions()
 	fixed.MinNodes = 8
-	fixed.MaxPatternDF, fixed.MaxCallDF = 2, 2
+	fixed.MaxLabelDF, fixed.MaxCallDF = 2, 2
 	cFixed, sFixed := retrieveAll(t, units, fixed)
 
 	// Three eligible units, three units: ln(3/2) is the information of df 2.
 	floored := fixed
 	floored.MinIDF = math.Log(3.0/2) - 1e-9
 	cFloor, sFloor := retrieveAll(t, units, floored)
-	if !sFloor.CapsDerived || sFloor.PatternCap != 2 || sFloor.CallCap != 2 {
-		t.Fatalf("derived caps = %d/%d (derived %v), want 2/2", sFloor.PatternCap, sFloor.CallCap, sFloor.CapsDerived)
+	if !sFloor.CapsDerived || sFloor.LabelCap != 2 || sFloor.CallCap != 2 {
+		t.Fatalf("derived caps = %d/%d (derived %v), want 2/2", sFloor.LabelCap, sFloor.CallCap, sFloor.CapsDerived)
 	}
 	if len(cFixed) != len(cFloor) {
 		t.Fatalf("candidate count differs: fixed %d, floored %d", len(cFixed), len(cFloor))
@@ -252,7 +252,7 @@ func Filler(m map[string]int) string {
 			t.Fatalf("candidate %d differs: %+v vs %+v", i, cFixed[i], cFloor[i])
 		}
 	}
-	if sFixed.Suppressed != sFloor.Suppressed || sFixed.SurvivingPatterns != sFloor.SurvivingPatterns {
+	if sFixed.Suppressed != sFloor.Suppressed || sFixed.SurvivingLabels != sFloor.SurvivingLabels {
 		t.Errorf("stats differ: %+v vs %+v", sFixed, sFloor)
 	}
 }

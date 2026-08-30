@@ -41,7 +41,7 @@ func asMap(bag []LabelCount) map[uint64]int {
 	}
 	m := make(map[uint64]int, len(bag))
 	for _, lc := range bag {
-		m[lc.Label] = lc.Count
+		m[lc.Label] = int(lc.Count)
 	}
 	return m
 }
@@ -409,9 +409,9 @@ func bag(pairs ...LabelCount) []LabelCount {
 // corpus has never seen.
 func TestLabelWeights(t *testing.T) {
 	bags := [][]LabelCount{
-		bag(LabelCount{1, 3}, LabelCount{2, 1}), // repeated three times, df still 1
-		bag(LabelCount{1, 1}, LabelCount{3, 1}),
-		bag(LabelCount{1, 1}),
+		bag(LabelCount{Label: 1, Count: 3}, LabelCount{Label: 2, Count: 1}), // repeated three times, df still 1
+		bag(LabelCount{Label: 1, Count: 1}, LabelCount{Label: 3, Count: 1}),
+		bag(LabelCount{Label: 1, Count: 1}),
 		nil, // no body: not part of the population
 	}
 	w := LabelWeights(bags)
@@ -448,14 +448,14 @@ func TestLabelWeights(t *testing.T) {
 // bags, never on the order they arrive in or the order their keys iterate.
 func TestLabelWeightsOrderIndependent(t *testing.T) {
 	a := [][]LabelCount{
-		bag(LabelCount{1, 1}, LabelCount{2, 1}),
-		bag(LabelCount{2, 1}, LabelCount{3, 1}),
-		bag(LabelCount{3, 1}),
+		bag(LabelCount{Label: 1, Count: 1}, LabelCount{Label: 2, Count: 1}),
+		bag(LabelCount{Label: 2, Count: 1}, LabelCount{Label: 3, Count: 1}),
+		bag(LabelCount{Label: 3, Count: 1}),
 	}
 	b := [][]LabelCount{
-		bag(LabelCount{3, 1}),
-		bag(LabelCount{2, 1}, LabelCount{3, 1}),
-		bag(LabelCount{2, 1}, LabelCount{1, 1}),
+		bag(LabelCount{Label: 3, Count: 1}),
+		bag(LabelCount{Label: 2, Count: 1}, LabelCount{Label: 3, Count: 1}),
+		bag(LabelCount{Label: 2, Count: 1}, LabelCount{Label: 1, Count: 1}),
 	}
 	wa, wb := LabelWeights(a), LabelWeights(b)
 	for _, label := range []uint64{1, 2, 3} {
@@ -518,4 +518,103 @@ func TestLabelWeightsOverRealBags(t *testing.T) {
 func closeEnough(a, b float64) bool {
 	d := a - b
 	return d < 1e-12 && d > -1e-12
+}
+
+// TestLabelKindNames pins the one thing that can silently break the kind
+// vocabulary: a constant added to the enum without a name. wlKind hashes
+// LabelKind.String(), so an unnamed kind would hash as "" — colliding with
+// nothing today and with everything the day a second one arrives — and would
+// render as an empty explanation.
+func TestLabelKindNames(t *testing.T) {
+	if len(labelKindNames) != int(numLabelKinds) {
+		t.Fatalf("labelKindNames has %d entries, enum has %d",
+			len(labelKindNames), numLabelKinds)
+	}
+	seen := make(map[string]LabelKind, len(labelKindNames))
+	for i, name := range labelKindNames {
+		if name == "" {
+			t.Errorf("kind %d has no name", i)
+			continue
+		}
+		if prev, dup := seen[name]; dup {
+			t.Errorf("kinds %d and %d share the name %q", prev, i, name)
+		}
+		seen[name] = LabelKind(i)
+	}
+}
+
+// TestLabelKindStringOutOfRange keeps String() total: an out-of-range value
+// reads as the open-world fallback rather than panicking. Nothing produces
+// one today; a hand-built LabelCount could.
+func TestLabelKindStringOutOfRange(t *testing.T) {
+	if got := LabelKind(numLabelKinds + 7).String(); got != "NODE" {
+		t.Errorf("out-of-range kind = %q, want NODE", got)
+	}
+}
+
+// TestWLBagRecordsRoundAndKind is the contract the retrieval channel's
+// explanation block rests on: every entry names the round it was produced at
+// and the node kind it sits on. The h=0 label of a kind that carries no name
+// part must be exactly wlKind(kind, ""), which is what ties the recorded kind
+// to the hash rather than leaving it a parallel claim.
+func TestWLBagRecordsRoundAndKind(t *testing.T) {
+	bag := WLBag(parseFunc(t, srcSum))
+
+	byKind := make(map[LabelKind][]LabelCount)
+	for _, lc := range bag {
+		if int(lc.H) > wlRounds {
+			t.Errorf("label %016x has round %d, want 0..%d", lc.Label, lc.H, wlRounds)
+		}
+		byKind[lc.Kind] = append(byKind[lc.Kind], lc)
+	}
+	// srcSum is a range loop with an accumulator, so these must appear.
+	for _, want := range []LabelKind{KindRange, KindReturn, KindAssign} {
+		if len(byKind[want]) == 0 {
+			t.Errorf("no %s label in the bag", want)
+		}
+	}
+	for kind, entries := range byKind {
+		switch kind {
+		// Kinds whose label_0 carries a name part legitimately differ from
+		// the bare wlKind(kind, "") — that name is the point of them.
+		case KindCall, KindBinary, KindUnary, KindAssign,
+			KindBranch, KindLit, KindIncDec, KindChanType, KindGenDecl:
+			continue
+		}
+		want := wlKind(kind.String(), "")
+		for _, lc := range entries {
+			if lc.H == 0 && lc.Label != want {
+				t.Errorf("%s h=0 label %016x, want %016x", kind, lc.Label, want)
+			}
+		}
+	}
+}
+
+// TestDescribeLabel pins the rendering the report prints, both halves of it.
+func TestDescribeLabel(t *testing.T) {
+	if got := DescribeLabel(2, KindIf); got != "depth-2 IF" {
+		t.Errorf("DescribeLabel(2, KindIf) = %q", got)
+	}
+	if got := DescribeLabel(0, KindCall); got != "depth-0 CALL" {
+		t.Errorf("DescribeLabel(0, KindCall) = %q", got)
+	}
+}
+
+// TestWLBagMetaDeterministic covers the one place a map could have leaked
+// order into the meta: a label seen at several nodes keeps the first
+// sighting's round and kind, and the walk that decides "first" must be the
+// only thing that decides it.
+func TestWLBagMetaDeterministic(t *testing.T) {
+	first := WLBag(parseFunc(t, srcSum))
+	for i := 0; i < 20; i++ {
+		again := WLBag(parseFunc(t, srcSum))
+		if len(again) != len(first) {
+			t.Fatalf("run %d: %d entries, want %d", i, len(again), len(first))
+		}
+		for j := range again {
+			if again[j] != first[j] {
+				t.Fatalf("run %d entry %d: %+v, want %+v", i, j, again[j], first[j])
+			}
+		}
+	}
 }

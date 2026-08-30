@@ -250,11 +250,15 @@ doppel ontology --defs                                # print the vocabulary and
   bag: rounds 0..3 merged, sorted ascending by label, built by the *parser* from canon's canonical
   tree — the one field `Build` does not produce), `Shingles` (sorted, deduped 3-gram hashes),
   `Flow` (control-flow histogram), `Depth` (nesting-entry histogram), `Types` (normalized
-  param/result types), `Nodes`, and `Patterns` (the multi-level trophic pattern multiset — see
-  *Trophic structural energy*). `WL` feeds the `wl` code-shape component, `Patterns` feeds
-  retrieval, and `Shingles` now feeds only `snapshot.Digest` — the digest answers "did this body
-  change" about the code *as written*, which is a different question from the canonical shape the
-  score reads. The zero value means "no body" and never matches anything.
+  param/result types) and `Nodes`. **`WL` is the only structural multiset left**: it feeds the
+  `wl` code-shape component *and* the shape retrieval channel (see *Trophic structural energy*),
+  so the number that retrieves a pair and the number that ranks it read one feature set. Each
+  `LabelCount` carries `H` (the refinement round) and `Kind` (the node kind the label was computed
+  at) alongside the count, in padding the two-field struct already wasted — `Count` is `int32` to
+  keep it at 16 bytes, which is why the merge loop's cost did not move. `Shingles` now feeds only
+  `snapshot.Digest` — the digest answers "did this body change" about the code *as written*, which
+  is a different question from the canonical shape the score reads. The zero value means "no body"
+  and never matches anything.
   `fingerprint.LabelIDF` (built once per run in `index()`) is the corpus surprisal `ln(N/df)` of
   every WL label, over presence df; an unseen label answers `ln(N)` (df 1), never 0 — a zero
   weight does not make a label neutral in a ratio, it makes it invisible.
@@ -285,7 +289,7 @@ function's top `--channel-k` (default 5) by `(mass desc, idx asc)`.
 
 | Channel | Features | Cap (Options) | Extra gates |
 | --- | --- | --- | --- |
-| shape | multi-level trophic patterns (`fingerprint.Pattern`, presence-df IDF, min-count multiset mass) | `MaxPatternDF` 50 | `--min-nodes` eligibility; admits only pairs with exact `code-shape >= --threshold`, probing at most `4*ChannelK` neighbors |
+| shape | Weisfeiler-Lehman labels (`fingerprint.WLBag`, presence-df IDF, min-count multiset mass) | `MaxLabelDF` 50 | `--min-nodes` eligibility; admits only pairs with exact `code-shape >= --threshold`, probing at most `4*ChannelK` neighbors |
 | concept | tagger tags + non-root taxonomy ancestors (enumeration only) | `MaxConceptDF` 250 | none — evidence is `Scorer.SharedInformation` (raw `Σ IC(LCS)`) over the leaf tag sets |
 | call | resolved internal callees (qualified) + import-qualified external calls via `RefPath` (full import path) | `MaxCallDF` 50 | none; bare names and variable-receiver calls are never tokens |
 
@@ -299,7 +303,7 @@ Consequences worth knowing:
 - **The absolute caps are not one number in nats, and that was measured and kept.** A cap of
   50 is `ln(N/50)` nats of required information: ≈1.5 on cobra, ≈5 on moby. `Options.MinIDF`
   replaces both caps with one floor — `cap = ⌊N·e^−MinIDF⌋` with each channel's own N
-  (shape-eligible units for patterns, all units for calls; a derived cap below 2 is not clamped,
+  (shape-eligible units for labels, all units for calls; a derived cap below 2 is not clamped,
   the channel is honestly empty and `Stats` says so) — and `TestMinIDF`/`TestMinIDFLadder`
   (guard `DOPPEL_BENCH_MINIDF=1`) measured it. Small corpora reproduce the fixed caps at 1–1.5
   nats (cobra: 826 candidates either way; a 1.0 floor reads merge 5.0 / fp 40.7 against the fixed
@@ -312,10 +316,19 @@ Consequences worth knowing:
   adoption rule, should gin/chi labels arrive: golden green on every labeled corpus, cobra merge
   mean not worse and FP mean not lower, no corpus suppressing > 2× more functions than fixed, and
   the large-corpus top-20s reading at least as well.
-- A pattern/token in *every* unit has `idf = ln(N/N) = 0`; zero-mass neighbors are never admitted.
+- A label/token in *every* unit has `idf = ln(N/N) = 0`; zero-mass neighbors are never admitted.
   The 130-clone `Error()` bucket exceeds the df cap entirely — those functions contribute no
   structural candidates and can only enter via concept/call evidence, which is the intended
   common-idiom suppression (no name-based heuristics anywhere).
+- **The df cap bites at the shallow rounds and almost never at the deep ones.** A depth-3 label
+  is a near-fingerprint of the subtree under it, so on any corpus most h=3 labels have df 1 or 2
+  and the `≤ 50` bound never engages there. Suppression is therefore a property of h=0/h=1, and
+  the deep rounds are close to pure "is this an exact clone" evidence at maximal weight. That is
+  what makes exact agreement superlinearly better rewarded than partial agreement — agreeing at
+  h=3 on a node implies agreeing at h=0..2 on it, so a deep match is counted four times where a
+  shallow one is counted once. It is honest under the channel's own arithmetic and it is why a
+  trivial-but-unique body can now out-earn a substantial partial match; see *Trophic structural
+  energy*.
 - The concept channel indexes ancestors so `db_access`-only can meet `caching`-only through
   `data_store_access`, but the *evidence* is always `SharedInformation` on the leaf sets — a pair
   meeting only at a shallow ancestor earns only that ancestor's small IC.
@@ -327,44 +340,64 @@ Consequences worth knowing:
 
 ### Trophic structural energy
 
-The shape channel's features are the **multi-level pattern multiset** extracted by
-`fingerprint.extractPatterns` during `Build` (the AST exists only during parse): L0 token n-gram
-windows at widths 3 and 5 (k=3 keeps its legacy untagged hash so pre-widening dfs are unchanged;
-w5 windows are width-tagged, never clamp on short streams, and certify longer shared runs — width
-2 was built, measured on the cobra labels, and left out because its surviving mass fed
-vocabulary-heavy false positives; see `l0ExtraWidths`), L1 call/binary-operator shapes, L2
-statements with salient structure
-(`return(call:Sprintf)`, `defer(call:Close)`, `if(bin:!=(id,nil))` — nil/true/false keep their
-names so the err-check idiom falls out with no special case), L3 motifs — loop call summaries
-covering header *and* body (`for{ call:Scan call:TrimSpace call:Atoi call:append }`, ≤ 8 callees)
-and adjacent-statement bigrams (`seq[ assign:=(call:Atoi) ; if(bin:!=(id,nil)) ]`) — and L4
-def-use flow edges (`defuse.go`): single-hop role edges from a def source (a parameter, or a
-binding whose RHS contains a call) to a use sink (a call it is passed to or invoked on, a return,
-or a condition) — `flow:param→call:Errorf`, `flow:call:Open→call:Close`, `flow:call:Atoi→cond`.
-Renders name roles, never identifiers, so the edges are rename-invariant; the tuple rule
-(`x, err := f()` binds both names to `call:f`) is what makes the errcheck idiom fall out free. A
-value computed and dropped emits no onward edge — previously indistinguishable from one that
-flows. For levels 1–4 the render string IS the hash serialization, so hash and explanation cannot
-drift; L2/L3/L4 keep their renders, L0/L1 do not. In the `shared structure:` block L4 sorts below
-L2/L3 at equal energy (`chainRank`): a role edge is a coarser explanation than a concrete
-statement shape.
+The shape channel's features are the **Weisfeiler-Lehman label bag** (`fingerprint.WLBag`, built
+by the parser from canon's canonical tree): one label per node per refinement round h = 0..3,
+merged into one multiset. h=0 is the node kind (`IF`, `RETURN`, `CALL/Errorf` — a call keeps its
+selector name, identifiers collapse to `ID`); each further round folds in one more edge of
+children, so h=3 at an if-statement is that whole guard and h=3 at a loop is its body. `LabelIDF`
+is the same presence-df `ln(N/df)` the other channels use.
+
+**The multi-level pattern multiset this replaced is gone** — `fingerprint.Pattern`,
+`extractPatterns`, `l0ExtraWidths`, `pattern.go` and `defuse.go` in full, which means the L0 token
+n-gram windows at widths 3 and 5, the L1 call/operator shapes, the L2 statement renders
+(`if(bin:!=(id,nil))`), the L3 loop-call summaries and statement bigrams, and the **entire L4
+def-use flow pass** (`flow:call:Open→call:Close`) existed only as pattern features and were
+deleted with them. Five hand-built extractors, each with its own idea of what was salient and its
+own way of being wrong about it, and overlapping: an L0 3-gram over a return and the L2 render of
+that same return were two spellings of one fact, both indexed, both weighted. A WL bag is that
+ladder from one uniform recurrence, with no extractor deciding what is worth naming — and it is
+the multiset the *score* already reads, so one feature set now serves retrieval and ranking.
+
+What is lost is the **render**. A pattern's `Render` string was the hash's own serialization, so
+explanation and hash could not drift. A WL label is a hash of a subtree and has no short faithful
+name: the `shared structure:` block now prints `fingerprint.DescribeLabel` — `depth-2 IF ×3`, the
+round and the node kind, with the multiplicity when above 1. That is a real, checkable claim ("a
+guard two levels deep matched exactly, three times") and a strictly weaker one than
+`if(bin:!=(id,nil))` was, because it does not say *which* guard. Naming the subtree would mean a
+second serialization of the thing the hash already is, which is the drift the pattern levels spent
+their renders avoiding. `LabelKind` is an enum whose `String()` is the hash input, so the
+vocabulary cannot fork; `Label` travels on `SharedChain` so a consumer can join on the identity.
 
 Three quantities per pair, all from one sorted-intersection pass (`pairEvidence`):
 
-- **Shape evidence** = `Σ idf·min(count)` over cap-surviving shared patterns — shared structural
+- **Shape evidence** = `Σ idf·min(count)` over cap-surviving shared labels — shared structural
   energy, the retrieval mass.
 - **TrophicSimilarity** = `2·SharedEnergy / (E_A + E_B)`, reported as `trophic:`, where energy on
   both sides is **cap-surviving (informative) energy only**. Exact clones of a rich function read
-  1.00; an idiom bucket whose every pattern exceeds the df cap reads 0/0 = 0.00 (`DataSourceName ↔
+  1.00; an idiom bucket whose every label exceeds the df cap reads 0/0 = 0.00 (`DataSourceName ↔
   Error`); everything between is the fraction of informative structure the pair shares. Two exact
   twins whose shape sits *between* df 2 and the cap legitimately read 1.00 with small energy — the
   energy ranks, trophic explains.
-- **Shared chains** = the highest-energy shared L2/L3 patterns, `(energy desc, level desc,
-  render asc)`, top `ChainTopN` (3 default, 20 under `--debug`) — rendered as the
-  `shared structure:` block. A match has weight because of what it shares.
+- **Shared labels** = the highest-energy shared labels, `(energy desc, depth desc, label asc)`,
+  top `ChainTopN` (3 default, 20 under `--debug`; `-1` unbounded, `0` none). Depth descending is
+  the WL analogue of the old level ranking — an h=3 label folds three edges of context, so it is a
+  more specific claim than an h=0 node kind at equal energy. Every shared label is a candidate now
+  (the pattern channel offered only its L2+ levels), so the top N is **selected by insertion**
+  rather than sorted: a substantial pair shares hundreds, and sorting them all per pair over tens
+  of thousands of pairs is real cost in a stage that exists to be cheap.
 
 Trophic explains; it never ranks (`Total` stays Shape+Concept+Call) and never blends into
 code-shape or overlap.
+
+**Known consequence, unresolved.** Because every body produces `wlRounds+1` labels per node, a
+*trivial* body that happens to be corpus-unique now earns maximal-IDF evidence at h≥2, where the
+pattern hierarchy gave it nothing (a one-liner has no loop, no bigram and no def-use edge, so it
+could only earn L0/L1 mass, which the df cap ate). `--min-nodes` is the guard for exactly this
+("one-line accessors match each other at 1.0 and flood the channel") and its 12 was calibrated
+against the shingle/pattern feature set. On cobra this puts `commandSorterByName.Less ↔
+byName.Less` — a 16-node one-liner, code-shape 1.00, shape mass 107.8 of which every deep label is
+df=2 — at rank 20, tripping the golden benchmark's no-false-positive-in-the-top-20 assertion by
+one place. See *Rough edges*.
 
 ### Corpus culture
 
@@ -822,7 +855,7 @@ Rules that hold it together:
   struct of plain presorted rows. `Overview` carries no maps that decide an order.
 - **What crosses over.** A fact belongs in the report if it changes how a reader weighs the
   findings, and on stderr if it only helps someone tuning doppel. The channel mix crosses;
-  `Suppressed`, `LargeBuckets`, `SurvivingPatterns` and parse warnings do not. Both surfaces keep
+  `Suppressed`, `LargeBuckets`, `SurvivingLabels` and parse warnings do not. Both surfaces keep
   their lines — stderr is unchanged, because the hook and the examples wrapper read it.
 - **`retriever.Stats` now rides on `Result`.** It was created, printed and dropped; the report
   explains its own pair list with it.
@@ -1071,7 +1104,12 @@ to rewrite on every turn:
   requires: containment is reported on every pair in all four output formats now, and
   `--format json` is the machine-readable form of that same report, so the field has a reader
   rather than being write-only. (`README.md`'s `--format` row describes the payload in prose and
-  never enumerated pair fields; naming containment there is a doc follow-up.)
+  never enumerated pair fields; naming containment there is a doc follow-up.) `Schema` 6 moves no
+  field either: the shape retrieval channel indexes WL labels instead of the pattern multiset, so
+  a schema-5 baseline and a schema-6 run hold *different candidate sets*. Pairs appear and vanish
+  with neither body touched, which is exactly the movement `Attributable` exists to avoid
+  claiming — and unlike a top-K budget shift, it is systematic rather than incidental, so the
+  honest result is incomparability rather than a delta.
 
 **What a delta may and may not claim.** `UnitsAdded`, `UnitsRemoved` and `BodiesChanged` are solid:
 they come from names and from `Digest`, an FNV-1a hash of the unit's own fingerprint, so nothing
@@ -1234,7 +1272,7 @@ shell and behaves identically on Windows and Unix, and which is also the only fo
     labeled fitter, once more corpora are labeled.
   - `TestMinIDF` and `TestMinIDFLadder` (guard `DOPPEL_BENCH_MINIDF=1`) measure the information
     floor against the absolute df caps: derived caps, union size, suppressed functions and
-    surviving patterns per floor on every fetched corpus, plus the labeled rankings where labels
+    surviving labels per floor on every fetched corpus, plus the labeled rankings where labels
     exist. Asserts nothing; see *Candidate retrieval* for the measured result and why the caps
     stayed absolute.
   - `TestCalibrate` (guard `DOPPEL_BENCH_CALIBRATE=1`) scores null calibration at rates 0.005,
@@ -1250,7 +1288,7 @@ shell and behaves identically on Windows and Unix, and which is also the only fo
     `MaxCallDF`→100, `calls_into_concept`×0.5, `shares_neighborhood`×0.5,
     `calls_into_package`×0.5, `called_from_concept`×2; `TestCallDiscount` (no test pairs under
     `exclude`). Load-bearing: `MinNodes`→18 (drops a labeled pair from retrieval). Largest movers:
-    `fp.AST`, `MaxPatternDF`, `calls`, `exhibits`, `TrophicPower`. Not swept: `ChainTopN`
+    `fp.AST`, `MaxLabelDF`, `calls`, `exhibits`, `TrophicPower`. Not swept: `ChainTopN`
     (explanation only), `struct-min`/`family-min` (no bench analogue / census only),
     `ForkShapeFloor` (annotation). One corpus is a direction, not a verdict; the gin/chi labels
     are what would make it one.
@@ -1329,18 +1367,24 @@ Known traps, documented so they aren't rediscovered. None are fixed:
 - **Typicality is corpus-relative, like roles.** A function's typicality — and whether a pair
   carries a culture note — can change when unrelated code shifts the concept's membership or the
   corpus norm. That is what "normal for this repo" means; same caveat as the role thresholds.
-- **Nested loops double-count inner calls in loop summaries.** An inner loop's callees appear in
-  both its own L3 summary and every enclosing loop's — each container is a real behavioral unit,
-  and de-duplicating would cost a pass per nesting level for no scoring benefit. Accepted.
-- **The L4 def-use pass is deliberately crude.** Bindings are name-keyed within the function, so
-  shadowing merges with the first binding winning; pointer/closure/field aliasing, field writes,
-  multi-hop chains, tuple position, control-flow sensitivity and cross-function flow are all
-  outside it — the full non-capture list is documented at `extractDefUse`. Each would cost a
-  resolution pass out of proportion for evidence rendering; the cure, as with the call-graph
-  resolver, is go/types.
+- **`--min-nodes 12` is calibrated for a feature set that no longer exists, and the golden
+  benchmark says so.** The shape channel indexes WL labels now, and every body — however trivial —
+  produces `wlRounds+1` labels per node, of which the h≥2 ones are df 1 or 2 whenever the body is
+  corpus-unique. The pattern hierarchy suppressed trivial bodies *implicitly*: a one-liner has no
+  loop summary, no statement bigram and no def-use edge, so it could only earn L0/L1 mass, which
+  the df cap ate. Nothing suppresses it now except `--min-nodes`, whose 12 was chosen against the
+  shingle/pattern features. On cobra the measured cost is one place: `commandSorterByName.Less ↔
+  doc.byName.Less` (`return c[i].Name() < c[j].Name()`, 16 AST nodes, code-shape 1.00, trophic
+  1.00, shape mass 107.8 against 98.2 under patterns) sits at rank 20 and trips
+  `AssertZeroFPInTop20`. The sweep says `MinNodes 18` puts it back out of retrieval entirely with
+  every merge and refactor label still present and their means unmoved (merge 4.5 6/6, refactor
+  13.7); `MaxLabelDF 100` and halving the `wl` blend weight also clear it. All three are
+  recalibrations of a constant against a new feature set, not fixes, and none has been adopted:
+  one corpus is a direction, not a verdict, and the labelled set as a whole got *better* under WL
+  (merge 4.8 → 4.5, refactor 16.7 → 13.9, false-positive mean 38.3 → 40.0, recall 18/18).
 - **Trophic similarity of exact mid-frequency twins is 1.0.** Any normalized similarity gives
   identical inputs 1.0; trivia suppression relies on the df cap zeroing *both* sides of the Dice,
-  which only engages once the idiom bucket exceeds `MaxPatternDF`. Between df=2 and the cap, exact
+  which only engages once the idiom bucket exceeds `MaxLabelDF`. Between df=2 and the cap, exact
   twins read trophic 1.0 with *small* energy — the energy is what ranks, so this is display-level
   nuance, not a scoring bug.
 - **Corroborated ranking has thin margins on vocabulary-heavy pairs.** A cross-package true

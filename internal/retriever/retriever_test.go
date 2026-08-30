@@ -135,7 +135,7 @@ func SquashRepeats(vals []int) []int {
 	opt := DefaultOptions()
 	opt.ChannelK = 3
 	opt.MinNodes = 8
-	opt.MaxPatternDF = 20
+	opt.MaxLabelDF = 20
 
 	cands, _ := retrieveAll(t, units, opt)
 	a := unitIndex(t, units, "CollapseRuns")

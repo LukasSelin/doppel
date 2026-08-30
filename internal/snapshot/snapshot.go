@@ -68,7 +68,15 @@ import (
 // corpus-relative, so a schema-4 baseline and a schema-5 run would disagree
 // about pairs nobody edited. The bump turns that into an incomparability
 // result rather than a delta full of movement no session caused.
-const Schema = 5
+//
+// 6 pointed the shape retrieval channel at the same Weisfeiler-Lehman labels,
+// retiring the multi-level pattern multiset it used to index. Retrieval
+// decides which pairs exist at all, so a schema-5 baseline and a schema-6 run
+// hold different candidate sets: pairs appear and vanish with no body having
+// changed, which is precisely the movement Delta's Attributable bit exists to
+// avoid claiming. Stored fields are unmoved — as with 3, the bump is about
+// what the file means, not what is in it.
+const Schema = 6
 
 // Snapshot is one full analysis run.
 //

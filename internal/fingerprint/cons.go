@@ -53,7 +53,7 @@ func Cons(fd *ast.FuncDecl) []uint64 {
 
 	ast.Inspect(fd.Body, func(n ast.Node) bool {
 		if n != nil {
-			frames = append(frames, consFrame{label: wlLabel0(n), start: len(kids)})
+			frames = append(frames, consFrame{label: wlLabel0Hash(n), start: len(kids)})
 			return true
 		}
 		last := len(frames) - 1

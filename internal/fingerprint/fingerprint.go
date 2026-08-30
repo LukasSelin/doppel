@@ -102,12 +102,11 @@ var FlowLabels = [flowKinds]string{
 // Fingerprint is a deterministic static summary of one function body.
 // The zero value means "no body" and never matches anything.
 type Fingerprint struct {
-	Shingles []uint64  // sorted, deduped FNV-1a hashes of AST 3-grams
-	Flow     []int     // control-flow node histogram, length flowKinds
-	Depth    []int     // control-flow entry-depth histogram, length depthBuckets
-	Types    []string  // sorted, deduped normalized param + result types
-	Nodes    int       // AST node count of the body (size / triviality guard)
-	Patterns []Pattern // multi-level structural pattern multiset, sorted by hash
+	Shingles []uint64 // sorted, deduped FNV-1a hashes of AST 3-grams
+	Flow     []int    // control-flow node histogram, length flowKinds
+	Depth    []int    // control-flow entry-depth histogram, length depthBuckets
+	Types    []string // sorted, deduped normalized param + result types
+	Nodes    int      // AST node count of the body (size / triviality guard)
 
 	// WL is the Weisfeiler-Lehman label multiset of the body, rounds 0..3
 	// merged and sorted ascending by label — see WLBag. It is the one field
@@ -115,10 +114,12 @@ type Fingerprint struct {
 	// tree, because a shape key should not carry the incidental choices
 	// canonicalization removes.
 	//
-	// It is what the 0.60 component of Score measures. Shingles is still
-	// built and still hashed into snapshot.Digest — the digest answers "did
-	// this body change", which is a question about the code as written, not
-	// about its canonical shape.
+	// It is what the 0.60 component of Score measures and, since T4, the
+	// only structural multiset on a Fingerprint: it is also the shape
+	// retrieval channel's feature set. Shingles is still built and still
+	// hashed into snapshot.Digest — the digest answers "did this body
+	// change", which is a question about the code as written, not about its
+	// canonical shape.
 	WL []LabelCount
 }
 
@@ -160,7 +161,6 @@ func Build(fd *ast.FuncDecl) Fingerprint {
 		Depth:    depth,
 		Types:    typeStrings(fd.Type),
 		Nodes:    nodes,
-		Patterns: extractPatterns(fd, tokens),
 	}
 }
 

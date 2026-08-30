@@ -32,15 +32,15 @@ type Options struct {
 	ChannelK     int     // per-function, per-channel top-K
 	Threshold    float64 // structural-channel floor on the exact fingerprint score
 	MinNodes     int     // structural-channel eligibility gate on Fingerprint.Nodes
-	MaxPatternDF int     // structural patterns present in more units than this carry no evidence
+	MaxLabelDF   int     // WL labels present in more units than this carry no evidence
 	MaxCallDF    int     // call tokens present in more units than this carry no evidence
 	MaxConceptDF int     // concept postings larger than this are skipped for enumeration
-	ChainTopN    int     // shared-structure explanations kept per pair
+	ChainTopN    int     // shared-label explanations kept per pair; <0 unbounded, 0 none
 
-	// MinIDF, when > 0, replaces the absolute pattern and call df caps with an
+	// MinIDF, when > 0, replaces the absolute label and call df caps with an
 	// information floor in nats: a feature counts only if ln(N/df) >= MinIDF,
 	// i.e. cap = floor(N·e^-MinIDF) with each channel's own N (shape-eligible
-	// units for patterns, all units for calls). A cap of 50 is 62% of conc's
+	// units for labels, all units for calls). A cap of 50 is 62% of conc's
 	// functions and 0.6% of moby's; one floor means one thing everywhere. A
 	// derived cap below 2 is not clamped up — it means nothing in that channel
 	// both pairs and carries the floor, and Stats says so. 0 = absolute caps.
@@ -69,7 +69,7 @@ func DefaultOptions() Options {
 		ChannelK:     5,
 		Threshold:    0.60,
 		MinNodes:     12,
-		MaxPatternDF: 50,
+		MaxLabelDF:   50,
 		MaxCallDF:    50,
 		MaxConceptDF: 250,
 		ChainTopN:    3,
@@ -85,29 +85,29 @@ func DefaultOptions() Options {
 type Candidate struct {
 	AIdx, BIdx int
 	Breakdown  fingerprint.Breakdown // exact fingerprint similarity, always computed
-	Shape      float64               // shared structural energy, Σ IC·min(count) over shared patterns
+	Shape      float64               // shared structural energy, Σ IC·min(count) over shared WL labels
 	Concept    float64               // shared tag information, Σ IC(LCS) over the best matching
 	Call       float64               // shared rare-call IDF mass
 	Total      float64               // Shape + Concept + Call, summed in that order
-	TrophicSim float64               // 2·SharedEnergy/(E_A+E_B): weighted Dice over pattern energy
+	TrophicSim float64               // 2·SharedEnergy/(E_A+E_B): weighted Dice over WL label energy
 	CallSim    float64               // call-channel Dice: mutual fraction of informative call energy
 	Channels   []string              // admission provenance, subset of {shape, concept, call}
-	Chains     []SharedPattern       // highest-energy shared structures, the explanation
+	Chains     []SharedLabel         // highest-energy shared labels, the explanation
 }
 
 // Stats describes one retrieval run, for the stderr summary and evaluation.
 type Stats struct {
-	ShapePairs        int // distinct pairs admitted by the structural channel
-	ConceptPairs      int // distinct pairs admitted by the concept channel
-	CallPairs         int // distinct pairs admitted by the call channel
-	Union             int // unique pairs across all channels
-	OnlyConcept       int // pairs only the concept channel admitted
-	OnlyCall          int // pairs only the call channel admitted
-	Suppressed        int // shape-eligible units whose every pattern was df-capped out
-	LargeBuckets      int // exact pattern-multiset identity buckets with > largeBucketSize members
-	SurvivingPatterns int // distinct structural patterns carrying evidence
+	ShapePairs      int // distinct pairs admitted by the structural channel
+	ConceptPairs    int // distinct pairs admitted by the concept channel
+	CallPairs       int // distinct pairs admitted by the call channel
+	Union           int // unique pairs across all channels
+	OnlyConcept     int // pairs only the concept channel admitted
+	OnlyCall        int // pairs only the call channel admitted
+	Suppressed      int // shape-eligible units whose every WL label was df-capped out
+	LargeBuckets    int // exact WL-bag identity buckets with > largeBucketSize members
+	SurvivingLabels int // distinct WL labels carrying evidence
 
-	PatternCap  int  // the df cap the shape channel used (derived or absolute)
+	LabelCap    int  // the df cap the shape channel used (derived or absolute)
 	CallCap     int  // the df cap the call channel used
 	CapsDerived bool // true when MinIDF derived the caps
 }
@@ -185,8 +185,8 @@ func Retrieve(units []parser.CodeUnit, g *concepter.Graph,
 	stats.Union = len(admitted)
 	stats.Suppressed = shapes.suppressed
 	stats.LargeBuckets = shapes.largeBuckets
-	stats.SurvivingPatterns = len(shapes.idf)
-	stats.PatternCap, stats.CallCap, stats.CapsDerived = shapes.cap, calls.cap, opt.MinIDF > 0
+	stats.SurvivingLabels = len(shapes.idf)
+	stats.LabelCap, stats.CallCap, stats.CapsDerived = shapes.cap, calls.cap, opt.MinIDF > 0
 
 	cands := evaluate(admitted, shapes, concepts, calls, sim, opt, &stats)
 	return cands, stats
@@ -237,11 +237,11 @@ func Probe(units []parser.CodeUnit, probeIdx int, g *concepter.Graph,
 	stats.ShapePairs = admitOne(shapes.admitFor(probeIdx, sim, opt), func(a *admission) *bool { return &a.shape })
 	stats.ConceptPairs = admitOne(concepts.admitFor(probeIdx, opt), func(a *admission) *bool { return &a.concept })
 	stats.CallPairs = admitOne(calls.admitFor(probeIdx, opt), func(a *admission) *bool { return &a.call })
-	stats.PatternCap, stats.CallCap, stats.CapsDerived = shapes.cap, calls.cap, opt.MinIDF > 0
+	stats.LabelCap, stats.CallCap, stats.CapsDerived = shapes.cap, calls.cap, opt.MinIDF > 0
 	stats.Union = len(admitted)
 	stats.Suppressed = shapes.suppressed
 	stats.LargeBuckets = shapes.largeBuckets
-	stats.SurvivingPatterns = len(shapes.idf)
+	stats.SurvivingLabels = len(shapes.idf)
 
 	cands := evaluate(admitted, shapes, concepts, calls, sim, opt, &stats)
 	return cands, stats
