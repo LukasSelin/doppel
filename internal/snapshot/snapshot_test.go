@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/LukasSelin/doppel/internal/analyzer"
+	"github.com/LukasSelin/doppel/internal/canon"
 	"github.com/LukasSelin/doppel/internal/comparator"
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/fingerprint"
@@ -118,7 +119,7 @@ func TestSchemaHasNoMaps(t *testing.T) {
 func TestBuildSortsAndCounts(t *testing.T) {
 	s := buildSample()
 
-	if s.Schema != Schema || s.Ontology != ontology.Version || s.Doppel != "test" {
+	if s.Schema != Schema || s.Ontology != ontology.Version || s.Doppel != "test" || s.RuleSet != canon.Version {
 		t.Errorf("identity fields wrong: %+v", s)
 	}
 	if s.Functions != 3 {
@@ -272,5 +273,68 @@ func TestBuildFloorsMergeWorthyOnShape(t *testing.T) {
 	}
 	if s.MergeWorthy() != 0 {
 		t.Errorf("MergeWorthy() = %d, want 0", s.MergeWorthy())
+	}
+}
+
+// TestBuildEncodesUnitWLBag: Build fills Unit.WL by running the unit's own
+// fingerprint bag through fingerprint.EncodeWLBagIndexed against the run's
+// shared Snapshot.Labels dictionary, and decoding Labels then that string
+// recovers the exact bag — this is the whole point of storing it, so a
+// consumer of --format json (or a session baseline) can recompute the WL
+// component of a pair rather than only read the two floats the pipeline
+// already produced.
+func TestBuildEncodesUnitWLBag(t *testing.T) {
+	u, d, p, c := sampleInputs()
+	bag := []fingerprint.LabelCount{{Label: 7, Count: 2}, {Label: 900, Count: 1}}
+	u[0].Fingerprint.WL = bag
+
+	s := Build(u, d, p, c, "", "test", Params{Threshold: 0.6, MinNodes: 12, TestsMode: "exclude"}, CorpusMetrics{})
+
+	dict, err := fingerprint.DecodeLabelDict(s.Labels)
+	if err != nil {
+		t.Fatalf("decode dictionary: %v", err)
+	}
+	if len(dict) != 2 || dict[0] != 7 || dict[1] != 900 {
+		t.Errorf("dictionary = %v, want [7 900] (the only bag in this sample)", dict)
+	}
+
+	var got Unit
+	for _, unit := range s.Units {
+		if unit.Key == "beta.Second" { // units[0], per sampleInputs
+			got = unit
+		}
+	}
+	if got.Key == "" {
+		t.Fatal("beta.Second not found in snapshot units")
+	}
+	want := fingerprint.EncodeWLBagIndexed(bag, dict)
+	if got.WL != want {
+		t.Errorf("Unit.WL = %q, want %q", got.WL, want)
+	}
+	decoded, err := fingerprint.DecodeWLBagIndexed(got.WL, dict)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(decoded) != len(bag) || decoded[0] != bag[0] || decoded[1] != bag[1] {
+		t.Errorf("decoded bag = %+v, want %+v", decoded, bag)
+	}
+
+	// A unit with no WL bag (the other two sample units) must encode to the
+	// empty string, not to some non-empty encoding of an empty slice — the
+	// same "no body" convention Digest already uses.
+	for _, unit := range s.Units {
+		if unit.Key != "beta.Second" && unit.WL != "" {
+			t.Errorf("unit %s: WL = %q, want empty (no WL bag was set)", unit.Key, unit.WL)
+		}
+	}
+}
+
+// TestBuildSetsRuleSetToCanonVersion: RuleSet travels at the Snapshot level,
+// not per unit, and it is exactly canon.Version — the rule set every unit in
+// this run was actually canonicalized under.
+func TestBuildSetsRuleSetToCanonVersion(t *testing.T) {
+	s := buildSample()
+	if s.RuleSet != canon.Version {
+		t.Errorf("RuleSet = %q, want canon.Version %q", s.RuleSet, canon.Version)
 	}
 }
