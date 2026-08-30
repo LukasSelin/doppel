@@ -17,6 +17,10 @@ list of merge candidates with the evidence behind each one.
 
 Everything runs locally and offline: no models, no network, no cache. The same source always produces the same report.
 
+**[See doppel's report on its own source](https://lukasselin.github.io/doppel/)** — the
+interactive dashboard, regenerated from `master` on every push. The tool analysing itself, so
+every pair it names can be opened in this repository.
+
 For a detailed breakdown of the pipeline internals, see [How Doppel Works](.github/wiki/how-it-works.md).
 
 ## What erodes, and what the report calls it
