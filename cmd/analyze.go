@@ -77,9 +77,9 @@ var analyzeCmd = &cobra.Command{
 }
 
 func init() {
-	analyzeCmd.Flags().Float64VarP(&threshold, "threshold", "t", 0.60, "Pin the code-shape floor for structural-channel candidates (0.0–1.0), turning off --calibrate. Unset, this value is only the fallback for a corpus too small to calibrate.")
+	analyzeCmd.Flags().Float64VarP(&threshold, "threshold", "t", defaultThreshold, "Pin the code-shape floor for structural-channel candidates (0.0–1.0), turning off --calibrate. Unset, this value is only the fallback for a corpus too small to calibrate.")
 	analyzeCmd.Flags().IntVarP(&topN, "top", "n", 20, "Maximum number of pairs in the final report")
-	analyzeCmd.Flags().IntVar(&minNodes, "min-nodes", 12, "Exclude functions with fewer body AST nodes from structural retrieval")
+	analyzeCmd.Flags().IntVar(&minNodes, "min-nodes", defaultMinNodes, "Exclude functions with fewer body AST nodes from structural retrieval")
 	analyzeCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write a report to this file. A .html path renders the full visual report; any other extension writes markdown. Stdout text report is still printed.")
 	analyzeCmd.Flags().StringVar(&configFile, "config", "", "Path to JSON config file (default: .doppel.json if present)")
 	analyzeCmd.Flags().Float64Var(&structMin, "struct-min", 0.0, "Pin the structural-overlap floor (0.0–1.0) for keeping a pair, turning off --calibrate. Unset, this value is only the fallback for a corpus too small to calibrate.")
@@ -212,12 +212,12 @@ func printRetrievalStats(w io.Writer, s retriever.Stats) {
 		}
 		return 100 * float64(n) / float64(s.Union)
 	}
-	fmt.Fprintf(w, "  concept-only %.1f%%  call-only %.1f%%  suppressed-shape functions: %d  large identity buckets: %d  surviving patterns: %d\n",
-		pct(s.OnlyConcept), pct(s.OnlyCall), s.Suppressed, s.LargeBuckets, s.SurvivingPatterns)
+	fmt.Fprintf(w, "  concept-only %.1f%%  call-only %.1f%%  suppressed-shape functions: %d  large identity buckets: %d  surviving labels: %d\n",
+		pct(s.OnlyConcept), pct(s.OnlyCall), s.Suppressed, s.LargeBuckets, s.SurvivingLabels)
 	// Only when a nats floor derived the caps: the absolute caps are the
 	// documented constants and need no line.
 	if s.CapsDerived {
-		fmt.Fprintf(w, "  caps: pattern df<=%d, call df<=%d%s\n", s.PatternCap, s.CallCap, emptyChannels(s))
+		fmt.Fprintf(w, "  caps: label df<=%d, call df<=%d%s\n", s.LabelCap, s.CallCap, emptyChannels(s))
 	}
 }
 
@@ -225,8 +225,8 @@ func printRetrievalStats(w io.Writer, s retriever.Stats) {
 // can both pair and meet the floor there.
 func emptyChannels(s retriever.Stats) string {
 	var out []string
-	if s.PatternCap < 2 {
-		out = append(out, "pattern")
+	if s.LabelCap < 2 {
+		out = append(out, "label")
 	}
 	if s.CallCap < 2 {
 		out = append(out, "call")
@@ -239,13 +239,19 @@ func emptyChannels(s retriever.Stats) string {
 
 // sharedChains bridges retriever chain explanations into the analyzer's
 // plain-data mirror.
-func sharedChains(chains []retriever.SharedPattern) []analyzer.SharedChain {
+func sharedChains(chains []retriever.SharedLabel) []analyzer.SharedChain {
 	if len(chains) == 0 {
 		return nil
 	}
 	out := make([]analyzer.SharedChain, len(chains))
 	for i, c := range chains {
-		out[i] = analyzer.SharedChain{Level: c.Level, Energy: c.Energy, Render: c.Render}
+		out[i] = analyzer.SharedChain{
+			Depth:  c.Depth,
+			Count:  c.Count,
+			Energy: c.Energy,
+			Render: c.Render,
+			Label:  c.Label,
+		}
 	}
 	return out
 }

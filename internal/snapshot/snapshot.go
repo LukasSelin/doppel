@@ -38,6 +38,7 @@ import (
 	"sort"
 
 	"github.com/LukasSelin/doppel/internal/analyzer"
+	"github.com/LukasSelin/doppel/internal/canon"
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/fingerprint"
 	"github.com/LukasSelin/doppel/internal/ontology"
@@ -62,18 +63,78 @@ import (
 // report every function as changed. The histogram itself is not stored — no
 // consumer reads it back, and rule four still holds.
 //
-// 5 replaced the tag list with graded concept memberships. Concepts are learned
-// from the corpus now rather than asserted by a rule table, so a schema-4
-// baseline's tags are names from a vocabulary that no longer exists — they
-// would not compare, they would silently fail to match anything.
+// 5 and 6 were assigned twice, on two development lines that diverged for a
+// while and did not know about each other. On one line, 5 changed what Score
+// means and 6 moved shape retrieval to Weisfeiler-Lehman labels; on the other,
+// 5 replaced the tag list with graded concept memberships. Both meanings are
+// recorded below because both landed, and a reader of an old baseline deserves
+// to know that a file claiming "5" could have been written by either. 7 is the
+// first version that carries both worlds at once, and the first one whose
+// number means exactly one thing.
 //
-// 6 added Params.Languages. Which languages a run reads decides what the
-// corpus *is*, so it belongs with TestsMode and Generated among the
-// parameters that make two runs comparable or not. A schema-5 baseline
-// records no language at all, and defaulting it would assert something the
-// older run never measured — so it is a version bump rather than a field with
-// a fallback.
-const Schema = 6
+// 5 (shape line) changed what Score means and added Containment. Code shape is a
+// corpus-weighted multiset Jaccard over Weisfeiler-Lehman label bags now, not
+// Jaccard over token 3-grams, so the same untouched pair scores differently
+// under schema 4 and 5. Worse than differently: the new score is
+// corpus-relative, so a schema-4 baseline and a schema-5 run would disagree
+// about pairs nobody edited. The bump turns that into an incomparability
+// result rather than a delta full of movement no session caused.
+//
+// 6 (shape line) is four changes shipped as one bump. The shape retrieval channel moved to
+// the same Weisfeiler-Lehman labels, retiring the multi-level pattern multiset
+// it used to index — retrieval decides which pairs exist at all, so a schema-5
+// baseline and a schema-6 run hold different candidate sets: pairs appear and
+// vanish with no body having changed, which is precisely the movement Delta's
+// Attributable bit exists to avoid claiming. Every Unit gained its own WL
+// label bag (Unit.WL, see EncodeWLBag) and the Snapshot gained RuleSet — a bag
+// is what lets a stored run's WL Jaccard and Containment be recomputed rather
+// than merely replayed, and a diff across two different canon rule-set
+// versions would be the schema-4-vs-5 failure again (the same pair of
+// untouched bodies canonicalizing differently), so RuleSet joins Schema,
+// Doppel, Ontology and Params as a fifth thing Diff refuses to compare across.
+// And Pair gained Explain, the rule-attributed sentence about a pair — the one
+// prose field on the struct, earning its bytes the way rule four demands:
+// --format json is a documented payload with readers outside this process, and
+// the sentence is the only place the canonicalizer's work on a pair is legible
+// at all. Diff does not diff it, for the reason Reasons was dropped in schema
+// 2: it restates facts about the corpus in English, and a delta reporting that
+// a sentence changed would blame a session for a rewording.
+//
+// 5 (concept line) replaced the tag list with graded concept memberships.
+// Concepts are learned from the corpus now rather than asserted by a rule
+// table, so a schema-4 baseline's tags are names from a vocabulary that no
+// longer exists — they would not compare, they would silently fail to match
+// anything.
+//
+// 7 is the reconciliation: the first schema carrying the WL fields (RuleSet,
+// Labels, Unit.WL, Pair.Containment, Pair.Explain, CorpusMetrics) and the
+// learned concept shape (Unit.Concepts as graded memberships, UnusedSeeds)
+// together. Nothing was dropped from either line. The bump is not cosmetic
+// even for a reader who has both: a baseline written by either predecessor is
+// missing half of what 7 records, and the halves it is missing are exactly the
+// corpus-relative ones a diff must not guess at.
+//
+// 6 (language line) added Params.Languages. Which languages a run reads
+// decides what the corpus *is*, so it belongs with TestsMode and Generated
+// among the parameters that make two runs comparable or not. A schema-5
+// baseline records no language at all, and defaulting it would assert
+// something the older run never measured — so it is a version bump rather
+// than a field with a fallback.
+//
+// 8 is the second reconciliation, and it is a numbering bump rather than a
+// metric one. The two lines collided again: 6 means "graded concepts plus
+// Languages" on one and "graded concepts plus WL retrieval" on the other, so a
+// file claiming 6 or 7 is again missing half of what a run now records. What
+// it is *not* is a change to what a stored quantity means. Moving the
+// Weisfeiler-Lehman bag onto the neutral IR was arranged to leave the label
+// vocabulary exactly where it was — same label_0 names, same recurrence, same
+// canonical tree — so a schema-7 Unit.WL and a schema-8 one over the same Go
+// body are byte-identical bags. The bump exists because Params gained
+// Languages, which a schema-7 baseline cannot supply and this run must not
+// invent: a run that read one language and a run that read four measured
+// different corpora, and every corpus-relative number in the file follows from
+// which one it was.
+const Schema = 8
 
 // Snapshot is one full analysis run.
 //
@@ -94,9 +155,11 @@ type Snapshot struct {
 	Schema    int        `json:"schema"`
 	Doppel    string     `json:"doppel"`   // doppel build version
 	Ontology  string     `json:"ontology"` // ontology.Version the run reasoned with
+	RuleSet   string     `json:"ruleSet"`  // canon.Version the run canonicalized bodies with
 	Params    Params     `json:"params"`
 	Functions int        `json:"functions"`
 	Concepts  []TagCount `json:"concepts"` // sorted by tag
+
 	// UnusedSeeds are the seed concepts this corpus grew no practice for,
 	// sorted. Concepts are learned per corpus, so "absent" cannot be derived
 	// from a fixed vocabulary any more: the only fixed list left is the seeds,
@@ -106,6 +169,53 @@ type Snapshot struct {
 	Roles       []RoleCount `json:"roles"` // sorted by role
 	Units       []Unit      `json:"units"` // sorted by key
 	Pairs       []Pair      `json:"pairs"` // sorted by score desc, then a, then b
+
+	// Labels is the corpus-wide Weisfeiler-Lehman label dictionary — every
+	// distinct label carried by any Unit.WL in this run, sorted ascending,
+	// encoded once by fingerprint.EncodeLabelDict. Every Unit.WL is indexed
+	// against exactly this slice (see EncodeWLBagIndexed), so a consumer
+	// decoding any unit's bag must decode this field first. It exists purely
+	// so Unit.WL is affordable: see fingerprint's package doc for the
+	// measurement that makes a shared dictionary necessary rather than a
+	// nicety. Empty for a corpus with no bodies.
+	Labels string `json:"labels,omitempty"`
+
+	// CorpusMetrics carries the two T10 corpus-health numbers: hash-cons
+	// compression of the canonical AST forest, and the nearest-neighbour
+	// code-shape distribution over the retrieval union. Additive to this
+	// schema version — see the type doc for what it does and does not claim.
+	CorpusMetrics CorpusMetrics `json:"corpusMetrics"`
+}
+
+// CorpusMetrics is the plain-data mirror of cmd's fingerprint.ConsStats and
+// NNStats — flattened scalars, no maps, so TestSchemaHasNoMaps holds without
+// special-casing this field.
+//
+// Neither number changes a pair, a score, or a ranking: both are read-only
+// summaries of the run, computed once and carried here so a consumer of
+// --format json sees exactly what the markdown/HTML preamble states in
+// prose.
+type CorpusMetrics struct {
+	// TotalNodes / UniqueSubtrees are corpus totals across every canonical
+	// function body, hash-consed by exact structural equality (same node
+	// kind, same children, recursively). TotalNodes / UniqueSubtrees is the
+	// compression ratio, always >= 1.0 for a non-empty corpus.
+	TotalNodes     int `json:"totalNodes"`
+	UniqueSubtrees int `json:"uniqueSubtrees"`
+
+	// NNTotal is every function in the run; NNScored is how many of them
+	// appeared in at least one pair the retrieval union actually scored — a
+	// recall-bounded population, NOT the result of an exhaustive
+	// nearest-neighbour search. NNP50/NNP90/NNP99 are nearest-rank
+	// percentiles (no interpolation) of the Scored functions' best
+	// code-shape score, and NNAtOrAboveThreshold is how many of them already
+	// clear the run's own (post-calibration) threshold.
+	NNTotal              int     `json:"nnTotal"`
+	NNScored             int     `json:"nnScored"`
+	NNP50                float64 `json:"nnP50"`
+	NNP90                float64 `json:"nnP90"`
+	NNP99                float64 `json:"nnP99"`
+	NNAtOrAboveThreshold int     `json:"nnAtOrAboveThreshold"`
 }
 
 // Params records the knobs a run used. Diff compares them because every doppel
@@ -183,6 +293,16 @@ type RoleCount struct {
 // because `analyze --format json` documents it, not because anything here
 // needs it — see the --format row in README.md before removing it.
 //
+// WL is this unit's Weisfeiler-Lehman label bag (fingerprint.Fingerprint.WL),
+// compactly encoded by fingerprint.EncodeWLBagIndexed against the run's
+// shared Snapshot.Labels dictionary — decode that first. It earns its bytes
+// the same way Containment did at schema 5: it is what a consumer of
+// --format json needs to recompute the WL Jaccard and Containment
+// components of a stored pair, rather than merely reading the two floats
+// the pipeline already computed. A unit whose Fingerprint has no body —
+// Nodes == 0 — carries no bag and encodes to "", mirroring Digest's
+// empty-string convention.
+//
 // Earlier schemas also carried Qualified, Exported, Receiver, Nodes, Callers
 // and Callees. Nothing ever read them.
 type Unit struct {
@@ -192,8 +312,9 @@ type Unit struct {
 	File     string    `json:"file"` // relative to root, slash-separated
 	Line     int       `json:"line"` // display only, never diffed
 	Concepts []Concept `json:"concepts,omitempty"`
-	Digest   string    `json:"digest"` // fingerprint hash: the exact "body changed" bit
-	Role     string    `json:"role"`   // corpus-relative; documented output only
+	Digest   string    `json:"digest"`       // fingerprint hash: the exact "body changed" bit
+	Role     string    `json:"role"`         // corpus-relative; documented output only
+	WL       string    `json:"wl,omitempty"` // encoded Weisfeiler-Lehman label bag, indexed against Snapshot.Labels
 }
 
 // Concept is one graded membership as this run learned it.
@@ -205,10 +326,21 @@ type Concept struct {
 // Pair is one reported near-duplicate. A and B are Unit keys, ordered A < B so
 // a pair has exactly one spelling and can be matched across runs.
 //
-// Score is corpus-independent: fingerprint.Similarity reads two fingerprints
-// and nothing else. Overlap is corpus-weighted through the information content
-// of this run's tag counts, and MergeWorthy is half so — the signal count and
-// the shape floor are corpus-independent but the 0.4 overlap gate is not.
+// Every number here is corpus-relative now. Score used to be the exception —
+// fingerprint.Similarity read two fingerprints and nothing else — but its
+// shape component weights each shared structural label by ln(N/df) over this
+// run's corpus, so it moves when the corpus does. Overlap has always been
+// corpus-weighted through this run's concept information content, and
+// MergeWorthy is a pair of thresholds over both.
+//
+// That is not an argument for dropping them; it is the reason Params equality
+// and the Schema version gate a diff at all. Two runs over the same tree with
+// the same params still agree exactly, which is the only claim a delta makes.
+//
+// Containment is stored because it is now part of the documented --format
+// json payload, which is rule four's whole test: a field earns its bytes by
+// having a reader. It is reported and never scored — not in the rank key, not
+// in the merge verdict, and Diff does not diff it.
 //
 // Earlier schemas also carried the four fingerprint.Breakdown components and
 // the evidence Reasons strings. Neither was ever read back: the text report
@@ -219,8 +351,10 @@ type Pair struct {
 	A           string  `json:"a"`
 	B           string  `json:"b"`
 	Score       float64 `json:"score"`
+	Containment float64 `json:"containment"` // reported, never scored or diffed
 	Overlap     float64 `json:"overlap"`     // corpus-relative
 	MergeWorthy bool    `json:"mergeWorthy"` // half corpus-relative
+	Explain     string  `json:"explain"`     // annotation; never diffed
 }
 
 // Build assembles a Snapshot from one pipeline run.
@@ -230,21 +364,30 @@ type Pair struct {
 // it by name instead has already caused one silent-miss bug in this codebase.
 // Build converts to names once, here, at the boundary where positions stop
 // being meaningful.
+//
+// metrics is copied straight through: it is already the plain-data form
+// cmd computed alongside everything else in Result, and — unlike every other
+// argument here — carries no per-unit or per-pair identity for Build to
+// resolve.
 func Build(units []parser.CodeUnit, docs []concepter.ConceptDoc, pairs []analyzer.SimilarPair,
-	tagCounts map[ontology.TermID]int, unusedSeeds []string, root, version string, p Params) Snapshot {
+	tagCounts map[ontology.TermID]int, unusedSeeds []string, root, version string, p Params, metrics CorpusMetrics) Snapshot {
 
 	keys := unitKeys(units, root)
+	dict := labelDict(units)
 
 	s := Snapshot{
-		Schema:      Schema,
-		Doppel:      version,
-		Ontology:    ontology.Version,
-		Params:      p,
-		Functions:   len(units),
-		Concepts:    tagCountsOf(tagCounts),
-		UnusedSeeds: append([]string(nil), unusedSeeds...),
-		Units:       make([]Unit, 0, len(units)),
-		Pairs:       make([]Pair, 0, len(pairs)),
+		Schema:        Schema,
+		Doppel:        version,
+		Ontology:      ontology.Version,
+		RuleSet:       canon.Version,
+		Params:        p,
+		Functions:     len(units),
+		Concepts:      tagCountsOf(tagCounts),
+		UnusedSeeds:   append([]string(nil), unusedSeeds...),
+		Units:         make([]Unit, 0, len(units)),
+		Pairs:         make([]Pair, 0, len(pairs)),
+		Labels:        fingerprint.EncodeLabelDict(dict),
+		CorpusMetrics: metrics,
 	}
 
 	roleCounts := make(map[string]int)
@@ -263,6 +406,7 @@ func Build(units []parser.CodeUnit, docs []concepter.ConceptDoc, pairs []analyze
 			Concepts: concepts(u.Concepts),
 			Digest:   Digest(u.Fingerprint),
 			Role:     doc.Role,
+			WL:       fingerprint.EncodeWLBagIndexed(u.Fingerprint.WL, dict),
 		})
 	}
 	s.Roles = roleCountsOf(roleCounts)
@@ -273,7 +417,7 @@ func Build(units []parser.CodeUnit, docs []concepter.ConceptDoc, pairs []analyze
 		if a > b {
 			a, b = b, a
 		}
-		rec := Pair{A: a, B: b, Score: pr.Score}
+		rec := Pair{A: a, B: b, Score: pr.Score, Containment: pr.Breakdown.Containment, Explain: pr.Explain}
 		if pr.Evidence != nil {
 			rec.Overlap = pr.Evidence.OverlapScore
 			rec.MergeWorthy = pr.MergeWorthy()
@@ -357,6 +501,30 @@ func RelSlash(root, path string) string {
 		return filepath.ToSlash(path)
 	}
 	return filepath.ToSlash(rel)
+}
+
+// labelDict collects the corpus-wide Weisfeiler-Lehman label dictionary:
+// every distinct label carried by any unit's bag, sorted ascending. It is
+// what makes Unit.WL affordable — see fingerprint's package doc — and it
+// must be built before any unit is encoded, so that every bag's labels are
+// guaranteed present in it (EncodeWLBagIndexed's whole contract).
+//
+// The intermediate set is a plain map: it never reaches JSON, and the value
+// that does — dict — is a sorted, deduped slice, so nothing here can make an
+// unchanged tree's output depend on map iteration order.
+func labelDict(units []parser.CodeUnit) []uint64 {
+	seen := make(map[uint64]struct{})
+	for _, u := range units {
+		for _, lc := range u.Fingerprint.WL {
+			seen[lc.Label] = struct{}{}
+		}
+	}
+	dict := make([]uint64, 0, len(seen))
+	for label := range seen {
+		dict = append(dict, label)
+	}
+	sort.Slice(dict, func(i, j int) bool { return dict[i] < dict[j] })
+	return dict
 }
 
 // unitKeys assigns every unit a corpus-unique identity.

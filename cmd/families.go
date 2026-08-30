@@ -71,8 +71,8 @@ functions.`,
 }
 
 func init() {
-	familiesCmd.Flags().Float64VarP(&familiesThreshold, "threshold", "t", 0.60, "Pin the code-shape floor for structural-channel candidates (0.0–1.0), turning off --calibrate.")
-	familiesCmd.Flags().IntVar(&familiesMinNodes, "min-nodes", 12, "Exclude functions with fewer body AST nodes from structural retrieval")
+	familiesCmd.Flags().Float64VarP(&familiesThreshold, "threshold", "t", defaultThreshold, "Pin the code-shape floor for structural-channel candidates (0.0–1.0), turning off --calibrate.")
+	familiesCmd.Flags().IntVar(&familiesMinNodes, "min-nodes", defaultMinNodes, "Exclude functions with fewer body AST nodes from structural retrieval")
 	familiesCmd.Flags().IntVar(&familiesChannelK, "channel-k", 5, "Candidates each function keeps per retrieval channel")
 	familiesCmd.Flags().StringSliceVar(&familiesLanguages, "languages", nil, "Languages to read, comma-separated (default: every language doppel has a frontend for). The extension allowlist is the whole scope rule — a file is in the corpus because a frontend claims its extension, never because its contents looked like code.")
 	familiesCmd.Flags().StringVar(&familiesTests, "tests", "exclude", "Test-function population: include, exclude, or only")
@@ -112,7 +112,7 @@ func runFamilies(cmd *cobra.Command, args []string) error {
 
 	o := family.DefaultOptions()
 	o.Min = familyMinFor(res, familiesMin)
-	fams, stats := family.Build(res.Units, res.Pairs, o)
+	fams, stats := family.Build(res.Units, res.Pairs, res.WL, o)
 	printFamilyStats(cmd.ErrOrStderr(), stats)
 
 	if familiesFormat == formatJSON {
@@ -157,7 +157,7 @@ func buildFamilies(res Result, progress io.Writer) ([]family.Family, family.Stat
 	}
 	o := family.DefaultOptions()
 	o.Min = familyMinFor(res, familyMin)
-	fams, stats := family.Build(res.Units, res.Pairs, o)
+	fams, stats := family.Build(res.Units, res.Pairs, res.WL, o)
 	printFamilyStats(progress, stats)
 	return fams, stats
 }

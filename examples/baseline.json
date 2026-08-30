@@ -1,0 +1,67 @@
+{
+  "corpora": [
+    {
+      "corpus": "cobra",
+      "population": "exclude",
+      "functions": 269,
+      "ranked": 162,
+      "suppressed": 664,
+      "classes": [
+        {
+          "class": "merge",
+          "present": 6,
+          "meanRank": 5.166666666666667
+        },
+        {
+          "class": "refactor",
+          "present": 9,
+          "meanRank": 16.11111111111111
+        },
+        {
+          "class": "false_positive",
+          "present": 3,
+          "meanRank": 40
+        }
+      ],
+      "mergeTotal": 6,
+      "mergePresent": 6,
+      "mergeInTop50": 6,
+      "violations": {
+        "mergeMissing": 0,
+        "fpAboveMerge": 0,
+        "fpInTop20": 0
+      },
+      "assertionsPassed": true
+    }
+  ],
+  "examples": [
+    {
+      "corpus": "chi",
+      "sha256": "43897a074cedbd92076ee75f3e7a8c473343a9a255996de9b2ab0b24c6859294"
+    },
+    {
+      "corpus": "cobra",
+      "sha256": "382f5ef330118f713a22fc474c234e00adae8b4ca2cb9da6a0fd8fc58b3e7937"
+    },
+    {
+      "corpus": "conc",
+      "sha256": "45ce3fef1523a430a319bb463665f36613a46761979a2e9a59f5af15173ec8a5"
+    },
+    {
+      "corpus": "gin",
+      "sha256": "aefdb36067cbae6ecd517a8712a416f37998f11ca4e09af15930f42e964bfe64"
+    },
+    {
+      "corpus": "hugo",
+      "sha256": "7eab821d22fefcf05e4624aa054b89b4d1f41c6ab0568f34b0308581b8504fd4"
+    },
+    {
+      "corpus": "moby",
+      "sha256": "9229d8caf63d161c912bd4b3a59de5f4bc4d5793be76416e4cf71410e9b6691c"
+    },
+    {
+      "corpus": "prometheus",
+      "sha256": "dd20ce9edf0f228860924c6ccb721b7ae975f41dbe1a841c479e5a08630e4b73"
+    }
+  ]
+}

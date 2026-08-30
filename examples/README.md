@@ -26,15 +26,15 @@ corpus is a decade of accretion". Both ends are visible below.
 ## The ladder
 
 <!-- BEGIN generated ladder -->
-| Corpus | Since | Pinned | Functions | Pairs compared | Kept | Code-shape floor | Concepts modeled | Habitats |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| [moby](moby.md) | 2013 | `v28.5.2` | 7644 | 28936 | 13899 | 0.45 | 394 | 166 |
-| [prometheus](prometheus.md) | 2012 | `v3.14.0` | 5469 | 20098 | 9577 | 0.42 | 327 | 90 |
-| [hugo](hugo.md) | 2013 | `v0.165.0` | 5438 | 20976 | 8303 | 0.43 | 429 | 126 |
-| [gin](gin.md) | 2014 | `v1.12.0` | 497 | 2101 | 477 | 0.49 | 37 | 5 |
-| [cobra](cobra.md) | 2015 | `v1.10.2` | 269 | 1168 | 208 | 0.53 | 23 | 2 |
-| [chi](chi.md) | 2015 | `v5.3.2` | 183 | 750 | 118 | 0.53 | 19 | 2 |
-| [conc](conc.md) | 2023 | `v0.3.0` | 81 | 151 | 10 | 0.85 | 6 | 4 |
+| Corpus | Since | Pinned | Functions | Pairs compared | Kept | Code-shape floor | Concepts learned | Concepts modeled | Habitats |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| [moby](moby.md) | 2013 | `v28.5.2` | 7658 | 28065 | 13627 | 0.36 | 519 | 393 | 167 |
+| [prometheus](prometheus.md) | 2012 | `v3.14.0` | 5623 | 20492 | 9643 | 0.33 | 390 | 337 | 97 |
+| [hugo](hugo.md) | 2013 | `v0.165.0` | 5737 | 21425 | 8591 | 0.34 | 547 | 441 | 129 |
+| [gin](gin.md) | 2014 | `v1.12.0` | 497 | 2046 | 437 | 0.41 | 46 | 36 | 5 |
+| [cobra](cobra.md) | 2015 | `v1.10.2` | 269 | 1155 | 206 | 0.44 | 26 | 23 | 2 |
+| [chi](chi.md) | 2015 | `v5.3.2` | 183 | 761 | 116 | 0.45 | 21 | 19 | 2 |
+| [conc](conc.md) | 2023 | `v0.3.0` | 81 | 152 | 152 | declined | 6 | 6 | 4 |
 <!-- END generated ladder -->
 
 The table between those markers is generated: `task examples` rewrites it from
@@ -43,13 +43,55 @@ the reports beside it. Everything else on this page is hand-written, the
 performance table included — that one is a stopwatch on one machine and no run
 can measure it.
 
+The compression ratio is deliberately not a column here: it is not one of the
+quantities a run prints to stderr, so a table generated from the diagnostics
+cannot carry it without somebody typing it. Each report's own preamble states
+it, measured.
+
 **The code-shape floor is not a setting — it is a measurement.** Each run derives
 it from what a random, unrelated pair scores in that corpus, at the default rate
 of one percent (`--calibrate`). The spread down that column is the argument for
-doing it that way: 0.42 on prometheus and 0.85 on conc are the *same* statement
+doing it that way: 0.33 on prometheus and 0.45 on chi are the *same* statement
 about how unusual a match has to be, and any single fixed number would have been
 wrong at one end of this ladder or the other. "Kept" is what survives the
 matching corpus-derived overlap floor.
+
+**conc is the one rung that declines calibration, and it says so.** Code shape is
+scored on Weisfeiler-Lehman label bags now, and the shape channel only indexes
+bodies of at least 16 nodes — so conc's 81 functions yield too few eligible null
+pairs against the 1000 a calibration needs. Eight samples above a one-percent cut
+is not a calibration, so the run keeps the fixed 0.60 and prints why. That is the
+guard working, not the ladder's bottom rung failing: nothing here is silently
+derived from too little evidence. It is also why conc's "Kept" equals its "Pairs
+compared": no calibration means no derived overlap floor, so nothing is filtered.
+
+**Two things changed at once on this ladder, and both are visible in the table.**
+Concepts are learned from each corpus rather than asserted from a fixed
+fourteen — "Concepts learned" is the lexicon's own vocabulary, and it scales with
+the corpus (6 on conc, 547 on hugo) where a fixed vocabulary could not. And code
+shape is a corpus-weighted WL Jaccard over canonicalized bodies rather than a
+Jaccard over token 3-grams, which is why every derived floor sits lower than it
+did: two unrelated bodies agree on much less of what is now being counted, so the
+99th percentile of the null moves down with it. The floors are not looser in
+meaning — they are the same one-percent statement about a different measurement.
+
+**Compression is the corpus-health number to read next, and it is in each report
+rather than in this table.** Total canonical AST nodes over the count of distinct
+subtree shapes they hash-cons to. It never feeds a score; it says how repetitive
+a corpus is at all, before any pair is considered — and it tracks age and size
+rather than duplication *quality*: prometheus at ~9x and conc at ~3.6x is the
+difference between a decade of accretion and one idea written at once. It has no
+column above because it is not one of the quantities a run prints to stderr, and
+this table is generated from exactly those.
+
+**Three rungs analyse more than Go.** `--languages` defaults to every registered
+frontend, so prometheus's TypeScript web UI, hugo's and moby's stray non-Go
+sources now join their corpora — which is why those three rungs report more
+functions than a Go-only run would (prometheus 5623 against 5469). The lexical
+frontend fills no types, so those units carry `sig: (?)`; everything else about
+them is real. `--languages go` restores the Go-only population exactly, and the
+four remaining rungs carry no non-Go source at all, so their numbers are the same
+either way.
 
 Counts are for the production population (`--tests exclude --generated exclude`,
 the defaults): hand-written non-test code, with files carrying Go's
@@ -69,74 +111,85 @@ its pool variants, prometheus's is the hand-written `OpenAPIBuilder` path
 family, and moby's is the same networkdb diagnostic-handler group its pair
 list leads with. `doppel families <path>` prints the whole census rather than
 the report's first few.
-"Concepts modeled" is how many of the fourteen tags reached the five-member floor
-culture needs to build a prototype: twelve on moby, one on conc. That column is
-the ladder in miniature — the culture, habitat and arena layers have real
-material at the top and almost nothing to work with at the bottom, and say so
-rather than inventing structure.
+"Concepts modeled" is how many of the *learned* concepts reached the five-member
+floor culture needs to build a prototype — 393 of moby's 519, all six of conc's
+six. It used to be a count out of fourteen and it now scales with the corpus,
+which is the change the lexicon was for: the culture, habitat and arena layers
+have real material at both ends of the ladder now, rather than real material at
+the top and a fixed vocabulary with nothing to say at the bottom.
 
 ## What each rung shows
 
-**[conc](conc.md) — the floor, and the clearest case for calibration.** 81
-functions, 151 compared pairs, six modeled concepts. The `pool` package's pool
-flavors (`Pool`, `ErrorPool`, `ContextPool`, `ResultPool` and the
-result-carrying combinations) genuinely repeat each other's `Go`, `Wait`,
-`WithContext` and `WithMaxGoroutines` methods — which is exactly the problem a
-fixed threshold has here. At a fixed 0.60 the report is ten pairs of which
-seven are one-line builder methods, `WithMaxGoroutines` alone four times over:
-all real duplication, none of it worth a reader's attention. Calibration
-measures that looking alike is *normal* in this corpus, puts the floor at 0.85,
-and the boilerplate goes: what surfaces instead is the `Go` methods across pool
-types, `addErr` beside `resultAggregator.add`, and the `panics.Catcher` trio
-(`Try`, `Repanic`, `Recovered`). This is also the case where evidence mass is
-small — top pairs score tens of nats, not hundreds — because there is barely a
-corpus to be rare *in*.
+**[conc](conc.md) — the floor, and the rung where the guards do the talking.** 81
+functions, 152 compared pairs, six learned concepts and no families at all. Two
+mechanisms decline here rather than guess: calibration, for want of eligible null
+pairs, and the shape channel, which admits 26 of the 152 pairs where the concept
+channel admits 120 — most of the corpus's pairs arrive on concept evidence alone
+and would not exist without it. What survives is the `pool`
+package repeating itself across its flavors: `ResultContextPool.Go` beside
+`ResultErrorPool.Go`, then `WithContext` at code-shape 1.00 on two different pool
+types. Evidence mass is small throughout — tens of nats, not hundreds — because
+there is barely a corpus to be rare *in*, which is the honest reading of a
+small library and the reason this rung is on the ladder.
 
 **[chi](chi.md) — small enough to check by hand.** Every reported pair can be
-opened and judged in a minute. It used to be the rung that showed a rough
-edge — chi ships an `_examples/` tree whose demo `main` functions are
-structurally identical to each other — but underscore-prefixed directories
-are now skipped exactly as the go tool skips them, so the report is the
-library itself: `findEdge` duplicated across `*node` and `nodes`, the
-recoverer's two stack-decorating helpers, `NotFound` beside
-`MethodNotAllowed`.
+opened and judged in a minute, and all three of the top ones survive that:
+the recoverer's two stack-decorating helpers, `findEdge` duplicated across
+`*node` and `nodes`, and `NotFound` beside `MethodNotAllowed`. It is also the
+rung where the learned vocabulary is entirely emergent — 21 concepts, **zero**
+of them grown from a seed rule, because a router imports no database, no HTTP
+client and no retry library. A fixed fourteen-tag vocabulary had nothing to say
+about chi; the corpus turned out to have plenty to say about itself.
 
 **[cobra](cobra.md) — families.** The per-format documentation generators
 (`GenMarkdownTreeCustom` / `GenReSTTreeCustom` / `GenYamlTreeCustom`) and the
 per-annotation flag-group markers (`MarkFlagsRequiredTogether` /
 `MarkFlagsOneRequired` / `MarkFlagsMutuallyExclusive`) are textbook merge
-candidates: identical bodies differing in one constant and one call. This is
-the corpus the committed labels file reviews — see below.
+candidates: identical bodies differing in one constant and one call. The three
+markers now read `explain: identical after rename, commutative-reorder` — the
+canonicalizer's own account of why they score 1.00, which is the sentence that
+turns a number into a claim a reader can check. This is the corpus the committed
+labels file reviews — see below.
 
-**[gin](gin.md) — generated-looking variants.** `binding.decodeToml` /
-`decodeXML` / `decodeYAML` are the same four lines around three different
-decoders, and the `Engine.Run*` family (`RunTLS`, `RunUnix`, `RunQUIC`,
-`RunListener`) is the family-skeleton case corroborated ranking was tuned for:
-a shared prologue with genuinely different tails.
+**[gin](gin.md) — generated-looking variants.** `BasicAuthForRealm` beside
+`BasicAuthForProxy` at code-shape 1.00 leads, then the `Engine.Run*` family
+(`Run`, `RunTLS`, `RunUnix`, `RunListener`) — the family-skeleton case
+corroborated ranking was tuned for: a shared prologue with genuinely different
+tails. It is the most concept-driven rung on the ladder, 64% of its pairs
+arriving on concept evidence alone, because a web framework's vocabulary is
+narrow and deeply shared.
 
-**[hugo](hugo.md) — habitats.** 126 packages large enough to have a temperature
-of their own, and the top of the report is a fork rather than a clone:
-`texttemplate/exec.go`'s `evalCallOld` beside `hugo_template.go`'s `evalCall`,
-which is what a vendored-and-diverged copy looks like. The three `tpl/*/init.go`
-`init` functions pairing with each other are the other kind of finding: real
-repetition that nobody will consolidate.
+**[hugo](hugo.md) — habitats.** 129 packages large enough to have a temperature
+of their own, 547 learned concepts (the largest vocabulary on the ladder), and a
+top of report that is a fork rather than a clone: `texttemplate/exec.go`'s
+`evalCallOld` beside `hugo_template.go`'s `evalCall`, then `evalFieldOld` beside
+`evalField` — what a vendored-and-diverged copy looks like, twice. The three
+`tpl/*/init.go` `init` functions pairing with each other are the other kind of
+finding: real repetition that nobody will consolidate.
 
-**[prometheus](prometheus.md) — layers.** Deep call graphs, 90 habitats, and
-1735 coalition ecosystems against 1855 dominance — the highest coalition share
-on the ladder, because a scrape loop legitimately does storage *and* validation
-*and* remote I/O at once.
+**[prometheus](prometheus.md) — layers.** Deep call graphs, 97 habitats, and
+1780 coalition ecosystems against 1869 dominance — the highest coalition share on
+the ladder, because a scrape loop legitimately does storage *and* validation
+*and* remote I/O at once. Its top three are the v1/v2 scrape-appender fork, the
+`endpoints`/`endpointslice` constructors, and the float/integer histogram commit
+pair — three genuinely different kinds of duplication in the first three rows. It
+is also the most compressed corpus on the ladder at 8.93x, and the rung where the
+language default is most visible: its Mantine web UI is the largest body of
+non-Go source on the ladder, and its pages now appear in the report with no
+signature to score.
 
-**[moby](moby.md) — scale.** 7644 functions in a few seconds of analysis after
-parsing. The channel mix is now nearly even — 31% of compared pairs arrive
-through the concept channel alone and 29% through the call channel alone —
-where it used to be 64% call-only. Two changes did that: a corpus-learned
-concept vocabulary gives the concept channel far more to match on, and a
-calibrated 0.45 code-shape floor admits shape candidates a fixed 0.60 turned
-away. 179 functions are suppressed from the shape channel entirely and 3
-identity buckets exceed the df cap — the common-idiom suppression the retrieval
-design exists for, visible in the numbers. (The suppressed count was 376 before
-the w5 pattern windows: bodies whose every 3-gram was corpus idiom now retrieve
-through rarer 5-gram windows.)
+**[moby](moby.md) — scale.** 7658 functions in a few seconds of analysis after
+parsing, 519 learned concepts, 972 families. The channel mix is now almost
+perfectly even — 30.3% of compared pairs arrive through the concept channel
+alone and 30.5% through the call channel alone — where it used to be 64%
+call-only. Two changes did that: a corpus-learned vocabulary gives the concept
+channel far more to match on, and a calibrated 0.36 code-shape floor admits
+shape candidates a fixed 0.60 turned away. Only 11 functions are suppressed from
+the shape channel and 2 identity buckets exceed the df cap, both far below what
+the pattern multiset produced, because a WL bag's deep labels are corpus-unique
+where a token 3-gram bag's were corpus idiom. The report and its largest family
+tell one story: `networkdbdiagnostic.go`'s HTTP diagnostic handlers, twelve of
+them, every pair alike to every other.
 
 ## Generated code is its own population
 
@@ -176,10 +229,16 @@ no `false_positive` reaches the top 20.
 At the pinned commit the separation is clean:
 
 ```
-mean rank merge: 5.2 over 6 present
-mean rank refactor: 16.1 over 9 present
-mean rank false_positive: 40.0 over 3 present
+mean rank merge: 5.3 over 6 present
+mean rank refactor: 12.9 over 9 present
+mean rank false_positive: 43.5 over 2 present
+aggregates: fp_in_top20=0 merge_present=6/6 merge_in_top50=6
 ```
+
+The third false positive is `commandSorterByName.Less` / `byName.Less`, two
+one-line `sort.Interface` adapters: at `--min-nodes 18` neither is eligible for
+the shape channel and the pair is never retrieved at all, which is the outcome
+the label asked for.
 
 Because the corpus is public and pinned, every one of those judgments is
 checkable — open the two functions and disagree. Two families were deliberately
@@ -201,31 +260,77 @@ path from the environment, so nothing about it need be committed.
 
 ## Performance
 
-`BenchmarkCorpus` times each stage on every fetched corpus. Measured on one
-Windows machine (Go 1.25, 24 logical cores) at default options and
-`--tests exclude`; the large corpora manage one to four iterations per stage, so
-treat these as an order of magnitude rather than a stopwatch.
+`BenchmarkCorpus` times each stage on every fetched corpus, in the pipeline's own
+order. Measured on one Apple M4 (Go 1.26) at default options and `--tests
+exclude`, three iterations per stage — treat these as an order of magnitude
+rather than a stopwatch, and note that they are a different machine from the
+figures this table used to carry.
 
-| Corpus | funcs | parse | tag | callgraph | map | retrieve | compare | rank | analyze (no parse) |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| moby | 8003 | 1.72 s | 46 ms | 15 ms | 140 ms | 444 ms | 261 ms | 6.8 ms | 1.02 s |
-| prometheus | 6245 | 1.50 s | 36 ms | 12 ms | 379 ms | 361 ms | 666 ms | 6.5 ms | 1.56 s |
-| hugo | 5460 | 0.87 s | 26 ms | 8 ms | 22 ms | 380 ms | 97 ms | 5.6 ms | 0.63 s |
-| gin | 497 | 143 ms | 1.5 ms | 0.6 ms | 1.3 ms | 16 ms | 6.2 ms | 0.3 ms | 27 ms |
-| cobra | 269 | 64 ms | 1.2 ms | 0.4 ms | 2.3 ms | 13 ms | 8.6 ms | 0.3 ms | 28 ms |
-| chi | 254 | 72 ms | 1.0 ms | 0.3 ms | 0.8 ms | 12 ms | 3.0 ms | 0.2 ms | 19 ms |
-| conc | 81 | 17 ms | 0.16 ms | 0.06 ms | 0.08 ms | 1.5 ms | 0.2 ms | 0.04 ms | 2.3 ms |
+| Corpus | funcs | parse | wl | callgraph | tag (lexicon) | map | retrieve | compare | rank | analyze (no parse) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| moby | 7644 | 1.00 s | 22 ms | 6.4 ms | 485 ms | 79 ms | 970 ms | 362 ms | 33 ms | 1.99 s |
+| prometheus | 5469 | 0.94 s | 10 ms | 4.3 ms | 314 ms | 166 ms | 931 ms | 474 ms | 21 ms | 1.93 s |
+| hugo | 5438 | 0.49 s | 9.7 ms | 3.8 ms | 454 ms | 19 ms | 1.28 s | 359 ms | 22 ms | 2.16 s |
+| gin | 497 | 69 ms | 0.7 ms | 0.2 ms | 12 ms | 0.7 ms | 69 ms | 9.7 ms | 1.6 ms | 97 ms |
+| cobra | 269 | 39 ms | 0.5 ms | 0.2 ms | 12 ms | 1.3 ms | 28 ms | 14 ms | 0.9 ms | 58 ms |
+| chi | 183 | 31 ms | 0.4 ms | 0.1 ms | 7.8 ms | 0.2 ms | 13 ms | 3.4 ms | 0.5 ms | 27 ms |
+| conc | 81 | 8.3 ms | 0.09 ms | 0.03 ms | 0.7 ms | 0.04 ms | 1.3 ms | 0.2 ms | 0.07 ms | 2.8 ms |
 
-Two things worth reading off it:
+Three things worth reading off it:
 
-- **Parsing dominates a cold run.** It is disk-bound and roughly linear at
-  ~200 µs per function; the entire ranking half of the pipeline costs less than
-  the walk that feeds it.
-- **Retrieval is the ranking half's floor, not its ceiling.** From 81 to 8003
-  functions — a 99× corpus — retrieval grows about 300×, comfortably
+- **Parsing no longer dominates.** It used to be most of a cold run; the ranking
+  half now costs about twice the walk that feeds it on the large rungs. Two
+  stages account for that, and both bought something: `tag` learns a vocabulary
+  from the corpus where it used to match fourteen rules, and `retrieve` scores an
+  exact corpus-weighted WL similarity for every union pair.
+- **Retrieval is the ranking half's floor, not its ceiling.** From 81 to 7644
+  functions — a 94× corpus — retrieval grows about 750×, still comfortably
   sub-quadratic, which is the point of the inverted-index design. `compare`
   scales with *pairs*, and pair count grows more slowly than function count once
   the df caps engage.
+- **`wl` and `callgraph` are free.** The two purely structural corpus statistics
+  cost under 30 ms on 7644 functions between them, which is why they run first
+  and unconditionally rather than being made optional.
+
+## The scoring baseline
+
+[`baseline.json`](baseline.json) is the number every scoring change has to
+beat: the golden scorecard for every committed labels file (mean rank per
+label class, the hard-assertion violation counts, `assertionsPassed`) plus a
+SHA-256 of every fetched corpus's example report. It is strictly
+deterministic and self-contained: `task baseline` builds the doppel binary
+and regenerates every report in memory — the same content `task examples`
+writes to `examples/<corpus>.md`, via the same code — rather than reading
+whatever happens to be sitting in `examples/` at the time. That is what
+makes it reproducible from a clean checkout at a fixed commit: no wall
+clock, no map iteration order, sorted corpora and classes, no dependency on
+the working tree's `examples/*.md` files. Two `task baseline` runs on the
+same commit, including a fresh clone of it, produce byte-identical output.
+
+Each report's `doppel` metadata row — the git revision that generated it —
+is normalized to a fixed placeholder before hashing (`normalizeForChecksum`
+in `internal/bench/baseline_model_test.go`). Without
+this, every commit would flip every checksum whether or not a single ranked
+pair moved, since that line always names current `HEAD`. A later task can
+rely on the contrapositive: **if a checksum is unchanged, the report's
+ranking content is unchanged**, and if it changed, the report's content
+(not merely the commit that produced it) actually moved.
+
+[`baseline-timings.json`](baseline-timings.json) is the companion file for
+per-stage pipeline timings (`BenchmarkCorpus`, restricted to the four fast
+corpora — cobra, chi, conc, gin — so a routine `task baseline` stays on the
+order of a few seconds; `task bench` times the full ladder). It is
+**explicitly excluded** from the determinism guarantee above: timings vary
+with the machine and its load by design, which is exactly why they live in
+their own file instead of inside `baseline.json`.
+
+`task ablate` zeroes each of the fingerprint blend's four components (AST
+shingles, control flow, nesting depth, signature) one at a time — outright,
+**not** renormalized back up to a 1.0 sum, so the table shows what each
+component contributes standing alone rather than what happens once the other
+three compensate for its absence — and rescores every labeled corpus. It
+asserts nothing; it is a measurement, like `TestAblation` (the ontology
+relation-weight ablation) and `TestSweep`.
 
 ## Running it yourself
 
@@ -247,6 +352,14 @@ task examples
 
 ```bash
 task examples-check
+```
+
+```bash
+task baseline
+```
+
+```bash
+task ablate
 ```
 
 `task examples` rewrites a report only when its content moved, ignoring the row

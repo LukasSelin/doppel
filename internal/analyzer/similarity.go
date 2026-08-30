@@ -20,6 +20,12 @@ type SimilarPair struct {
 	Habitat    []HabitatNote                  // habitat misfits; nil when neither side misfits — set by the pipeline
 	Profile    []ProfileNote                  // equilibrium concept profiles; nil when neither side qualifies
 	Kind       *KindNote                      // what the pair is — interface implementations, a diverged copy; nil when unlabeled
+
+	// Explain is one sentence saying what canonicalization did for this pair
+	// and what it left behind — see Explain. Empty for a pair the pipeline
+	// has not annotated; like every other note on this struct it never
+	// reaches a score, a ranking key or a filter.
+	Explain string
 }
 
 // MergeWorthy is the whole merge verdict, and SimilarPair is the only type
@@ -91,29 +97,62 @@ type CultureChannel struct {
 // a third quantity next to Score and Evidence.OverlapScore — evidence mass
 // ranks the report, while the two similarity scores stay unblended.
 type Retrieval struct {
-	Shape      float64       // shared structural energy, Σ IC·min(count) over shared patterns
+	Shape      float64       // shared structural energy, Σ IC·min(count) over shared WL labels
 	Concept    float64       // shared tag information, Σ IC(LCS)
 	Call       float64       // shared rare-call IDF mass
 	Total      float64       // Shape + Concept + Call
 	TrophicSim float64       // 2·SharedEnergy/(E_A+E_B): how much of their structure is shared
 	CallSim    float64       // call-channel Dice: mutual fraction of informative call energy
 	Channels   []string      // which retrieval channels admitted the pair
-	Chains     []SharedChain // highest-energy shared structures, the explanation
+	Chains     []SharedChain // highest-energy shared labels, the explanation
 }
 
-// SharedChain is one shared high-level structure behind a pair's shape
+// SharedChain is one shared Weisfeiler-Lehman label behind a pair's shape
 // energy — where the match's weight actually comes from.
+//
+// Depth is the label's refinement round: an h=3 label folds three edges of
+// context into one match, so the two bodies agree on a whole guard or loop
+// body, where an h=0 label is one node kind. Render names the round and the
+// node kind it was computed at ("depth-2 IF"), which is as specific as a hash
+// of a subtree can honestly be made — see fingerprint.DescribeLabel. Label is
+// the hash itself, so the number has an identity a consumer can join on.
 type SharedChain struct {
-	Level  int
+	Depth  int
+	Count  int
 	Energy float64
 	Render string
+	Label  uint64
 }
 
 // FindSimilar compares every pair of function fingerprints and returns those
 // above threshold, sorted by score descending, limited to topN results.
 // Units whose body has fewer than minNodes AST nodes are excluded: trivial
 // accessors match each other perfectly and drown out real candidates.
+//
+// # Where its label weights come from
+//
+// Code shape is corpus-weighted, and this function is handed a corpus: it
+// counts the label document frequencies over exactly the units it was given,
+// which is the only population it can honestly claim to know. That makes it
+// self-contained — a caller with a []CodeUnit gets a complete answer, with no
+// second object to build and no way to pass weights counted over a different
+// corpus than the one being compared.
+//
+// The population is `units` entire, not the minNodes-eligible subset. A tiny
+// function is excluded from being *reported*, not from being part of the
+// corpus whose idioms decide what a shared label is worth — the same rule the
+// pipeline follows, where --min-nodes gates the shape channel and never the
+// statistics.
+//
+// This is the simple library API; the pipeline builds its weights once in
+// index() and threads them, so nothing pays for this twice.
 func FindSimilar(units []parser.CodeUnit, threshold float64, topN, minNodes int) []SimilarPair {
+	bags := make([][]fingerprint.LabelCount, len(units))
+	for i := range units {
+		bags[i] = units[i].Fingerprint.WL
+	}
+	wl := fingerprint.LabelWeights(bags)
+
 	// Collect the indices worth comparing once, rather than re-testing inside
 	// the O(n^2) loop.
 	var idx []int
@@ -127,7 +166,7 @@ func FindSimilar(units []parser.CodeUnit, threshold float64, topN, minNodes int)
 	for a := 0; a < len(idx); a++ {
 		for b := a + 1; b < len(idx); b++ {
 			i, j := idx[a], idx[b]
-			bd := fingerprint.Similarity(units[i].Fingerprint, units[j].Fingerprint)
+			bd := fingerprint.Similarity(units[i].Fingerprint, units[j].Fingerprint, wl)
 			if bd.Score >= threshold {
 				pairs = append(pairs, SimilarPair{
 					A:         units[i],

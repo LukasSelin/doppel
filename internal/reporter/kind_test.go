@@ -36,7 +36,7 @@ func TestPrintKindNote(t *testing.T) {
 	// The kind is a claim about the pair: it sits right under the unit lines,
 	// before the breakdown.
 	out := b.String()
-	if strings.Index(out, "kind:") > strings.Index(out, "ast ") {
+	if strings.Index(out, "kind:") > strings.Index(out, "wl ") {
 		t.Errorf("kind line must precede the breakdown:\n%s", out)
 	}
 

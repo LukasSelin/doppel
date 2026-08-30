@@ -125,7 +125,12 @@ type Stats struct {
 //
 // The input is never mutated: analyzer.SortForReport sorts its argument in
 // place, and this must produce the same answer whether or not that has run.
-func Build(units []parser.CodeUnit, pairs []analyzer.SimilarPair, o Options) ([]Family, Stats) {
+// wl is the run's own label weighting. Edge completion scores pairs the
+// retriever never proposed, so it must score them the way the retriever
+// would have: a family's `every pair >= Min` guarantee is only checkable if
+// the completed edges were measured on the same scale as the retrieved ones.
+func Build(units []parser.CodeUnit, pairs []analyzer.SimilarPair,
+	wl *fingerprint.LabelIDF, o Options) ([]Family, Stats) {
 	if o.MinSize < 2 {
 		o.MinSize = 2
 	}
@@ -151,7 +156,7 @@ func Build(units []parser.CodeUnit, pairs []analyzer.SimilarPair, o Options) ([]
 			stats.Skipped = append(stats.Skipped, len(comp))
 			continue
 		}
-		stats.Completed += completeComponent(units, g, comp, o.Min)
+		stats.Completed += completeComponent(units, g, comp, wl, o.Min)
 
 		cliques, ok := g.maximalCliques(comp, o.MaxSearch)
 		if !ok {
@@ -193,7 +198,8 @@ func Build(units []parser.CodeUnit, pairs []analyzer.SimilarPair, o Options) ([]
 // the unit: this is arithmetic over sorted slices, not re-parsing. The zero
 // fingerprint (a declaration with no body) already scores zero against
 // everything, so body-less units cannot be dragged in.
-func completeComponent(units []parser.CodeUnit, g *graph, comp []int, min float64) int {
+func completeComponent(units []parser.CodeUnit, g *graph, comp []int,
+	wl *fingerprint.LabelIDF, min float64) int {
 	added := 0
 	for i := 0; i < len(comp); i++ {
 		for j := i + 1; j < len(comp); j++ {
@@ -201,7 +207,7 @@ func completeComponent(units []parser.CodeUnit, g *graph, comp []int, min float6
 			if g.has(a, b) {
 				continue
 			}
-			s := fingerprint.Similarity(units[a].Fingerprint, units[b].Fingerprint).Score
+			s := fingerprint.Similarity(units[a].Fingerprint, units[b].Fingerprint, wl).Score
 			if s >= min {
 				g.add(a, b, s, 0) // completion carries no retrieval evidence
 				g.markCompleted(a, b)

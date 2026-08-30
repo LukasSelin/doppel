@@ -101,6 +101,15 @@ func ConceptDigest(s snapshot.Snapshot, root string) string {
 // line repeated after each one is worse than silence, because it trains the
 // reader to skip the place real findings appear.
 func ImpactDigest(d snapshot.Delta, deltaPath string) string {
+	return truncate(impactBody(d, deltaPath))
+}
+
+// impactBody is ImpactDigest without the truncation, so a caller composing it
+// with another section can bound the whole thing once instead of bounding each
+// half at the full budget and the sum at twice it. Splitting it here rather
+// than duplicating the rendering is the same rule the rest of this package
+// follows: one spelling per surface.
+func impactBody(d snapshot.Delta, deltaPath string) string {
 	if !d.Comparable {
 		return fmt.Sprintf("doppel impact: baseline not comparable (%s). A new baseline will be taken.", d.Reason)
 	}
@@ -136,7 +145,7 @@ func ImpactDigest(d snapshot.Delta, deltaPath string) string {
 	if deltaPath != "" {
 		fmt.Fprintf(&b, "  Full delta: %s\n", deltaPath)
 	}
-	return truncate(b.String())
+	return b.String()
 }
 
 func scoreboard(d snapshot.Delta) []string {

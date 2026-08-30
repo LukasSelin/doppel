@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"strconv"
 
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/parser"
@@ -87,7 +88,11 @@ func PrintQuery(w io.Writer, probe parser.CodeUnit, probeDoc concepter.ConceptDo
 		if len(c.Chains) > 0 {
 			fmt.Fprintln(w, "    shared structure:")
 			for _, ch := range c.Chains {
-				fmt.Fprintf(w, "      %.2f  %s\n", ch.Energy, ch.Render)
+				times := ""
+				if ch.Count > 1 {
+					times = " ×" + strconv.Itoa(ch.Count)
+				}
+				fmt.Fprintf(w, "      %.2f  %s%s\n", ch.Energy, ch.Render, times)
 			}
 		}
 	}

@@ -104,6 +104,15 @@
       pct(facts.onlyConcept || 0, facts.candidatePairs || 0) + "% concept-only"));
     host.appendChild(fact(fixed(facts.threshold), "threshold",
       "struct-min " + fixed(facts.structMin) + (facts.calibrate > 0 ? " · calibrated" : "")));
+    /* How repetitive the corpus is at all, and how close a typical function
+       already sits to its nearest scored neighbour. Neither number moved a
+       pair; they say what the pair list was drawn out of. The percentile is
+       over the functions retrieval actually paired, which is why the label
+       says so rather than implying every function was measured. */
+    host.appendChild(fact(fixed(facts.compression, 2) + "×", "compression",
+      "canonical nodes per distinct subtree"));
+    host.appendChild(fact(fixed(facts.nnP50), "median nearest",
+      "p90 " + fixed(facts.nnP90) + " · over " + comma(facts.nnScored || 0) + " paired"));
   }
 
   function renderColophon() {
@@ -906,7 +915,11 @@
     var left = aId, right = bId;
 
     var scores = el("div", "scores");
-    [["code-shape", fixed(e.shape)], ["overlap", fixed(e.overlap)],
+    /* Containment sits beside code-shape and is never blended into it: a
+       symmetric Jaccard and "how much of the smaller side is inside the
+       larger" are different findings about the same pair. */
+    [["code-shape", fixed(e.shape)], ["containment", fixed(e.containment)],
+     ["overlap", fixed(e.overlap)],
      ["evidence", fixed(e.total, 1)], ["trophic", fixed(e.trophic)],
      ["call-sim", fixed(e.callSim)], ["rank", fixed(e.rank, 3)]].forEach(function (s) {
       var b = el("div", "score");
@@ -925,7 +938,7 @@
 
     var comps = panel("Code-shape components");
     var bars = el("div", "bars");
-    ["ast", "flow", "nesting", "sig", "size"].forEach(function (name, i) {
+    ["wl", "flow", "nesting", "sig", "size", "containment"].forEach(function (name, i) {
       var v = e.breakdown[i];
       var row = el("div", "bar-row");
       row.appendChild(el("span", null, name));
@@ -940,15 +953,20 @@
     comps.appendChild(bars);
     host.appendChild(comps);
 
+    if (e.explain) {
+      host.appendChild(panel("What the canonicalizer did", e.explain));
+    }
+
     if (e.chains && e.chains.length) {
       var ch = panel("Shared structure",
-        "The highest-energy patterns both bodies contain — the evidence the score rests on. " +
-        "These are structural motifs, not source spans, so they are listed rather than highlighted below.");
+        "The highest-energy labels both bodies carry — the evidence the score rests on. " +
+        "A label is a hash of a whole subtree, so it can be named and counted but not " +
+        "pointed at; they are listed rather than highlighted below.");
       var ol = el("ol", "chains");
       e.chains.forEach(function (c) {
         var li = el("li");
         li.appendChild(el("span", "c-energy", fixed(c.energy)));
-        li.appendChild(el("span", "c-level", "L" + c.level));
+        li.appendChild(el("span", "c-level", "h" + c.depth));
         li.appendChild(el("span", "c-render", c.render));
         ol.appendChild(li);
       });

@@ -55,15 +55,19 @@ func BenchmarkCorpus(b *testing.B) {
 			})
 
 			// Each stage below is timed with its predecessors already
-			// computed, so the number is the stage's own cost.
+			// computed, so the number is the stage's own cost — which means
+			// the order here must be AnalyzeWith's own. It is not decoration:
+			// StageTag learns the lexicon from resolved calls, so timing it
+			// before StageGraph does not measure a cheaper tag stage, it
+			// dereferences a nil graph.
 			run := &Run{Units: units}
-			b.Run("tag", func(b *testing.B) {
+			b.Run("wl", func(b *testing.B) {
 				for b.Loop() {
-					run.StageTag()
+					run.StageWL()
 				}
 				perFunc(b)
 			})
-			run.StageTag()
+			run.StageWL()
 			b.Run("callgraph", func(b *testing.B) {
 				for b.Loop() {
 					run.StageGraph()
@@ -71,6 +75,13 @@ func BenchmarkCorpus(b *testing.B) {
 				perFunc(b)
 			})
 			run.StageGraph()
+			b.Run("tag", func(b *testing.B) {
+				for b.Loop() {
+					run.StageTag()
+				}
+				perFunc(b)
+			})
+			run.StageTag()
 			b.Run("map", func(b *testing.B) {
 				for b.Loop() {
 					run.StageMap()

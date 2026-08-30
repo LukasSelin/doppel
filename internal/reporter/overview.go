@@ -67,6 +67,72 @@ type Overview struct {
 	Avoids    []AssocGroup      // co-occur far less than chance, grouped by kind
 	Drift     []DriftRow        // functions realizing a concept unlike their peers
 	DriftMore int
+
+	// Metrics are the two corpus-wide health numbers T10 adds: how much
+	// hash-consing compresses the canonical AST forest, and how far each
+	// function sits from its nearest scored neighbour. Zero-value Metrics
+	// (an empty corpus, or a caller that never fills it in) renders nothing —
+	// see PrintMarkdownMetrics.
+	Metrics CorpusMetrics
+}
+
+// CorpusMetrics are plain, presorted corpus-wide numbers: how much repeats,
+// by shape, once accidental differences are canonicalized away.
+//
+// Both metrics are read-only summaries. Neither changes any pair, score, or
+// ranking — they exist to answer "how much of this corpus is duplicate
+// shape" at the corpus level, the question the pair list can only answer one
+// finding at a time.
+type CorpusMetrics struct {
+	// TotalNodes and UniqueSubtrees are corpus totals across every canonical
+	// function body, hash-consed by exact structural equality (same node
+	// kind, same children, all the way down). TotalNodes / UniqueSubtrees is
+	// the compression ratio: how many AST nodes exist for every distinct
+	// subtree shape among them, always >= 1.0 for a non-empty corpus. See
+	// fingerprint.ConsCorpus.
+	TotalNodes     int
+	UniqueSubtrees int
+
+	// NNTotal is the number of functions in the run; NNScored is how many of
+	// them appeared in at least one pair the retrieval union actually
+	// scored. NNP50/NNP90/NNP99 are nearest-rank percentiles (no
+	// interpolation) of those functions' best code-shape score, and
+	// NNAtOrAboveThreshold is how many of the Scored functions had a best
+	// score at or above the run's own --threshold. This is bounded by
+	// retrieval's three channels, not an exhaustive nearest-neighbour search
+	// — see the rendering in PrintMarkdownMetrics for the caveat spelled out
+	// in the report itself.
+	NNTotal              int
+	NNScored             int
+	NNP50, NNP90, NNP99  float64
+	NNAtOrAboveThreshold int
+}
+
+// Ratio is the hash-cons compression ratio, or 0 for a corpus with no
+// subtrees at all (an empty run) — never a division by zero.
+func (m CorpusMetrics) Ratio() float64 {
+	if m.UniqueSubtrees == 0 {
+		return 0
+	}
+	return float64(m.TotalNodes) / float64(m.UniqueSubtrees)
+}
+
+// PctAtOrAboveThreshold is what share of the Scored functions had a best
+// code-shape score at or above the run's threshold, or 0 when nothing was
+// scored — never a division by zero.
+func (m CorpusMetrics) PctAtOrAboveThreshold() float64 {
+	if m.NNScored == 0 {
+		return 0
+	}
+	return 100 * float64(m.NNAtOrAboveThreshold) / float64(m.NNScored)
+}
+
+// Unscored is how many functions retrieval never paired with anyone —
+// excluded from the nearest-neighbour percentiles, not asserted to have no
+// similar function at all. A convenience for renderers (the HTML template
+// has no arithmetic of its own) rather than a new fact.
+func (m CorpusMetrics) Unscored() int {
+	return m.NNTotal - m.NNScored
 }
 
 // AssocGroup is one kind of association, bounded on its own.
@@ -218,8 +284,43 @@ func PrintMarkdownOverview(w io.Writer, ov *Overview) {
 	overviewDuplication(w, ov)
 	overviewHabitats(w, ov)
 	overviewRetrieval(w, ov)
+	overviewMetrics(w, ov)
 
 	fmt.Fprintf(w, "---\n\n")
+}
+
+// overviewMetrics renders the two corpus-wide health numbers: hash-cons
+// compression, and the nearest-neighbour code-shape distribution. Each gets
+// its own one-sentence definition in the document, per the gate this section
+// exists to satisfy — a reader must be able to check what a number means
+// without leaving the report.
+func overviewMetrics(w io.Writer, ov *Overview) {
+	m := ov.Metrics
+	if m.TotalNodes == 0 && m.NNTotal == 0 {
+		return
+	}
+	fmt.Fprintf(w, "### Corpus metrics\n\n")
+
+	if m.TotalNodes > 0 {
+		fmt.Fprintf(w, "**Compression ratio:** `%.2f`x — this corpus's canonical function bodies "+
+			"contain **%d AST nodes** in total, which hash-cons (two nodes count as the same subtree "+
+			"exactly when their kind and every child match, all the way down) to **%d distinct subtree "+
+			"shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.\n\n",
+			m.Ratio(), m.TotalNodes, m.UniqueSubtrees)
+	}
+
+	if m.NNTotal > 0 {
+		pct := m.PctAtOrAboveThreshold()
+		fmt.Fprintf(w, "**Nearest-neighbour code-shape:** of **%d functions**, **%d** had a code-shape "+
+			"neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are "+
+			"`%.2f` / `%.2f` / `%.2f`, and %.0f%% of them (%d of %d) already clear this run's threshold "+
+			"of `%.2f`. This is **not an exhaustive nearest-neighbour search** (that would be a full "+
+			"pairwise comparison); it is bounded by the same three retrieval channels the pair list "+
+			"itself is bounded by, so the other %d functions are excluded here as having no *scored* "+
+			"neighbour, not asserted to have none at all.\n\n",
+			m.NNTotal, m.NNScored, m.NNP50, m.NNP90, m.NNP99, pct,
+			m.NNAtOrAboveThreshold, m.NNScored, ov.Threshold, m.NNTotal-m.NNScored)
+	}
 }
 
 // corpusSentence states what was measured before anything is claimed about it.

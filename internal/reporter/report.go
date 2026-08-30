@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/LukasSelin/doppel/internal/analyzer"
@@ -45,6 +46,12 @@ func Print(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 		if p.Kind != nil {
 			fmt.Fprintf(w, "  kind: %s\n", kindClause(p.Kind, false, false))
 		}
+		// Above the numbers rather than below them: the explain line says what
+		// the canonicalizer did to these two bodies, which is the premise every
+		// score under it is computed on.
+		if p.Explain != "" {
+			fmt.Fprintf(w, "  explain: %s\n", p.Explain)
+		}
 		for _, note := range p.Profile {
 			fmt.Fprintf(w, "  profile %s: %s (%s)\n", note.Side, profileMassLine(note.Concepts, "  "), note.State)
 			if meta.Debug {
@@ -52,6 +59,12 @@ func Print(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 			}
 		}
 		fmt.Fprintf(w, "  %s\n", breakdownLine(p.Breakdown))
+		// Containment is a second reported quantity, not a component and not
+		// a verdict — see containmentClause. It gets its own line for the
+		// same reason trophic does: it explains the code-shape number above
+		// rather than contributing to it.
+		fmt.Fprintf(w, "  containment: %.2f%s\n",
+			p.Breakdown.Containment, containmentClause(p.Breakdown))
 		if p.Retrieval != nil {
 			fmt.Fprintf(w, "  evidence: %.2f  (shape %.2f  concept %.2f  call %.2f)\n",
 				p.Retrieval.Total, p.Retrieval.Shape, p.Retrieval.Concept, p.Retrieval.Call)
@@ -59,7 +72,7 @@ func Print(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 			if len(p.Retrieval.Chains) > 0 {
 				fmt.Fprintf(w, "  shared structure:\n")
 				for _, ch := range p.Retrieval.Chains {
-					fmt.Fprintf(w, "    %.2f  %s\n", ch.Energy, ch.Render)
+					fmt.Fprintf(w, "    %.2f  %s%s\n", ch.Energy, ch.Render, chainTimes(ch))
 				}
 			}
 			if meta.Debug {
@@ -114,7 +127,7 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 		fmt.Fprintf(w, "## Match #%d — Code-shape: `%.4f`\n\n", i+1, p.Score)
 
 		// Table header
-		fmt.Fprintf(w, "| | Location | Function | Signature | Patterns |\n")
+		fmt.Fprintf(w, "| | Location | Function | Signature | Concepts |\n")
 		fmt.Fprintf(w, "|---|---|---|---|---|\n")
 		mdTableRow(w, "A", p.A)
 		mdTableRow(w, "B", p.B)
@@ -122,6 +135,12 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 
 		if p.Kind != nil {
 			fmt.Fprintf(w, "**Kind:** %s\n\n", kindClause(p.Kind, false, true))
+		}
+		if p.Explain != "" {
+			// Escaped like every other sentence carrying names from the
+			// analysed source: a residual names node kinds, but a rule name
+			// or a future kind could carry a pipe.
+			fmt.Fprintf(w, "**Explain:** %s\n\n", mdEscape(p.Explain))
 		}
 		for _, note := range p.Profile {
 			fmt.Fprintf(w, "**Profile %s:** %s (%s)\n\n", note.Side, mdProfileMassLine(note.Concepts), note.State)
@@ -131,6 +150,8 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 		}
 
 		fmt.Fprintf(w, "**Code similarity:** `%s`\n\n", breakdownLine(p.Breakdown))
+		fmt.Fprintf(w, "**Containment:** `%.2f`%s\n\n",
+			p.Breakdown.Containment, containmentClause(p.Breakdown))
 
 		if p.Retrieval != nil {
 			fmt.Fprintf(w, "**Evidence:** `%.2f` (shape %.2f, concept %.2f, call %.2f)\n\n",
@@ -139,7 +160,8 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 			if len(p.Retrieval.Chains) > 0 {
 				fmt.Fprintf(w, "**Shared structure:**\n\n")
 				for _, ch := range p.Retrieval.Chains {
-					fmt.Fprintf(w, "- `%.2f` — `%s`\n", ch.Energy, mdEscape(ch.Render))
+					fmt.Fprintf(w, "- `%.2f` — `%s`%s\n",
+						ch.Energy, mdEscape(ch.Render), mdEscape(chainTimes(ch)))
 				}
 				fmt.Fprintln(w)
 			}
@@ -270,11 +292,51 @@ func habitatChannelLine(channels []analyzer.HabitatChannel) string {
 	return strings.Join(parts, "  ")
 }
 
+// containmentGap is how far containment must exceed the WL Jaccard before the
+// report says so in words. Containment always sits at or above the Jaccard —
+// same numerator, a smaller denominator — so the bare comparison is never
+// news; the size of the gap is.
+// chainTimes suffixes a shared-structure line with the multiplicity when the
+// label matched more than once — " ×3". The energy on the line is
+// idf · min(count), so the count is the only factor of it a reader cannot
+// otherwise see, and printing "×1" on the common case would be noise.
+func chainTimes(ch analyzer.SharedChain) string {
+	if ch.Count <= 1 {
+		return ""
+	}
+	return " ×" + strconv.Itoa(ch.Count)
+}
+
+const containmentGap = 0.25
+
+// containmentClause names the one reading of containment a pair list would
+// otherwise bury. When containment is high and the Jaccard is well below it,
+// the two bodies are not two versions of one function: most of the smaller
+// one's structure is present in the larger one, which has a lot more besides.
+// That is the shape of an inlined helper, and it is invisible in a
+// code-shape number that divides by the union.
+//
+// The clause restates arithmetic already printed on the same pair and adds no
+// judgement of its own — both numbers are above it, so a reader can check the
+// subtraction. It never affects ranking, filtering or the merge verdict.
+func containmentClause(b fingerprint.Breakdown) string {
+	if b.Containment >= 0.60 && b.Containment-b.WL >= containmentGap {
+		return " — most of the smaller body's shape is inside the larger"
+	}
+	return ""
+}
+
 // breakdownLine renders the component scores behind a pair score, so a match
 // can be inspected without re-reading both function bodies.
+//
+// The first component reads `wl` rather than the `ast` it read before the
+// 0.60 slot changed metric. It is a corpus-weighted multiset Jaccard over
+// Weisfeiler-Lehman label bags now, not Jaccard over token 3-grams, and a
+// reader comparing an old report to a new one should see that the number
+// answers a different question rather than assume the code moved.
 func breakdownLine(b fingerprint.Breakdown) string {
-	return fmt.Sprintf("ast %.2f  flow %.2f  nesting %.2f  sig %.2f  size %.2f",
-		b.AST, b.Flow, b.Depth, b.Signature, b.SizeRatio)
+	return fmt.Sprintf("wl %.2f  flow %.2f  nesting %.2f  sig %.2f  size %.2f",
+		b.WL, b.Flow, b.Depth, b.Signature, b.SizeRatio)
 }
 
 func mdTableRow(w io.Writer, label string, u parser.CodeUnit) {

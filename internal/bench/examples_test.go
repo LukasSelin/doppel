@@ -55,6 +55,40 @@ func gitHead(dir string) string {
 	return strings.TrimSpace(string(out))
 }
 
+// buildDoppel builds the doppel binary into a fresh temp dir and returns its
+// path alongside the git rev that identifies the tree it was built from.
+// Extracted so TestGenerateExamples and the baseline checksum generator
+// (baseline_test.go) build it exactly once, the same way, rather than each
+// keeping its own copy of the build invocation.
+func buildDoppel(t *testing.T, root string) (bin, rev string) {
+	t.Helper()
+	bin = filepath.Join(t.TempDir(), "doppel")
+	if runtime.GOOS == "windows" {
+		bin += ".exe"
+	}
+	build := exec.Command("go", "build", "-o", bin, ".")
+	build.Dir = root
+	build.Stderr = os.Stderr
+	if err := build.Run(); err != nil {
+		t.Fatalf("build doppel: %v", err)
+	}
+	return bin, gitHead(root)
+}
+
+// buildExampleReport is generateReport without the ladder row: the exact byte
+// sequence TestGenerateExamples writes to examples/<corpus>.md, so the
+// baseline checksum generator can produce identical content in memory without
+// ever touching examples/ itself.
+//
+// A wrapper rather than a second implementation, for the obvious reason: two
+// functions building "the report" would be one edit away from the baseline
+// checksumming something the committed file is not.
+func buildExampleReport(t *testing.T, bin, doppelRev string, c Corpus) []byte {
+	t.Helper()
+	body, _ := generateReport(t, bin, doppelRev, c)
+	return body
+}
+
 // ladderRow is one rung's line in the examples/README.md summary table: the
 // manifest coordinates plus the six quantities the run measured.
 type ladderRow struct {
@@ -63,7 +97,8 @@ type ladderRow struct {
 	Pairs    int
 	Kept     int
 	Floor    string
-	Concepts int
+	Learned  int // concepts the lexicon grew from this corpus
+	Concepts int // of those, how many culture prototyped
 	Habitats int
 }
 
@@ -87,17 +122,7 @@ func TestGenerateExamples(t *testing.T) {
 	}
 	check := os.Getenv("DOPPEL_BENCH_EXAMPLES_CHECK") != ""
 	root := repoRoot(t)
-	bin := filepath.Join(t.TempDir(), "doppel")
-	if runtime.GOOS == "windows" {
-		bin += ".exe"
-	}
-	build := exec.Command("go", "build", "-o", bin, ".")
-	build.Dir = root
-	build.Stderr = os.Stderr
-	if err := build.Run(); err != nil {
-		t.Fatalf("build doppel: %v", err)
-	}
-	doppelRev := gitHead(root)
+	bin, doppelRev := buildDoppel(t, root)
 
 	outDir := filepath.Join(root, "examples")
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
@@ -222,6 +247,7 @@ var (
 	reKept     = regexp.MustCompile(`(?m)^\s*(\d+) pairs remain after struct-min=`)
 	reFloor    = regexp.MustCompile(`(?m)^Calibration: .*-> threshold (\d+\.\d+)`)
 	reDeclined = regexp.MustCompile(`(?m)^Calibration: .* declined`)
+	reLearned  = regexp.MustCompile(`(?m)^Lexicon: (\d+) concepts`)
 	reConcepts = regexp.MustCompile(`(?m)^Culture: (\d+) concepts modeled`)
 	reHabitats = regexp.MustCompile(`(?m)^Habitats: (\d+) modeled`)
 )
@@ -237,6 +263,9 @@ func parseDiagnostics(c Corpus, diag string) (ladderRow, error) {
 		return row, err
 	}
 	if row.Pairs, err = matchInt(rePairs, diag, "N unique pairs"); err != nil {
+		return row, err
+	}
+	if row.Learned, err = matchInt(reLearned, diag, "Lexicon: N concepts"); err != nil {
 		return row, err
 	}
 	if row.Concepts, err = matchInt(reConcepts, diag, "Culture: N concepts modeled"); err != nil {
@@ -279,12 +308,12 @@ func matchInt(re *regexp.Regexp, diag, want string) (int, error) {
 // renderLadder is the generated block of examples/README.md.
 func renderLadder(rows []ladderRow) string {
 	var b strings.Builder
-	b.WriteString("| Corpus | Since | Pinned | Functions | Pairs compared | Kept | Code-shape floor | Concepts modeled | Habitats |\n")
-	b.WriteString("| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n")
+	b.WriteString("| Corpus | Since | Pinned | Functions | Pairs compared | Kept | Code-shape floor | Concepts learned | Concepts modeled | Habitats |\n")
+	b.WriteString("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n")
 	for _, r := range rows {
-		fmt.Fprintf(&b, "| [%s](%s.md) | %d | `%s` | %d | %d | %d | %s | %d | %d |\n",
+		fmt.Fprintf(&b, "| [%s](%s.md) | %d | `%s` | %d | %d | %d | %s | %d | %d | %d |\n",
 			r.Corpus.Name, r.Corpus.Name, r.Corpus.Since, r.Corpus.Tag,
-			r.Funcs, r.Pairs, r.Kept, r.Floor, r.Concepts, r.Habitats)
+			r.Funcs, r.Pairs, r.Kept, r.Floor, r.Learned, r.Concepts, r.Habitats)
 	}
 	return b.String()
 }

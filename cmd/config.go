@@ -49,6 +49,35 @@ type AnalysisConfig struct {
 // candidate set growing from 816 to 1029 without a labeled pair changing rank.
 const defaultCalibrateRate = 0.01
 
+// defaultMinNodes is the body-size floor for the structural retrieval channel,
+// and the default for --min-nodes on every command that registers it.
+//
+// It is a separate knob from the calibrated thresholds and deliberately stays
+// one: calibration derives a *score* floor from the corpus's null distribution,
+// while this is an *eligibility* rule about which functions the shape channel
+// indexes at all. Calibration cannot subsume it — a corpus of accessors has a
+// null distribution made of accessors, so a rate would happily admit them.
+//
+// 16 rather than the historical 12 because the shape channel indexes
+// Weisfeiler-Lehman labels now. A WL bag over a canonicalized body carries
+// structure a token 3-gram bag did not, so small bodies produce labels that
+// look distinctive without being informative. 16 rather than the first
+// recalibration's 18 because the pins are one node apart: cobra's labeled
+// one-line false positive (`Less`/`Less`) is 15 nodes and conc's genuine
+// generic-wrapper clones are 16 — measured on the min-nodes ladder
+// (TestMinNodesLadder), 16/17/18 score identically on the labels while 16
+// reopens conc's shape channel (3 → 26 admissions, its lost 1.00 clone pair
+// returns).
+const defaultMinNodes = 16
+
+// defaultThreshold is the static code-shape floor used only when calibration
+// is off (--threshold pinned) or declined (a corpus too small to calibrate).
+// 0.38 is the median of the six ladder corpora that calibrate at the default
+// rate under the WL metric (prometheus 0.33, moby 0.35, hugo 0.35, gin 0.41,
+// cobra 0.44, chi 0.45; conc declines); cobra's labels are flat across
+// 0.30–0.60, so the choice is nearly free where it can be measured.
+const defaultThreshold = 0.38
+
 // calibrationOptOut turns calibration off for a run that pinned a threshold by
 // hand, and reports whether it did.
 //
@@ -193,8 +222,8 @@ func applyConfig(cmd *cobra.Command, cfg *AnalysisConfig) {
 // hook therefore always diffs the full candidate set.
 func hookParams(root string) (Params, error) {
 	p := Params{
-		Threshold:       0.60,
-		MinNodes:        12,
+		Threshold:       defaultThreshold,
+		MinNodes:        defaultMinNodes,
 		ChannelK:        5,
 		TestsMode:       "exclude",
 		Generated:       "exclude",
