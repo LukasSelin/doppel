@@ -95,6 +95,7 @@ cmd/            CLI commands (Cobra).
   config.go     .doppel.json loading (AnalysisConfig), flag precedence, hookParams
   hook.go       doppel hook session-start / user-prompt / pre-tool / stop: the four Claude Code
                 hook entry points, and baseline file I/O
+  diff.go       doppel diff: match two snapshot files' functions to each other; exit codes 0/1/2
   version.go    build identity, for deciding whether a baseline is still comparable
   ontology.go   doppel ontology: print the vocabulary, check its axioms
 internal/
@@ -117,6 +118,7 @@ internal/
   comparator/   Weighted structural overlap scoring (12 signals → 0.0–1.0 composite)
   family/       Near-duplicate families: components + edge completion + maximal cliques over the pair graph
   snapshot/     One analysis run as comparable plain data: schema + Build, and Diff over two of them
+  identity/     Matches two snapshots' functions to each other by WL bag and classifies each into one of eight classes; render.go is the text + JSON report
   reporter/     Plain-text (stdout), Markdown (--output), JSON (--format json), and the five hook digests
                 (impact.go: ConceptDigest, ImpactDigest, AgentDigest; scope.go: ScopeDigest, AdviceDigest)
                 overview.go + mermaid.go render the corpus model into the markdown report only
@@ -144,6 +146,7 @@ never import `parser` — it works on `*ast.FuncDecl` directly. `ontology` impor
 module and must stay that way: `tagger`, `concepter` and `comparator` all depend on it. `retriever`
 imports `parser`, `fingerprint`, `concepter`, `ontology` and must never import `analyzer` or
 `comparator` — `cmd` bridges retriever candidates into `analyzer.SimilarPair`. `culture` imports
+<<<<<<< HEAD
 `parser`, `concepter`, `fingerprint` only (not `ontology` directly — it is a count model over
 concept names) and nothing imports it except `cmd`, which bridges its findings into
 `analyzer.CultureNote`. `family` imports `parser`, `fingerprint`, `analyzer` and `clique`; `cmd`
@@ -153,6 +156,14 @@ and `cmd` bridges its concepts into an ontology term table. `clique` imports not
 imports **nothing from this module at all** — its payload is plain data and its renderer is
 `html/template` plus `embed` — which is what keeps the page's data contract from quietly acquiring
 pipeline types; `cmd` bridges a finished run into it, exactly as it does for `reporter.Overview`.
+=======
+`parser`, `concepter`, `fingerprint` only (not even `ontology` — it is a leaf-tag count model) and
+nothing imports it except `cmd`, which bridges its findings into `analyzer.CultureNote`. `family`
+imports `parser`, `fingerprint`, `analyzer` and nothing else; `cmd` and `reporter` import it.
+`identity` imports `snapshot` and `fingerprint` and nothing else from this module, and only
+`cmd` imports it — `snapshot` must never import `identity`, which is the direction that keeps
+the two diff mechanisms from blurring into each other.
+>>>>>>> t7-clean
 
 ## Two scores, deliberately unblended — and a third quantity that ranks
 
@@ -1762,6 +1773,99 @@ The plugin itself is `plugin/`, published through the one-entry marketplace at
 shell and behaves identically on Windows and Unix, and which is also the only form where
 `${user_config.*}` is substituted.
 
+## Identity matching — `doppel diff`
+
+`internal/identity` answers the question `snapshot.Diff` deliberately refuses to: given two
+snapshots, *what happened to each function*. Diff keys on `package.Name` alone, so every rename
+reads as one deletion plus one addition and a moved function reads the same way — the right rule
+for a hook that must never claim more than it can attribute, and useless for reading a refactor.
+Identity matches **bodies**, using the Weisfeiler-Lehman label bags schema 6 put on every `Unit`,
+and reports one of eight classes per function: `unchanged`, `edited`, `renamed`, `moved`, `split`,
+`merged`, `new`, `deleted`. **`snapshot.Diff` is untouched and stays the hook path**; nothing here
+feeds a hook, a score or a ranking. The command is `doppel diff <old.json> <new.json>`, over two
+files written by `doppel analyze --format json`.
+
+**Two kinds of evidence, and each line says which it used.** `Unit.Digest` is exact — it hashes a
+function's own fingerprint and nothing about the corpus, so equal non-empty digests mean the same
+body, full stop, and body identity is decided nowhere else. The WL bag decides *similarity*, which
+is what matching needs and digests cannot give: `fingerprint.WLOverlap` turns two bags into the
+weighted Jaccard and the containment. Every reported line prints jaccard, containment and whether
+the digests agreed, so a reader falsifies it by opening two files.
+
+**The label IDF is counted over the union of both snapshots' bags.** Any other population makes the
+answer asymmetric — `ln(N_old/df_old)` and `ln(N_new/df_new)` are different numbers for the same
+label, so scoring one direction under each side's own norm would let a pair be each other's best
+match one way and not the other, and the greedy matcher would then depend on which file was passed
+first. The consequence worth knowing: these numbers are *not* the ones either snapshot's `Pair`
+records carry, which were computed under one run's own weights. Nothing here reads `Pair` at all.
+
+**Three matching passes, strongest evidence first.** Key equality (an unchanged `package.Name` is
+the same function, whatever its body now says — a rewrite under an unchanged key is an edit, not a
+deletion plus an unrelated arrival); then equal non-empty digest (the same body under a new name or
+package, consumed in ascending key order within a bucket because identical bodies score identically
+against everything and greedy would be deciding by index anyway); then greedy bipartite matching on
+the exact WL overlap, admitted at `RenameFloor` and consumed by `(jaccard desc, containment desc,
+old key asc, new key asc)`. Greedy rather than optimal deliberately: an assignment maximising total
+similarity moves a pair off its own best match to improve someone else's, and the resulting report
+has lines that cannot be checked in isolation. Greedy's invariant is local and printable — every
+match was the best still available to both sides when it was made.
+
+**One label per function, by this total order** (first rule wins; the facts the winning rule did not
+use are still recorded and printed on the same line):
+
+1. **moved** — the packages differ. A function that changed package is a move whatever else happened
+   to it: relocation is what makes it unfindable where it was. `moved` + renamed + edited all report
+   `moved`, with `(renamed X -> Y; body edited)` as secondary evidence.
+2. **renamed** — same package, different name. A rename plus a small edit reports `renamed`, with
+   `(body edited)`.
+3. **edited** — same package and name, digests differ.
+4. **unchanged** — same package and name, equal digests. Two empty digests count as equal.
+
+**split / merged** run after matching, over the same candidate table, and absorb their participants
+so every function still appears in exactly one finding. F is *split* when two or more distinct new
+bodies each read containment ≥ `SplitContainment` against F. Three exclusions, all decided on
+digests rather than on a second threshold: F is ineligible if **any** new function carries F's
+digest (a body that still exists byte-for-byte was not divided — something was copied out of it,
+which is duplication and what the rest of the tool reports); a participant carrying F's digest is
+ineligible (a piece identical to the whole is not a piece); and an `unchanged` participant is
+ineligible (a helper that already existed was not produced by F). The second exclusion is
+load-bearing and was measured: without it, a corpus already holding two copies of one body reads as
+a split the moment one copy is renamed, at containment 1.0000 on both parts. Splits are detected
+before merges, over old functions in key order, and a function absorbed by a split cannot join a
+merge — that ordering is what makes the two rules a total order rather than a race.
+
+**Floors and knobs** live on `identity.Options`, zero value meaning defaults (the `retriever.Options`
+convention): `RenameFloor` 0.5, `SplitContainment` 0.8, `CandidateK` 8, `MaxLabelDF` 200. The last
+two are a **recall** bound and nothing else — candidate generation is the same inverted-index shape
+retrieval uses, because all-pairs bag merges are fine on a few hundred functions and minutes on
+moby, and every number reported is the exact `WLOverlap` of two bags, never the accumulator's
+approximation. Measured: 0.03s on cobra (269 functions), 0.85s on moby (7,644).
+
+**What it refuses, and the three mismatches it does not.** Schema and `RuleSet` refuse — a
+pre-schema-6 snapshot has no bags at all, and a different canon rule set makes the same two
+untouched bodies produce different labels, so matching across it would report a whole corpus as
+edited. `Params`, `Ontology` and the doppel build are **allowed and noted in the report**, which is
+looser than `snapshot.Diff` on purpose: Diff reads `Pairs`, whose every number is corpus-relative,
+and identity reads only `Units`, whose key, digest and bag are properties of that function's own
+AST. A population change (`--tests exclude` against `--tests include`) is not hidden either — it
+shows up as new and deleted functions, which is a true statement about the two files. The build
+check is the loosest, and refusing on it would block comparing a release binary's snapshot against
+a local one while still not catching what it aims at: two plain `go build` binaries both report
+`(devel)`.
+
+**Refusal is a `Result`, not an error, inside the library** — mirroring `snapshot.Diff` so the two
+surfaces cannot disagree about what "cannot be compared" means. At the CLI boundary it becomes a
+non-zero exit, because a script must not read an empty change list as "nothing happened". Codes:
+**0** compared, **1** a file is missing, is not JSON, or its WL codec is corrupt, **2** the two
+snapshots refuse comparison.
+
+**Presentation.** The text report groups by class and prints `unchanged` as a count only unless
+`--unchanged` is passed — it is the bulk of any nearby comparison and burying six real findings
+under eight hundred "still there" lines defeats the point. `--format json` has no such cutoff: it
+carries every change, unchanged included, because a machine consumer filtering is trivial and one
+missing data is not. All eight class counts are always emitted, zeros included, so the payload
+shape is stable.
+
 ## Conventions
 
 - Go-only. All parsing uses `go/ast` — no external parsers, no multi-language support.
@@ -2144,6 +2248,7 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   `sha512`) are excluded by design; lower-case markers inside a word (`Threshold`) are not markers.
   The 0.60 shape floor and the same/sibling-package locality bound the damage.
 
+<<<<<<< HEAD
 - **A learned vocabulary costs real time, and the cost is corpus-derived.** moby went from ~1.8s
   end to end to ~9.7s, prometheus from ~2.6s to ~5.5s. Almost none of that is the lexicon itself
   (~1s on moby); it is the stages downstream that now do proportionate work — `culture` models 394
@@ -2186,3 +2291,35 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   the top 20). One corpus is a direction, not a verdict, and the concept channel's recall changed by
   an order of magnitude — gin/chi labels are what would say whether the extra recall is worth the
   drift.
+=======
+- **`doppel diff`'s split rule cannot see a return.** A piece extracted into its own function gains
+  a `return` the original never had, and that return takes its whole WL label chain with it — so a
+  split whose extracted region *contains* a return reads well below the 0.8 containment floor and
+  falls back to `deleted` + `new`. The fixtures pin the clean case (a self-contained loop lifted
+  out, which reads 0.90–0.99) and cobra's real `defaultUsageFunc` split reads 0.97/0.99, but a
+  refactor that pulled out an error path is invisible to the class. Lowering the floor is not the
+  fix — the same slack admits unrelated bodies — and nothing short of matching against the
+  *residue* of the original, which needs a subtree diff rather than a bag, would do better.
+
+- **Identity's recall is bounded by the same top-K shape retrieval is.** `CandidateK` (8) and
+  `MaxLabelDF` (200) mean a pair with no shared informative label, or one crowded out of both
+  sides' budgets, is never scored — so it reads as a deletion plus an addition rather than as a
+  rename. Key equality and digest equality are unaffected (they are exact passes and run first),
+  so the bounded part is exactly the renamed-and-edited case. Raising `CandidateK` costs one exact
+  bag merge per extra candidate; there is no flag for it, on the same reasoning that keeps the
+  retriever's df caps off the CLI.
+
+- **A `moved` finding cannot distinguish a move from a coincidence.** Two functions in different
+  packages with identical digests are reported as one moved function, because a digest is the
+  strongest evidence available and nothing in a snapshot records provenance. On a corpus with
+  cross-package exact clones — which is precisely the corpus doppel is pointed at — deleting one
+  copy and adding an unrelated one elsewhere reads as a move. The digest-equality evidence on the
+  line is the tell, and it is the same limitation `interface implementations` has: the rule cannot
+  be wrong about what it observed, only about what caused it.
+
+- **Identity is corpus-relative once, through the IDF.** The weighted Jaccard weights each label by
+  `ln(N/df)` over the union of the two snapshots' bags, so adding unrelated functions to either
+  side moves every jaccard slightly and can push a marginal pair across `RenameFloor`. Digests and
+  keys do not move, so the exact classes (`unchanged`, and every `moved`/`renamed` decided on a
+  digest) are immune; only similarity-matched renames can flip. Same caveat as roles and typicality.
+>>>>>>> t7-clean
