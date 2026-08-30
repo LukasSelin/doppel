@@ -9,7 +9,7 @@ HTTP router; a narrow core with a middleware package beside it
 | Corpus | [chi](https://github.com/go-chi/chi) |
 | Pinned at | `v5.3.2` (`38939062c5df4d3e8814aad1a488983112627ced`) |
 | Project since | 2015 |
-| doppel | `c2e717b` |
+| doppel | `7c27a17` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -28,11 +28,13 @@ Culture: 19 concepts modeled, 102 associations, 7 unusual realizations
 Habitats: 2 modeled, 0 misfits; most uniform middleware (norm 0.90), most diverse chi (norm 0.89)
 Conventions: strongest mx.handle+chi.*Mux.handle (0.60), loosest mx.inline+mx.handler (0.25)
 Ecosystems: 133 profiled (105 dominance, 28 coalition, 0 conflict, 0 weak)
+Calibration: rate 0.01 over 10440 shape / 16653 overlap null pairs -> threshold 0.53, struct-min 0.50, family-min 0.53
 Found 183 functions. Retrieving candidates...
-Retrieval: shape 50, concept 488, call 357 -> 730 unique pairs
-  concept-only 46.3%  call-only 30.0%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 2138
-Running structural comparison on 730 pairs...
-Families: 9 over 18 components, 32 functions in a family, 21 edges completed
+Retrieval: shape 86, concept 488, call 357 -> 750 unique pairs
+  concept-only 44.7%  call-only 28.4%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 2138
+Running structural comparison on 750 pairs...
+  118 pairs remain after struct-min=0.50 filter
+Families: 6 over 18 components, 27 functions in a family, 22 edges completed
   1 pairs suppressed by max-per-func=2
 ```
 
@@ -161,7 +163,7 @@ Most uniform is `middleware` (norm `0.90`); most varied is `chi` (norm `0.89`).
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **730 candidate pairs** (shape 50, concept 488, call 357), of which 30% arrived on call evidence alone and 46% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **750 candidate pairs** (shape 86, concept 488, call 357), of which 28% arrived on call evidence alone and 45% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 133 functions reached an equilibrium: **105** settled on a single concept, **28** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -332,15 +334,17 @@ Co-occurrence measured against chance across every function. Only relationships 
 
 These carry a tag but look nothing like the other functions carrying it. Typicality is measured against the concept's own median, so a genuinely varied concept lowers its own bar and a tight one can flag nobody.
 
-| Function | Concept | Typicality | Concept median |
-|---|---|---:|---:|
-| `chi.*Mux.Mount` <br/>`mux.go:295` | `mx.handle+chi.*Mux.handle` | `0.17` | `0.86` |
-| `chi.*Mux.Method` <br/>`mux.go:127` | `mx.handle+chi.*Mux.handle` | `0.32` | `0.86` |
-| `chi.*Mux.Handle` <br/>`mux.go:109` | `mx.handle+chi.*Mux.handle` | `0.34` | `0.86` |
-| `chi.*Mux.routeHTTP` <br/>`mux.go:447` | `URL.RawPath+chi.RouteContext` | `0.19` | `0.70` |
-| `chi.*Mux.routeHTTP` <br/>`mux.go:447` | `http.StatusUnsupportedMedia…+chi.RouteContext` | `0.21` | `0.54` |
-| `middleware.*Compressor.Handler` <br/>`middleware/compress.go:199` | `b.ResponseWriter+b.discard` | `0.21` | `0.47` |
-| `middleware.*Compressor.selectEncoder` <br/>`middleware/compress.go:223` | `b.ResponseWriter+b.discard` | `0.23` | `0.47` |
+| Function | Concept | Typicality | Concept median | |
+|---|---|---:|---:|---|
+| `chi.*Mux.Mount` <br/>`mux.go:295` | `mx.handle+chi.*Mux.handle` | `0.17` | `0.86` | no near-duplicate |
+| `chi.*Mux.routeHTTP` <br/>`mux.go:447` | `URL.RawPath+chi.RouteContext` | `0.19` | `0.70` | no near-duplicate |
+| `chi.*Mux.routeHTTP` <br/>`mux.go:447` | `http.StatusUnsupportedMedia…+chi.RouteContext` | `0.21` | `0.54` | no near-duplicate |
+| `middleware.*Compressor.Handler` <br/>`middleware/compress.go:199` | `b.ResponseWriter+b.discard` | `0.21` | `0.47` | no near-duplicate |
+| `middleware.*Compressor.selectEncoder` <br/>`middleware/compress.go:223` | `b.ResponseWriter+b.discard` | `0.23` | `0.47` | no near-duplicate |
+| `chi.*Mux.Method` <br/>`mux.go:127` | `mx.handle+chi.*Mux.handle` | `0.32` | `0.86` |  |
+| `chi.*Mux.Handle` <br/>`mux.go:109` | `mx.handle+chi.*Mux.handle` | `0.34` | `0.86` |  |
+
+A row marked _no near-duplicate_ appears in no reported pair: nothing else in this report explains it, which makes it drift rather than duplication.
 
 ---
 
@@ -705,9 +709,9 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 ## Families
 
-9 families, 32 functions in a family, largest 10 members; 21 edges scored here that retrieval never proposed
+6 families, 27 functions in a family, largest 10 members; 22 edges scored here that retrieval never proposed
 
-### Family 1 — 5 members, every pair `>= 0.60` code-shape, evidence `2092`
+### Family 1 — 4 members, every pair `>= 0.62` code-shape, evidence `1311`
 
 ```mermaid
 flowchart LR
@@ -715,17 +719,12 @@ flowchart LR
     m1["middleware.GetHead"]
     m2["middleware.StripSlashes"]
     m3["middleware.RedirectSlashes"]
-    m4["middleware.URLFormat"]
     m0 --- m1
     m0 --- m2
     m0 --- m3
-    m0 --- m4
     m1 --- m2
     m1 --- m3
-    m1 --- m4
     m2 --- m3
-    m2 --- m4
-    m3 --- m4
 ```
 
 | Location | Function | Signature | Patterns |
@@ -734,9 +733,26 @@ flowchart LR
 | `middleware/get_head.go:10` | `middleware.GetHead` | `(http.Handler) (http.Handler)` | URL.RawPath+chi.RouteContext 0.59, http.StatusUnsupportedMedia…+chi.RouteContext 0.56, http.StatusUnsupportedMedia…+strings.ToLower 0.44 |
 | `middleware/strip.go:14` | `middleware.StripSlashes` | `(http.Handler) (http.Handler)` | http.StatusUnsupportedMedia…+chi.RouteContext 0.56, URL.RawPath+chi.RouteContext 0.51 |
 | `middleware/strip.go:41` | `middleware.RedirectSlashes` | `(http.Handler) (http.Handler)` | http.StatusUnsupportedMedia…+chi.RouteContext 0.58, URL.RawPath+chi.RouteContext 0.55, fmt.Sprintf+r.Context 0.51, http.StatusUnsupportedMedia…+strings.ToLower 0.42 |
-| `middleware/url_format.go:46` | `middleware.URLFormat` | `(http.Handler) (http.Handler)` | http.StatusUnsupportedMedia…+chi.RouteContext 0.64, netip.Addr+context.WithValue 0.57, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.54, URL.RawPath+chi.RouteContext 0.53, +1 more |
 
-### Family 2 — 4 members, every pair `>= 1.00` code-shape, evidence `497`, interface implementations of `Flush()`, in package `middleware`
+### Family 2 — 3 members, every pair `>= 0.55` code-shape, evidence `579`  (1 edge scored here)
+
+```mermaid
+flowchart LR
+    m0["middleware.ContentCharset"]
+    m1["middleware.AllowContentEncoding"]
+    m2["middleware.AllowContentType"]
+    m0 --- m1
+    m0 --- m2
+    m1 --- m2
+```
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `middleware/content_charset.go:11` | `middleware.ContentCharset` | `(...string) (func(next http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+strings.ToLower 0.71, http.StatusUnsupportedMedia…+Header.Get 0.68, http.StatusUnsupportedMedia…+w.WriteHeader 0.65, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.59, +1 more |
+| `middleware/content_encoding.go:10` | `middleware.AllowContentEncoding` | `(...string) (func(next http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+strings.ToLower 0.71, http.StatusUnsupportedMedia…+Header.Get 0.68, http.StatusUnsupportedMedia…+w.WriteHeader 0.65, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.61, +2 more |
+| `middleware/content_type.go:20` | `middleware.AllowContentType` | `(...string) (func(http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+strings.ToLower 0.72, http.StatusUnsupportedMedia…+Header.Get 0.69, http.StatusUnsupportedMedia…+w.WriteHeader 0.65, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.63, +3 more |
+
+### Family 3 — 4 members, every pair `>= 1.00` code-shape, evidence `497`, interface implementations of `Flush()`, in package `middleware`
 
 ```mermaid
 flowchart LR
@@ -759,13 +775,13 @@ flowchart LR
 | `middleware/wrap_writer.go:194` | `middleware.*httpFancyWriter.Flush` | `()` | b.ResponseWriter+b.discard 0.65 |
 | `middleware/wrap_writer.go:239` | `middleware.*http2FancyWriter.Flush` | `()` | b.ResponseWriter+b.discard 0.65 |
 
-### Family 3 — 3 members, every pair `>= 0.60` code-shape, evidence `443`
+### Family 4 — 3 members, every pair `>= 0.64` code-shape, evidence `275`
 
 ```mermaid
 flowchart LR
-    m0["middleware.CleanPath"]
-    m1["middleware.GetHead"]
-    m2["middleware.RequestID"]
+    m0["middleware.*compressResponseWriter.Hijack"]
+    m1["middleware.*compressResponseWriter.Push"]
+    m2["middleware.*compressResponseWriter.Close"]
     m0 --- m1
     m0 --- m2
     m1 --- m2
@@ -773,40 +789,17 @@ flowchart LR
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `middleware/clean_path.go:12` | `middleware.CleanPath` | `(http.Handler) (http.Handler)` | URL.RawPath+chi.RouteContext 0.54, http.StatusUnsupportedMedia…+chi.RouteContext 0.52 |
-| `middleware/get_head.go:10` | `middleware.GetHead` | `(http.Handler) (http.Handler)` | URL.RawPath+chi.RouteContext 0.59, http.StatusUnsupportedMedia…+chi.RouteContext 0.56, http.StatusUnsupportedMedia…+strings.ToLower 0.44 |
-| `middleware/request_id.go:67` | `middleware.RequestID` | `(http.Handler) (http.Handler)` | http.StatusUnsupportedMedia…+chi.RouteContext 0.52, http.StatusUnsupportedMedia…+Header.Get 0.50, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.50, fmt.Sprintf+r.Context 0.49, +3 more |
+| `middleware/compress.go:365` | `middleware.*compressResponseWriter.Hijack` | `() (net.Conn, *bufio.ReadWriter, error)` | b.ResponseWriter+b.discard 0.68, cw.ResponseWriter+cw.writer 0.53 |
+| `middleware/compress.go:372` | `middleware.*compressResponseWriter.Push` | `(string, *http.PushOptions) (error)` | b.ResponseWriter+b.discard 0.64, cw.ResponseWriter+cw.writer 0.53 |
+| `middleware/compress.go:379` | `middleware.*compressResponseWriter.Close` | `() (error)` | b.ResponseWriter+b.discard 0.59, cw.ResponseWriter+cw.writer 0.53 |
 
-### Family 4 — 4 members, every pair `>= 0.62` code-shape, evidence `421`
-
-```mermaid
-flowchart LR
-    m0["middleware.SetHeader"]
-    m1["middleware.New"]
-    m2["middleware.PageRoute"]
-    m3["middleware.PathRewrite"]
-    m0 --- m1
-    m0 --- m2
-    m0 --- m3
-    m1 --- m2
-    m1 --- m3
-    m2 --- m3
-```
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `middleware/content_type.go:9` | `middleware.SetHeader` | `(string, string) (func(http.Handler) http.Handler)` | w.Header+http.Handler 0.46, http.StatusUnsupportedMedia…+chi.RouteContext 0.38 |
-| `middleware/middleware.go:6` | `middleware.New` | `(http.Handler) (func(next http.Handler) http.Handler)` | — |
-| `middleware/page_route.go:10` | `middleware.PageRoute` | `(string, http.Handler) (func(http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+strings.ToLower 0.46, http.StatusUnsupportedMedia…+chi.RouteContext 0.45, URL.RawPath+chi.RouteContext 0.41 |
-| `middleware/path_rewrite.go:9` | `middleware.PathRewrite` | `(string, string) (func(http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+chi.RouteContext 0.37 |
-
-### Family 5 — 3 members, every pair `>= 0.62` code-shape, evidence `327`
+### Family 5 — 3 members, every pair `>= 1.00` code-shape, evidence `201`, interface implementations of `Hijack() (net.Conn, *bufio.ReadWriter, error)`, in package `middleware`
 
 ```mermaid
 flowchart LR
-    m0["middleware.SetHeader"]
-    m1["middleware.Heartbeat"]
-    m2["middleware.PageRoute"]
+    m0["middleware.*hijackWriter.Hijack"]
+    m1["middleware.*flushHijackWriter.Hijack"]
+    m2["middleware.*httpFancyWriter.Hijack"]
     m0 --- m1
     m0 --- m2
     m1 --- m2
@@ -814,9 +807,9 @@ flowchart LR
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `middleware/content_type.go:9` | `middleware.SetHeader` | `(string, string) (func(http.Handler) http.Handler)` | w.Header+http.Handler 0.46, http.StatusUnsupportedMedia…+chi.RouteContext 0.38 |
-| `middleware/heartbeat.go:12` | `middleware.Heartbeat` | `(string) (func(http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+chi.RouteContext 0.54, http.StatusUnsupportedMedia…+w.WriteHeader 0.52, w.Header+http.Handler 0.49, http.StatusUnsupportedMedia…+strings.ToLower 0.49, +1 more |
-| `middleware/page_route.go:10` | `middleware.PageRoute` | `(string, http.Handler) (func(http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+strings.ToLower 0.46, http.StatusUnsupportedMedia…+chi.RouteContext 0.45, URL.RawPath+chi.RouteContext 0.41 |
+| `middleware/wrap_writer.go:160` | `middleware.*hijackWriter.Hijack` | `() (net.Conn, *bufio.ReadWriter, error)` | b.ResponseWriter+b.discard 0.58 |
+| `middleware/wrap_writer.go:178` | `middleware.*flushHijackWriter.Hijack` | `() (net.Conn, *bufio.ReadWriter, error)` | b.ResponseWriter+b.discard 0.58 |
+| `middleware/wrap_writer.go:200` | `middleware.*httpFancyWriter.Hijack` | `() (net.Conn, *bufio.ReadWriter, error)` | b.ResponseWriter+b.discard 0.58 |
 
-_4 more families not listed._
+_1 more families not listed._
 

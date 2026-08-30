@@ -9,7 +9,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `c2e717b` |
+| doppel | `7c27a17` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -28,11 +28,13 @@ Culture: 37 concepts modeled, 161 associations, 37 unusual realizations
 Habitats: 5 modeled, 17 misfits (0 excused by subsystem), 1 subsystems; most uniform binding (norm 0.92), most diverse json (norm 0.63)
 Conventions: strongest c.ShouldBindBodyWith+gin.*Context.ShouldBindBody… (1.00), loosest gin.IsDebugging+gin.debugPrint (0.24)
 Ecosystems: 418 profiled (301 dominance, 28 coalition, 0 conflict, 89 weak)
+Calibration: rate 0.01 over 20000 null pairs -> threshold 0.49, struct-min 0.50, family-min 0.49
 Found 497 functions. Retrieving candidates...
-Retrieval: shape 156, concept 1601, call 609 -> 2036 unique pairs
-  concept-only 64.4%  call-only 16.6%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 3321
-Running structural comparison on 2036 pairs...
-Families: 30 over 54 components, 134 functions in a family, 123 edges completed
+Retrieval: shape 260, concept 1601, call 609 -> 2101 unique pairs
+  concept-only 61.7%  call-only 15.7%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 3321
+Running structural comparison on 2101 pairs...
+  477 pairs remain after struct-min=0.50 filter
+Families: 27 over 47 components, 155 functions in a family, 235 edges completed
 ```
 
 # Code Similarity Report
@@ -219,13 +221,9 @@ Merge-worthy pairs folded up to their packages. An edge means two packages keep 
 
 ```mermaid
 flowchart LR
-    p0["binding<br/>63 internal"]
-    p1["gin<br/>216 internal"]
-    p0 ---|"2"| p1
-    p2["fs"]
-    p2 ---|"1"| p1
-    p3["render<br/>96 internal"]
-    p1 ---|"1"| p3
+    p0["gin<br/>188 internal"]
+    p1["render<br/>78 internal"]
+    p0 ---|"1"| p1
 ```
 
 ### How settled each package is
@@ -250,7 +248,7 @@ Most uniform is `binding` (norm `0.92`); most varied is `json` (norm `0.63`). 17
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **2036 candidate pairs** (shape 156, concept 1601, call 609), of which 17% arrived on call evidence alone and 64% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **2101 candidate pairs** (shape 260, concept 1601, call 609), of which 16% arrived on call evidence alone and 62% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 418 functions reached an equilibrium: **301** settled on a single concept, **28** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -428,20 +426,22 @@ Co-occurrence measured against chance across every function. Only relationships 
 
 These carry a tag but look nothing like the other functions carrying it. Typicality is measured against the concept's own median, so a genuinely varied concept lowers its own bar and a tight one can flag nobody.
 
-| Function | Concept | Typicality | Concept median |
-|---|---|---:|---:|
-| `gin.*RouterGroup.createStaticHandler` <br/>`routergroup.go:216` | `gin+template` | `0.06` | `0.94` |
-| `gin.*Context.ClientIP` <br/>`context.go:975` | `c.hasRequestContext+Request.Context` | `0.26` | `0.86` |
-| `render.WriteJSON` <br/>`render/json.go:67` | `render.writeContentType+bytes` | `0.30` | `0.90` |
-| `binding.setWithProperType` <br/>`binding/form_mapping.go:323` | `bytesconv.StringToBytes+json.API` | `0.15` | `0.60` |
-| `render.AsciiJSON.Render` <br/>`render/json.go:155` | `json.Marshal+json.MarshalIndent` | `0.18` | `0.60` |
-| `binding.setWithProperType` <br/>`binding/form_mapping.go:323` | `API.Marshal+bytesconv.StringToBytes` | `0.13` | `0.55` |
-| `render.SecureJSON.Render` <br/>`render/json.go:94` | `json.Marshal+json.MarshalIndent` | `0.22` | `0.60` |
-| `render.JsonpJSON.Render` <br/>`render/json.go:117` | `json.Marshal+json.MarshalIndent` | `0.23` | `0.60` |
-| `gin.authPairs.searchCredential` <br/>`auth.go:32` | `API.Marshal+bytesconv.StringToBytes` | `0.24` | `0.55` |
-| `gin.*RouterGroup.createStaticHandler` <br/>`routergroup.go:216` | `group.calculateAbsolutePath+group.engine` | `0.24` | `0.55` |
+| Function | Concept | Typicality | Concept median | |
+|---|---|---:|---:|---|
+| `gin.*RouterGroup.createStaticHandler` <br/>`routergroup.go:216` | `gin+template` | `0.06` | `0.94` | no near-duplicate |
+| `gin.*Context.ClientIP` <br/>`context.go:975` | `c.hasRequestContext+Request.Context` | `0.26` | `0.86` | no near-duplicate |
+| `gin.authPairs.searchCredential` <br/>`auth.go:32` | `API.Marshal+bytesconv.StringToBytes` | `0.24` | `0.55` | no near-duplicate |
+| `gin.*RouterGroup.createStaticHandler` <br/>`routergroup.go:216` | `group.calculateAbsolutePath+group.engine` | `0.24` | `0.55` | no near-duplicate |
+| `gin.*Engine.handleHTTPRequest` <br/>`gin.go:690` | `gin.*Context.Header+gin.*Context.Set` | `0.23` | `0.52` | no near-duplicate |
+| `gin.*Context.initFormCache` <br/>`context.go:638` | `c.formCache+c.queryCache` | `0.23` | `0.48` | no near-duplicate |
+| `gin.*Context.ClientIP` <br/>`context.go:975` | `engine.MaxMultipartMemory+c.engine` | `0.19` | `0.42` | no near-duplicate |
+| `binding.decodePlain` <br/>`binding/plain.go:31` | `binding+nil` | `0.13` | `0.35` | no near-duplicate |
+| `gin.New` <br/>`gin.go:202` | `delims.Left+delims.Right` | `0.19` | `0.39` | no near-duplicate |
+| `binding.*defaultValidator.lazyinit` <br/>`binding/default_validator.go:90` | `delims.Left+delims.Right` | `0.19` | `0.39` | no near-duplicate |
 
 _27 more unusual realizations not listed._
+
+A row marked _no near-duplicate_ appears in no reported pair: nothing else in this report explains it, which makes it drift rather than duplication.
 
 ---
 
@@ -822,11 +822,11 @@ _27 more unusual realizations not listed._
 
 ## Families
 
-30 families, 134 functions in a family, largest 14 members; 123 edges scored here that retrieval never proposed
+27 families, 155 functions in a family, largest 17 members; 235 edges scored here that retrieval never proposed
 
-### Family 1 — 13 members, every pair `>= 0.74` code-shape, evidence `2345`  (31 edges scored here)
+### Family 1 — 15 members, every pair `>= 0.55` code-shape, evidence `2751`  (49 edges scored here)
 
-_Not drawn: 13 members is 78 connections. Every one of them holds — that is what makes this a family._
+_Not drawn: 15 members is 105 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
@@ -841,117 +841,67 @@ _Not drawn: 13 members is 78 connections. Every one of them holds — that is wh
 | `context.go:1238` | `gin.*Context.ProtoBuf` | `(int, any)` | binding+nil 0.31 |
 | `context.go:1243` | `gin.*Context.BSON` | `(int, any)` | binding+nil 0.31 |
 
-_3 more members not listed._
+_5 more members not listed._
 
-### Family 2 — 6 members, every pair `>= 0.61` code-shape, evidence `2265`, interface implementations of `Render(http.ResponseWriter) (error)`, in package `render`
+### Family 2 — 5 members, every pair `>= 0.56` code-shape, evidence `2656`
 
 ```mermaid
 flowchart LR
-    m0["render.IndentedJSON.Render"]
-    m1["render.SecureJSON.Render"]
-    m2["render.JsonpJSON.Render"]
-    m3["render.ProtoBuf.Render"]
-    m4["render.TOML.Render"]
-    m5["render.YAML.Render"]
+    m0["gin.*Engine.Run"]
+    m1["gin.*Engine.RunTLS"]
+    m2["gin.*Engine.RunUnix"]
+    m3["gin.*Engine.RunQUIC"]
+    m4["gin.*Engine.RunListener"]
     m0 --- m1
     m0 --- m2
     m0 --- m3
     m0 --- m4
-    m0 --- m5
     m1 --- m2
     m1 --- m3
     m1 --- m4
-    m1 --- m5
     m2 --- m3
     m2 --- m4
-    m2 --- m5
     m3 --- m4
-    m3 --- m5
-    m4 --- m5
 ```
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `render/json.go:78` | `render.IndentedJSON.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.55, bytesconv.StringToBytes+json.API 0.42, json.Marshal+json.MarshalIndent 0.41, binding+nil 0.35 |
-| `render/json.go:94` | `render.SecureJSON.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.66, bytesconv.StringToBytes+json.API 0.53, json.Marshal+json.MarshalIndent 0.37, binding+nil 0.35 |
-| `render/json.go:117` | `render.JsonpJSON.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.67, bytesconv.StringToBytes+json.API 0.53, binding+nil 0.35, json.Marshal+json.MarshalIndent 0.33 |
-| `render/protobuf.go:21` | `render.ProtoBuf.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.60, binding+nil 0.35, json.Marshal+json.MarshalIndent 0.31 |
-| `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.60, binding+nil 0.35, json.Marshal+json.MarshalIndent 0.31 |
-| `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.60, binding+nil 0.35, json.Marshal+json.MarshalIndent 0.31 |
+| `gin.go:540` | `gin.*Engine.Run` | `(...string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.78, http.Server+engine.Handler 0.50 |
+| `gin.go:561` | `gin.*Engine.RunTLS` | `(string, string, string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.77, http.Server+engine.Handler 0.52 |
+| `gin.go:581` | `gin.*Engine.RunUnix` | `(string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.78, http.Server+engine.Handler 0.52, binding+nil 0.35 |
+| `gin.go:630` | `gin.*Engine.RunQUIC` | `(string, string, string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.76, http.Server+engine.Handler 0.50 |
+| `gin.go:645` | `gin.*Engine.RunListener` | `(net.Listener) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.76, http.Server+engine.Handler 0.50 |
 
-### Family 3 — 6 members, every pair `>= 0.62` code-shape, evidence `2031`
+### Family 3 — 5 members, every pair `>= 0.50` code-shape, evidence `2604`
 
 ```mermaid
 flowchart LR
-    m0["render.WriteJSON"]
-    m1["render.IndentedJSON.Render"]
-    m2["render.SecureJSON.Render"]
-    m3["render.ProtoBuf.Render"]
-    m4["render.TOML.Render"]
-    m5["render.YAML.Render"]
+    m0["gin.*Engine.RunTLS"]
+    m1["gin.*Engine.RunUnix"]
+    m2["gin.*Engine.RunFd"]
+    m3["gin.*Engine.RunQUIC"]
+    m4["gin.*Engine.RunListener"]
     m0 --- m1
     m0 --- m2
     m0 --- m3
     m0 --- m4
-    m0 --- m5
     m1 --- m2
     m1 --- m3
     m1 --- m4
-    m1 --- m5
     m2 --- m3
     m2 --- m4
-    m2 --- m5
     m3 --- m4
-    m3 --- m5
-    m4 --- m5
 ```
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `render/json.go:67` | `render.WriteJSON` | `(http.ResponseWriter, any) (error)` | API.Marshal+bytesconv.StringToBytes 0.58, render.writeContentType+bytes 0.50, bytesconv.StringToBytes+json.API 0.41, binding+nil 0.35 |
-| `render/json.go:78` | `render.IndentedJSON.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.55, bytesconv.StringToBytes+json.API 0.42, json.Marshal+json.MarshalIndent 0.41, binding+nil 0.35 |
-| `render/json.go:94` | `render.SecureJSON.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.66, bytesconv.StringToBytes+json.API 0.53, json.Marshal+json.MarshalIndent 0.37, binding+nil 0.35 |
-| `render/protobuf.go:21` | `render.ProtoBuf.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.60, binding+nil 0.35, json.Marshal+json.MarshalIndent 0.31 |
-| `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.60, binding+nil 0.35, json.Marshal+json.MarshalIndent 0.31 |
-| `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.60, binding+nil 0.35, json.Marshal+json.MarshalIndent 0.31 |
+| `gin.go:561` | `gin.*Engine.RunTLS` | `(string, string, string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.77, http.Server+engine.Handler 0.52 |
+| `gin.go:581` | `gin.*Engine.RunUnix` | `(string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.78, http.Server+engine.Handler 0.52, binding+nil 0.35 |
+| `gin.go:607` | `gin.*Engine.RunFd` | `(int) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.74, binding+nil 0.35 |
+| `gin.go:630` | `gin.*Engine.RunQUIC` | `(string, string, string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.76, http.Server+engine.Handler 0.50 |
+| `gin.go:645` | `gin.*Engine.RunListener` | `(net.Listener) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.76, http.Server+engine.Handler 0.50 |
 
-### Family 4 — 6 members, every pair `>= 0.62` code-shape, evidence `1858`
-
-```mermaid
-flowchart LR
-    m0["render.BSON.Render"]
-    m1["render.WriteJSON"]
-    m2["render.IndentedJSON.Render"]
-    m3["render.ProtoBuf.Render"]
-    m4["render.TOML.Render"]
-    m5["render.YAML.Render"]
-    m0 --- m1
-    m0 --- m2
-    m0 --- m3
-    m0 --- m4
-    m0 --- m5
-    m1 --- m2
-    m1 --- m3
-    m1 --- m4
-    m1 --- m5
-    m2 --- m3
-    m2 --- m4
-    m2 --- m5
-    m3 --- m4
-    m3 --- m5
-    m4 --- m5
-```
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `render/bson.go:21` | `render.BSON.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.54, binding+nil 0.35, json.Marshal+json.MarshalIndent 0.31 |
-| `render/json.go:67` | `render.WriteJSON` | `(http.ResponseWriter, any) (error)` | API.Marshal+bytesconv.StringToBytes 0.58, render.writeContentType+bytes 0.50, bytesconv.StringToBytes+json.API 0.41, binding+nil 0.35 |
-| `render/json.go:78` | `render.IndentedJSON.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.55, bytesconv.StringToBytes+json.API 0.42, json.Marshal+json.MarshalIndent 0.41, binding+nil 0.35 |
-| `render/protobuf.go:21` | `render.ProtoBuf.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.60, binding+nil 0.35, json.Marshal+json.MarshalIndent 0.31 |
-| `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.60, binding+nil 0.35, json.Marshal+json.MarshalIndent 0.31 |
-| `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.60, binding+nil 0.35, json.Marshal+json.MarshalIndent 0.31 |
-
-### Family 5 — 5 members, every pair `>= 0.64` code-shape, evidence `1402`
+### Family 4 — 5 members, every pair `>= 0.64` code-shape, evidence `1402`
 
 ```mermaid
 flowchart LR
@@ -980,5 +930,34 @@ flowchart LR
 | `binding/xml.go:28` | `binding.decodeXML` | `(io.Reader, any) (error)` | delims.Left+delims.Right 0.66, binding+nil 0.35 |
 | `binding/yaml.go:29` | `binding.decodeYAML` | `(io.Reader, any) (error)` | delims.Left+delims.Right 0.66, binding+nil 0.35 |
 
-_25 more families not listed._
+### Family 5 — 5 members, every pair `>= 0.62` code-shape, evidence `1304`, interface implementations of `Render(http.ResponseWriter) (error)`, in package `render`
+
+```mermaid
+flowchart LR
+    m0["render.BSON.Render"]
+    m1["render.IndentedJSON.Render"]
+    m2["render.ProtoBuf.Render"]
+    m3["render.TOML.Render"]
+    m4["render.YAML.Render"]
+    m0 --- m1
+    m0 --- m2
+    m0 --- m3
+    m0 --- m4
+    m1 --- m2
+    m1 --- m3
+    m1 --- m4
+    m2 --- m3
+    m2 --- m4
+    m3 --- m4
+```
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `render/bson.go:21` | `render.BSON.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.54, binding+nil 0.35, json.Marshal+json.MarshalIndent 0.31 |
+| `render/json.go:78` | `render.IndentedJSON.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.55, bytesconv.StringToBytes+json.API 0.42, json.Marshal+json.MarshalIndent 0.41, binding+nil 0.35 |
+| `render/protobuf.go:21` | `render.ProtoBuf.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.60, binding+nil 0.35, json.Marshal+json.MarshalIndent 0.31 |
+| `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.60, binding+nil 0.35, json.Marshal+json.MarshalIndent 0.31 |
+| `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.60, binding+nil 0.35, json.Marshal+json.MarshalIndent 0.31 |
+
+_22 more families not listed._
 

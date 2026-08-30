@@ -9,7 +9,7 @@ CLI framework; one dominant type with a long method set, plus shell-completion g
 | Corpus | [cobra](https://github.com/spf13/cobra) |
 | Pinned at | `v1.10.2` (`88b30ab89da2d0d0abb153818746c5a2d30eccec`) |
 | Project since | 2015 |
-| doppel | `c2e717b` |
+| doppel | `7c27a17` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -28,11 +28,13 @@ Culture: 23 concepts modeled, 347 associations, 6 unusual realizations
 Habitats: 2 modeled, 0 misfits; most uniform doc (norm 0.94), most diverse cobra (norm 0.91)
 Conventions: strongest f.Name+flag.ContinueOnError+flag.NewFlagSet (0.61), loosest c.PersistentFlags+c.parentsPflags (0.22)
 Ecosystems: 211 profiled (168 dominance, 41 coalition, 0 conflict, 2 weak)
+Calibration: rate 0.01 over 17578 shape / 20000 overlap null pairs -> threshold 0.53, struct-min 0.51, family-min 0.53
 Found 269 functions. Retrieving candidates...
-Retrieval: shape 117, concept 630, call 712 -> 1158 unique pairs
-  concept-only 33.6%  call-only 40.7%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 2819
-Running structural comparison on 1158 pairs...
-Families: 18 over 44 components, 63 functions in a family, 3 edges completed
+Retrieval: shape 149, concept 630, call 712 -> 1168 unique pairs
+  concept-only 32.8%  call-only 40.1%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 2819
+Running structural comparison on 1168 pairs...
+  208 pairs remain after struct-min=0.51 filter
+Families: 16 over 38 components, 59 functions in a family, 16 edges completed
 ```
 
 # Code Similarity Report
@@ -157,13 +159,6 @@ Convention is how uniformly this corpus realizes a concept: `1.00` means every f
 
 Merge-worthy pairs folded up to their packages. An edge means two packages keep solving the same problem separately; a count on a node means the repetition is inside one package.
 
-```mermaid
-flowchart LR
-    p0["cobra<br/>183 internal"]
-    p1["doc<br/>21 internal"]
-    p0 ---|"3"| p1
-```
-
 ### How settled each package is
 
 A package with at least five functions gets a habitat model: doppel learns what is normal there and measures how surprising each member is against it. **Norm** is how uniform the package's practice is. A **misfit** is a function alien to its package *and* to the wider subsystem around it — one that fits its neighbours a directory up is normal for this codebase and is not reported.
@@ -182,7 +177,7 @@ Most uniform is `doc` (norm `0.94`); most varied is `cobra` (norm `0.91`).
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **1158 candidate pairs** (shape 117, concept 630, call 712), of which 41% arrived on call evidence alone and 34% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **1168 candidate pairs** (shape 149, concept 630, call 712), of which 40% arrived on call evidence alone and 33% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 211 functions reached an equilibrium: **168** settled on a single concept, **41** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -368,14 +363,16 @@ Co-occurrence measured against chance across every function. Only relationships 
 
 These carry a tag but look nothing like the other functions carrying it. Typicality is measured against the concept's own median, so a genuinely varied concept lowers its own bar and a tight one can flag nobody.
 
-| Function | Concept | Typicality | Concept median |
-|---|---|---:|---:|
-| `cobra.*Command.UsageFunc` <br/>`command.go:444` | `c.PrintErrln+c.Parent` | `0.36` | `0.84` |
-| `cobra.*Command.ExecuteC` <br/>`command.go:1084` | `c.PrintErrln+c.Parent` | `0.36` | `0.84` |
-| `cobra.*Command.HelpFunc` <br/>`command.go:484` | `c.PrintErrln+c.Parent` | `0.42` | `0.84` |
-| `cobra.*Command.DebugFlags` <br/>`command.go:1501` | `f.Name+flag.ContinueOnError` | `0.24` | `0.57` |
-| `doc.GenYamlCustom` <br/>`doc/yaml_docs.go:93` | `flags.HasAvailableFlags+cmd.InheritedFlags` | `0.26` | `0.57` |
-| `cobra.tmpl` <br/>`cobra.go:179` | `reflect+template` | `0.19` | `0.43` |
+| Function | Concept | Typicality | Concept median | |
+|---|---|---:|---:|---|
+| `cobra.*Command.ExecuteC` <br/>`command.go:1084` | `c.PrintErrln+c.Parent` | `0.36` | `0.84` | no near-duplicate |
+| `cobra.*Command.DebugFlags` <br/>`command.go:1501` | `f.Name+flag.ContinueOnError` | `0.24` | `0.57` | no near-duplicate |
+| `cobra.tmpl` <br/>`cobra.go:179` | `reflect+template` | `0.19` | `0.43` | no near-duplicate |
+| `cobra.*Command.UsageFunc` <br/>`command.go:444` | `c.PrintErrln+c.Parent` | `0.36` | `0.84` |  |
+| `cobra.*Command.HelpFunc` <br/>`command.go:484` | `c.PrintErrln+c.Parent` | `0.42` | `0.84` |  |
+| `doc.GenYamlCustom` <br/>`doc/yaml_docs.go:93` | `flags.HasAvailableFlags+cmd.InheritedFlags` | `0.26` | `0.57` |  |
+
+A row marked _no near-duplicate_ appears in no reported pair: nothing else in this report explains it, which makes it drift rather than duplication.
 
 ---
 
@@ -762,11 +759,70 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 ## Families
 
-18 families, 63 functions in a family, largest 9 members; 3 edges scored here that retrieval never proposed
+16 families, 59 functions in a family, largest 10 members; 16 edges scored here that retrieval never proposed
 
-### Family 1 — 9 members, every pair `>= 0.63` code-shape, evidence `2633`
+### Family 1 — 3 members, every pair `>= 0.58` code-shape, evidence `3883`
 
-_Not drawn: 9 members is 36 connections. Every one of them holds — that is what makes this a family._
+```mermaid
+flowchart LR
+    m0["doc.genMan"]
+    m1["doc.GenMarkdownCustom"]
+    m2["doc.GenReSTCustom"]
+    m0 --- m1
+    m0 --- m2
+    m1 --- m2
+```
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `doc/man_docs.go:202` | `doc.genMan` | `(*cobra.Command, *GenManHeader) ([]byte)` | c.DisableAutoGenTag+cmd.VisitParents 0.90, c.DisableAutoGenTag+cmd.VisitParents+cobra.Command 0.84, c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand 0.63, cobra.WriteStringAndCheck+header.Section 0.62, +2 more |
+| `doc/md_docs.go:57` | `doc.GenMarkdownCustom` | `(*cobra.Command, io.Writer, func(string) string) (error)` | c.DisableAutoGenTag+cmd.VisitParents 0.90, c.DisableAutoGenTag+cmd.VisitParents+cobra.Command 0.85, c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand 0.69, c.DisableAutoGenTag+child.IsAdditionalHelpTopic… 0.57, +3 more |
+| `doc/rest_docs.go:62` | `doc.GenReSTCustom` | `(*cobra.Command, io.Writer, func(string, string) string) (error)` | c.DisableAutoGenTag+cmd.VisitParents 0.90, c.DisableAutoGenTag+cmd.VisitParents+cobra.Command 0.85, c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand 0.69, c.DisableAutoGenTag+child.IsAdditionalHelpTopic… 0.57, +3 more |
+
+### Family 2 — 3 members, every pair `>= 0.56` code-shape, evidence `3134`
+
+```mermaid
+flowchart LR
+    m0["doc.GenMarkdownCustom"]
+    m1["doc.GenReSTCustom"]
+    m2["doc.GenYamlCustom"]
+    m0 --- m1
+    m0 --- m2
+    m1 --- m2
+```
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `doc/md_docs.go:57` | `doc.GenMarkdownCustom` | `(*cobra.Command, io.Writer, func(string) string) (error)` | c.DisableAutoGenTag+cmd.VisitParents 0.90, c.DisableAutoGenTag+cmd.VisitParents+cobra.Command 0.85, c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand 0.69, c.DisableAutoGenTag+child.IsAdditionalHelpTopic… 0.57, +3 more |
+| `doc/rest_docs.go:62` | `doc.GenReSTCustom` | `(*cobra.Command, io.Writer, func(string, string) string) (error)` | c.DisableAutoGenTag+cmd.VisitParents 0.90, c.DisableAutoGenTag+cmd.VisitParents+cobra.Command 0.85, c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand 0.69, c.DisableAutoGenTag+child.IsAdditionalHelpTopic… 0.57, +3 more |
+| `doc/yaml_docs.go:93` | `doc.GenYamlCustom` | `(*cobra.Command, io.Writer, func(string) string) (error)` | c.DisableAutoGenTag+cmd.VisitParents 0.84, c.DisableAutoGenTag+cmd.VisitParents+cobra.Command 0.74, c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand 0.60, flags.HasAvailableFlags+cmd.InheritedFlags 0.50, +2 more |
+
+### Family 3 — 4 members, every pair `>= 0.55` code-shape, evidence `3010`
+
+```mermaid
+flowchart LR
+    m0["doc.GenManTreeFromOpts"]
+    m1["doc.GenMarkdownTreeCustom"]
+    m2["doc.GenReSTTreeCustom"]
+    m3["doc.GenYamlTreeCustom"]
+    m0 --- m1
+    m0 --- m2
+    m0 --- m3
+    m1 --- m2
+    m1 --- m3
+    m2 --- m3
+```
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `doc/man_docs.go:48` | `doc.GenManTreeFromOpts` | `(*cobra.Command, GenManTreeOptions) (error)` | io.WriteString+filepath.Join 0.66, cobra.WriteStringAndCheck+header.Section 0.54, c.DisableAutoGenTag+cmd.VisitParents 0.49, c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand 0.20, +1 more |
+| `doc/md_docs.go:133` | `doc.GenMarkdownTreeCustom` | `(*cobra.Command, string, func(string) string, func(string) string) (error)` | io.WriteString+filepath.Join 0.75, c.DisableAutoGenTag+cmd.VisitParents 0.49, c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand 0.21, c.DisableFlagParsing+sort.Strings 0.15 |
+| `doc/rest_docs.go:145` | `doc.GenReSTTreeCustom` | `(*cobra.Command, string, func(string) string, func(string, string) string) (error)` | io.WriteString+filepath.Join 0.75, c.DisableAutoGenTag+cmd.VisitParents 0.49, c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand 0.21, c.DisableFlagParsing+sort.Strings 0.15 |
+| `doc/yaml_docs.go:60` | `doc.GenYamlTreeCustom` | `(*cobra.Command, string, func(string) string, func(string) string) (error)` | io.WriteString+filepath.Join 0.75, c.DisableAutoGenTag+cmd.VisitParents 0.49, c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand 0.21, c.DisableFlagParsing+sort.Strings 0.15 |
+
+### Family 4 — 10 members, every pair `>= 0.55` code-shape, evidence `2718`  (8 edges scored here)
+
+_Not drawn: 10 members is 45 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
@@ -775,30 +831,13 @@ _Not drawn: 9 members is 36 connections. Every one of them holds — that is wha
 | `command.go:432` | `cobra.*Command.getIn` | `(io.Reader) (io.Reader)` | c.PrintErrln+c.Parent 0.49 |
 | `command.go:464` | `cobra.*Command.getUsageTemplateFunc` | `() (func(w io.Writer, data interface{}) error)` | c.PrintErrln+c.Parent 0.52 |
 | `command.go:505` | `cobra.*Command.getHelpTemplateFunc` | `() (func(w io.Writer, data interface{}) error)` | c.PrintErrln+c.Parent 0.51 |
+| `command.go:547` | `cobra.*Command.FlagErrorFunc` | `() (func(*Command, error) error)` | c.PrintErrln+c.Parent 0.49 |
 | `command.go:592` | `cobra.*Command.UsageTemplate` | `() (string)` | c.PrintErrln+c.Parent 0.51 |
 | `command.go:605` | `cobra.*Command.HelpTemplate` | `() (string)` | c.PrintErrln+c.Parent 0.50 |
 | `command.go:618` | `cobra.*Command.VersionTemplate` | `() (string)` | c.PrintErrln+c.Parent 0.50 |
 | `command.go:631` | `cobra.*Command.getVersionTemplateFunc` | `() (func(w io.Writer, data interface{}) error)` | c.PrintErrln+c.Parent 0.51 |
 
-### Family 2 — 3 members, every pair `>= 0.84` code-shape, evidence `1901`
-
-```mermaid
-flowchart LR
-    m0["doc.GenMarkdownTreeCustom"]
-    m1["doc.GenReSTTreeCustom"]
-    m2["doc.GenYamlTreeCustom"]
-    m0 --- m1
-    m0 --- m2
-    m1 --- m2
-```
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `doc/md_docs.go:133` | `doc.GenMarkdownTreeCustom` | `(*cobra.Command, string, func(string) string, func(string) string) (error)` | io.WriteString+filepath.Join 0.75, c.DisableAutoGenTag+cmd.VisitParents 0.49, c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand 0.21, c.DisableFlagParsing+sort.Strings 0.15 |
-| `doc/rest_docs.go:145` | `doc.GenReSTTreeCustom` | `(*cobra.Command, string, func(string) string, func(string, string) string) (error)` | io.WriteString+filepath.Join 0.75, c.DisableAutoGenTag+cmd.VisitParents 0.49, c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand 0.21, c.DisableFlagParsing+sort.Strings 0.15 |
-| `doc/yaml_docs.go:60` | `doc.GenYamlTreeCustom` | `(*cobra.Command, string, func(string) string, func(string) string) (error)` | io.WriteString+filepath.Join 0.75, c.DisableAutoGenTag+cmd.VisitParents 0.49, c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand 0.21, c.DisableFlagParsing+sort.Strings 0.15 |
-
-### Family 3 — 4 members, every pair `>= 0.64` code-shape, evidence `1745`
+### Family 5 — 4 members, every pair `>= 0.64` code-shape, evidence `1745`
 
 ```mermaid
 flowchart LR
@@ -821,52 +860,5 @@ flowchart LR
 | `command.go:1744` | `cobra.*Command.InheritedFlags` | `() (*flag.FlagSet)` | c.PersistentFlags+c.parentsPflags 0.69, f.Name+flag.ContinueOnError 0.69, f.Name+flag.ContinueOnError+flag.NewFlagSet 0.62, f.Annotations+c.flagErrorBuf 0.61, +2 more |
 | `command.go:1775` | `cobra.*Command.PersistentFlags` | `() (*flag.FlagSet)` | f.Name+flag.ContinueOnError 0.56, f.Annotations+c.flagErrorBuf 0.54, c.PersistentFlags+c.parentsPflags 0.50, f.Name+flag.ContinueOnError+flag.NewFlagSet 0.50 |
 
-### Family 4 — 5 members, every pair `>= 0.81` code-shape, evidence `1242`
-
-```mermaid
-flowchart LR
-    m0["cobra.*Command.GenBashCompletionFile"]
-    m1["cobra.*Command.GenBashCompletionFileV2"]
-    m2["cobra.*Command.GenFishCompletionFile"]
-    m3["cobra.*Command.genPowerShellCompletionFile"]
-    m4["cobra.*Command.genZshCompletionFile"]
-    m0 --- m1
-    m0 --- m2
-    m0 --- m3
-    m0 --- m4
-    m1 --- m2
-    m1 --- m3
-    m1 --- m4
-    m2 --- m3
-    m2 --- m4
-    m3 --- m4
-```
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `bash_completions.go:701` | `cobra.*Command.GenBashCompletionFile` | `(string) (error)` | — |
-| `bash_completionsV2.go:470` | `cobra.*Command.GenBashCompletionFileV2` | `(string, bool) (error)` | io.WriteString+filepath.Join 0.50 |
-| `fish_completions.go:284` | `cobra.*Command.GenFishCompletionFile` | `(string, bool) (error)` | io.WriteString+filepath.Join 0.50 |
-| `powershell_completions.go:320` | `cobra.*Command.genPowerShellCompletionFile` | `(string, bool) (error)` | io.WriteString+filepath.Join 0.50 |
-| `zsh_completions.go:70` | `cobra.*Command.genZshCompletionFile` | `(string, bool) (error)` | io.WriteString+filepath.Join 0.50 |
-
-### Family 5 — 3 members, every pair `>= 1.00` code-shape, evidence `1235`
-
-```mermaid
-flowchart LR
-    m0["cobra.*Command.MarkFlagsRequiredTogether"]
-    m1["cobra.*Command.MarkFlagsOneRequired"]
-    m2["cobra.*Command.MarkFlagsMutuallyExclusive"]
-    m0 --- m1
-    m0 --- m2
-    m1 --- m2
-```
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `flag_groups.go:33` | `cobra.*Command.MarkFlagsRequiredTogether` | `(...string)` | f.Annotations+c.flagErrorBuf 0.61, c.DisableFlagParsing+sort.Strings 0.46 |
-| `flag_groups.go:49` | `cobra.*Command.MarkFlagsOneRequired` | `(...string)` | f.Annotations+c.flagErrorBuf 0.61, c.DisableFlagParsing+sort.Strings 0.49 |
-| `flag_groups.go:65` | `cobra.*Command.MarkFlagsMutuallyExclusive` | `(...string)` | f.Annotations+c.flagErrorBuf 0.61, c.DisableFlagParsing+sort.Strings 0.44 |
-
-_13 more families not listed._
+_11 more families not listed._
 

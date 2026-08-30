@@ -9,7 +9,7 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `c2e717b` |
+| doppel | `7c27a17` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -28,11 +28,14 @@ Culture: 327 concepts modeled, 5485 associations, 196 unusual realizations
 Habitats: 90 modeled, 125 misfits (111 excused by subsystem), 16 subsystems; most uniform httputil (norm 0.98), most diverse testhelpers (norm 0.60)
 Conventions: strongest b.Reset+c.b (1.00), loosest b.output+b.add (0.13)
 Ecosystems: 3590 profiled (1855 dominance, 1735 coalition, 0 conflict, 0 weak)
+Calibration: rate 0.01 over 20000 null pairs -> threshold 0.42, struct-min 0.31, family-min 0.42
 Found 5469 functions. Retrieving candidates...
-Retrieval: shape 3324, concept 9017, call 8141 -> 16850 unique pairs
-  concept-only 38.3%  call-only 32.1%  suppressed-shape functions: 67  large identity buckets: 0  surviving patterns: 37732
-Running structural comparison on 16850 pairs...
-Families: 502 over 625 components, 1417 functions in a family, 4249 edges completed
+Retrieval: shape 7902, concept 9017, call 8141 -> 20098 unique pairs
+  concept-only 30.6%  call-only 23.9%  suppressed-shape functions: 67  large identity buckets: 0  surviving patterns: 37732
+Running structural comparison on 20098 pairs...
+  9577 pairs remain after struct-min=0.31 filter
+Families: 633 over 517 components, 1672 functions in a family, 4516 edges completed
+  2 component(s) skipped as too large or too dense: sizes [168 506]
 ```
 
 # Code Similarity Report
@@ -1222,38 +1225,37 @@ Merge-worthy pairs folded up to their packages. An edge means two packages keep 
 ```mermaid
 flowchart LR
     p0["rules<br/>48 internal"]
-    p1["scrape<br/>44 internal"]
-    p0 ---|"36"| p1
-    p2["agent<br/>30 internal"]
-    p3["tsdb<br/>318 internal"]
-    p2 ---|"20"| p3
-    p4["annotations<br/>45 internal"]
-    p5["histogram<br/>49 internal"]
-    p4 ---|"14"| p5
-    p6["aws<br/>138 internal"]
-    p7["azure<br/>7 internal"]
+    p1["scrape<br/>51 internal"]
+    p0 ---|"38"| p1
+    p2["agent<br/>32 internal"]
+    p3["tsdb<br/>375 internal"]
+    p2 ---|"23"| p3
+    p4["aws<br/>150 internal"]
+    p5["azure<br/>8 internal"]
+    p4 ---|"16"| p5
+    p6["annotations<br/>45 internal"]
+    p7["histogram<br/>64 internal"]
     p6 ---|"14"| p7
-    p8["moby<br/>11 internal"]
-    p6 ---|"14"| p8
-    p9["linode"]
-    p6 ---|"12"| p9
-    p10["openstack<br/>3 internal"]
-    p6 ---|"11"| p10
-    p11["promql<br/>317 internal"]
-    p12["storage<br/>115 internal"]
-    p11 ---|"11"| p12
+    p8["linode"]
+    p4 ---|"13"| p8
+    p9["moby<br/>13 internal"]
+    p4 ---|"13"| p9
+    p10["remote<br/>66 internal"]
+    p10 ---|"13"| p0
+    p10 ---|"13"| p1
+    p11["storage<br/>129 internal"]
+    p12["testhelpers<br/>96 internal"]
+    p11 ---|"12"| p12
     p13["hetzner<br/>1 internal"]
-    p6 ---|"10"| p13
-    p14["vultr"]
-    p6 ---|"10"| p14
+    p4 ---|"11"| p13
+    p14["openstack<br/>3 internal"]
+    p4 ---|"11"| p14
     p15["prompb<br/>6 internal"]
-    p16["writev2<br/>4 internal"]
-    p15 ---|"10"| p16
-    p17["remote<br/>61 internal"]
-    p17 ---|"10"| p0
+    p16["writev2<br/>5 internal"]
+    p15 ---|"11"| p16
 ```
 
-_326 further package pairs are connected by merge-worthy duplication and are not drawn._
+_350 further package pairs are connected by merge-worthy duplication and are not drawn._
 
 ### How settled each package is
 
@@ -1284,7 +1286,7 @@ _78 further packages are modeled and not drawn._ Most uniform is `httputil` (nor
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **16850 candidate pairs** (shape 3324, concept 9017, call 8141), of which 32% arrived on call evidence alone and 38% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **20098 candidate pairs** (shape 7902, concept 9017, call 8141), of which 24% arrived on call evidence alone and 31% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 3590 functions reached an equilibrium: **1855** settled on a single concept, **1735** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -1851,16 +1853,16 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 | Function | Concept | Typicality | Concept median | |
 |---|---|---:|---:|---|
+| `tsdb.requireEqualSamples` <br/>`tsdb/testutil.go:163` | `require.Equal+require.NotNil` | `0.10` | `0.62` | no near-duplicate |
+| `storage.*sampleRing.reset` <br/>`storage/buffer.go:328` | `r.delta+r.i` | `0.15` | `0.66` | no near-duplicate |
+| `v1.marshalLabelsJSON` <br/>`web/api/v1/json_codec.go:220` | `h.WriteString+xxhash.New` | `0.13` | `0.57` | no near-duplicate |
+| `remote.*querier.Select` <br/>`storage/remote/read.go:141` | `q.chunks+q.tombstones` | `0.13` | `0.43` | no near-duplicate |
+| `storage.expandSamples` <br/>`storage/series.go:480` | `c.err+c.floatsCur` | `0.13` | `0.38` | no near-duplicate |
+| `storage.*SampleRingIterator.Next` <br/>`storage/buffer.go:366` | `c.err+c.floatsCur` | `0.18` | `0.38` | no near-duplicate |
+| `remote.*MetadataWatcher.Start` <br/>`storage/remote/metadata_watcher.go:89` | `Retention.Percentage+Retention.Size` | `0.11` | `0.29` | no near-duplicate |
+| `tsdb.*Head.resetWLReplayResources` <br/>`tsdb/head.go:405` | `Retention.Percentage+Retention.Size` | `0.11` | `0.29` | no near-duplicate |
 | `kubernetes.*Discovery.informerWatchErrorHandler` <br/>`discovery/kubernetes/kubernetes.go:942` | `c.EC2SDConfig+c.ECSSDConfig` | `0.12` | `0.28` | no near-duplicate |
-| `chunkenc.*xor2Appender.Append` <br/>`tsdb/chunkenc/xor2.go:183` | `BigEndian.PutUint16+a.b` | `0.16` | `0.91` |  |
-| `parser.*parser.applyUnaryOpToDurationExpr` <br/>`promql/parser/parse.go:1220` | `e.PosRange+posrange` | `0.17` | `0.88` |  |
-| `promql.funcRound` <br/>`promql/functions.go:1159` | `promql.simpleFloatFunc+natsort` | `0.31` | `0.99` |  |
-| `parser.*parser.checkAST` <br/>`promql/parser/parse.go:721` | `p.options+p.addParseErrf` | `0.25` | `0.84` |  |
-| `chunkenc.*xor2Iterator.Reset` <br/>`tsdb/chunkenc/xor2.go:542` | `it.stDiff+it.baselineV` | `0.22` | `0.81` |  |
-| `main.*testGroup.test` <br/>`cmd/promtool/unittest.go:228` | `f.histograms+f.samples+f.idx` | `0.05` | `0.64` |  |
-| `main.main` <br/>`cmd/promtool/main.go:101` | `b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2` | `0.16` | `0.74` |  |
-| `tsdb.*DeletedIterator.Next` <br/>`tsdb/querier.go:1333` | `it.Iter+v2` | `0.34` | `0.90` |  |
-| `tsdbutil.TestDirLockerUsage` <br/>`tsdb/tsdbutil/dir_locker_testutil.go:31` | `require.Equal+require.True` | `0.17` | `0.72` |  |
+| `labels.ReadLabels` <br/>`model/labels/test_utils.go:45` | `b.Sort+b.Add` | `0.13` | `0.28` | no near-duplicate |
 
 _186 more unusual realizations not listed._
 
@@ -2248,102 +2250,104 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ## Families
 
-502 families, 1417 functions in a family, largest 55 members; 4249 edges scored here that retrieval never proposed
+633 families, 1672 functions in a family, largest 40 members; 4516 edges scored here that retrieval never proposed
 
-### Family 1 — 15 members, every pair `>= 0.60` code-shape, evidence `48857`  (27 edges scored here)
+### Family 1 — 14 members, every pair `>= 0.42` code-shape, evidence `26551`  (34 edges scored here)
+
+_Not drawn: 14 members is 91 connections. Every one of them holds — that is what makes this a family._
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `web/api/v1/api.go:526` | `v1.*API.query` | `(*http.Request) (apiFuncResult)` | Status.State+buf1.PutBE32int 0.55, engine.NewInstantQuery+promql.Scalar 0.53, api.parseMatchersParam+r.ParseForm 0.51, api.parser+parser.ParseExpr 0.50, +5 more |
+| `web/api/v1/api.go:660` | `v1.*API.queryRange` | `(*http.Request) (apiFuncResult)` | Status.State+buf1.PutBE32int 0.57, api.parser+parser.ParseExpr 0.50, api.parseMatchersParam+r.ParseForm 0.49, engine.NewInstantQuery+promql.Scalar 0.46, +6 more |
+| `web/api/v1/api.go:756` | `v1.*API.queryExemplars` | `(*http.Request) (apiFuncResult)` | api.parser+parser.ParseExpr 0.58, api.parseMatchersParam+r.ParseForm 0.41, HTTPClientConfig.OAuth2+binary.Uvarint 0.39, api.parseMatchersParam+Queryable.Querier 0.38, +1 more |
+| `web/api/v1/api.go:818` | `v1.*API.labelNames` | `(*http.Request) (apiFuncResult)` | api.parseMatchersParam+r.ParseForm 0.59, api.parseMatchersParam+Queryable.Querier 0.58, result.finalizer+api.Queryable 0.54, Status.State+buf1.PutBE32int 0.50, +6 more |
+| `web/api/v1/api.go:895` | `v1.*API.labelValues` | `(*http.Request) (apiFuncResult)` | api.parseMatchersParam+r.ParseForm 0.61, api.parseMatchersParam+Queryable.Querier 0.59, HTTPClientConfig.OAuth2+binary.Uvarint 0.58, Status.State+buf1.PutBE32int 0.56, +9 more |
+| `web/api/v1/api.go:1016` | `v1.*API.series` | `(*http.Request) (apiFuncResult)` | set.Warnings+c.set 0.70, Status.State+buf1.PutBE32int 0.62, api.parseMatchersParam+r.ParseForm 0.62, api.parseMatchersParam+Queryable.Querier 0.58, +7 more |
+| `web/api/v1/api.go:1222` | `v1.*API.targets` | `(*http.Request) (apiFuncResult)` | Status.State+buf1.PutBE32int 0.55, Retention.Percentage+Retention.Size 0.41, HTTPClientConfig.OAuth2+binary.Uvarint 0.38, api.parser+parser.ParseExpr 0.38, +3 more |
+| `web/api/v1/api.go:1318` | `v1.*API.targetMetadata` | `(*http.Request) (apiFuncResult)` | api.parser+parser.ParseExpr 0.52, Status.State+buf1.PutBE32int 0.44, ix.Postings+labels.MustNewMatcher 0.40, r.labels+r.name 0.26 |
+| `web/api/v1/api.go:1396` | `v1.*API.targetRelabelSteps` | `(*http.Request) (apiFuncResult)` | Status.State+buf1.PutBE32int 0.50, json.MarshalIndent+json.NewDecoder 0.49, api.parser+parser.ParseExpr 0.43, relabel.ProcessBuilder+lb.Labels 0.43, +2 more |
+| `web/api/v1/api.go:1508` | `v1.*API.metricMetadata` | `(*http.Request) (apiFuncResult)` | api.parser+parser.ParseExpr 0.44, Status.State+buf1.PutBE32int 0.38 |
+
+_4 more members not listed._
+
+### Family 2 — 14 members, every pair `>= 0.44` code-shape, evidence `25363`  (37 edges scored here)
+
+_Not drawn: 14 members is 91 connections. Every one of them holds — that is what makes this a family._
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `web/api/v1/api.go:526` | `v1.*API.query` | `(*http.Request) (apiFuncResult)` | Status.State+buf1.PutBE32int 0.55, engine.NewInstantQuery+promql.Scalar 0.53, api.parseMatchersParam+r.ParseForm 0.51, api.parser+parser.ParseExpr 0.50, +5 more |
+| `web/api/v1/api.go:660` | `v1.*API.queryRange` | `(*http.Request) (apiFuncResult)` | Status.State+buf1.PutBE32int 0.57, api.parser+parser.ParseExpr 0.50, api.parseMatchersParam+r.ParseForm 0.49, engine.NewInstantQuery+promql.Scalar 0.46, +6 more |
+| `web/api/v1/api.go:756` | `v1.*API.queryExemplars` | `(*http.Request) (apiFuncResult)` | api.parser+parser.ParseExpr 0.58, api.parseMatchersParam+r.ParseForm 0.41, HTTPClientConfig.OAuth2+binary.Uvarint 0.39, api.parseMatchersParam+Queryable.Querier 0.38, +1 more |
+| `web/api/v1/api.go:818` | `v1.*API.labelNames` | `(*http.Request) (apiFuncResult)` | api.parseMatchersParam+r.ParseForm 0.59, api.parseMatchersParam+Queryable.Querier 0.58, result.finalizer+api.Queryable 0.54, Status.State+buf1.PutBE32int 0.50, +6 more |
+| `web/api/v1/api.go:895` | `v1.*API.labelValues` | `(*http.Request) (apiFuncResult)` | api.parseMatchersParam+r.ParseForm 0.61, api.parseMatchersParam+Queryable.Querier 0.59, HTTPClientConfig.OAuth2+binary.Uvarint 0.58, Status.State+buf1.PutBE32int 0.56, +9 more |
+| `web/api/v1/api.go:1016` | `v1.*API.series` | `(*http.Request) (apiFuncResult)` | set.Warnings+c.set 0.70, Status.State+buf1.PutBE32int 0.62, api.parseMatchersParam+r.ParseForm 0.62, api.parseMatchersParam+Queryable.Querier 0.58, +7 more |
+| `web/api/v1/api.go:1318` | `v1.*API.targetMetadata` | `(*http.Request) (apiFuncResult)` | api.parser+parser.ParseExpr 0.52, Status.State+buf1.PutBE32int 0.44, ix.Postings+labels.MustNewMatcher 0.40, r.labels+r.name 0.26 |
+| `web/api/v1/api.go:1396` | `v1.*API.targetRelabelSteps` | `(*http.Request) (apiFuncResult)` | Status.State+buf1.PutBE32int 0.50, json.MarshalIndent+json.NewDecoder 0.49, api.parser+parser.ParseExpr 0.43, relabel.ProcessBuilder+lb.Labels 0.43, +2 more |
+| `web/api/v1/api.go:1508` | `v1.*API.metricMetadata` | `(*http.Request) (apiFuncResult)` | api.parser+parser.ParseExpr 0.44, Status.State+buf1.PutBE32int 0.38 |
+| `web/api/v1/api.go:1633` | `v1.*API.rules` | `(*http.Request) (apiFuncResult)` | Status.State+buf1.PutBE32int 0.66, api.parser+parser.ParseExpr 0.47, HTTPClientConfig.OAuth2+binary.Uvarint 0.46, api.parseMatchersParam+r.ParseForm 0.43, +7 more |
+
+_4 more members not listed._
+
+### Family 3 — 14 members, every pair `>= 0.44` code-shape, evidence `23229`  (42 edges scored here)
+
+_Not drawn: 14 members is 91 connections. Every one of them holds — that is what makes this a family._
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `web/api/v1/api.go:526` | `v1.*API.query` | `(*http.Request) (apiFuncResult)` | Status.State+buf1.PutBE32int 0.55, engine.NewInstantQuery+promql.Scalar 0.53, api.parseMatchersParam+r.ParseForm 0.51, api.parser+parser.ParseExpr 0.50, +5 more |
+| `web/api/v1/api.go:660` | `v1.*API.queryRange` | `(*http.Request) (apiFuncResult)` | Status.State+buf1.PutBE32int 0.57, api.parser+parser.ParseExpr 0.50, api.parseMatchersParam+r.ParseForm 0.49, engine.NewInstantQuery+promql.Scalar 0.46, +6 more |
+| `web/api/v1/api.go:756` | `v1.*API.queryExemplars` | `(*http.Request) (apiFuncResult)` | api.parser+parser.ParseExpr 0.58, api.parseMatchersParam+r.ParseForm 0.41, HTTPClientConfig.OAuth2+binary.Uvarint 0.39, api.parseMatchersParam+Queryable.Querier 0.38, +1 more |
+| `web/api/v1/api.go:818` | `v1.*API.labelNames` | `(*http.Request) (apiFuncResult)` | api.parseMatchersParam+r.ParseForm 0.59, api.parseMatchersParam+Queryable.Querier 0.58, result.finalizer+api.Queryable 0.54, Status.State+buf1.PutBE32int 0.50, +6 more |
+| `web/api/v1/api.go:895` | `v1.*API.labelValues` | `(*http.Request) (apiFuncResult)` | api.parseMatchersParam+r.ParseForm 0.61, api.parseMatchersParam+Queryable.Querier 0.59, HTTPClientConfig.OAuth2+binary.Uvarint 0.58, Status.State+buf1.PutBE32int 0.56, +9 more |
+| `web/api/v1/api.go:1016` | `v1.*API.series` | `(*http.Request) (apiFuncResult)` | set.Warnings+c.set 0.70, Status.State+buf1.PutBE32int 0.62, api.parseMatchersParam+r.ParseForm 0.62, api.parseMatchersParam+Queryable.Querier 0.58, +7 more |
+| `web/api/v1/api.go:1318` | `v1.*API.targetMetadata` | `(*http.Request) (apiFuncResult)` | api.parser+parser.ParseExpr 0.52, Status.State+buf1.PutBE32int 0.44, ix.Postings+labels.MustNewMatcher 0.40, r.labels+r.name 0.26 |
+| `web/api/v1/api.go:1396` | `v1.*API.targetRelabelSteps` | `(*http.Request) (apiFuncResult)` | Status.State+buf1.PutBE32int 0.50, json.MarshalIndent+json.NewDecoder 0.49, api.parser+parser.ParseExpr 0.43, relabel.ProcessBuilder+lb.Labels 0.43, +2 more |
+| `web/api/v1/api.go:1508` | `v1.*API.metricMetadata` | `(*http.Request) (apiFuncResult)` | api.parser+parser.ParseExpr 0.44, Status.State+buf1.PutBE32int 0.38 |
+| `web/api/v1/api.go:1929` | `v1.*API.selfMetrics` | `(*http.Request) (apiFuncResult)` | Status.State+buf1.PutBE32int 0.51, regexp.Compile+fmt.Errorf 0.50, json.MarshalIndent+json.NewDecoder 0.40, api.parser+parser.ParseExpr 0.39 |
+
+_4 more members not listed._
+
+### Family 4 — 11 members, every pair `>= 0.43` code-shape, evidence `22573`  (15 edges scored here)
+
+_Not drawn: 11 members is 55 connections. Every one of them holds — that is what makes this a family._
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `promql/parser/lex.go:418` | `parser.lexStatements` | `(*Lexer) (stateFn)` | l.gotColon+l.histogramState 0.72, l.input+l.pos 0.64, l.gotColon+l.histogramState+l.bracketOpen 0.62, l.gotColon+l.histogramState+l.seriesDesc 0.62, +3 more |
+| `promql/parser/lex.go:558` | `parser.lexHistogram` | `(*Lexer) (stateFn)` | l.gotColon+l.histogramState 0.67, l.gotColon+l.histogramState+l.bracketOpen 0.57, l.input+l.pos 0.56, l.gotColon+l.histogramState+l.seriesDesc 0.56 |
+| `promql/parser/lex.go:627` | `parser.lexHistogramDescriptor` | `(*Lexer) (stateFn)` | l.gotColon+l.histogramState 0.63, l.input+l.pos 0.62, l.gotColon+l.histogramState+l.bracketOpen 0.50, l.gotColon+l.histogramState+l.seriesDesc 0.49 |
+| `promql/parser/lex.go:664` | `parser.lexBuckets` | `(*Lexer) (stateFn)` | l.gotColon+l.histogramState 0.67, l.input+l.pos 0.63, l.gotColon+l.histogramState+l.bracketOpen 0.55, l.gotColon+l.histogramState+l.seriesDesc 0.55 |
+| `promql/parser/lex.go:696` | `parser.lexInsideBraces` | `(*Lexer) (stateFn)` | l.gotColon+l.histogramState 0.63, l.input+l.pos 0.59, l.stringOpen+l.errorf 0.52, l.gotColon+l.histogramState+l.bracketOpen 0.50, +1 more |
+| `promql/parser/lex.go:750` | `parser.lexValueSequence` | `(*Lexer) (stateFn)` | l.gotColon+l.histogramState 0.65, l.input+l.pos 0.58, l.gotColon+l.histogramState+l.bracketOpen 0.55, l.gotColon+l.histogramState+l.seriesDesc 0.54 |
+| `promql/parser/lex.go:797` | `parser.lexEscape` | `(*Lexer) (stateFn)` | l.gotColon+l.histogramState 0.36 |
+| `promql/parser/lex.go:873` | `parser.lexString` | `(*Lexer) (stateFn)` | l.stringOpen+l.errorf 0.50, l.gotColon+l.histogramState 0.45, l.input+l.pos 0.39, l.gotColon+l.histogramState+l.seriesDesc 0.27 |
+| `promql/parser/lex.go:932` | `parser.lexNumber` | `(*Lexer) (stateFn)` | l.gotColon+l.histogramState 0.44, l.input+l.pos 0.44, l.gotColon+l.histogramState+l.bracketOpen 0.34, l.gotColon+l.histogramState+l.seriesDesc 0.29 |
+| `promql/parser/lex.go:984` | `parser.lexNumberOrDuration` | `(*Lexer) (stateFn)` | l.gotColon+l.histogramState 0.52, l.input+l.pos 0.50, l.gotColon+l.histogramState+l.bracketOpen 0.40, l.gotColon+l.histogramState+l.seriesDesc 0.35 |
+
+_1 more members not listed._
+
+### Family 5 — 15 members, every pair `>= 0.42` code-shape, evidence `22045`  (44 edges scored here)
 
 _Not drawn: 15 members is 105 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `web/api/v1/openapi_paths.go:28` | `v1.*OpenAPIBuilder.queryPath` | `() (*v3.PathItem)` | b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2 0.58, b.searchDefaultLimit+exampleTime.Add+v3.Parameter 0.50, b.commonSearchPostProps+yaml.ScalarNode 0.50 |
-| `web/api/v1/openapi_paths.go:55` | `v1.*OpenAPIBuilder.queryRangePath` | `() (*v3.PathItem)` | b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2 0.60, b.commonSearchPostProps+yaml.ScalarNode 0.53, b.searchDefaultLimit+exampleTime.Add+v3.Parameter 0.53, b.searchDefaultLimit+exampleTime.Add 0.45 |
-| `web/api/v1/openapi_paths.go:84` | `v1.*OpenAPIBuilder.queryExemplarsPath` | `() (*v3.PathItem)` | b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2 0.60, b.searchDefaultLimit+exampleTime.Add+v3.Parameter 0.53, b.commonSearchPostProps+yaml.ScalarNode 0.51, b.searchDefaultLimit+exampleTime.Add 0.44 |
-| `web/api/v1/openapi_paths.go:108` | `v1.*OpenAPIBuilder.formatQueryPath` | `() (*v3.PathItem)` | b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2 0.53, b.searchDefaultLimit+exampleTime.Add+v3.Parameter 0.45, b.commonSearchPostProps+yaml.ScalarNode 0.42 |
-| `web/api/v1/openapi_paths.go:130` | `v1.*OpenAPIBuilder.parseQueryPath` | `() (*v3.PathItem)` | b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2 0.53, b.searchDefaultLimit+exampleTime.Add+v3.Parameter 0.45, b.commonSearchPostProps+yaml.ScalarNode 0.42 |
-| `web/api/v1/openapi_paths.go:152` | `v1.*OpenAPIBuilder.labelsPath` | `() (*v3.PathItem)` | b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2 0.67, b.commonSearchPostProps+yaml.ScalarNode 0.63, b.searchDefaultLimit+exampleTime.Add+v3.Parameter 0.59, b.searchDefaultLimit+exampleTime.Add 0.53 |
-| `web/api/v1/openapi_paths.go:180` | `v1.*OpenAPIBuilder.labelValuesPath` | `() (*v3.PathItem)` | b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2 0.64, b.commonSearchPostProps+yaml.ScalarNode 0.61, b.searchDefaultLimit+exampleTime.Add+v3.Parameter 0.57, b.searchDefaultLimit+exampleTime.Add 0.50 |
-| `web/api/v1/openapi_paths.go:214` | `v1.*OpenAPIBuilder.searchMetricNamesPath` | `() (*v3.PathItem)` | b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2 0.72, b.commonSearchPostProps+yaml.ScalarNode 0.70, b.searchDefaultLimit+exampleTime.Add+v3.Parameter 0.66, b.searchDefaultLimit+exampleTime.Add 0.60 |
-| `web/api/v1/openapi_paths.go:250` | `v1.*OpenAPIBuilder.searchLabelNamesPath` | `() (*v3.PathItem)` | b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2 0.72, b.commonSearchPostProps+yaml.ScalarNode 0.69, b.searchDefaultLimit+exampleTime.Add+v3.Parameter 0.65, b.searchDefaultLimit+exampleTime.Add 0.60 |
-| `web/api/v1/openapi_paths.go:285` | `v1.*OpenAPIBuilder.searchLabelValuesPath` | `() (*v3.PathItem)` | b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2 0.72, b.commonSearchPostProps+yaml.ScalarNode 0.69, b.searchDefaultLimit+exampleTime.Add+v3.Parameter 0.65, b.searchDefaultLimit+exampleTime.Add 0.60, +1 more |
+| `promql/functions.go:374` | `promql.extendedHistogramRate` | `(Matrix, parser.Expressions, *EvalNodeHelper, bool, bool) (Vector, annotations.Annotations)` | Range.Seconds+ms.Range 0.80, Range.Seconds+ms.Range+ms.VectorSelector~2 0.57, annotations.HistogramAgg+annotations.NewHistogramCou…+annotations.NewMismatchedCu… 0.50, Range.Seconds+ms.Range+ms.VectorSelector 0.50, +9 more |
+| `promql/functions.go:452` | `promql.extrapolatedRate` | `(Matrix, parser.Expressions, *EvalNodeHelper, bool, bool) (Vector, annotations.Annotations)` | Range.Seconds+ms.Range 0.76, Range.Seconds+ms.Range+ms.VectorSelector~2 0.60, StartTimestamps.Floats+enh.StartTimestamps 0.58, enh.StartTimestamps+annotations.NewMixedFloatsH… 0.54, +15 more |
+| `promql/functions.go:981` | `promql.funcDoubleExponentialSmoothing` | `([]Vector, Matrix, parser.Expressions, *EvalNodeHelper) (Vector, annotations.Annotations)` | annotations.NewHistogramIgn…+annotations.New 0.50, annotations.NewNativeHistog…+annotations.New 0.47, annotations.HistogramAgg+annotations.HistogramAdd 0.47, math.NaN+math.Inf 0.30, +1 more |
+| `promql/functions.go:1218` | `promql.funcAvgOverTime` | `([]Vector, Matrix, parser.Expressions, *EvalNodeHelper) (Vector, annotations.Annotations)` | annotations.HistogramAgg+annotations.NewHistogramCou…+annotations.NewMismatchedCu… 0.81, annotations.HistogramAgg+annotations.NewHistogramCou… 0.77, annotations.HistogramAgg+annotations.HistogramAdd 0.70, annotations.HistogramAgg+annotations.NewNativeHistog… 0.65, +15 more |
+| `promql/functions.go:1438` | `promql.funcMadOverTime` | `([]Vector, Matrix, parser.Expressions, *EvalNodeHelper) (Vector, annotations.Annotations)` | annotations.NewHistogramIgn…+annotations.New 0.54, f.F+annotations.NewHistogramIgn… 0.52, annotations.NewNativeHistog…+annotations.New 0.50, math.NaN+math.Inf 0.50, +6 more |
+| `promql/functions.go:1529` | `promql.compareOverTime` | `(Matrix, parser.Expressions, *EvalNodeHelper, func(float64, float64) bool, bool) (Vector, annotations.Annotations)` | annotations.NewHistogramIgn…+annotations.New 0.54, f.F+annotations.NewHistogramIgn… 0.52, annotations.NewNativeHistog…+annotations.New 0.50, annotations.HistogramAgg+annotations.NewHistogramCou… 0.48, +4 more |
+| `promql/functions.go:1572` | `promql.funcSumOverTime` | `([]Vector, Matrix, parser.Expressions, *EvalNodeHelper) (Vector, annotations.Annotations)` | annotations.HistogramAgg+annotations.NewHistogramCou…+annotations.NewMismatchedCu… 0.81, annotations.HistogramAgg+annotations.NewHistogramCou… 0.75, annotations.HistogramAgg+annotations.HistogramAdd 0.67, annotations.HistogramAgg+annotations.NewNativeHistog… 0.62, +14 more |
+| `promql/functions.go:1652` | `promql.funcQuantileOverTime` | `([]Vector, Matrix, parser.Expressions, *EvalNodeHelper) (Vector, annotations.Annotations)` | Range.Seconds+ms.Range 0.50, el.F+el.H 0.50, annotations.HistogramAgg+annotations.NewHistogramCou…+annotations.NewMismatchedCu… 0.43, annotations.NewHistogramIgn…+annotations.New 0.43, +3 more |
+| `promql/functions.go:1676` | `promql.varianceOverTime` | `(Matrix, parser.Expressions, *EvalNodeHelper, func(float64) float64) (Vector, annotations.Annotations)` | annotations.HistogramAgg+annotations.NewHistogramCou… 0.60, annotations.NewHistogramIgn…+annotations.New 0.56, annotations.HistogramAgg+annotations.NewHistogramCou…+annotations.NewMismatchedCu… 0.55, f.F+annotations.NewHistogramIgn… 0.55, +4 more |
+| `promql/functions.go:1993` | `promql.funcDeriv` | `([]Vector, Matrix, parser.Expressions, *EvalNodeHelper) (Vector, annotations.Annotations)` | annotations.NewHistogramIgn…+annotations.New 0.49, e.Op+ev.endTimestamp 0.18 |
 
 _5 more members not listed._
 
-### Family 2 — 17 members, every pair `>= 0.60` code-shape, evidence `46937`  (48 edges scored here)
+_628 more families not listed._
 
-_Not drawn: 17 members is 136 connections. Every one of them holds — that is what makes this a family._
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `web/api/v1/openapi_paths.go:28` | `v1.*OpenAPIBuilder.queryPath` | `() (*v3.PathItem)` | b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2 0.58, b.searchDefaultLimit+exampleTime.Add+v3.Parameter 0.50, b.commonSearchPostProps+yaml.ScalarNode 0.50 |
-| `web/api/v1/openapi_paths.go:55` | `v1.*OpenAPIBuilder.queryRangePath` | `() (*v3.PathItem)` | b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2 0.60, b.commonSearchPostProps+yaml.ScalarNode 0.53, b.searchDefaultLimit+exampleTime.Add+v3.Parameter 0.53, b.searchDefaultLimit+exampleTime.Add 0.45 |
-| `web/api/v1/openapi_paths.go:84` | `v1.*OpenAPIBuilder.queryExemplarsPath` | `() (*v3.PathItem)` | b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2 0.60, b.searchDefaultLimit+exampleTime.Add+v3.Parameter 0.53, b.commonSearchPostProps+yaml.ScalarNode 0.51, b.searchDefaultLimit+exampleTime.Add 0.44 |
-| `web/api/v1/openapi_paths.go:108` | `v1.*OpenAPIBuilder.formatQueryPath` | `() (*v3.PathItem)` | b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2 0.53, b.searchDefaultLimit+exampleTime.Add+v3.Parameter 0.45, b.commonSearchPostProps+yaml.ScalarNode 0.42 |
-| `web/api/v1/openapi_paths.go:130` | `v1.*OpenAPIBuilder.parseQueryPath` | `() (*v3.PathItem)` | b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2 0.53, b.searchDefaultLimit+exampleTime.Add+v3.Parameter 0.45, b.commonSearchPostProps+yaml.ScalarNode 0.42 |
-| `web/api/v1/openapi_paths.go:152` | `v1.*OpenAPIBuilder.labelsPath` | `() (*v3.PathItem)` | b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2 0.67, b.commonSearchPostProps+yaml.ScalarNode 0.63, b.searchDefaultLimit+exampleTime.Add+v3.Parameter 0.59, b.searchDefaultLimit+exampleTime.Add 0.53 |
-| `web/api/v1/openapi_paths.go:180` | `v1.*OpenAPIBuilder.labelValuesPath` | `() (*v3.PathItem)` | b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2 0.64, b.commonSearchPostProps+yaml.ScalarNode 0.61, b.searchDefaultLimit+exampleTime.Add+v3.Parameter 0.57, b.searchDefaultLimit+exampleTime.Add 0.50 |
-| `web/api/v1/openapi_paths.go:250` | `v1.*OpenAPIBuilder.searchLabelNamesPath` | `() (*v3.PathItem)` | b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2 0.72, b.commonSearchPostProps+yaml.ScalarNode 0.69, b.searchDefaultLimit+exampleTime.Add+v3.Parameter 0.65, b.searchDefaultLimit+exampleTime.Add 0.60 |
-| `web/api/v1/openapi_paths.go:285` | `v1.*OpenAPIBuilder.searchLabelValuesPath` | `() (*v3.PathItem)` | b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2 0.72, b.commonSearchPostProps+yaml.ScalarNode 0.69, b.searchDefaultLimit+exampleTime.Add+v3.Parameter 0.65, b.searchDefaultLimit+exampleTime.Add 0.60, +1 more |
-| `web/api/v1/openapi_paths.go:321` | `v1.*OpenAPIBuilder.seriesPath` | `() (*v3.PathItem)` | b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2 0.65, b.commonSearchPostProps+yaml.ScalarNode 0.61, b.searchDefaultLimit+exampleTime.Add+v3.Parameter 0.58, b.searchDefaultLimit+exampleTime.Add 0.52 |
-
-_7 more members not listed._
-
-### Family 3 — 43 members, every pair `>= 0.61` code-shape, evidence `44324`  (642 edges scored here)
-
-_Not drawn: 43 members is 903 connections. Every one of them holds — that is what makes this a family._
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `web/api/v1/openapi_examples.go:28` | `v1.queryPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | base.Example+examples.Set 0.50 |
-| `web/api/v1/openapi_examples.go:57` | `v1.queryRangePostExamples` | `() (*orderedmap.Map[string, *base.Example])` | base.Example+examples.Set 0.50 |
-| `web/api/v1/openapi_examples.go:85` | `v1.queryExemplarsPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | base.Example+examples.Set 0.50 |
-| `web/api/v1/openapi_examples.go:106` | `v1.formatQueryPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
-| `web/api/v1/openapi_examples.go:123` | `v1.parseQueryPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
-| `web/api/v1/openapi_examples.go:140` | `v1.labelsPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | base.Example+examples.Set 0.50 |
-| `web/api/v1/openapi_examples.go:167` | `v1.searchMetricNamesPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | base.Example+examples.Set 0.49 |
-| `web/api/v1/openapi_examples.go:184` | `v1.searchLabelNamesPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | base.Example+examples.Set 0.50 |
-| `web/api/v1/openapi_examples.go:201` | `v1.searchLabelValuesPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | base.Example+examples.Set 0.52 |
-| `web/api/v1/openapi_examples.go:219` | `v1.seriesPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | base.Example+examples.Set 0.50 |
-
-_33 more members not listed._
-
-### Family 4 — 43 members, every pair `>= 0.60` code-shape, evidence `41985`  (649 edges scored here)
-
-_Not drawn: 43 members is 903 connections. Every one of them holds — that is what makes this a family._
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `web/api/v1/openapi_examples.go:28` | `v1.queryPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | base.Example+examples.Set 0.50 |
-| `web/api/v1/openapi_examples.go:57` | `v1.queryRangePostExamples` | `() (*orderedmap.Map[string, *base.Example])` | base.Example+examples.Set 0.50 |
-| `web/api/v1/openapi_examples.go:85` | `v1.queryExemplarsPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | base.Example+examples.Set 0.50 |
-| `web/api/v1/openapi_examples.go:106` | `v1.formatQueryPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
-| `web/api/v1/openapi_examples.go:123` | `v1.parseQueryPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
-| `web/api/v1/openapi_examples.go:140` | `v1.labelsPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | base.Example+examples.Set 0.50 |
-| `web/api/v1/openapi_examples.go:167` | `v1.searchMetricNamesPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | base.Example+examples.Set 0.49 |
-| `web/api/v1/openapi_examples.go:184` | `v1.searchLabelNamesPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | base.Example+examples.Set 0.50 |
-| `web/api/v1/openapi_examples.go:201` | `v1.searchLabelValuesPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | base.Example+examples.Set 0.52 |
-| `web/api/v1/openapi_examples.go:219` | `v1.seriesPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | base.Example+examples.Set 0.50 |
-
-_33 more members not listed._
-
-### Family 5 — 53 members, every pair `>= 0.64` code-shape, evidence `41658`  (1054 edges scored here)
-
-_Not drawn: 53 members is 1378 connections. Every one of them holds — that is what makes this a family._
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `web/api/v1/openapi_schemas.go:138` | `v1.*OpenAPIBuilder.errorSchema` | `() (*base.SchemaProxy)` | b.commonSearchPostProps+yaml.ScalarNode 0.49, base.Example+examples.Set 0.48, yaml.ScalarNode+yaml.Node 0.27 |
-| `web/api/v1/openapi_schemas.go:181` | `v1.*OpenAPIBuilder.simpleResponseBodySchema` | `() (*base.SchemaProxy)` | base.Example+examples.Set 0.61, props.Set+base.DynamicValue+base.SchemaProxy 0.57, b.commonSearchPostProps+yaml.ScalarNode 0.55, yaml.ScalarNode+yaml.Node 0.29 |
-| `web/api/v1/openapi_schemas.go:200` | `v1.*OpenAPIBuilder.statusOnlyResponseBodySchema` | `() (*base.SchemaProxy)` | base.Example+examples.Set 0.56, props.Set+base.DynamicValue+base.SchemaProxy 0.55, b.commonSearchPostProps+yaml.ScalarNode 0.53 |
-| `web/api/v1/openapi_schemas.go:215` | `v1.*OpenAPIBuilder.stringArrayResponseBodySchema` | `() (*base.SchemaProxy)` | base.Example+examples.Set 0.63, props.Set+base.DynamicValue+base.SchemaProxy 0.60, b.commonSearchPostProps+yaml.ScalarNode 0.59, yaml.ScalarNode+yaml.Node 0.29 |
-| `web/api/v1/openapi_schemas.go:235` | `v1.*OpenAPIBuilder.labelsArrayResponseBodySchema` | `() (*base.SchemaProxy)` | base.Example+examples.Set 0.66, props.Set+base.DynamicValue+base.SchemaProxy 0.62, b.commonSearchPostProps+yaml.ScalarNode 0.61, props.Set+base.DynamicValue 0.50, +2 more |
-| `web/api/v1/openapi_schemas.go:255` | `v1.*OpenAPIBuilder.metricMetadataArrayResponseBodySchema` | `() (*base.SchemaProxy)` | base.Example+examples.Set 0.68, props.Set+base.DynamicValue+base.SchemaProxy 0.62, b.commonSearchPostProps+yaml.ScalarNode 0.62, props.Set+base.DynamicValue 0.48, +2 more |
-| `web/api/v1/openapi_schemas.go:286` | `v1.*OpenAPIBuilder.notificationArrayResponseBodySchema` | `() (*base.SchemaProxy)` | base.Example+examples.Set 0.62, b.commonSearchPostProps+yaml.ScalarNode 0.60, props.Set+base.DynamicValue+base.SchemaProxy 0.59, props.Set+base.DynamicValue 0.48, +1 more |
-| `web/api/v1/openapi_schemas.go:308` | `v1.*OpenAPIBuilder.floatSampleSchema` | `() (*base.SchemaProxy)` | props.Set+base.DynamicValue+base.SchemaProxy 0.57, base.Example+examples.Set 0.57, b.commonSearchPostProps+yaml.ScalarNode 0.56, props.Set+base.DynamicValue 0.51, +1 more |
-| `web/api/v1/openapi_schemas.go:334` | `v1.*OpenAPIBuilder.histogramValueSchema` | `() (*base.SchemaProxy)` | b.commonSearchPostProps+yaml.ScalarNode 0.51, props.Set+base.DynamicValue+base.SchemaProxy 0.50, base.Example+examples.Set 0.49, props.Set+base.DynamicValue 0.49 |
-| `web/api/v1/openapi_schemas.go:361` | `v1.*OpenAPIBuilder.histogramSampleSchema` | `() (*base.SchemaProxy)` | base.Example+examples.Set 0.56, props.Set+base.DynamicValue+base.SchemaProxy 0.56, b.commonSearchPostProps+yaml.ScalarNode 0.55, props.Set+base.DynamicValue 0.51, +1 more |
-
-_43 more members not listed._
-
-_497 more families not listed._
+_2 component(s) too large or too dense to enumerate (sizes 168, 506); their families are not reported._
 

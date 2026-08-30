@@ -9,7 +9,7 @@ container engine; a decade of accretion across daemon, API, and plugin layers
 | Corpus | [moby](https://github.com/moby/moby) |
 | Pinned at | `v28.5.2` (`89c5e8fd66634b6128fc4c0e6f1236e2540e46e0`) |
 | Project since | 2013 |
-| doppel | `c2e717b` |
+| doppel | `7c27a17` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -28,11 +28,14 @@ Culture: 394 concepts modeled, 5469 associations, 171 unusual realizations
 Habitats: 166 modeled, 103 misfits (143 excused by subsystem), 58 subsystems; most uniform checker (norm 0.98), most diverse vfs (norm 0.56)
 Conventions: strongest ef.fuzzyMatchName+events.*Filter.fuzzyMatchNa… (1.00), loosest t.Proto+t.Port (0.16)
 Ecosystems: 5410 profiled (4008 dominance, 1375 coalition, 0 conflict, 27 weak)
+Calibration: rate 0.01 over 20000 null pairs -> threshold 0.45, struct-min 0.29, family-min 0.45
 Found 7644 functions. Retrieving candidates...
-Retrieval: shape 3985, concept 12050, call 12442 -> 24543 unique pairs
-  concept-only 38.1%  call-only 38.0%  suppressed-shape functions: 179  large identity buckets: 3  surviving patterns: 46104
-Running structural comparison on 24543 pairs...
-Families: 687 over 725 components, 1674 functions in a family, 4141 edges completed
+Retrieval: shape 10161, concept 12050, call 12442 -> 28936 unique pairs
+  concept-only 31.0%  call-only 28.9%  suppressed-shape functions: 179  large identity buckets: 3  surviving patterns: 46104
+Running structural comparison on 28936 pairs...
+  13899 pairs remain after struct-min=0.29 filter
+Families: 1716 over 650 components, 1809 functions in a family, 7572 edges completed
+  1 component(s) skipped as too large or too dense: sizes [1267]
   1 pairs suppressed by max-per-func=2
 ```
 
@@ -1648,33 +1651,33 @@ flowchart LR
     p0["ipvlan<br/>18 internal"]
     p1["macvlan<br/>15 internal"]
     p0 ---|"67"| p1
-    p2["container<br/>360 internal"]
-    p3["swarm<br/>110 internal"]
-    p2 ---|"36"| p3
+    p2["container<br/>376 internal"]
+    p3["swarm<br/>112 internal"]
+    p2 ---|"38"| p3
     p4["brmanager<br/>2 internal"]
-    p5["cnmallocator<br/>41 internal"]
+    p5["cnmallocator<br/>42 internal"]
     p4 ---|"33"| p5
-    p6["image<br/>46 internal"]
-    p2 ---|"33"| p6
-    p7["ivmanager<br/>1 internal"]
-    p5 ---|"32"| p7
-    p8["mvmanager"]
-    p5 ---|"31"| p8
-    p9["daemon<br/>612 internal"]
-    p9 ---|"30"| p3
-    p10["bridge<br/>47 internal"]
-    p11["windows<br/>28 internal"]
-    p10 ---|"26"| p11
-    p10 ---|"23"| p0
-    p10 ---|"22"| p1
-    p12["fuseoverlayfs<br/>8 internal"]
-    p13["overlay2<br/>12 internal"]
-    p12 ---|"22"| p13
-    p14["overlay<br/>59 internal"]
-    p1 ---|"20"| p14
+    p6["ivmanager<br/>1 internal"]
+    p5 ---|"32"| p6
+    p7["mvmanager"]
+    p5 ---|"31"| p7
+    p8["daemon<br/>694 internal"]
+    p8 ---|"30"| p3
+    p9["image<br/>51 internal"]
+    p2 ---|"28"| p9
+    p10["overlay<br/>64 internal"]
+    p0 ---|"23"| p10
+    p11["bridge<br/>54 internal"]
+    p12["windows<br/>33 internal"]
+    p11 ---|"22"| p12
+    p13["fuseoverlayfs<br/>9 internal"]
+    p14["overlay2<br/>13 internal"]
+    p13 ---|"22"| p14
+    p11 ---|"19"| p0
+    p11 ---|"18"| p1
 ```
 
-_274 further package pairs are connected by merge-worthy duplication and are not drawn._
+_319 further package pairs are connected by merge-worthy duplication and are not drawn._
 
 ### How settled each package is
 
@@ -1704,7 +1707,7 @@ _154 further packages are modeled and not drawn._ Most uniform is `checker` (nor
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **24543 candidate pairs** (shape 3985, concept 12050, call 12442), of which 38% arrived on call evidence alone and 38% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **28936 candidate pairs** (shape 10161, concept 12050, call 12442), of which 29% arrived on call evidence alone and 31% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 5410 functions reached an equilibrium: **4008** settled on a single concept, **1375** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -2397,16 +2400,16 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 | Function | Concept | Typicality | Concept median | |
 |---|---|---:|---:|---|
+| `windows.init` <br/>`daemon/graphdriver/windows/windows.go:63` | `graphdriver.Register+fstype` | `0.08` | `0.78` | no near-duplicate |
+| `nftables.*table.updatesApplied` <br/>`libnetwork/internal/nftables/nftables_linux.go:725` | `t.Chains+t.Family` | `0.13` | `0.80` | no near-duplicate |
+| `httpstatus.FromError` <br/>`api/server/httpstatus/status.go:16` | `cerrdefs.IsInvalidArgument+daemon.GetContainer` | `0.15` | `0.53` | no near-duplicate |
+| `httputils.WriteLogStream` <br/>`api/server/httputils/write_log_stream.go:23` | `httputils.BoolValueOrDefault+types.MediaTypeMultiplexedS…` | `0.17` | `0.51` | no near-duplicate |
+| `libnetwork.*Sandbox.makeHostsRecs` <br/>`libnetwork/sandbox_dns_unix.go:160` | `sb.makeHostsRecs+config.hostsPath` | `0.19` | `0.46` | no near-duplicate |
+| `images.*contentStoreForPull.addDigested` <br/>`daemon/images/store.go:110` | `cerrdefs.IsAlreadyExists+errors.Wrap` | `0.08` | `0.33` | no near-duplicate |
+| `libnetwork.*Sandbox.UpdateHostsEntry` <br/>`libnetwork/sandbox_dns_unix.go:39` | `sb.makeHostsRecs+config.hostsPath` | `0.23` | `0.46` | no near-duplicate |
+| `osl.*Namespace.generateIfaceName` <br/>`libnetwork/osl/interface_linux.go:384` | `nlh.AddrAdd+netlink.FAMILY_V4+netlink.FAMILY_V6` | `0.18` | `0.41` | no near-duplicate |
+| `container.*containerAdapter.removeNetworks` <br/>`daemon/cluster/executor/container/adapter.go:227` | `libnetwork.ErrNoSuchNetwork+libnetwork.Network` | `0.16` | `0.38` | no near-duplicate |
 | `events.*Events.Evict` <br/>`daemon/events/events.go:77` | `Config.OpenStdin+Config.StdinOnce` | `0.06` | `0.27` | no near-duplicate |
-| `daemon.verifyPlatformContainerSettings` <br/>`daemon/daemon_unix.go:653` | `rp.Name+n.IsHost` | `0.07` | `0.79` |  |
-| `windows.init` <br/>`daemon/graphdriver/windows/windows.go:63` | `graphdriver.Register+fstype` | `0.08` | `0.78` |  |
-| `remote.*task.CreateCheckpoint` <br/>`libcontainerd/remote/client.go:427` | `t.Task+remote.wrapError` | `0.21` | `0.90` |  |
-| `nftables.*table.updatesApplied` <br/>`libnetwork/internal/nftables/nftables_linux.go:725` | `t.Chains+t.Family` | `0.13` | `0.80` |  |
-| `dockerfile.performCopyForInfo` <br/>`builder/dockerfile/copy.go:461` | `archiver.Untar+archiver.IDMapping` | `0.08` | `0.74` |  |
-| `config.getConflictFreeConfiguration` <br/>`daemon/config/config.go:462` | `opts.validator+opts.values` | `0.09` | `0.69` |  |
-| `containerd.fakeStoreWithSources.Info` <br/>`daemon/containerd/store.go:35` | `p.s+labels` | `0.35` | `0.93` |  |
-| `dockerfile.normalizeWorkdir` <br/>`builder/dockerfile/dispatchers_unix.go:16` | `errors.New+filepath.Join` | `0.24` | `0.79` |  |
-| `windows.writeTarFromLayer` <br/>`daemon/graphdriver/windows/windows.go:632` | `filepath.ToSlash+query.Set` | `0.17` | `0.71` |  |
 
 _161 more unusual realizations not listed._
 
@@ -2802,14 +2805,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ## Families
 
-687 families, 1674 functions in a family, largest 57 members; 4141 edges scored here that retrieval never proposed
+1716 families, 1809 functions in a family, largest 57 members; 7572 edges scored here that retrieval never proposed
 
-### Family 1 — 10 members, every pair `>= 0.68` code-shape, evidence `42798`  (3 edges scored here)
+### Family 1 — 11 members, every pair `>= 0.56` code-shape, evidence `45169`  (6 edges scored here)
 
-_Not drawn: 10 members is 45 connections. Every one of them holds — that is what makes this a family._
+_Not drawn: 11 members is 55 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
+| `libnetwork/diagnostic/server.go:182` | `diagnostic.stackTrace` | `(http.ResponseWriter, *http.Request)` | ctr.terminateInvoked+diagnostic.TableObj 0.66 |
 | `libnetwork/networkdb/networkdbdiagnostic.go:38` | `networkdb.*NetworkDB.dbJoin` | `(http.ResponseWriter, *http.Request)` | ctr.terminateInvoked+diagnostic.TableObj 0.78 |
 | `libnetwork/networkdb/networkdbdiagnostic.go:71` | `networkdb.*NetworkDB.dbPeers` | `(http.ResponseWriter, *http.Request)` | ctr.terminateInvoked+diagnostic.TableObj 0.79 |
 | `libnetwork/networkdb/networkdbdiagnostic.go:128` | `networkdb.*NetworkDB.dbCreateEntry` | `(http.ResponseWriter, *http.Request)` | ctr.terminateInvoked+diagnostic.TableObj 0.80 |
@@ -2819,139 +2823,86 @@ _Not drawn: 10 members is 45 connections. Every one of them holds — that is wh
 | `libnetwork/networkdb/networkdbdiagnostic.go:308` | `networkdb.*NetworkDB.dbJoinNetwork` | `(http.ResponseWriter, *http.Request)` | ctr.terminateInvoked+diagnostic.TableObj 0.78 |
 | `libnetwork/networkdb/networkdbdiagnostic.go:340` | `networkdb.*NetworkDB.dbLeaveNetwork` | `(http.ResponseWriter, *http.Request)` | ctr.terminateInvoked+diagnostic.TableObj 0.78 |
 | `libnetwork/networkdb/networkdbdiagnostic.go:372` | `networkdb.*NetworkDB.dbGetTable` | `(http.ResponseWriter, *http.Request)` | ctr.terminateInvoked+diagnostic.TableObj 0.81 |
-| `libnetwork/networkdb/networkdbdiagnostic.go:420` | `networkdb.*NetworkDB.dbNetworkStats` | `(http.ResponseWriter, *http.Request)` | ctr.terminateInvoked+diagnostic.TableObj 0.78, Config.OpenStdin+Config.StdinOnce 0.51 |
 
-### Family 2 — 8 members, every pair `>= 0.81` code-shape, evidence `26441`  (2 edges scored here)
+_1 more members not listed._
 
-```mermaid
-flowchart LR
-    m0["dbclient.doWriteKeys"]
-    m1["dbclient.doDeleteKeys"]
-    m2["dbclient.doWriteDeleteUniqueKeys"]
-    m3["dbclient.doWriteUniqueKeys"]
-    m4["dbclient.doWriteDeleteLeaveJoin"]
-    m5["dbclient.doWriteDeleteWaitLeaveJoin"]
-    m6["dbclient.doWriteWaitLeave"]
-    m7["dbclient.doWriteWaitLeaveJoin"]
-    m0 --- m1
-    m0 --- m2
-    m0 --- m3
-    m0 --- m4
-    m0 --- m5
-    m0 --- m6
-    m0 --- m7
-    m1 --- m2
-    m1 --- m3
-    m1 --- m4
-    m1 --- m5
-    m1 --- m6
-    m1 --- m7
-    m2 --- m3
-    m2 --- m4
-    m2 --- m5
-    m2 --- m6
-    m2 --- m7
-    m3 --- m4
-    m3 --- m5
-    m3 --- m6
-    m3 --- m7
-    m4 --- m5
-    m4 --- m6
-    m4 --- m7
-    m5 --- m6
-    m5 --- m7
-    m6 --- m7
-```
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:464` | `dbclient.doWriteKeys` | `([]string, []string)` | Config.OpenStdin+Config.StdinOnce 0.82, Healthcheck.Retries+c.callWithRetry 0.39 |
-| `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:497` | `dbclient.doDeleteKeys` | `([]string, []string)` | Config.OpenStdin+Config.StdinOnce 0.82, Healthcheck.Retries+c.callWithRetry 0.39 |
-| `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:530` | `dbclient.doWriteDeleteUniqueKeys` | `([]string, []string)` | Config.OpenStdin+Config.StdinOnce 0.83, Healthcheck.Retries+c.callWithRetry 0.45 |
-| `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:567` | `dbclient.doWriteUniqueKeys` | `([]string, []string)` | Config.OpenStdin+Config.StdinOnce 0.86, Healthcheck.Retries+c.callWithRetry 0.46 |
-| `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:602` | `dbclient.doWriteDeleteLeaveJoin` | `([]string, []string)` | Config.OpenStdin+Config.StdinOnce 0.82, Healthcheck.Retries+c.callWithRetry 0.46 |
-| `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:631` | `dbclient.doWriteDeleteWaitLeaveJoin` | `([]string, []string)` | Config.OpenStdin+Config.StdinOnce 0.86, Healthcheck.Retries+c.callWithRetry 0.55, Isolation.IsValid+PluginObj.PluginReference 0.35 |
-| `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:677` | `dbclient.doWriteWaitLeave` | `([]string, []string)` | Config.OpenStdin+Config.StdinOnce 0.86, Healthcheck.Retries+c.callWithRetry 0.46 |
-| `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:713` | `dbclient.doWriteWaitLeaveJoin` | `([]string, []string)` | Config.OpenStdin+Config.StdinOnce 0.87, Healthcheck.Retries+c.callWithRetry 0.55, Isolation.IsValid+PluginObj.PluginReference 0.37 |
-
-### Family 3 — 11 members, every pair `>= 0.62` code-shape, evidence `16149`  (22 edges scored here), interface implementations of `UnmarshalJSON([]byte) (error)`, packages `driverapi`, `bridge`, `ipvlan`, `macvlan`, `windows` and `libnetwork`
+### Family 2 — 11 members, every pair `>= 0.56` code-shape, evidence `44934`  (7 edges scored here)
 
 _Not drawn: 11 members is 55 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `libnetwork/driverapi/ipamdata.go:32` | `driverapi.*IPAMData.UnmarshalJSON` | `([]byte) (error)` | Task.Runtime+c.callWithRetry 0.55, i.AddressSpace+i.AuxAddresses 0.51 |
-| `libnetwork/drivers/bridge/bridge_store.go:167` | `bridge.*networkConfiguration.UnmarshalJSON` | `([]byte) (error)` | Task.Runtime+c.callWithRetry 0.62, ncfg.ContainerIfacePrefix+ncfg.DefaultBindingIP+ncfg.DefaultBridge 0.59, ncfg.ContainerIfacePrefix+ncfg.DefaultBindingIP 0.51 |
-| `libnetwork/drivers/bridge/bridge_store.go:307` | `bridge.*bridgeEndpoint.UnmarshalJSON` | `([]byte) (error)` | Task.Runtime+c.callWithRetry 0.74, Task.GetContainer+enginemount.Mount 0.41 |
-| `libnetwork/drivers/ipvlan/ipvlan_store.go:155` | `ipvlan.*configuration.UnmarshalJSON` | `([]byte) (error)` | Task.Runtime+c.callWithRetry 0.65, config.IpvlanFlag+config.IpvlanMode 0.50 |
-| `libnetwork/drivers/ipvlan/ipvlan_store.go:254` | `ipvlan.*endpoint.UnmarshalJSON` | `([]byte) (error)` | Task.Runtime+c.callWithRetry 0.67 |
-| `libnetwork/drivers/macvlan/macvlan_store.go:153` | `macvlan.*configuration.UnmarshalJSON` | `([]byte) (error)` | Task.Runtime+c.callWithRetry 0.64, config.MacvlanMode+config.CreatedSlaveLink 0.52 |
-| `libnetwork/drivers/macvlan/macvlan_store.go:248` | `macvlan.*endpoint.UnmarshalJSON` | `([]byte) (error)` | Task.Runtime+c.callWithRetry 0.67 |
-| `libnetwork/drivers/windows/windows_store.go:218` | `windows.*hnsEndpoint.UnmarshalJSON` | `([]byte) (error)` | Task.Runtime+c.callWithRetry 0.73, ep.Type+ep.nid 0.53, Task.GetContainer+enginemount.Mount 0.42, Isolation.IsValid+PluginObj.PluginReference 0.39 |
-| `libnetwork/endpoint_info.go:86` | `libnetwork.*EndpointInterface.UnmarshalJSON` | `([]byte) (error)` | epi.dstName+epi.routes 0.77, Task.Runtime+c.callWithRetry 0.65, epi.dstName+epi.routes+epi.v4PoolID 0.50, Task.GetContainer+enginemount.Mount 0.42 |
-| `libnetwork/endpoint_info.go:471` | `libnetwork.*endpointJoinInfo.UnmarshalJSON` | `([]byte) (error)` | Task.Runtime+c.callWithRetry 0.49 |
+| `libnetwork/cmd/networkdb-test/dummyclient/dummyClient.go:58` | `dummyclient.watchTableEntries` | `(http.ResponseWriter, *http.Request)` | ctr.terminateInvoked+diagnostic.TableObj 0.58 |
+| `libnetwork/networkdb/networkdbdiagnostic.go:38` | `networkdb.*NetworkDB.dbJoin` | `(http.ResponseWriter, *http.Request)` | ctr.terminateInvoked+diagnostic.TableObj 0.78 |
+| `libnetwork/networkdb/networkdbdiagnostic.go:71` | `networkdb.*NetworkDB.dbPeers` | `(http.ResponseWriter, *http.Request)` | ctr.terminateInvoked+diagnostic.TableObj 0.79 |
+| `libnetwork/networkdb/networkdbdiagnostic.go:128` | `networkdb.*NetworkDB.dbCreateEntry` | `(http.ResponseWriter, *http.Request)` | ctr.terminateInvoked+diagnostic.TableObj 0.80 |
+| `libnetwork/networkdb/networkdbdiagnostic.go:177` | `networkdb.*NetworkDB.dbUpdateEntry` | `(http.ResponseWriter, *http.Request)` | ctr.terminateInvoked+diagnostic.TableObj 0.80 |
+| `libnetwork/networkdb/networkdbdiagnostic.go:225` | `networkdb.*NetworkDB.dbDeleteEntry` | `(http.ResponseWriter, *http.Request)` | ctr.terminateInvoked+diagnostic.TableObj 0.79 |
+| `libnetwork/networkdb/networkdbdiagnostic.go:262` | `networkdb.*NetworkDB.dbGetEntry` | `(http.ResponseWriter, *http.Request)` | ctr.terminateInvoked+diagnostic.TableObj 0.81 |
+| `libnetwork/networkdb/networkdbdiagnostic.go:308` | `networkdb.*NetworkDB.dbJoinNetwork` | `(http.ResponseWriter, *http.Request)` | ctr.terminateInvoked+diagnostic.TableObj 0.78 |
+| `libnetwork/networkdb/networkdbdiagnostic.go:340` | `networkdb.*NetworkDB.dbLeaveNetwork` | `(http.ResponseWriter, *http.Request)` | ctr.terminateInvoked+diagnostic.TableObj 0.78 |
+| `libnetwork/networkdb/networkdbdiagnostic.go:372` | `networkdb.*NetworkDB.dbGetTable` | `(http.ResponseWriter, *http.Request)` | ctr.terminateInvoked+diagnostic.TableObj 0.81 |
 
 _1 more members not listed._
 
-### Family 4 — 7 members, every pair `>= 0.65` code-shape, evidence `15147`
+### Family 3 — 47 members, every pair `>= 0.45` code-shape, evidence `29963`  (906 edges scored here)
 
-```mermaid
-flowchart LR
-    m0["graphtest.DriverBenchExists"]
-    m1["graphtest.DriverBenchGetEmpty"]
-    m2["graphtest.DriverBenchDiffBase"]
-    m3["graphtest.DriverBenchDiffN"]
-    m4["graphtest.DriverBenchDiffApplyN"]
-    m5["graphtest.DriverBenchDeepLayerDiff"]
-    m6["graphtest.DriverBenchDeepLayerRead"]
-    m0 --- m1
-    m0 --- m2
-    m0 --- m3
-    m0 --- m4
-    m0 --- m5
-    m0 --- m6
-    m1 --- m2
-    m1 --- m3
-    m1 --- m4
-    m1 --- m5
-    m1 --- m6
-    m2 --- m3
-    m2 --- m4
-    m2 --- m5
-    m2 --- m6
-    m3 --- m4
-    m3 --- m5
-    m3 --- m6
-    m4 --- m5
-    m4 --- m6
-    m5 --- m6
-```
+_Not drawn: 47 members is 1081 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `daemon/graphdriver/graphtest/graphbench_unix.go:16` | `graphtest.DriverBenchExists` | `(*testing.B, string, ...string)` | Store.validateName+bytes.TrimSpace 0.56, Isolation.IsValid+PluginObj.PluginReference 0.50 |
-| `daemon/graphdriver/graphtest/graphbench_unix.go:35` | `graphtest.DriverBenchGetEmpty` | `(*testing.B, string, ...string)` | Store.validateName+bytes.TrimSpace 0.61, Isolation.IsValid+PluginObj.PluginReference 0.57 |
-| `daemon/graphdriver/graphtest/graphbench_unix.go:60` | `graphtest.DriverBenchDiffBase` | `(*testing.B, string, ...string)` | Store.validateName+bytes.TrimSpace 0.71, Isolation.IsValid+PluginObj.PluginReference 0.54 |
-| `daemon/graphdriver/graphtest/graphbench_unix.go:89` | `graphtest.DriverBenchDiffN` | `(*testing.B, int, int, string, ...string)` | Store.validateName+bytes.TrimSpace 0.71, Isolation.IsValid+PluginObj.PluginReference 0.55 |
-| `daemon/graphdriver/graphtest/graphbench_unix.go:124` | `graphtest.DriverBenchDiffApplyN` | `(*testing.B, int, string, ...string)` | Store.validateName+bytes.TrimSpace 0.63, Isolation.IsValid+PluginObj.PluginReference 0.51 |
-| `daemon/graphdriver/graphtest/graphbench_unix.go:190` | `graphtest.DriverBenchDeepLayerDiff` | `(*testing.B, int, string, ...string)` | Store.validateName+bytes.TrimSpace 0.72, Isolation.IsValid+PluginObj.PluginReference 0.57, c.cache+client.PruneInfo 0.35 |
-| `daemon/graphdriver/graphtest/graphbench_unix.go:223` | `graphtest.DriverBenchDeepLayerRead` | `(*testing.B, int, string, ...string)` | Isolation.IsValid+PluginObj.PluginReference 0.69, Store.validateName+bytes.TrimSpace 0.65 |
+| `client/build_prune.go:15` | `client.*Client.BuildCachePrune` | `(context.Context, build.CachePruneOptions) (*build.CachePruneReport, error)` | Task.Runtime+c.callWithRetry 0.70, c.cache+client.PruneInfo 0.57, C.__u32+C.int 0.40, Isolation.IsValid+PluginObj.PluginReference 0.34 |
+| `client/checkpoint_list.go:12` | `client.*Client.CheckpointList` | `(context.Context, string, checkpoint.ListOptions) ([]checkpoint.Summary, error)` | Task.Runtime+c.callWithRetry 0.58 |
+| `client/config_create.go:11` | `client.*Client.ConfigCreate` | `(context.Context, swarm.ConfigSpec) (swarm.ConfigCreateResponse, error)` | Task.Runtime+c.callWithRetry 0.61 |
+| `client/config_inspect.go:13` | `client.*Client.ConfigInspectWithRaw` | `(context.Context, string) (swarm.Config, []byte, error)` | Task.Runtime+c.callWithRetry 0.71, Store.validateName+bytes.TrimSpace 0.59 |
+| `client/config_list.go:13` | `client.*Client.ConfigList` | `(context.Context, swarm.ConfigListOptions) ([]swarm.Config, error)` | Task.Runtime+c.callWithRetry 0.70 |
+| `client/container_commit.go:14` | `client.*Client.ContainerCommit` | `(context.Context, string, container.CommitOptions) (container.CommitResponse, error)` | Task.Runtime+c.callWithRetry 0.67, ref.Name+options.Platform 0.56, filepath.ToSlash+query.Set 0.55, ocispec.AnnotationRefName+ref.Name 0.55, +3 more |
+| `client/container_diff.go:12` | `client.*Client.ContainerDiff` | `(context.Context, string) ([]container.FilesystemChange, error)` | Task.Runtime+c.callWithRetry 0.57, filepath.ToSlash+query.Set 0.53 |
+| `client/container_exec.go:14` | `client.*Client.ContainerExecCreate` | `(context.Context, string, container.ExecOptions) (container.ExecCreateResponse, error)` | Task.Runtime+c.callWithRetry 0.68, filepath.ToSlash+query.Set 0.48 |
+| `client/container_inspect.go:14` | `client.*Client.ContainerInspect` | `(context.Context, string) (container.InspectResponse, error)` | Task.Runtime+c.callWithRetry 0.58, filepath.ToSlash+query.Set 0.49 |
+| `client/container_inspect.go:32` | `client.*Client.ContainerInspectWithRaw` | `(context.Context, string, bool) (container.InspectResponse, []byte, error)` | Task.Runtime+c.callWithRetry 0.70, Store.validateName+bytes.TrimSpace 0.59, filepath.ToSlash+query.Set 0.58 |
 
-### Family 5 — 9 members, every pair `>= 0.62` code-shape, evidence `14979`  (3 edges scored here)
+_37 more members not listed._
 
-_Not drawn: 9 members is 36 connections. Every one of them holds — that is what makes this a family._
+### Family 4 — 45 members, every pair `>= 0.46` code-shape, evidence `29882`  (817 edges scored here)
+
+_Not drawn: 45 members is 990 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `daemon/graphdriver/btrfs/btrfs.go:199` | `btrfs.subvolCreate` | `(string, string) (error)` | C.__u64+errno.Error 0.50 |
-| `daemon/graphdriver/btrfs/btrfs.go:219` | `btrfs.subvolSnapshot` | `(string, string, string) (error)` | C.__u64+errno.Error 0.50, C.__u32+C.int 0.42 |
-| `daemon/graphdriver/btrfs/btrfs.go:337` | `btrfs.*Driver.enableQuota` | `() (error)` | C.__u64+errno.Error 0.50, d.options+fmt.Errorf 0.41 |
-| `daemon/graphdriver/btrfs/btrfs.go:363` | `btrfs.*Driver.subvolRescanQuota` | `() (error)` | C.__u64+errno.Error 0.50, d.options+fmt.Errorf 0.41 |
-| `daemon/graphdriver/btrfs/btrfs.go:386` | `btrfs.subvolLimitQgroup` | `(string, uint64) (error)` | C.__u64+errno.Error 0.54 |
-| `daemon/graphdriver/btrfs/btrfs.go:409` | `btrfs.qgroupStatus` | `(string) (error)` | C.__u64+errno.Error 0.52, d.options+fmt.Errorf 0.41 |
-| `daemon/graphdriver/btrfs/btrfs.go:437` | `btrfs.subvolLookupQgroup` | `(string) (uint64, error)` | C.__u64+errno.Error 0.51 |
-| `quota/projectquota.go:280` | `quota.getProjectID` | `(string) (uint32, error)` | — |
-| `quota/projectquota.go:298` | `quota.setProjectID` | `(string, uint32) (error)` | C.__u32+C.int 0.49, C.__u64+errno.Error 0.43 |
+| `client/build_prune.go:15` | `client.*Client.BuildCachePrune` | `(context.Context, build.CachePruneOptions) (*build.CachePruneReport, error)` | Task.Runtime+c.callWithRetry 0.70, c.cache+client.PruneInfo 0.57, C.__u32+C.int 0.40, Isolation.IsValid+PluginObj.PluginReference 0.34 |
+| `client/checkpoint_list.go:12` | `client.*Client.CheckpointList` | `(context.Context, string, checkpoint.ListOptions) ([]checkpoint.Summary, error)` | Task.Runtime+c.callWithRetry 0.58 |
+| `client/config_create.go:11` | `client.*Client.ConfigCreate` | `(context.Context, swarm.ConfigSpec) (swarm.ConfigCreateResponse, error)` | Task.Runtime+c.callWithRetry 0.61 |
+| `client/config_inspect.go:13` | `client.*Client.ConfigInspectWithRaw` | `(context.Context, string) (swarm.Config, []byte, error)` | Task.Runtime+c.callWithRetry 0.71, Store.validateName+bytes.TrimSpace 0.59 |
+| `client/config_list.go:13` | `client.*Client.ConfigList` | `(context.Context, swarm.ConfigListOptions) ([]swarm.Config, error)` | Task.Runtime+c.callWithRetry 0.70 |
+| `client/container_commit.go:14` | `client.*Client.ContainerCommit` | `(context.Context, string, container.CommitOptions) (container.CommitResponse, error)` | Task.Runtime+c.callWithRetry 0.67, ref.Name+options.Platform 0.56, filepath.ToSlash+query.Set 0.55, ocispec.AnnotationRefName+ref.Name 0.55, +3 more |
+| `client/container_diff.go:12` | `client.*Client.ContainerDiff` | `(context.Context, string) ([]container.FilesystemChange, error)` | Task.Runtime+c.callWithRetry 0.57, filepath.ToSlash+query.Set 0.53 |
+| `client/container_exec.go:14` | `client.*Client.ContainerExecCreate` | `(context.Context, string, container.ExecOptions) (container.ExecCreateResponse, error)` | Task.Runtime+c.callWithRetry 0.68, filepath.ToSlash+query.Set 0.48 |
+| `client/container_inspect.go:14` | `client.*Client.ContainerInspect` | `(context.Context, string) (container.InspectResponse, error)` | Task.Runtime+c.callWithRetry 0.58, filepath.ToSlash+query.Set 0.49 |
+| `client/container_inspect.go:32` | `client.*Client.ContainerInspectWithRaw` | `(context.Context, string, bool) (container.InspectResponse, []byte, error)` | Task.Runtime+c.callWithRetry 0.70, Store.validateName+bytes.TrimSpace 0.59, filepath.ToSlash+query.Set 0.58 |
 
-_682 more families not listed._
+_35 more members not listed._
+
+### Family 5 — 43 members, every pair `>= 0.45` code-shape, evidence `29146`  (746 edges scored here)
+
+_Not drawn: 43 members is 903 connections. Every one of them holds — that is what makes this a family._
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `client/build_prune.go:15` | `client.*Client.BuildCachePrune` | `(context.Context, build.CachePruneOptions) (*build.CachePruneReport, error)` | Task.Runtime+c.callWithRetry 0.70, c.cache+client.PruneInfo 0.57, C.__u32+C.int 0.40, Isolation.IsValid+PluginObj.PluginReference 0.34 |
+| `client/checkpoint_list.go:12` | `client.*Client.CheckpointList` | `(context.Context, string, checkpoint.ListOptions) ([]checkpoint.Summary, error)` | Task.Runtime+c.callWithRetry 0.58 |
+| `client/config_create.go:11` | `client.*Client.ConfigCreate` | `(context.Context, swarm.ConfigSpec) (swarm.ConfigCreateResponse, error)` | Task.Runtime+c.callWithRetry 0.61 |
+| `client/config_inspect.go:13` | `client.*Client.ConfigInspectWithRaw` | `(context.Context, string) (swarm.Config, []byte, error)` | Task.Runtime+c.callWithRetry 0.71, Store.validateName+bytes.TrimSpace 0.59 |
+| `client/config_list.go:13` | `client.*Client.ConfigList` | `(context.Context, swarm.ConfigListOptions) ([]swarm.Config, error)` | Task.Runtime+c.callWithRetry 0.70 |
+| `client/container_commit.go:14` | `client.*Client.ContainerCommit` | `(context.Context, string, container.CommitOptions) (container.CommitResponse, error)` | Task.Runtime+c.callWithRetry 0.67, ref.Name+options.Platform 0.56, filepath.ToSlash+query.Set 0.55, ocispec.AnnotationRefName+ref.Name 0.55, +3 more |
+| `client/container_diff.go:12` | `client.*Client.ContainerDiff` | `(context.Context, string) ([]container.FilesystemChange, error)` | Task.Runtime+c.callWithRetry 0.57, filepath.ToSlash+query.Set 0.53 |
+| `client/container_exec.go:14` | `client.*Client.ContainerExecCreate` | `(context.Context, string, container.ExecOptions) (container.ExecCreateResponse, error)` | Task.Runtime+c.callWithRetry 0.68, filepath.ToSlash+query.Set 0.48 |
+| `client/container_inspect.go:14` | `client.*Client.ContainerInspect` | `(context.Context, string) (container.InspectResponse, error)` | Task.Runtime+c.callWithRetry 0.58, filepath.ToSlash+query.Set 0.49 |
+| `client/container_inspect.go:32` | `client.*Client.ContainerInspectWithRaw` | `(context.Context, string, bool) (container.InspectResponse, []byte, error)` | Task.Runtime+c.callWithRetry 0.70, Store.validateName+bytes.TrimSpace 0.59, filepath.ToSlash+query.Set 0.58 |
+
+_33 more members not listed._
+
+_1711 more families not listed._
+
+_1 component(s) too large or too dense to enumerate (sizes 1267); their families are not reported._
 

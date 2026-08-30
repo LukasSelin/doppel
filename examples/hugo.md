@@ -9,7 +9,7 @@ static site generator; a large monolith with heavy template and resource subsyst
 | Corpus | [hugo](https://github.com/gohugoio/hugo) |
 | Pinned at | `v0.165.0` (`76a5e1880ab46688155b02e99bab9be2a6134492`) |
 | Project since | 2013 |
-| doppel | `c2e717b` |
+| doppel | `7c27a17` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -28,11 +28,14 @@ Culture: 429 concepts modeled, 7098 associations, 288 unusual realizations
 Habitats: 126 modeled, 470 misfits (93 excused by subsystem), 31 subsystems; most uniform create (norm 0.96), most diverse warpc (norm 0.63)
 Conventions: strongest c.mustContentPlain+c.prepareContext (1.00), loosest d.ExpiryDate+d.PublishDate (0.15)
 Ecosystems: 3762 profiled (2732 dominance, 1030 coalition, 0 conflict, 0 weak)
+Calibration: rate 0.01 over 20000 null pairs -> threshold 0.43, struct-min 0.30, family-min 0.43
 Found 5438 functions. Retrieving candidates...
-Retrieval: shape 2196, concept 10245, call 8265 -> 17565 unique pairs
-  concept-only 43.8%  call-only 33.0%  suppressed-shape functions: 70  large identity buckets: 0  surviving patterns: 31542
-Running structural comparison on 17565 pairs...
-Families: 326 over 514 components, 1031 functions in a family, 651 edges completed
+Retrieval: shape 6956, concept 10245, call 8265 -> 20976 unique pairs
+  concept-only 34.8%  call-only 25.0%  suppressed-shape functions: 70  large identity buckets: 0  surviving patterns: 31542
+Running structural comparison on 20976 pairs...
+  8303 pairs remain after struct-min=0.30 filter
+Families: 546 over 484 components, 1496 functions in a family, 2596 edges completed
+  2 component(s) skipped as too large or too dense: sizes [162 361]
 ```
 
 # Code Similarity Report
@@ -1699,7 +1702,7 @@ Merge-worthy pairs folded up to their packages. An edge means two packages keep 
 ```mermaid
 flowchart LR
     p0["blockquotes"]
-    p1["goldmark<br/>26 internal"]
+    p1["goldmark<br/>27 internal"]
     p0 ---|"10"| p1
     p2["tables<br/>1 internal"]
     p1 ---|"8"| p2
@@ -1710,27 +1713,26 @@ flowchart LR
     p6["output"]
     p5 ---|"7"| p6
     p7["babel"]
-    p8["cssjs<br/>3 internal"]
+    p8["cssjs<br/>4 internal"]
     p7 ---|"6"| p8
     p9["codeblocks"]
     p9 ---|"6"| p1
-    p10["langs<br/>13 internal"]
-    p11["page<br/>339 internal"]
-    p10 ---|"6"| p11
-    p12["navigation<br/>3 internal"]
-    p12 ---|"6"| p11
-    p13["dartsass"]
-    p14["scss<br/>1 internal"]
-    p13 ---|"5"| p14
-    p15["passthrough"]
-    p1 ---|"5"| p15
-    p16["hugolib<br/>379 internal"]
-    p16 ---|"5"| p11
-    p17["roles<br/>2 internal"]
-    p10 ---|"5"| p17
+    p10["scss<br/>1 internal"]
+    p8 ---|"6"| p10
+    p11["passthrough"]
+    p1 ---|"6"| p11
+    p12["langs<br/>13 internal"]
+    p13["page<br/>345 internal"]
+    p12 ---|"6"| p13
+    p14["navigation<br/>2 internal"]
+    p14 ---|"6"| p13
+    p15["dartsass"]
+    p15 ---|"5"| p10
+    p16["hugolib<br/>425 internal"]
+    p16 ---|"5"| p13
 ```
 
-_376 further package pairs are connected by merge-worthy duplication and are not drawn._
+_406 further package pairs are connected by merge-worthy duplication and are not drawn._
 
 ### How settled each package is
 
@@ -1760,7 +1762,7 @@ _114 further packages are modeled and not drawn._ Most uniform is `create` (norm
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **17565 candidate pairs** (shape 2196, concept 10245, call 8265), of which 33% arrived on call evidence alone and 44% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **20976 candidate pairs** (shape 6956, concept 10245, call 8265), of which 25% arrived on call evidence alone and 35% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 3762 functions reached an equilibrium: **2732** settled on a single concept, **1030** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -2463,16 +2465,16 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 | Function | Concept | Typicality | Concept median | |
 |---|---|---:|---:|---|
+| `imagetesting.RunGolden` <br/>`resources/images/imagetesting/testing.go:90` | `d.Name+fs` | `0.12` | `0.59` | no near-duplicate |
+| `deps.*Deps.Init` <br/>`deps/deps.go:146` | `Config.Sorted+c.C` | `0.12` | `0.58` | no near-duplicate |
+| `imagetesting.RunGolden` <br/>`resources/images/imagetesting/testing.go:90` | `h.img+h.Assert` | `0.11` | `0.55` | no near-duplicate |
+| `imagetesting.RunGolden` <br/>`resources/images/imagetesting/testing.go:90` | `testing.Short+t.Skip+t.Skipf~2` | `0.08` | `0.47` | no near-duplicate |
+| `imagetesting.RunGolden` <br/>`resources/images/imagetesting/testing.go:90` | `testing.Short+t.Skip+t.Skipf` | `0.08` | `0.47` | no near-duplicate |
+| `output.decode` <br/>`output/config.go:94` | `strings.EqualFold+strings.Contains` | `0.32` | `0.68` | no near-duplicate |
 | `hugolib.*pageState.initCommonProviders` <br/>`hugolib/page.go:587` | `Config.Sorted+c.C` | `0.25` | `0.58` | no near-duplicate |
-| `pagesfromdata.*BuildState.PrepareNextBuild` <br/>`hugolib/pagesfromdata/pagesfromgotmpl.go:304` | `ResourceSpec.FileCaches+c.isExpired` | `0.07` | `0.25` | no near-duplicate |
-| `transform.*Namespace.Reset` <br/>`tpl/transform/transform.go:358` | `ResourceSpec.FileCaches+c.isExpired` | `0.07` | `0.25` | no near-duplicate |
-| `resources.*transformationUpdate.updateFromCtx` <br/>`resources/transform.go:854` | `Converters.GetHighlighter+c.applyTransformations` | `0.09` | `0.26` | no near-duplicate |
-| `related.*InvertedIndex.searchDate` <br/>`related/inverted_index.go:460` | `sort.Stable+compare` | `0.04` | `0.82` |  |
-| `hugolib.doRenderShortcode` <br/>`hugolib/shortcode.go:357` | `i.Type+util` | `0.08` | `0.76` |  |
-| `hugolib.*pageState.setMetaPost` <br/>`hugolib/page__meta.go:541` | `pageConfig.Dates+m.pageConfig` | `0.18` | `0.85` |  |
-| `resources.*Namespace.GetRemote` <br/>`tpl/resources/resources.go:113` | `ns.createClient+cast.ToStringE` | `0.28` | `0.94` |  |
-| `hugolib.*shortcodeParseInfo.extractShortcode` <br/>`hugolib/shortcode.go:572` | `i.Type+util` | `0.11` | `0.76` |  |
-| `commands.newGenCommand` <br/>`commands/gen.go:39` | `doc+docshelper` | `0.16` | `0.77` |  |
+| `imagetesting.RunGolden` <br/>`resources/images/imagetesting/testing.go:90` | `testing.Short+t.Skip` | `0.09` | `0.37` | no near-duplicate |
+| `helpers.ExtractAndGroupRootPaths` <br/>`helpers/path.go:118` | `sort.Strings+c.mu` | `0.22` | `0.48` | no near-duplicate |
+| `images.NewImageProcessor` <br/>`resources/images/image.go:125` | `d.warnl+imagemeta.EXIF` | `0.23` | `0.47` | no near-duplicate |
 
 _278 more unusual realizations not listed._
 
@@ -2860,11 +2862,11 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ## Families
 
-326 families, 1031 functions in a family, largest 27 members; 651 edges scored here that retrieval never proposed
+546 families, 1496 functions in a family, largest 34 members; 2596 edges scored here that retrieval never proposed
 
-### Family 1 — 27 members, every pair `>= 0.61` code-shape, evidence `118404`  (161 edges scored here)
+### Family 1 — 30 members, every pair `>= 0.52` code-shape, evidence `126867`  (222 edges scored here)
 
-_Not drawn: 27 members is 351 connections. Every one of them holds — that is what makes this a family._
+_Not drawn: 30 members is 435 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
@@ -2879,83 +2881,85 @@ _Not drawn: 27 members is 351 connections. Every one of them holds — that is w
 | `tpl/fmt/init.go:25` | `fmt.init` | `()` | d.Site+d.Conf 0.50 |
 | `tpl/hash/hash.go:58` | `hash.init` | `()` | d.Site+d.Conf 0.50 |
 
-_17 more members not listed._
+_20 more members not listed._
 
-### Family 2 — 24 members, every pair `>= 0.61` code-shape, evidence `111207`  (116 edges scored here)
-
-_Not drawn: 24 members is 276 connections. Every one of them holds — that is what makes this a family._
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `tpl/cast/init.go:25` | `cast.init` | `()` | d.Site+d.Conf 0.50 |
-| `tpl/collections/init.go:25` | `collections.init` | `()` | d.Site+d.Conf 0.50, ResourceSpec.FileCaches+c.isExpired 0.36 |
-| `tpl/compare/init.go:26` | `compare.init` | `()` | d.Site+d.Conf 0.54, ResourceSpec.FileCaches+c.isExpired 0.40 |
-| `tpl/crypto/init.go:25` | `crypto.init` | `()` | d.Site+d.Conf 0.50 |
-| `tpl/debug/init.go:25` | `debug.init` | `()` | d.Site+d.Conf 0.50 |
-| `tpl/encoding/init.go:25` | `encoding.init` | `()` | d.Site+d.Conf 0.50 |
-| `tpl/fmt/init.go:25` | `fmt.init` | `()` | d.Site+d.Conf 0.50 |
-| `tpl/hash/hash.go:58` | `hash.init` | `()` | d.Site+d.Conf 0.50 |
-| `tpl/images/init.go:25` | `images.init` | `()` | — |
-| `tpl/inflect/init.go:25` | `inflect.init` | `()` | d.Site+d.Conf 0.50 |
-
-_14 more members not listed._
-
-### Family 3 — 27 members, every pair `>= 0.61` code-shape, evidence `107635`  (178 edges scored here)
+### Family 2 — 27 members, every pair `>= 0.43` code-shape, evidence `97389`  (165 edges scored here)
 
 _Not drawn: 27 members is 351 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
+| `tpl/cast/docshelper.go:26` | `cast.init` | `()` | docshelper.AddDocProviderFu…+docshelper.DocProvider 0.50, ResourceSpec.FileCaches+c.isExpired 0.34 |
 | `tpl/cast/init.go:25` | `cast.init` | `()` | d.Site+d.Conf 0.50 |
 | `tpl/collections/init.go:25` | `collections.init` | `()` | d.Site+d.Conf 0.50, ResourceSpec.FileCaches+c.isExpired 0.36 |
 | `tpl/compare/init.go:26` | `compare.init` | `()` | d.Site+d.Conf 0.54, ResourceSpec.FileCaches+c.isExpired 0.40 |
 | `tpl/crypto/init.go:25` | `crypto.init` | `()` | d.Site+d.Conf 0.50 |
+| `tpl/css/css.go:229` | `css.init` | `()` | Converters.GetHighlighter+c.applyTransformations 0.66, ResourceSpec.FileCaches+c.isExpired 0.65, d.Site+d.Conf 0.52 |
 | `tpl/debug/init.go:25` | `debug.init` | `()` | d.Site+d.Conf 0.50 |
 | `tpl/diagrams/init.go:26` | `diagrams.init` | `()` | — |
 | `tpl/encoding/init.go:25` | `encoding.init` | `()` | d.Site+d.Conf 0.50 |
 | `tpl/fmt/init.go:25` | `fmt.init` | `()` | d.Site+d.Conf 0.50 |
-| `tpl/hash/hash.go:58` | `hash.init` | `()` | d.Site+d.Conf 0.50 |
-| `tpl/hugo/init.go:26` | `hugo.init` | `()` | — |
 
 _17 more members not listed._
 
-### Family 4 — 27 members, every pair `>= 0.61` code-shape, evidence `101101`  (184 edges scored here)
+### Family 3 — 18 members, every pair `>= 0.45` code-shape, evidence `20424`  (96 edges scored here)
 
-_Not drawn: 27 members is 351 connections. Every one of them holds — that is what makes this a family._
+_Not drawn: 18 members is 153 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `tpl/cast/init.go:25` | `cast.init` | `()` | d.Site+d.Conf 0.50 |
-| `tpl/collections/init.go:25` | `collections.init` | `()` | d.Site+d.Conf 0.50, ResourceSpec.FileCaches+c.isExpired 0.36 |
-| `tpl/compare/init.go:26` | `compare.init` | `()` | d.Site+d.Conf 0.54, ResourceSpec.FileCaches+c.isExpired 0.40 |
-| `tpl/crypto/init.go:25` | `crypto.init` | `()` | d.Site+d.Conf 0.50 |
-| `tpl/debug/init.go:25` | `debug.init` | `()` | d.Site+d.Conf 0.50 |
-| `tpl/diagrams/init.go:26` | `diagrams.init` | `()` | — |
-| `tpl/encoding/init.go:25` | `encoding.init` | `()` | d.Site+d.Conf 0.50 |
-| `tpl/fmt/init.go:25` | `fmt.init` | `()` | d.Site+d.Conf 0.50 |
-| `tpl/hash/hash.go:58` | `hash.init` | `()` | d.Site+d.Conf 0.50 |
-| `tpl/hugo/init.go:26` | `hugo.init` | `()` | — |
+| `markup/goldmark/blockquotes/blockquotes.go:61` | `blockquotes.*htmlRenderer.renderBlockquote` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.75, html.RenderAttributes+attributes.AttributesOwnerG… 0.66, ctx.pids+ctx.values 0.56, hooks.LinkRenderer+lr.RenderLink 0.54, +6 more |
+| `markup/goldmark/codeblocks/render.go:59` | `codeblocks.*htmlRenderer.renderCodeBlock` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.65, ctx.pids+ctx.values 0.60, html.RenderAttributes+attributes.AttributesOwnerG… 0.51, Converters.GetHighlighter+c.applyTransformations 0.51, +5 more |
+| `markup/goldmark/hugocontext/hugocontext.go:238` | `hugocontext.*hugoContextRenderer.renderRawHTML` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.49, ctx.pids+ctx.values 0.44, html.IsDangerousURL+util.URLEscape 0.42, passthrough.KindPassthrough…+ast.WalkContinue 0.40 |
+| `markup/goldmark/hugocontext/hugocontext.go:262` | `hugocontext.*hugoContextRenderer.handleHugoContext` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | ctx.pids+ctx.values 0.52, passthrough.KindPassthrough…+ast.WalkContinue 0.44, bytes.Contains+text 0.43, hooks.LinkRenderer+html.IsDangerousURL 0.43 |
+| `markup/goldmark/passthrough/passthrough.go:92` | `passthrough.*htmlRenderer.renderPassthroughBlock` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | ctx.pids+ctx.values 0.67, hooks.LinkRenderer+html.IsDangerousURL 0.65, passthrough.KindPassthrough…+ast.WalkContinue 0.59, passthrough+attributes 0.57, +5 more |
+| `markup/goldmark/render_hooks.go:126` | `goldmark.*hookedRenderer.renderImage` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.81, html.RenderAttributes+attributes.AttributesOwnerG… 0.64, hooks.LinkRenderer+lr.RenderLink+Buffer.Len 0.56, ctx.pids+ctx.values 0.56, +6 more |
+| `markup/goldmark/render_hooks.go:200` | `goldmark.*hookedRenderer.renderImageDefault` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.77, html.IsDangerousURL+html.RenderAttributes 0.70, html.IsDangerousURL+util.URLEscape 0.67, ast.WalkSkipChildren+w.Write 0.50, +6 more |
+| `markup/goldmark/render_hooks.go:229` | `goldmark.*hookedRenderer.renderLink` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.81, html.RenderAttributes+attributes.AttributesOwnerG… 0.63, hooks.LinkRenderer+lr.RenderLink+Buffer.Len 0.56, ctx.pids+ctx.values 0.55, +5 more |
+| `markup/goldmark/render_hooks.go:285` | `goldmark.*hookedRenderer.renderString` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.52, ctx.pids+ctx.values 0.45, passthrough.KindPassthrough…+ast.WalkContinue 0.43 |
+| `markup/goldmark/render_hooks.go:303` | `goldmark.*hookedRenderer.renderText` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.60, ctx.pids+ctx.values 0.50, html.IsDangerousURL+html.RenderAttributes 0.48, html.IsDangerousURL+util.URLEscape 0.46, +1 more |
 
-_17 more members not listed._
+_8 more members not listed._
 
-### Family 5 — 27 members, every pair `>= 0.61` code-shape, evidence `95587`  (188 edges scored here)
+### Family 4 — 18 members, every pair `>= 0.43` code-shape, evidence `18345`  (100 edges scored here)
 
-_Not drawn: 27 members is 351 connections. Every one of them holds — that is what makes this a family._
+_Not drawn: 18 members is 153 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `tpl/cast/init.go:25` | `cast.init` | `()` | d.Site+d.Conf 0.50 |
-| `tpl/collections/init.go:25` | `collections.init` | `()` | d.Site+d.Conf 0.50, ResourceSpec.FileCaches+c.isExpired 0.36 |
-| `tpl/compare/init.go:26` | `compare.init` | `()` | d.Site+d.Conf 0.54, ResourceSpec.FileCaches+c.isExpired 0.40 |
-| `tpl/crypto/init.go:25` | `crypto.init` | `()` | d.Site+d.Conf 0.50 |
-| `tpl/debug/init.go:25` | `debug.init` | `()` | d.Site+d.Conf 0.50 |
-| `tpl/diagrams/init.go:26` | `diagrams.init` | `()` | — |
-| `tpl/encoding/init.go:25` | `encoding.init` | `()` | d.Site+d.Conf 0.50 |
-| `tpl/fmt/init.go:25` | `fmt.init` | `()` | d.Site+d.Conf 0.50 |
-| `tpl/hash/hash.go:58` | `hash.init` | `()` | d.Site+d.Conf 0.50 |
-| `tpl/hugo/init.go:26` | `hugo.init` | `()` | — |
+| `markup/goldmark/blockquotes/blockquotes.go:61` | `blockquotes.*htmlRenderer.renderBlockquote` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.75, html.RenderAttributes+attributes.AttributesOwnerG… 0.66, ctx.pids+ctx.values 0.56, hooks.LinkRenderer+lr.RenderLink 0.54, +6 more |
+| `markup/goldmark/codeblocks/render.go:59` | `codeblocks.*htmlRenderer.renderCodeBlock` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.65, ctx.pids+ctx.values 0.60, html.RenderAttributes+attributes.AttributesOwnerG… 0.51, Converters.GetHighlighter+c.applyTransformations 0.51, +5 more |
+| `markup/goldmark/hugocontext/hugocontext.go:195` | `hugocontext.*hugoContextRenderer.renderHTMLBlock` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.51, ctx.pids+ctx.values 0.51, bytes.Contains+text 0.47, passthrough.KindPassthrough…+ast.WalkContinue 0.47, +2 more |
+| `markup/goldmark/hugocontext/hugocontext.go:238` | `hugocontext.*hugoContextRenderer.renderRawHTML` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.49, ctx.pids+ctx.values 0.44, html.IsDangerousURL+util.URLEscape 0.42, passthrough.KindPassthrough…+ast.WalkContinue 0.40 |
+| `markup/goldmark/hugocontext/hugocontext.go:262` | `hugocontext.*hugoContextRenderer.handleHugoContext` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | ctx.pids+ctx.values 0.52, passthrough.KindPassthrough…+ast.WalkContinue 0.44, bytes.Contains+text 0.43, hooks.LinkRenderer+html.IsDangerousURL 0.43 |
+| `markup/goldmark/passthrough/passthrough.go:92` | `passthrough.*htmlRenderer.renderPassthroughBlock` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | ctx.pids+ctx.values 0.67, hooks.LinkRenderer+html.IsDangerousURL 0.65, passthrough.KindPassthrough…+ast.WalkContinue 0.59, passthrough+attributes 0.57, +5 more |
+| `markup/goldmark/render_hooks.go:126` | `goldmark.*hookedRenderer.renderImage` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.81, html.RenderAttributes+attributes.AttributesOwnerG… 0.64, hooks.LinkRenderer+lr.RenderLink+Buffer.Len 0.56, ctx.pids+ctx.values 0.56, +6 more |
+| `markup/goldmark/render_hooks.go:200` | `goldmark.*hookedRenderer.renderImageDefault` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.77, html.IsDangerousURL+html.RenderAttributes 0.70, html.IsDangerousURL+util.URLEscape 0.67, ast.WalkSkipChildren+w.Write 0.50, +6 more |
+| `markup/goldmark/render_hooks.go:229` | `goldmark.*hookedRenderer.renderLink` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.81, html.RenderAttributes+attributes.AttributesOwnerG… 0.63, hooks.LinkRenderer+lr.RenderLink+Buffer.Len 0.56, ctx.pids+ctx.values 0.55, +5 more |
+| `markup/goldmark/render_hooks.go:285` | `goldmark.*hookedRenderer.renderString` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.52, ctx.pids+ctx.values 0.45, passthrough.KindPassthrough…+ast.WalkContinue 0.43 |
 
-_17 more members not listed._
+_8 more members not listed._
 
-_321 more families not listed._
+### Family 5 — 15 members, every pair `>= 0.43` code-shape, evidence `10492`  (73 edges scored here)
+
+_Not drawn: 15 members is 105 connections. Every one of them holds — that is what makes this a family._
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `markup/goldmark/codeblocks/render.go:59` | `codeblocks.*htmlRenderer.renderCodeBlock` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.65, ctx.pids+ctx.values 0.60, html.RenderAttributes+attributes.AttributesOwnerG… 0.51, Converters.GetHighlighter+c.applyTransformations 0.51, +5 more |
+| `markup/goldmark/hugocontext/hugocontext.go:238` | `hugocontext.*hugoContextRenderer.renderRawHTML` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.49, ctx.pids+ctx.values 0.44, html.IsDangerousURL+util.URLEscape 0.42, passthrough.KindPassthrough…+ast.WalkContinue 0.40 |
+| `markup/goldmark/hugocontext/hugocontext.go:262` | `hugocontext.*hugoContextRenderer.handleHugoContext` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | ctx.pids+ctx.values 0.52, passthrough.KindPassthrough…+ast.WalkContinue 0.44, bytes.Contains+text 0.43, hooks.LinkRenderer+html.IsDangerousURL 0.43 |
+| `markup/goldmark/passthrough/passthrough.go:92` | `passthrough.*htmlRenderer.renderPassthroughBlock` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | ctx.pids+ctx.values 0.67, hooks.LinkRenderer+html.IsDangerousURL 0.65, passthrough.KindPassthrough…+ast.WalkContinue 0.59, passthrough+attributes 0.57, +5 more |
+| `markup/goldmark/render_hooks.go:126` | `goldmark.*hookedRenderer.renderImage` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.81, html.RenderAttributes+attributes.AttributesOwnerG… 0.64, hooks.LinkRenderer+lr.RenderLink+Buffer.Len 0.56, ctx.pids+ctx.values 0.56, +6 more |
+| `markup/goldmark/render_hooks.go:200` | `goldmark.*hookedRenderer.renderImageDefault` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.77, html.IsDangerousURL+html.RenderAttributes 0.70, html.IsDangerousURL+util.URLEscape 0.67, ast.WalkSkipChildren+w.Write 0.50, +6 more |
+| `markup/goldmark/render_hooks.go:229` | `goldmark.*hookedRenderer.renderLink` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.81, html.RenderAttributes+attributes.AttributesOwnerG… 0.63, hooks.LinkRenderer+lr.RenderLink+Buffer.Len 0.56, ctx.pids+ctx.values 0.55, +5 more |
+| `markup/goldmark/render_hooks.go:285` | `goldmark.*hookedRenderer.renderString` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.52, ctx.pids+ctx.values 0.45, passthrough.KindPassthrough…+ast.WalkContinue 0.43 |
+| `markup/goldmark/render_hooks.go:303` | `goldmark.*hookedRenderer.renderText` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.60, ctx.pids+ctx.values 0.50, html.IsDangerousURL+html.RenderAttributes 0.48, html.IsDangerousURL+util.URLEscape 0.46, +1 more |
+| `markup/goldmark/render_hooks.go:413` | `goldmark.*hookedRenderer.renderAutoLinkDefault` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.74, html.IsDangerousURL+html.RenderAttributes 0.68, html.IsDangerousURL+util.URLEscape 0.67, html.RenderAttributes+attributes.AttributesOwnerG… 0.50, +6 more |
+
+_5 more members not listed._
+
+_541 more families not listed._
+
+_2 component(s) too large or too dense to enumerate (sizes 162, 361); their families are not reported._
 

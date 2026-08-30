@@ -133,7 +133,11 @@ func runHookSessionStart(cmd *cobra.Command, args []string) error {
 	root := resolveRoot(in.Cwd)
 	sweepBaselines()
 
-	snap, ok := snapshotAt(root)
+	// A baseline already here means SessionStart fired again on a resume or
+	// after compaction. Inherit its operating point rather than deriving a
+	// second one, so the digest describes the corpus the same way the origin
+	// does.
+	snap, ok := snapshotAt(root, baselineParams(in.SessionID))
 	if !ok {
 		return emitNothing()
 	}
@@ -200,7 +204,7 @@ func runHookStop(cmd *cobra.Command, args []string) error {
 	if root == "" {
 		root = resolveRoot(in.Cwd)
 	}
-	head, ok := snapshotAt(root)
+	head, ok := snapshotAt(root, &base.Snapshot.Params)
 	if !ok {
 		return emitNothing()
 	}
@@ -310,11 +314,61 @@ func withReported(base baselineFile, fresh []reporter.Finding) baselineFile {
 // The pair set is deliberately the full retrieved candidate list rather than
 // the ranked one: top-N and the per-function diversity cap drop pairs for
 // presentation reasons, and a pair that fell past rank 20 has not changed.
-func snapshotAt(root string) (snapshot.Snapshot, bool) {
+//
+// pinned carries a baseline's already-derived thresholds, or nil to derive
+// them here. See pinThresholds.
+
+// baselineParams returns the operating point recorded for this session, or nil
+// when there is no usable baseline to inherit one from.
+func baselineParams(sessionID string) *snapshot.Params {
+	base, err := readBaseline(baselinePath(sessionID))
+	if err != nil {
+		return nil
+	}
+	return &base.Snapshot.Params
+}
+
+// pinThresholds supplies a baseline's operating point to a hook run.
+//
+// Every hook subcommand has to measure at the same thresholds the baseline was
+// written at, and calibration derives them from the corpus — which the session
+// is busy editing. Recalibrating each turn lets an edit move the null
+// distribution far enough to change the derived threshold by a hundredth, at
+// which point Params equality fails and the Stop hook goes silent for a turn
+// that nothing was wrong with. So session start derives once and every later
+// turn supplies the result back.
+//
+// This is the one place a hook run reads the baseline for something other than
+// diffing, and it stays on the right side of the no-caches rule by being a
+// parameter rather than a result: the thresholds arrive exactly as --threshold
+// would supply them, and every pipeline stage still runs from source. Nothing
+// analytical is reused, and no stage is skipped except the derivation itself.
+//
+// A nil baseline means this run derives its own, which is right everywhere it
+// can happen: session start has no baseline yet and is the run whose thresholds
+// every later turn inherits, and user-prompt scopes a digest without diffing
+// anything, so it wants thresholds fitted to the corpus in front of it. The Stop
+// hook cannot reach it at all — a missing baseline returns before this point,
+// because there is nothing to compare against.
+func pinThresholds(p Params, pinned *snapshot.Params) Params {
+	if pinned == nil {
+		return p
+	}
+	p.Threshold = pinned.Threshold
+	p.Calibrate = pinned.Calibrate
+	p.Pinned = true
+	// StructMin stays zero. A hook diffs the full candidate set, so the
+	// overlap filter is deliberately off here; the calibrated value lives in
+	// the baseline's Params for comparability, not as a filter to reapply.
+	return p
+}
+
+func snapshotAt(root string, pinned *snapshot.Params) (snapshot.Snapshot, bool) {
 	p, err := hookParams(root)
 	if err != nil {
 		return snapshot.Snapshot{}, false
 	}
+	p = pinThresholds(p, pinned)
 	res, err := analyze(root, p, io.Discard)
 	if err != nil || len(res.Units) == 0 {
 		return snapshot.Snapshot{}, false
@@ -348,7 +402,7 @@ func runHookUserPrompt(cmd *cobra.Command, args []string) error {
 		return emitNothing()
 	}
 
-	snap, ok := snapshotAt(resolveRoot(in.Cwd))
+	snap, ok := snapshotAt(resolveRoot(in.Cwd), baselineParams(in.SessionID))
 	if !ok {
 		return emitNothing()
 	}

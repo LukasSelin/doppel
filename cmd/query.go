@@ -83,6 +83,9 @@ func init() {
 	queryCmd.Flags().StringVar(&queryTests, "tests", "exclude", "Test-function population: include, exclude, or only")
 	queryCmd.Flags().StringVar(&queryGenerated, "generated", "exclude", "Generated-file population: include, exclude, or only")
 	queryCmd.Flags().StringVar(&queryConfig, "config", "", "Path to JSON config file (default: .doppel.json if present)")
+	for _, name := range []string{"channel-k", "min-nodes"} {
+		_ = queryCmd.Flags().MarkHidden(name)
+	}
 	rootCmd.AddCommand(queryCmd)
 }
 

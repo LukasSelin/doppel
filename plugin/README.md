@@ -66,7 +66,7 @@ Concept tags present: validation 5, caching 3, error_wrapping 3, mapping 3.
 Concept tags with no occurrence in this corpus: concurrency, db_access, http_call, retry, transaction.
 Structural roles: leaf 148, orchestrator 49, passthrough 11, utility 55.
 Concepts by package: cmd — caching, error_wrapping, mapping, validation; retriever — caching.
-Near-duplicate pairs reported at threshold 0.60: 552, of which 101 are merge-worthy.
+Near-duplicate pairs reported at threshold 0.48: 552, of which 101 are merge-worthy.
   parser.TagSignals.AnyIdent <-> parser.TagSignals.AnyImport  shape 1.00  overlap 0.72
   ...
 ```
@@ -177,7 +177,13 @@ The report separates what it can prove from what it cannot, and so should you:
 Hook runs deliberately ignore the presentation settings in `.doppel.json` — `top`, `max-per-func` and
 `struct-min` — and diff the full candidate set. A pair that fell past rank 20 has not changed, and
 reporting it as your session's impact would be wrong. Everything that defines the *corpus*
-(`threshold`, `min-nodes`, `channel-k`, `tests`) is honoured.
+(`threshold`, `min-nodes`, `channel-k`, `tests`, `calibrate`) is honoured.
+
+The similarity floors are calibrated from the repo itself, and **derived once per session**: the
+SessionStart baseline records the operating point and every later hook reuses it. Recalibrating
+each turn would let your own edits move the threshold by a hundredth mid-session, which makes the
+baseline incomparable and silences the Stop hook for a turn that nothing was wrong with. Pinning
+`threshold` in `.doppel.json` turns calibration off, for hooks as for everything else.
 
 ## Cost
 

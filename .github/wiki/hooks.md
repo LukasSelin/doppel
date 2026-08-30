@@ -134,6 +134,8 @@ This is not defensive habit. A SessionStart hook's stderr surfaces to the user a
 
 Three of the four run a full analysis; PreToolUse reads a file. On a few hundred functions an analysis is well under a second, and on a few thousand it is a couple of seconds. The lever that bounds it is `channel-k`, not `threshold` — see [plugin/README.md](../../plugin/README.md) for why, and for `hook-notify`, which turns the agent-facing Stop note (and its extra turn) down to user-only or off.
 
-Hook runs honour the `.doppel.json` keys that define the *corpus* — `threshold`, `min-nodes`, `channel-k`, `tests` — and deliberately ignore the ones that decide what gets *shown*: `top`, `max-per-func`, `struct-min`. A pair that fell past rank 20 in a report has not changed, and reporting it as a session's impact would be false.
+Hook runs honour the `.doppel.json` keys that define the *corpus* — `threshold`, `min-nodes`, `channel-k`, `tests`, `calibrate` — and deliberately ignore the ones that decide what gets *shown*: `top`, `max-per-func`, `struct-min`. A pair that fell past rank 20 in a report has not changed, and reporting it as a session's impact would be false.
+
+The similarity floors are derived from the corpus, and derived **once per session**: SessionStart records the operating point in the baseline and every later hook supplies it back. Deriving it again each turn would let your own edits shift the threshold enough to make the baseline incomparable, silencing the Stop hook for a turn that nothing was wrong with.
 
 For the analysis these hooks run, see [How Doppel Works](how-it-works.md).
