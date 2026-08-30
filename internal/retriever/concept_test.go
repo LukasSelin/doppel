@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/LukasSelin/doppel/internal/ontology"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 // Two structurally dissimilar functions with identical rare tag sets, in a
@@ -60,8 +61,8 @@ func OtherFiller(s string) string {
 	units := parseUnits(t, "fix.go", src)
 	a := unitIndex(t, units, "StoreOrder")
 	b := unitIndex(t, units, "PersistShipment")
-	units[a].Patterns = []string{"transaction", "db_access"}
-	units[b].Patterns = []string{"transaction", "db_access"}
+	units[a].Concepts = parser.Certain("db_access", "transaction")
+	units[b].Concepts = parser.Certain("db_access", "transaction")
 
 	opt := DefaultOptions()
 	opt.MinNodes = 8
@@ -112,8 +113,8 @@ func QueryRows(ids []int) int {
 	units := parseUnits(t, "fix.go", src)
 	a := unitIndex(t, units, "ReadThrough")
 	b := unitIndex(t, units, "QueryRows")
-	units[a].Patterns = []string{"caching"}
-	units[b].Patterns = []string{"db_access"}
+	units[a].Concepts = parser.Certain("caching")
+	units[b].Concepts = parser.Certain("db_access")
 
 	opt := DefaultOptions()
 	opt.MinNodes = 8

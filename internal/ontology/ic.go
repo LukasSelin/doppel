@@ -15,7 +15,7 @@ import "math"
 type IC struct {
 	of       map[TermID]float64
 	unknown  float64 // IC assigned to terms outside the taxonomy (pseudo-count 1)
-	rootFreq int
+	rootFreq float64
 }
 
 // NewCorpusIC computes information content from tag occurrence counts, keyed by
@@ -32,13 +32,29 @@ type IC struct {
 // Determinism: all accumulation is integer, iterating terms in declaration
 // order; the only floating-point step is one math.Log per term.
 func NewCorpusIC(o *Ontology, counts map[TermID]int) *IC {
-	freq := make(map[TermID]int)
-	rootFreq := 0
+	mass := make(map[TermID]float64, len(counts))
+	for id, c := range counts {
+		mass[id] = float64(c)
+	}
+	return NewCorpusICMass(o, mass)
+}
+
+// NewCorpusICMass is the graded form: mass is the summed membership confidence
+// per concept rather than a member count, which is what a learned lexicon
+// produces. Everything else is identical — add-one smoothing, ancestor
+// accumulation, a root at exactly zero.
+//
+// Accumulation is floating point now rather than integer, so it is done in
+// declaration order (TermsOfKind's own order) and never over a map, because a
+// float sum whose order varies is a report that varies.
+func NewCorpusICMass(o *Ontology, mass map[TermID]float64) *IC {
+	freq := make(map[TermID]float64)
+	rootFreq := 0.0
 	for _, term := range o.TermsOfKind(KindConcept) {
 		if term.Abstract {
 			continue
 		}
-		f := counts[term.ID] + 1 // add-one smoothing
+		f := mass[term.ID] + 1 // add-one smoothing
 		rootFreq += f
 		freq[term.ID] += f
 		for _, anc := range o.Ancestors(term.ID) {
@@ -52,7 +68,7 @@ func NewCorpusIC(o *Ontology, counts map[TermID]int) *IC {
 
 	ic := &IC{
 		of:       make(map[TermID]float64, len(freq)),
-		unknown:  math.Log(float64(rootFreq)),
+		unknown:  math.Log(rootFreq),
 		rootFreq: rootFreq,
 	}
 	for _, term := range o.TermsOfKind(KindConcept) {
@@ -60,7 +76,7 @@ func NewCorpusIC(o *Ontology, counts map[TermID]int) *IC {
 		if f <= 0 {
 			continue
 		}
-		ic.of[term.ID] = math.Log(float64(rootFreq) / float64(f))
+		ic.of[term.ID] = math.Log(rootFreq / f)
 	}
 	return ic
 }

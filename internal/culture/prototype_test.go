@@ -38,7 +38,7 @@ func flowOf(slots ...int) []int {
 // everywhere; median = 0.8.
 func cloneAlienFixture() ([]parser.CodeUnit, []concepter.ConceptDoc) {
 	sqlCaller := func(nm, pkg string, flow []int, tags ...string) parser.CodeUnit {
-		u := parser.CodeUnit{Name: nm, Package: pkg, Patterns: tags}
+		u := parser.CodeUnit{Name: nm, Package: pkg, Concepts: parser.Certain(tags...)}
 		u.Fingerprint.Flow = flow
 		u.Callees = []string{"sql.Open"}
 		u.Signals = parser.TagSignals{PackageRefs: []parser.PackageRef{{Local: "sql", Path: "database/sql"}}}
@@ -50,7 +50,7 @@ func cloneAlienFixture() ([]parser.CodeUnit, []concepter.ConceptDoc) {
 		units = append(units, sqlCaller(name("clone", i), "store", flowOf(0, 6), "db_access", "error_wrapping"))
 		docs = append(docs, concepter.ConceptDoc{Role: "leaf"})
 	}
-	alien := parser.CodeUnit{Name: "alien", Package: "exotic", Patterns: []string{"db_access"}}
+	alien := parser.CodeUnit{Name: "alien", Package: "exotic", Concepts: parser.Certain("db_access")}
 	alien.Fingerprint.Flow = flowOf(5, 8) // select + go: unique flow features
 	units = append(units, alien)
 	docs = append(docs, concepter.ConceptDoc{Role: "orchestrator"})

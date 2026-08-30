@@ -12,8 +12,8 @@ Everything below happens in one pass, in this order — the shape of it matters,
 flowchart TD
     parse["1 · Walk and parse<br/>go/ast → CodeUnit + Fingerprint"]
     pop["2 · Population filter"]
-    tag["3 · Tag + corpus IC<br/>14 intent tags, tag frequencies"]
-    cg["4 · Call graph<br/>resolved, repo-internal, qualified names"]
+    cg["3 · Call graph<br/>resolved, repo-internal, qualified names"]
+    tag["4 · Learn concepts + corpus IC<br/>corpus-derived vocabulary, graded membership"]
     docs["5 · Concept docs<br/>callers, callees, neighbourhood, role"]
     cult["6 · Culture model<br/>typicality, habitats + subsystems, arenas"]
     ret["7 · Candidate retrieval<br/>three channels, union"]
@@ -23,7 +23,7 @@ flowchart TD
     out["stdout, --output markdown, --format json"]
 
     parse -->|"--tests, --generated"| pop
-    pop --> tag --> cg --> docs
+    pop --> cg --> tag --> docs
     docs --> cult
     docs -->|"--threshold, --min-nodes, --channel-k"| ret
     ret --> cmp
@@ -113,9 +113,15 @@ Structural comparison used to compare strings. Two functions tagged `http_call` 
 I/O. Roles were just as binary: `utility` and `passthrough` scored zero against each other despite
 both being called from many places.
 
-The fourteen tags are now leaves of a small taxonomy. Everything above them is abstract: those
-interior nodes (rounded, below) never describe a real function, they exist only to relate the
-leaves.
+Concepts are leaves of a small taxonomy. Everything above them is abstract: those interior nodes
+(rounded, below) never describe a real function, they exist only to relate the leaves.
+
+The **interior is authored and the leaves are learned**. The fourteen names below are the *seed*
+vocabulary — they say which functions a concept search starts from. Every run replaces them with
+concepts derived from that corpus, named after the evidence that identified them
+(`store.Get+store.Decode`), each hanging from the same interior: a concept grown from the
+`db_access` seed is a kind of `data_store_access`, whatever that codebase turned out to mean by it.
+A concept nothing seeded hangs beside whichever seeded concept it most resembles.
 
 ```mermaid
 flowchart TD
@@ -213,9 +219,10 @@ callees do related work (1.00): [error_wrapping, mapping]
 A near match nudges the score but only counts as a *merge signal* once it reaches 0.5, so a pair of
 distant cousins cannot be flagged merge-worthy on that evidence alone.
 
-Run `doppel ontology --defs` to print the whole vocabulary with definitions and check it against its
-own consistency rules. Those rules are also enforced by the test suite, which is what stops the
-tagger and the taxonomy from drifting apart.
+Run `doppel ontology --defs` to print the seed vocabulary with definitions and check it against its
+own consistency rules. Those rules are also enforced by the test suite, which is what stops the seed
+rules and the taxonomy from drifting apart. The concept leaves it prints are seeds, not what any run
+reasons over — for a corpus's own vocabulary, read the `### Concepts` section of a Markdown report.
 
 ## Two scores, kept separate
 

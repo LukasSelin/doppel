@@ -33,6 +33,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"hash/fnv"
+	"math"
 	"path/filepath"
 	"sort"
 
@@ -60,7 +61,12 @@ import (
 // body hashes differently under schema 3 and 4, so cross-schema diffs would
 // report every function as changed. The histogram itself is not stored — no
 // consumer reads it back, and rule four still holds.
-const Schema = 4
+//
+// 5 replaced the tag list with graded concept memberships. Concepts are learned
+// from the corpus now rather than asserted by a rule table, so a schema-4
+// baseline's tags are names from a vocabulary that no longer exists — they
+// would not compare, they would silently fail to match anything.
+const Schema = 5
 
 // Snapshot is one full analysis run.
 //
@@ -78,15 +84,21 @@ const Schema = 4
 // attribute to a fingerprint that actually moved from one it cannot — see
 // Delta.
 type Snapshot struct {
-	Schema    int         `json:"schema"`
-	Doppel    string      `json:"doppel"`   // doppel build version
-	Ontology  string      `json:"ontology"` // ontology.Version the run reasoned with
-	Params    Params      `json:"params"`
-	Functions int         `json:"functions"`
-	Concepts  []TagCount  `json:"concepts"` // sorted by tag
-	Roles     []RoleCount `json:"roles"`    // sorted by role
-	Units     []Unit      `json:"units"`    // sorted by key
-	Pairs     []Pair      `json:"pairs"`    // sorted by score desc, then a, then b
+	Schema    int        `json:"schema"`
+	Doppel    string     `json:"doppel"`   // doppel build version
+	Ontology  string     `json:"ontology"` // ontology.Version the run reasoned with
+	Params    Params     `json:"params"`
+	Functions int        `json:"functions"`
+	Concepts  []TagCount `json:"concepts"` // sorted by tag
+	// UnusedSeeds are the seed concepts this corpus grew no practice for,
+	// sorted. Concepts are learned per corpus, so "absent" cannot be derived
+	// from a fixed vocabulary any more: the only fixed list left is the seeds,
+	// and the ones that grew nothing are the honest answer to "does this
+	// codebase already do X". Fourteen short strings at most.
+	UnusedSeeds []string    `json:"unusedSeeds,omitempty"`
+	Roles       []RoleCount `json:"roles"` // sorted by role
+	Units       []Unit      `json:"units"` // sorted by key
+	Pairs       []Pair      `json:"pairs"` // sorted by score desc, then a, then b
 }
 
 // Params records the knobs a run used. Diff compares them because every doppel
@@ -122,9 +134,15 @@ type RoleCount struct {
 // Only what a consumer reads is kept. Key and Digest are corpus-independent —
 // they depend on this function's own AST alone — and together they are the
 // whole of what Diff may claim: Key recognises a function across runs, Digest
-// is the exact "this body changed" bit. Package and Patterns feed the concept
+// is the exact "this body changed" bit. Package and Concepts feed the concept
 // inventory, File and Line locate a finding for a human, and Line is display
 // only: inserting anything above a function shifts it.
+//
+// Concepts are corpus-derived and graded, so a unit's list can move when code
+// nobody touched moves — the same caveat Role carries, and the reason Delta
+// claims nothing from them. Confidence is rounded to two decimals: the file is
+// rewritten every turn by the Stop hook, and full float precision would be
+// bytes of noise in a diff nobody reads at that resolution.
 //
 // Role is corpus-relative and no internal consumer reads it. It survives
 // because `analyze --format json` documents it, not because anything here
@@ -133,14 +151,20 @@ type RoleCount struct {
 // Earlier schemas also carried Qualified, Exported, Receiver, Nodes, Callers
 // and Callees. Nothing ever read them.
 type Unit struct {
-	Key      string   `json:"key"` // stable cross-run identity; see unitKeys
-	Package  string   `json:"package"`
-	Name     string   `json:"name"`
-	File     string   `json:"file"` // relative to root, slash-separated
-	Line     int      `json:"line"` // display only, never diffed
-	Patterns []string `json:"patterns,omitempty"`
-	Digest   string   `json:"digest"` // fingerprint hash: the exact "body changed" bit
-	Role     string   `json:"role"`   // corpus-relative; documented output only
+	Key      string    `json:"key"` // stable cross-run identity; see unitKeys
+	Package  string    `json:"package"`
+	Name     string    `json:"name"`
+	File     string    `json:"file"` // relative to root, slash-separated
+	Line     int       `json:"line"` // display only, never diffed
+	Concepts []Concept `json:"concepts,omitempty"`
+	Digest   string    `json:"digest"` // fingerprint hash: the exact "body changed" bit
+	Role     string    `json:"role"`   // corpus-relative; documented output only
+}
+
+// Concept is one graded membership as this run learned it.
+type Concept struct {
+	ID   string  `json:"id"`
+	Conf float64 `json:"conf"`
 }
 
 // Pair is one reported near-duplicate. A and B are Unit keys, ordered A < B so
@@ -172,19 +196,20 @@ type Pair struct {
 // Build converts to names once, here, at the boundary where positions stop
 // being meaningful.
 func Build(units []parser.CodeUnit, docs []concepter.ConceptDoc, pairs []analyzer.SimilarPair,
-	tagCounts map[ontology.TermID]int, root, version string, p Params) Snapshot {
+	tagCounts map[ontology.TermID]int, unusedSeeds []string, root, version string, p Params) Snapshot {
 
 	keys := unitKeys(units, root)
 
 	s := Snapshot{
-		Schema:    Schema,
-		Doppel:    version,
-		Ontology:  ontology.Version,
-		Params:    p,
-		Functions: len(units),
-		Concepts:  tagCountsOf(tagCounts),
-		Units:     make([]Unit, 0, len(units)),
-		Pairs:     make([]Pair, 0, len(pairs)),
+		Schema:      Schema,
+		Doppel:      version,
+		Ontology:    ontology.Version,
+		Params:      p,
+		Functions:   len(units),
+		Concepts:    tagCountsOf(tagCounts),
+		UnusedSeeds: append([]string(nil), unusedSeeds...),
+		Units:       make([]Unit, 0, len(units)),
+		Pairs:       make([]Pair, 0, len(pairs)),
 	}
 
 	roleCounts := make(map[string]int)
@@ -200,7 +225,7 @@ func Build(units []parser.CodeUnit, docs []concepter.ConceptDoc, pairs []analyze
 			Name:     u.Name,
 			File:     RelSlash(root, u.File),
 			Line:     u.StartLine,
-			Patterns: append([]string(nil), u.Patterns...),
+			Concepts: concepts(u.Concepts),
 			Digest:   Digest(u.Fingerprint),
 			Role:     doc.Role,
 		})
@@ -375,3 +400,18 @@ func (s Snapshot) MergeWorthy() int {
 
 // Key is the identity of a pair across runs.
 func (p Pair) Key() string { return p.A + " <-> " + p.B }
+
+// concepts copies a unit's memberships into the schema's plain form, rounding
+// confidence to two decimals. The rounding is the storage rule, not a scoring
+// one: nothing reads these back into a score, and two decimals is the
+// resolution the digests are rendered at.
+func concepts(cs []parser.Concept) []Concept {
+	if len(cs) == 0 {
+		return nil
+	}
+	out := make([]Concept, len(cs))
+	for i, c := range cs {
+		out[i] = Concept{ID: c.ID, Conf: math.Round(c.Confidence*100) / 100}
+	}
+	return out
+}

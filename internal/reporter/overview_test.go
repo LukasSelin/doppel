@@ -51,9 +51,10 @@ func TestPrintMarkdownOverview(t *testing.T) {
 	if !strings.Contains(out, "**314 functions** across **16 packages** — test functions excluded.") {
 		t.Errorf("corpus sentence missing or malformed:\n%s", out)
 	}
-	// The absent line is the one most likely to change a decision.
-	if !strings.Contains(out, "**Nothing here is tagged** `db_access`, `http_call`") {
-		t.Errorf("absent concepts not stated:\n%s", out)
+	// The absent line is the one most likely to change a decision. It names
+	// seeds that grew nothing, not learned concepts, which cannot be absent.
+	if !strings.Contains(out, "**No practice here for** `db_access`, `http_call`") {
+		t.Errorf("unused seeds not stated:\n%s", out)
 	}
 	// The retrieval mix is what tells a reader why these pairs and not others.
 	if !strings.Contains(out, "**865 candidate pairs** (shape 157, concept 51, call 709)") {
