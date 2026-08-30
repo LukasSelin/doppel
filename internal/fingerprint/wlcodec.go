@@ -112,7 +112,7 @@ func DecodeWLBag(s string) ([]LabelCount, error) {
 		}
 		buf = buf[n:]
 		label := prev + delta
-		out = append(out, LabelCount{Label: label, Count: int(count)})
+		out = append(out, LabelCount{Label: label, Count: int32(count)})
 		prev = label
 	}
 	return out, nil
@@ -237,7 +237,7 @@ func DecodeWLBagIndexed(s string, dict []uint64) ([]LabelCount, error) {
 		if pos >= uint64(len(dict)) {
 			return nil, fmt.Errorf("fingerprint: decode indexed WL bag: index %d outside dictionary of %d labels", pos, len(dict))
 		}
-		out = append(out, LabelCount{Label: dict[pos], Count: int(count)})
+		out = append(out, LabelCount{Label: dict[pos], Count: int32(count)})
 		prev = pos
 	}
 	return out, nil

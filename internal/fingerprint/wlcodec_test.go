@@ -48,7 +48,13 @@ func roundTripBag(t *testing.T, bag []LabelCount, id int) {
 	if err != nil {
 		t.Fatalf("case %d: decode: %v", id, err)
 	}
-	want := bag
+	// The codec persists Label and Count only: H and Kind are in-memory
+	// display meta no snapshot consumer reads back, so a decoded bag
+	// carries their zero values.
+	want := make([]LabelCount, 0, len(bag))
+	for _, lc := range bag {
+		want = append(want, LabelCount{Label: lc.Label, Count: lc.Count})
+	}
 	if len(want) == 0 {
 		want = nil // DecodeWLBag's empty-bag convention is nil, not [].
 	}
