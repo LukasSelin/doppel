@@ -9,7 +9,7 @@ HTTP router; a narrow core with a middleware package beside it
 | Corpus | [chi](https://github.com/go-chi/chi) |
 | Pinned at | `v5.3.2` (`38939062c5df4d3e8814aad1a488983112627ced`) |
 | Project since | 2015 |
-| doppel | `95071c4` |
+| doppel | `cca7108` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -28,19 +28,19 @@ Culture: 19 concepts modeled, 95 associations, 5 unusual realizations
 Habitats: 2 modeled, 0 misfits; most uniform middleware (norm 0.90), most diverse chi (norm 0.89)
 Conventions: strongest mx.handle+chi.*Mux.handle (0.65), loosest mx.inline+mx.handler (0.25)
 Ecosystems: 133 profiled (103 dominance, 30 coalition, 0 conflict, 0 weak)
-Calibration: rate 0.01 over 7875 shape / 16653 overlap null pairs -> threshold 0.45, struct-min 0.50, family-min 0.45
+Calibration: rate 0.01 over 9045 shape / 16653 overlap null pairs -> threshold 0.45, struct-min 0.50, family-min 0.45
 Found 183 functions. Retrieving candidates...
-Retrieval: shape 77, concept 494, call 357 -> 755 unique pairs
-  concept-only 45.6%  call-only 27.9%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1308
-Running structural comparison on 755 pairs...
-  113 pairs remain after struct-min=0.50 filter
-Families: 6 over 15 components, 27 functions in a family, 22 edges completed
+Retrieval: shape 86, concept 494, call 357 -> 761 unique pairs
+  concept-only 44.8%  call-only 27.7%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1340
+Running structural comparison on 761 pairs...
+  116 pairs remain after struct-min=0.50 filter
+Families: 7 over 16 components, 30 functions in a family, 22 edges completed
   1 pairs suppressed by max-per-func=2
 ```
 
 # Code Similarity Report
 
-**Functions analyzed:** 183 | **Threshold:** 0.60 | **Pairs found:** 10
+**Functions analyzed:** 183 | **Threshold:** 0.38 | **Pairs found:** 10
 
 ---
 
@@ -163,7 +163,7 @@ Most uniform is `middleware` (norm `0.90`); most varied is `chi` (norm `0.89`).
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **755 candidate pairs** (shape 77, concept 494, call 357), of which 28% arrived on call evidence alone and 46% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **761 candidate pairs** (shape 86, concept 494, call 357), of which 28% arrived on call evidence alone and 45% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 133 functions reached an equilibrium: **103** settled on a single concept, **30** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -173,7 +173,7 @@ _1 further pairs were held back so no single function fills the report._
 
 **Compression ratio:** `5.32`x — this corpus's canonical function bodies contain **11155 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **2097 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **183 functions**, **149** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.42` / `0.90` / `1.00`, and 45% of them (67 of 149) already clear this run's threshold of `0.45`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 34 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **183 functions**, **152** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.42` / `1.00` / `1.00`, and 47% of them (72 of 152) already clear this run's threshold of `0.45`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 31 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -366,15 +366,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.67`
 
-**Evidence:** `506.88` (shape 486.74, concept 5.01, call 15.13)
+**Evidence:** `519.23` (shape 499.09, concept 5.01, call 15.13)
 
 **Trophic:** `0.76`
 
 **Shared structure:**
 
-- `12.91` — `depth-1 EXPRSTMT` ×4
-- `12.91` — `depth-0 CALL` ×4
-- `11.08` — `depth-3 LIT` ×11
+- `13.18` — `depth-1 EXPRSTMT` ×4
+- `13.18` — `depth-0 CALL` ×4
+- `11.84` — `depth-3 LIT` ×11
 
 **Structural overlap:** `0.95` (merge-worthy)
 
@@ -409,15 +409,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.97`
 
-**Evidence:** `413.36` (shape 411.97, concept 1.39, call 0.00)
+**Evidence:** `422.51` (shape 421.12, concept 1.39, call 0.00)
 
 **Trophic:** `0.94`
 
 **Shared structure:**
 
-- `9.68` — `depth-3 SEL` ×3
-- `9.68` — `depth-2 SEL` ×3
-- `8.29` — `depth-3 BIN` ×2
+- `9.89` — `depth-3 SEL` ×3
+- `9.89` — `depth-2 SEL` ×3
+- `8.42` — `depth-3 BIN` ×2
 
 **Structural overlap:** `0.65` (merge-worthy)
 
@@ -447,15 +447,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.85`
 
-**Evidence:** `255.52` (shape 240.31, concept 2.07, call 13.14)
+**Evidence:** `260.58` (shape 245.37, concept 2.07, call 13.14)
 
 **Trophic:** `0.95`
 
 **Shared structure:**
 
-- `4.62` — `depth-1 ASSIGN` ×3
-- `4.54` — `depth-3 ASSIGN` ×2
-- `4.54` — `depth-2 ASSIGN` ×2
+- `4.83` — `depth-1 ASSIGN` ×3
+- `4.68` — `depth-3 ASSIGN` ×2
+- `4.68` — `depth-2 ASSIGN` ×2
 
 **Structural overlap:** `0.95` (merge-worthy)
 
@@ -491,15 +491,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.70`
 
-**Evidence:** `365.04` (shape 347.48, concept 9.29, call 8.27)
+**Evidence:** `375.45` (shape 357.89, concept 9.29, call 8.27)
 
 **Trophic:** `0.79`
 
 **Shared structure:**
 
-- `7.48` — `depth-3 STRUCTTYPE` ×2
-- `7.48` — `depth-2 STRUCTTYPE` ×2
-- `7.48` — `depth-1 STRUCTTYPE` ×2
+- `7.61` — `depth-3 STRUCTTYPE` ×2
+- `7.61` — `depth-2 STRUCTTYPE` ×2
+- `7.61` — `depth-1 STRUCTTYPE` ×2
 
 **Structural overlap:** `0.60` (merge-worthy)
 
@@ -529,15 +529,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.74`
 
-**Evidence:** `307.66` (shape 302.98, concept 3.03, call 1.65)
+**Evidence:** `316.70` (shape 312.02, concept 3.03, call 1.65)
 
 **Trophic:** `0.83`
 
 **Shared structure:**
 
-- `4.39` — `depth-2 BLOCK` ×2
-- `4.14` — `depth-3 BIN`
-- `4.14` — `depth-3 IF`
+- `4.53` — `depth-2 BLOCK` ×2
+- `4.21` — `depth-3 BIN`
+- `4.21` — `depth-3 IF`
 
 **Structural overlap:** `0.55` (merge-worthy)
 
@@ -567,15 +567,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.81` — most of the smaller body's shape is inside the larger
 
-**Evidence:** `181.69` (shape 171.36, concept 2.81, call 7.53)
+**Evidence:** `186.07` (shape 175.74, concept 2.81, call 7.53)
 
 **Trophic:** `0.86`
 
 **Shared structure:**
 
-- `6.98` — `depth-3 INDEX` ×4
-- `6.98` — `depth-2 INDEX` ×4
-- `6.98` — `depth-1 INDEX` ×4
+- `7.26` — `depth-3 INDEX` ×4
+- `7.26` — `depth-2 INDEX` ×4
+- `7.26` — `depth-1 INDEX` ×4
 
 **Structural overlap:** `0.80` (merge-worthy)
 
@@ -608,15 +608,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.56`
 
-**Evidence:** `303.51` (shape 282.84, concept 7.37, call 13.29)
+**Evidence:** `312.35` (shape 291.69, concept 7.37, call 13.29)
 
-**Trophic:** `0.71`
+**Trophic:** `0.72`
 
 **Shared structure:**
 
-- `6.74` — `depth-0 FIELD` ×6
-- `6.31` — `depth-1 FIELDLIST` ×4
-- `5.38` — `depth-0 FIELDLIST` ×5
+- `7.15` — `depth-0 FIELD` ×6
+- `6.59` — `depth-1 FIELDLIST` ×4
+- `5.72` — `depth-0 FIELDLIST` ×5
 
 **Structural overlap:** `0.68` (merge-worthy)
 
@@ -651,15 +651,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `63.19` (shape 61.82, concept 1.37, call 0.00)
+**Evidence:** `61.29` (shape 59.92, concept 1.37, call 0.00)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `3.45` — `depth-3 BLOCK`
-- `3.45` — `depth-2 BLOCK`
-- `3.45` — `depth-1 BLOCK`
+- `3.52` — `depth-3 BLOCK`
+- `3.52` — `depth-2 BLOCK`
+- `3.52` — `depth-1 BLOCK`
 
 **Structural overlap:** `0.68` (merge-worthy)
 
@@ -691,15 +691,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `63.19` (shape 61.82, concept 1.37, call 0.00)
+**Evidence:** `61.29` (shape 59.92, concept 1.37, call 0.00)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `3.45` — `depth-3 BLOCK`
-- `3.45` — `depth-2 BLOCK`
-- `3.45` — `depth-1 BLOCK`
+- `3.52` — `depth-3 BLOCK`
+- `3.52` — `depth-2 BLOCK`
+- `3.52` — `depth-1 BLOCK`
 
 **Structural overlap:** `0.68` (merge-worthy)
 
@@ -731,15 +731,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `63.19` (shape 61.82, concept 1.37, call 0.00)
+**Evidence:** `61.29` (shape 59.92, concept 1.37, call 0.00)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `3.45` — `depth-3 BLOCK`
-- `3.45` — `depth-2 BLOCK`
-- `3.45` — `depth-1 BLOCK`
+- `3.52` — `depth-3 BLOCK`
+- `3.52` — `depth-2 BLOCK`
+- `3.52` — `depth-1 BLOCK`
 
 **Structural overlap:** `0.68` (merge-worthy)
 
@@ -754,9 +754,9 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ## Families
 
-6 families, 27 functions in a family, largest 10 members; 22 edges scored here that retrieval never proposed
+7 families, 30 functions in a family, largest 10 members; 22 edges scored here that retrieval never proposed
 
-### Family 1 — 4 members, every pair `>= 0.50` code-shape, evidence `922`
+### Family 1 — 4 members, every pair `>= 0.50` code-shape, evidence `950`
 
 ```mermaid
 flowchart LR
@@ -779,7 +779,7 @@ flowchart LR
 | `middleware/strip.go:14` | `middleware.StripSlashes` | `(http.Handler) (http.Handler)` | http.StatusUnsupportedMedia…+chi.RouteContext 0.54, URL.RawPath+chi.RouteContext 0.51 |
 | `middleware/strip.go:41` | `middleware.RedirectSlashes` | `(http.Handler) (http.Handler)` | http.StatusUnsupportedMedia…+chi.RouteContext 0.56, URL.RawPath+chi.RouteContext 0.54, fmt.Sprintf+r.Context 0.50 |
 
-### Family 2 — 3 members, every pair `>= 0.46` code-shape, evidence `542`  (1 edge scored here)
+### Family 2 — 3 members, every pair `>= 0.46` code-shape, evidence `558`  (1 edge scored here)
 
 ```mermaid
 flowchart LR
@@ -797,7 +797,7 @@ flowchart LR
 | `middleware/content_encoding.go:10` | `middleware.AllowContentEncoding` | `(...string) (func(next http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+strings.ToLower 0.72, http.StatusUnsupportedMedia…+Header.Get 0.68, http.StatusUnsupportedMedia…+w.WriteHeader 0.68, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.61, +2 more |
 | `middleware/content_type.go:20` | `middleware.AllowContentType` | `(...string) (func(http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+strings.ToLower 0.72, http.StatusUnsupportedMedia…+Header.Get 0.70, http.StatusUnsupportedMedia…+w.WriteHeader 0.69, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.63, +3 more |
 
-### Family 3 — 4 members, every pair `>= 1.00` code-shape, evidence `379`, interface implementations of `Flush()`, in package `middleware`
+### Family 3 — 4 members, every pair `>= 1.00` code-shape, evidence `368`, interface implementations of `Flush()`, in package `middleware`
 
 ```mermaid
 flowchart LR
@@ -820,7 +820,7 @@ flowchart LR
 | `middleware/wrap_writer.go:194` | `middleware.*httpFancyWriter.Flush` | `()` | b.ResponseWriter+b.discard 0.60 |
 | `middleware/wrap_writer.go:239` | `middleware.*http2FancyWriter.Flush` | `()` | b.ResponseWriter+b.discard 0.60 |
 
-### Family 4 — 3 members, every pair `>= 0.57` code-shape, evidence `306`
+### Family 4 — 3 members, every pair `>= 0.57` code-shape, evidence `320`
 
 ```mermaid
 flowchart LR
@@ -838,7 +838,7 @@ flowchart LR
 | `middleware/page_route.go:10` | `middleware.PageRoute` | `(string, http.Handler) (func(http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+strings.ToLower 0.48, http.StatusUnsupportedMedia…+chi.RouteContext 0.45, URL.RawPath+chi.RouteContext 0.40 |
 | `middleware/path_rewrite.go:9` | `middleware.PathRewrite` | `(string, string) (func(http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+strings.ToLower 0.47, http.StatusUnsupportedMedia…+chi.RouteContext 0.40 |
 
-### Family 5 — 3 members, every pair `>= 0.48` code-shape, evidence `218`
+### Family 5 — 3 members, every pair `>= 0.48` code-shape, evidence `220`
 
 ```mermaid
 flowchart LR
@@ -856,5 +856,5 @@ flowchart LR
 | `middleware/compress.go:372` | `middleware.*compressResponseWriter.Push` | `(string, *http.PushOptions) (error)` | b.ResponseWriter+b.discard 0.66, cw.ResponseWriter+cw.writer 0.58 |
 | `middleware/compress.go:379` | `middleware.*compressResponseWriter.Close` | `() (error)` | b.ResponseWriter+b.discard 0.63, cw.ResponseWriter+cw.writer 0.58 |
 
-_1 more families not listed._
+_2 more families not listed._
 

@@ -9,7 +9,7 @@ static site generator; a large monolith with heavy template and resource subsyst
 | Corpus | [hugo](https://github.com/gohugoio/hugo) |
 | Pinned at | `v0.165.0` (`76a5e1880ab46688155b02e99bab9be2a6134492`) |
 | Project since | 2013 |
-| doppel | `95071c4` |
+| doppel | `cca7108` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -28,19 +28,19 @@ Culture: 429 concepts modeled, 6651 associations, 288 unusual realizations
 Habitats: 126 modeled, 463 misfits (95 excused by subsystem), 31 subsystems; most uniform create (norm 0.96), most diverse parse (norm 0.63)
 Conventions: strongest c.mustContentPlain+c.prepareContext (1.00), loosest d.ExpiryDate+d.PublishDate (0.15)
 Ecosystems: 3760 profiled (2760 dominance, 999 coalition, 0 conflict, 1 weak)
-Calibration: rate 0.01 over 20000 null pairs -> threshold 0.35, struct-min 0.30, family-min 0.35
+Calibration: rate 0.01 over 20000 null pairs -> threshold 0.34, struct-min 0.30, family-min 0.34
 Found 5438 functions. Retrieving candidates...
-Retrieval: shape 5206, concept 10228, call 8265 -> 19698 unique pairs
-  concept-only 37.8%  call-only 27.6%  suppressed-shape functions: 15  large identity buckets: 0  surviving labels: 22140
-Running structural comparison on 19698 pairs...
-  7882 pairs remain after struct-min=0.30 filter
-Families: 418 over 478 components, 1311 functions in a family, 1975 edges completed
-  2 component(s) skipped as too large or too dense: sizes [174 268]
+Retrieval: shape 6286, concept 10228, call 8265 -> 20545 unique pairs
+  concept-only 35.9%  call-only 26.1%  suppressed-shape functions: 19  large identity buckets: 0  surviving labels: 22402
+Running structural comparison on 20545 pairs...
+  8058 pairs remain after struct-min=0.30 filter
+Families: 469 over 462 components, 1405 functions in a family, 2552 edges completed
+  2 component(s) skipped as too large or too dense: sizes [187 324]
 ```
 
 # Code Similarity Report
 
-**Functions analyzed:** 5438 | **Threshold:** 0.60 | **Pairs found:** 10
+**Functions analyzed:** 5438 | **Threshold:** 0.38 | **Pairs found:** 10
 
 ---
 
@@ -1709,30 +1709,30 @@ flowchart LR
     p3["css<br/>4 internal"]
     p4["js<br/>1 internal"]
     p3 ---|"7"| p4
-    p5["codeblocks"]
-    p5 ---|"6"| p1
-    p6["passthrough"]
-    p1 ---|"6"| p6
-    p7["langs<br/>8 internal"]
-    p8["page<br/>156 internal"]
-    p7 ---|"6"| p8
-    p9["navigation<br/>3 internal"]
-    p9 ---|"6"| p8
-    p10["hugolib<br/>219 internal"]
-    p10 ---|"5"| p8
+    p5["babel"]
+    p6["cssjs<br/>4 internal"]
+    p5 ---|"6"| p6
+    p7["codeblocks"]
+    p7 ---|"6"| p1
+    p8["passthrough"]
+    p1 ---|"6"| p8
+    p9["langs<br/>9 internal"]
+    p10["page<br/>156 internal"]
+    p9 ---|"6"| p10
     p11["roles<br/>1 internal"]
-    p7 ---|"5"| p11
-    p12["media<br/>7 internal"]
-    p13["output"]
-    p12 ---|"5"| p13
+    p9 ---|"6"| p11
+    p12["navigation<br/>4 internal"]
+    p12 ---|"6"| p10
+    p13["hugolib<br/>231 internal"]
+    p13 ---|"5"| p10
     p14["versions<br/>1 internal"]
-    p11 ---|"5"| p14
-    p15["babel"]
-    p16["cssjs<br/>2 internal"]
-    p15 ---|"4"| p16
+    p9 ---|"5"| p14
+    p15["media<br/>7 internal"]
+    p16["output"]
+    p15 ---|"5"| p16
 ```
 
-_327 further package pairs are connected by merge-worthy duplication and are not drawn._
+_333 further package pairs are connected by merge-worthy duplication and are not drawn._
 
 ### How settled each package is
 
@@ -1762,7 +1762,7 @@ _114 further packages are modeled and not drawn._ Most uniform is `create` (norm
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **19698 candidate pairs** (shape 5206, concept 10228, call 8265), of which 28% arrived on call evidence alone and 38% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **20545 candidate pairs** (shape 6286, concept 10228, call 8265), of which 26% arrived on call evidence alone and 36% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 3760 functions reached an equilibrium: **2760** settled on a single concept, **999** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -1770,7 +1770,7 @@ Each function is also an arena where its candidate concepts compete for its evid
 
 **Compression ratio:** `7.22`x — this corpus's canonical function bodies contain **337951 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **46792 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **5438 functions**, **4035** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.44` / `0.85` / `1.00`, and 79% of them (3175 of 4035) already clear this run's threshold of `0.35`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 1403 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **5438 functions**, **4137** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.44` / `0.85` / `1.00`, and 83% of them (3417 of 4137) already clear this run's threshold of `0.34`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 1301 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -2512,15 +2512,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.92` — most of the smaller body's shape is inside the larger
 
-**Evidence:** `2517.17` (shape 2459.45, concept 7.72, call 50.00)
+**Evidence:** `2538.09` (shape 2480.38, concept 7.72, call 50.00)
 
 **Trophic:** `0.91`
 
 **Shared structure:**
 
-- `39.00` — `depth-3 CALL` ×6
-- `39.00` — `depth-2 CALL` ×6
-- `33.27` — `depth-1 CALL` ×6
+- `39.34` — `depth-3 CALL` ×6
+- `39.34` — `depth-2 CALL` ×6
+- `33.60` — `depth-1 CALL` ×6
 
 **Structural overlap:** `0.64` (merge-worthy)
 
@@ -2555,15 +2555,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.93`
 
-**Evidence:** `1725.87` (shape 1701.11, concept 11.34, call 13.42)
+**Evidence:** `1741.74` (shape 1716.98, concept 11.34, call 13.42)
 
 **Trophic:** `0.91`
 
 **Shared structure:**
 
-- `38.93` — `depth-1 EXPRSTMT` ×9
-- `29.35` — `depth-2 BLOCK` ×6
-- `24.12` — `depth-3 EXPRSTMT` ×4
+- `39.43` — `depth-1 EXPRSTMT` ×9
+- `29.68` — `depth-2 BLOCK` ×6
+- `24.34` — `depth-3 EXPRSTMT` ×4
 
 **Structural overlap:** `0.71` (merge-worthy)
 
@@ -2596,15 +2596,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.80`
 
-**Evidence:** `2364.72` (shape 2351.45, concept 3.00, call 10.28)
+**Evidence:** `2391.57` (shape 2378.29, concept 3.00, call 10.28)
 
 **Trophic:** `0.74`
 
 **Shared structure:**
 
-- `144.43` — `depth-1 EXPRSTMT` ×30
-- `144.43` — `depth-0 CALL` ×30
-- `139.33` — `depth-3 ARRAYTYPE` ×30
+- `146.09` — `depth-1 EXPRSTMT` ×30
+- `146.09` — `depth-0 CALL` ×30
+- `140.99` — `depth-3 ARRAYTYPE` ×30
 
 **Structural overlap:** `0.69` (merge-worthy)
 
@@ -2638,15 +2638,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.97`
 
-**Evidence:** `1153.59` (shape 1126.55, concept 6.40, call 20.63)
+**Evidence:** `1164.03` (shape 1136.99, concept 6.40, call 20.63)
 
 **Trophic:** `0.97`
 
 **Shared structure:**
 
-- `24.12` — `depth-1 CALL` ×4
-- `22.50` — `depth-0 CALL` ×4
-- `14.83` — `depth-3 BLOCK` ×2
+- `24.34` — `depth-1 CALL` ×4
+- `22.72` — `depth-0 CALL` ×4
+- `14.94` — `depth-3 BLOCK` ×2
 
 **Structural overlap:** `0.58` (merge-worthy)
 
@@ -2678,15 +2678,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.87`
 
-**Evidence:** `898.43` (shape 824.92, concept 19.83, call 53.69)
+**Evidence:** `905.72` (shape 832.21, concept 19.83, call 53.69)
 
 **Trophic:** `0.98`
 
 **Shared structure:**
 
-- `18.09` — `depth-3 SEL` ×3
-- `18.09` — `depth-3 SEL` ×3
-- `18.09` — `depth-3 CALL` ×3
+- `18.26` — `depth-3 SEL` ×3
+- `18.26` — `depth-3 SEL` ×3
+- `18.26` — `depth-3 CALL` ×3
 
 **Structural overlap:** `0.93` (merge-worthy)
 
@@ -2722,15 +2722,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.82`
 
-**Evidence:** `2212.49` (shape 2199.21, concept 3.00, call 10.28)
+**Evidence:** `2237.84` (shape 2224.56, concept 3.00, call 10.28)
 
 **Trophic:** `0.71`
 
 **Shared structure:**
 
-- `129.99` — `depth-1 EXPRSTMT` ×27
-- `129.99` — `depth-0 CALL` ×27
-- `125.40` — `depth-3 ARRAYTYPE` ×27
+- `131.48` — `depth-1 EXPRSTMT` ×27
+- `131.48` — `depth-0 CALL` ×27
+- `126.89` — `depth-3 ARRAYTYPE` ×27
 
 **Structural overlap:** `0.65` (merge-worthy)
 
@@ -2762,15 +2762,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `472.61` (shape 427.63, concept 9.69, call 35.29)
+**Evidence:** `476.20` (shape 431.22, concept 9.69, call 35.29)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `7.42` — `depth-3 CALL`
-- `7.42` — `depth-3 ASSIGN`
-- `7.42` — `depth-3 CALL`
+- `7.47` — `depth-3 CALL`
+- `7.47` — `depth-3 ASSIGN`
+- `7.47` — `depth-3 CALL`
 
 **Structural overlap:** `0.88` (merge-worthy)
 
@@ -2807,15 +2807,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `558.92` (shape 554.57, concept 4.35, call 0.00)
+**Evidence:** `563.50` (shape 559.15, concept 4.35, call 0.00)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `21.11` — `depth-3 RETURN` ×4
-- `20.66` — `depth-3 BLOCK` ×4
-- `20.46` — `depth-2 RETURN` ×4
+- `21.33` — `depth-3 RETURN` ×4
+- `20.88` — `depth-3 BLOCK` ×4
+- `20.68` — `depth-2 RETURN` ×4
 
 **Structural overlap:** `0.68` (merge-worthy)
 
@@ -2847,15 +2847,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.79`
 
-**Evidence:** `1522.11` (shape 1395.99, concept 19.19, call 106.93)
+**Evidence:** `1533.93` (shape 1407.81, concept 19.19, call 106.93)
 
 **Trophic:** `0.78`
 
 **Shared structure:**
 
-- `14.83` — `depth-3 CALL` ×2
-- `14.83` — `depth-3 ASSIGN` ×2
-- `14.83` — `depth-2 CALL` ×2
+- `14.94` — `depth-3 CALL` ×2
+- `14.94` — `depth-3 ASSIGN` ×2
+- `14.94` — `depth-2 CALL` ×2
 
 **Structural overlap:** `0.54` (merge-worthy)
 
@@ -2887,15 +2887,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.71`
 
-**Evidence:** `1893.96` (shape 1880.68, concept 3.00, call 10.28)
+**Evidence:** `1915.67` (shape 1902.39, concept 3.00, call 10.28)
 
 **Trophic:** `0.65`
 
 **Shared structure:**
 
-- `129.99` — `depth-1 EXPRSTMT` ×27
-- `129.99` — `depth-0 CALL` ×27
-- `125.40` — `depth-3 ARRAYTYPE` ×27
+- `131.48` — `depth-1 EXPRSTMT` ×27
+- `131.48` — `depth-0 CALL` ×27
+- `126.89` — `depth-3 ARRAYTYPE` ×27
 
 **Structural overlap:** `0.65` (merge-worthy)
 
@@ -2912,87 +2912,30 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ## Families
 
-418 families, 1311 functions in a family, largest 30 members; 1975 edges scored here that retrieval never proposed
+469 families, 1405 functions in a family, largest 32 members; 2552 edges scored here that retrieval never proposed
 
-### Family 1 — 30 members, every pair `>= 0.42` code-shape, evidence `111517`  (221 edges scored here)
+### Family 1 — 32 members, every pair `>= 0.34` code-shape, evidence `113187`  (256 edges scored here)
 
-_Not drawn: 30 members is 435 connections. Every one of them holds — that is what makes this a family._
-
-| Location | Function | Signature | Concepts |
-|---|---|---|---|
-| `tpl/cast/init.go:25` | `cast.init` | `()` | d.Site+d.Conf 0.49 |
-| `tpl/collections/init.go:25` | `collections.init` | `()` | d.Site+d.Conf 0.51, ResourceSpec.FileCaches+c.isExpired 0.36 |
-| `tpl/compare/init.go:26` | `compare.init` | `()` | d.Site+d.Conf 0.56, ResourceSpec.FileCaches+c.isExpired 0.39 |
-| `tpl/crypto/init.go:25` | `crypto.init` | `()` | d.Site+d.Conf 0.51 |
-| `tpl/css/css.go:229` | `css.init` | `()` | ResourceSpec.FileCaches+c.isExpired 0.68, Converters.GetHighlighter+c.applyTransformations 0.66, d.Site+d.Conf 0.49 |
-| `tpl/debug/init.go:25` | `debug.init` | `()` | d.Site+d.Conf 0.50 |
-| `tpl/diagrams/init.go:26` | `diagrams.init` | `()` | — |
-| `tpl/encoding/init.go:25` | `encoding.init` | `()` | d.Site+d.Conf 0.52 |
-| `tpl/fmt/init.go:25` | `fmt.init` | `()` | d.Site+d.Conf 0.50 |
-| `tpl/hash/hash.go:58` | `hash.init` | `()` | d.Site+d.Conf 0.50 |
-
-_20 more members not listed._
-
-### Family 2 — 30 members, every pair `>= 0.35` code-shape, evidence `104631`  (233 edges scored here)
-
-_Not drawn: 30 members is 435 connections. Every one of them holds — that is what makes this a family._
-
-| Location | Function | Signature | Concepts |
-|---|---|---|---|
-| `config/allconfig/docshelper.go:23` | `allconfig.init` | `()` | docshelper.AddDocProviderFu…+docshelper.DocProvider 0.50, ResourceSpec.FileCaches+c.isExpired 0.44 |
-| `tpl/cast/init.go:25` | `cast.init` | `()` | d.Site+d.Conf 0.49 |
-| `tpl/collections/init.go:25` | `collections.init` | `()` | d.Site+d.Conf 0.51, ResourceSpec.FileCaches+c.isExpired 0.36 |
-| `tpl/compare/init.go:26` | `compare.init` | `()` | d.Site+d.Conf 0.56, ResourceSpec.FileCaches+c.isExpired 0.39 |
-| `tpl/crypto/init.go:25` | `crypto.init` | `()` | d.Site+d.Conf 0.51 |
-| `tpl/css/css.go:229` | `css.init` | `()` | ResourceSpec.FileCaches+c.isExpired 0.68, Converters.GetHighlighter+c.applyTransformations 0.66, d.Site+d.Conf 0.49 |
-| `tpl/debug/init.go:25` | `debug.init` | `()` | d.Site+d.Conf 0.50 |
-| `tpl/diagrams/init.go:26` | `diagrams.init` | `()` | — |
-| `tpl/encoding/init.go:25` | `encoding.init` | `()` | d.Site+d.Conf 0.52 |
-| `tpl/fmt/init.go:25` | `fmt.init` | `()` | d.Site+d.Conf 0.50 |
-
-_20 more members not listed._
-
-### Family 3 — 28 members, every pair `>= 0.35` code-shape, evidence `57120`  (222 edges scored here)
-
-_Not drawn: 28 members is 378 connections. Every one of them holds — that is what makes this a family._
+_Not drawn: 32 members is 496 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Concepts |
 |---|---|---|---|
 | `config/allconfig/docshelper.go:23` | `allconfig.init` | `()` | docshelper.AddDocProviderFu…+docshelper.DocProvider 0.50, ResourceSpec.FileCaches+c.isExpired 0.44 |
 | `tpl/cast/docshelper.go:26` | `cast.init` | `()` | docshelper.AddDocProviderFu…+docshelper.DocProvider 0.50 |
 | `tpl/cast/init.go:25` | `cast.init` | `()` | d.Site+d.Conf 0.49 |
+| `tpl/collections/init.go:25` | `collections.init` | `()` | d.Site+d.Conf 0.51, ResourceSpec.FileCaches+c.isExpired 0.36 |
 | `tpl/compare/init.go:26` | `compare.init` | `()` | d.Site+d.Conf 0.56, ResourceSpec.FileCaches+c.isExpired 0.39 |
 | `tpl/crypto/init.go:25` | `crypto.init` | `()` | d.Site+d.Conf 0.51 |
 | `tpl/css/css.go:229` | `css.init` | `()` | ResourceSpec.FileCaches+c.isExpired 0.68, Converters.GetHighlighter+c.applyTransformations 0.66, d.Site+d.Conf 0.49 |
 | `tpl/debug/init.go:25` | `debug.init` | `()` | d.Site+d.Conf 0.50 |
 | `tpl/diagrams/init.go:26` | `diagrams.init` | `()` | — |
 | `tpl/encoding/init.go:25` | `encoding.init` | `()` | d.Site+d.Conf 0.52 |
-| `tpl/fmt/init.go:25` | `fmt.init` | `()` | d.Site+d.Conf 0.50 |
 
-_18 more members not listed._
+_22 more members not listed._
 
-### Family 4 — 18 members, every pair `>= 0.36` code-shape, evidence `15506`  (97 edges scored here)
+### Family 2 — 19 members, every pair `>= 0.35` code-shape, evidence `15678`  (114 edges scored here)
 
-_Not drawn: 18 members is 153 connections. Every one of them holds — that is what makes this a family._
-
-| Location | Function | Signature | Concepts |
-|---|---|---|---|
-| `markup/goldmark/blockquotes/blockquotes.go:61` | `blockquotes.*htmlRenderer.renderBlockquote` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.75, html.RenderAttributes+attributes.AttributesOwnerG… 0.67, ctx.pids+ctx.values 0.58, hooks.LinkRenderer+lr.RenderLink 0.54, +5 more |
-| `markup/goldmark/codeblocks/render.go:59` | `codeblocks.*htmlRenderer.renderCodeBlock` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.64, ctx.pids+ctx.values 0.62, html.RenderAttributes+attributes.AttributesOwnerG… 0.51, Converters.GetHighlighter+c.applyTransformations 0.50, +5 more |
-| `markup/goldmark/hugocontext/hugocontext.go:195` | `hugocontext.*hugoContextRenderer.renderHTMLBlock` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | ctx.pids+ctx.values 0.51, hooks.LinkRenderer+html.IsDangerousURL 0.51, passthrough.KindPassthrough…+ast.WalkContinue 0.46, Converters.GetHighlighter+c.applyTransformations 0.45, +1 more |
-| `markup/goldmark/hugocontext/hugocontext.go:238` | `hugocontext.*hugoContextRenderer.renderRawHTML` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | ctx.pids+ctx.values 0.48, hooks.LinkRenderer+html.IsDangerousURL 0.47, passthrough.KindPassthrough…+ast.WalkContinue 0.40, html.IsDangerousURL+util.URLEscape 0.38 |
-| `markup/goldmark/passthrough/passthrough.go:92` | `passthrough.*htmlRenderer.renderPassthroughBlock` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | ctx.pids+ctx.values 0.69, hooks.LinkRenderer+html.IsDangerousURL 0.64, passthrough.KindPassthrough…+ast.WalkContinue 0.59, passthrough+attributes 0.57, +5 more |
-| `markup/goldmark/render_hooks.go:126` | `goldmark.*hookedRenderer.renderImage` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.81, html.RenderAttributes+attributes.AttributesOwnerG… 0.66, ctx.pids+ctx.values 0.58, hooks.LinkRenderer+lr.RenderLink+Buffer.Len 0.56, +6 more |
-| `markup/goldmark/render_hooks.go:200` | `goldmark.*hookedRenderer.renderImageDefault` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.76, html.IsDangerousURL+html.RenderAttributes 0.69, html.IsDangerousURL+util.URLEscape 0.65, ast.WalkSkipChildren+w.Write 0.50, +6 more |
-| `markup/goldmark/render_hooks.go:229` | `goldmark.*hookedRenderer.renderLink` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.81, html.RenderAttributes+attributes.AttributesOwnerG… 0.64, ctx.pids+ctx.values 0.58, hooks.LinkRenderer+lr.RenderLink+Buffer.Len 0.56, +5 more |
-| `markup/goldmark/render_hooks.go:285` | `goldmark.*hookedRenderer.renderString` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.51, ctx.pids+ctx.values 0.46, passthrough.KindPassthrough…+ast.WalkContinue 0.42 |
-| `markup/goldmark/render_hooks.go:303` | `goldmark.*hookedRenderer.renderText` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.58, html.IsDangerousURL+html.RenderAttributes 0.48, ctx.pids+ctx.values 0.48, ast.Heading+n.Kind 0.45, +3 more |
-
-_8 more members not listed._
-
-### Family 5 — 18 members, every pair `>= 0.36` code-shape, evidence `14212`  (101 edges scored here)
-
-_Not drawn: 18 members is 153 connections. Every one of them holds — that is what makes this a family._
+_Not drawn: 19 members is 171 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Concepts |
 |---|---|---|---|
@@ -3007,9 +2950,66 @@ _Not drawn: 18 members is 153 connections. Every one of them holds — that is w
 | `markup/goldmark/render_hooks.go:285` | `goldmark.*hookedRenderer.renderString` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.51, ctx.pids+ctx.values 0.46, passthrough.KindPassthrough…+ast.WalkContinue 0.42 |
 | `markup/goldmark/render_hooks.go:303` | `goldmark.*hookedRenderer.renderText` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.58, html.IsDangerousURL+html.RenderAttributes 0.48, ctx.pids+ctx.values 0.48, ast.Heading+n.Kind 0.45, +3 more |
 
+_9 more members not listed._
+
+### Family 3 — 11 members, every pair `>= 0.34` code-shape, evidence `5502`  (31 edges scored here)
+
+_Not drawn: 11 members is 55 connections. Every one of them holds — that is what makes this a family._
+
+| Location | Function | Signature | Concepts |
+|---|---|---|---|
+| `markup/goldmark/blockquotes/blockquotes.go:61` | `blockquotes.*htmlRenderer.renderBlockquote` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.75, html.RenderAttributes+attributes.AttributesOwnerG… 0.67, ctx.pids+ctx.values 0.58, hooks.LinkRenderer+lr.RenderLink 0.54, +5 more |
+| `markup/goldmark/blockquotes/blockquotes.go:128` | `blockquotes.*htmlRenderer.renderBlockquoteDefault` | `(util.BufWriter, ast.Node, string) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.55, html.IsDangerousURL+html.RenderAttributes 0.52, html.RenderAttributes+attributes.AttributesOwnerG… 0.47, ctx.pids+ctx.values 0.43, +2 more |
+| `markup/goldmark/hugocontext/hugocontext.go:238` | `hugocontext.*hugoContextRenderer.renderRawHTML` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | ctx.pids+ctx.values 0.48, hooks.LinkRenderer+html.IsDangerousURL 0.47, passthrough.KindPassthrough…+ast.WalkContinue 0.40, html.IsDangerousURL+util.URLEscape 0.38 |
+| `markup/goldmark/render_hooks.go:200` | `goldmark.*hookedRenderer.renderImageDefault` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.76, html.IsDangerousURL+html.RenderAttributes 0.69, html.IsDangerousURL+util.URLEscape 0.65, ast.WalkSkipChildren+w.Write 0.50, +6 more |
+| `markup/goldmark/render_hooks.go:285` | `goldmark.*hookedRenderer.renderString` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.51, ctx.pids+ctx.values 0.46, passthrough.KindPassthrough…+ast.WalkContinue 0.42 |
+| `markup/goldmark/render_hooks.go:303` | `goldmark.*hookedRenderer.renderText` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.58, html.IsDangerousURL+html.RenderAttributes 0.48, ctx.pids+ctx.values 0.48, ast.Heading+n.Kind 0.45, +3 more |
+| `markup/goldmark/render_hooks.go:346` | `goldmark.*hookedRenderer.renderLinkDefault` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.74, html.IsDangerousURL+html.RenderAttributes 0.65, html.IsDangerousURL+util.URLEscape 0.63, ctx.pids+ctx.values 0.49, +3 more |
+| `markup/goldmark/render_hooks.go:413` | `goldmark.*hookedRenderer.renderAutoLinkDefault` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.73, html.IsDangerousURL+html.RenderAttributes 0.68, html.IsDangerousURL+util.URLEscape 0.65, html.RenderAttributes+attributes.AttributesOwnerG… 0.50, +7 more |
+| `markup/goldmark/render_hooks.go:452` | `goldmark.*hookedRenderer.renderHeading` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.80, html.RenderAttributes+attributes.AttributesOwnerG… 0.68, ast.Heading+n.Kind 0.60, ctx.pids+ctx.values 0.58, +5 more |
+| `markup/goldmark/render_hooks.go:499` | `goldmark.*hookedRenderer.renderHeadingDefault` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.58, ast.Heading+n.Kind 0.51, html.IsDangerousURL+html.RenderAttributes 0.48, ctx.pids+ctx.values 0.46, +3 more |
+
+_1 more members not listed._
+
+### Family 4 — 18 members, every pair `>= 0.34` code-shape, evidence `5352`  (83 edges scored here)
+
+_Not drawn: 18 members is 153 connections. Every one of them holds — that is what makes this a family._
+
+| Location | Function | Signature | Concepts |
+|---|---|---|---|
+| `tpl/lang/lang.go:107` | `lang.*Namespace.castPrecisionNumber` | `(any, any) (int, float64, error)` | ns.castPrecisionNumber+ns.translator 0.49, hstrings.GetOrCompileRegexp+cast.ToIntE 0.48, hstrings.GetOrCompileRegexp+cast.ToIntE+hreflect.Indirect 0.41, lv.Index+lv.Kind+lv.Len 0.40 |
+| `tpl/math/math.go:47` | `math.*Namespace.Abs` | `(any) (float64, error)` | cast.ToFloat64E+cast.ToIntE 0.50, hstrings.GetOrCompileRegexp+cast.ToIntE 0.48 |
+| `tpl/math/math.go:57` | `math.*Namespace.Acos` | `(any) (float64, error)` | cast.ToFloat64E+cast.ToIntE 0.53, hstrings.GetOrCompileRegexp+cast.ToIntE 0.50 |
+| `tpl/math/math.go:71` | `math.*Namespace.Asin` | `(any) (float64, error)` | cast.ToFloat64E+cast.ToIntE 0.53, hstrings.GetOrCompileRegexp+cast.ToIntE 0.50 |
+| `tpl/math/math.go:80` | `math.*Namespace.Atan` | `(any) (float64, error)` | cast.ToFloat64E+cast.ToIntE 0.53, hstrings.GetOrCompileRegexp+cast.ToIntE 0.50 |
+| `tpl/math/math.go:89` | `math.*Namespace.Atan2` | `(any, any) (float64, error)` | cast.ToFloat64E+cast.ToIntE 0.53, hstrings.GetOrCompileRegexp+cast.ToIntE 0.50 |
+| `tpl/math/math.go:102` | `math.*Namespace.Ceil` | `(any) (float64, error)` | cast.ToFloat64E+cast.ToIntE 0.50, hstrings.GetOrCompileRegexp+cast.ToIntE 0.48 |
+| `tpl/math/math.go:112` | `math.*Namespace.Cos` | `(any) (float64, error)` | cast.ToFloat64E+cast.ToIntE 0.53, hstrings.GetOrCompileRegexp+cast.ToIntE 0.50 |
+| `tpl/math/math.go:126` | `math.*Namespace.Floor` | `(any) (float64, error)` | cast.ToFloat64E+cast.ToIntE 0.50, hstrings.GetOrCompileRegexp+cast.ToIntE 0.48 |
+| `tpl/math/math.go:136` | `math.*Namespace.Log` | `(any) (float64, error)` | cast.ToFloat64E+cast.ToIntE 0.50, hstrings.GetOrCompileRegexp+cast.ToIntE 0.48 |
+
 _8 more members not listed._
 
-_413 more families not listed._
+### Family 5 — 16 members, every pair `>= 0.37` code-shape, evidence `5323`  (45 edges scored here)
 
-_2 component(s) too large or too dense to enumerate (sizes 174, 268); their families are not reported._
+_Not drawn: 16 members is 120 connections. Every one of them holds — that is what makes this a family._
+
+| Location | Function | Signature | Concepts |
+|---|---|---|---|
+| `resources/images/filters.go:38` | `images.*Filters.Process` | `(any) (gift.Filter)` | cast.ToFloat32+cast.ToInt 0.37 |
+| `resources/images/filters.go:49` | `images.*Filters.Overlay` | `(ImageSource, any, any) (gift.Filter)` | cast.ToFloat32+cast.ToInt 0.44 |
+| `resources/images/filters.go:57` | `images.*Filters.Mask` | `(ImageSource) (gift.Filter)` | — |
+| `resources/images/filters.go:66` | `images.*Filters.Opacity` | `(any) (gift.Filter)` | cast.ToFloat32+cast.ToInt 0.49 |
+| `resources/images/filters.go:266` | `images.*Filters.Brightness` | `(any) (gift.Filter)` | cast.ToFloat32+cast.ToInt 0.53, cast.ToFloat32+images.newFilterOpts 0.51 |
+| `resources/images/filters.go:275` | `images.*Filters.ColorBalance` | `(any, any, any) (gift.Filter)` | cast.ToFloat32+cast.ToInt 0.54, cast.ToFloat32+images.newFilterOpts 0.52 |
+| `resources/images/filters.go:286` | `images.*Filters.Colorize` | `(any, any, any) (gift.Filter)` | cast.ToFloat32+cast.ToInt 0.53, cast.ToFloat32+images.newFilterOpts 0.52 |
+| `resources/images/filters.go:295` | `images.*Filters.Contrast` | `(any) (gift.Filter)` | cast.ToFloat32+cast.ToInt 0.53, cast.ToFloat32+images.newFilterOpts 0.51 |
+| `resources/images/filters.go:305` | `images.*Filters.Gamma` | `(any) (gift.Filter)` | cast.ToFloat32+cast.ToInt 0.51, cast.ToFloat32+images.newFilterOpts 0.48 |
+| `resources/images/filters.go:313` | `images.*Filters.GaussianBlur` | `(any) (gift.Filter)` | cast.ToFloat32+cast.ToInt 0.51, cast.ToFloat32+images.newFilterOpts 0.48 |
+
+_6 more members not listed._
+
+_464 more families not listed._
+
+_2 component(s) too large or too dense to enumerate (sizes 187, 324); their families are not reported._
 

@@ -9,7 +9,7 @@ CLI framework; one dominant type with a long method set, plus shell-completion g
 | Corpus | [cobra](https://github.com/spf13/cobra) |
 | Pinned at | `v1.10.2` (`88b30ab89da2d0d0abb153818746c5a2d30eccec`) |
 | Project since | 2015 |
-| doppel | `95071c4` |
+| doppel | `cca7108` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -28,18 +28,18 @@ Culture: 23 concepts modeled, 334 associations, 6 unusual realizations
 Habitats: 2 modeled, 0 misfits; most uniform doc (norm 0.94), most diverse cobra (norm 0.91)
 Conventions: strongest c.PrintErrln+c.Parent (0.64), loosest c.PersistentFlags+c.parentsPflags (0.21)
 Ecosystems: 210 profiled (161 dominance, 49 coalition, 0 conflict, 0 weak)
-Calibration: rate 0.01 over 13695 shape / 20000 overlap null pairs -> threshold 0.44, struct-min 0.51, family-min 0.44
+Calibration: rate 0.01 over 14535 shape / 20000 overlap null pairs -> threshold 0.44, struct-min 0.51, family-min 0.44
 Found 269 functions. Retrieving candidates...
-Retrieval: shape 132, concept 608, call 712 -> 1152 unique pairs
-  concept-only 32.1%  call-only 41.7%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1696
-Running structural comparison on 1152 pairs...
+Retrieval: shape 135, concept 608, call 712 -> 1155 unique pairs
+  concept-only 32.0%  call-only 41.6%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1705
+Running structural comparison on 1155 pairs...
   206 pairs remain after struct-min=0.51 filter
 Families: 14 over 42 components, 49 functions in a family, 6 edges completed
 ```
 
 # Code Similarity Report
 
-**Functions analyzed:** 269 | **Threshold:** 0.60 | **Pairs found:** 10
+**Functions analyzed:** 269 | **Threshold:** 0.38 | **Pairs found:** 10
 
 ---
 
@@ -177,7 +177,7 @@ Most uniform is `doc` (norm `0.94`); most varied is `cobra` (norm `0.91`).
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **1152 candidate pairs** (shape 132, concept 608, call 712), of which 42% arrived on call evidence alone and 32% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **1155 candidate pairs** (shape 135, concept 608, call 712), of which 42% arrived on call evidence alone and 32% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 210 functions reached an equilibrium: **161** settled on a single concept, **49** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -185,7 +185,7 @@ Each function is also an arena where its candidate concepts compete for its evid
 
 **Compression ratio:** `5.51`x — this corpus's canonical function bodies contain **14587 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **2649 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **269 functions**, **223** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.49` / `1.00` / `1.00`, and 60% of them (134 of 223) already clear this run's threshold of `0.44`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 46 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **269 functions**, **224** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.49` / `1.00` / `1.00`, and 60% of them (134 of 224) already clear this run's threshold of `0.44`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 45 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -396,15 +396,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.74`
 
-**Evidence:** `1000.71` (shape 931.50, concept 11.24, call 57.97)
+**Evidence:** `1007.95` (shape 938.74, concept 11.24, call 57.97)
 
 **Trophic:** `0.82`
 
 **Shared structure:**
 
-- `25.33` — `depth-1 EXPRSTMT` ×8
-- `22.48` — `depth-0 CALL` ×8
-- `18.93` — `depth-0 BIN` ×10
+- `25.57` — `depth-1 EXPRSTMT` ×8
+- `22.71` — `depth-0 CALL` ×8
+- `18.84` — `depth-0 BIN` ×10
 
 **Structural overlap:** `0.83` (merge-worthy)
 
@@ -439,15 +439,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `289.45` (shape 275.68, concept 2.90, call 10.87)
+**Evidence:** `291.92` (shape 278.15, concept 2.90, call 10.87)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `7.01` — `depth-2 BLOCK` ×2
-- `6.64` — `depth-1 EXPRSTMT` ×2
-- `6.64` — `depth-0 CALL` ×2
+- `7.06` — `depth-2 BLOCK` ×2
+- `6.70` — `depth-1 EXPRSTMT` ×2
+- `6.70` — `depth-0 CALL` ×2
 
 **Structural overlap:** `0.80` (merge-worthy)
 
@@ -480,15 +480,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `289.50` (shape 275.68, concept 2.94, call 10.87)
+**Evidence:** `291.97` (shape 278.15, concept 2.94, call 10.87)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `7.01` — `depth-2 BLOCK` ×2
-- `6.64` — `depth-1 EXPRSTMT` ×2
-- `6.64` — `depth-0 CALL` ×2
+- `7.06` — `depth-2 BLOCK` ×2
+- `6.70` — `depth-1 EXPRSTMT` ×2
+- `6.70` — `depth-0 CALL` ×2
 
 **Structural overlap:** `0.80` (merge-worthy)
 
@@ -521,15 +521,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `289.45` (shape 275.68, concept 2.90, call 10.87)
+**Evidence:** `291.92` (shape 278.15, concept 2.90, call 10.87)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `7.01` — `depth-2 BLOCK` ×2
-- `6.64` — `depth-1 EXPRSTMT` ×2
-- `6.64` — `depth-0 CALL` ×2
+- `7.06` — `depth-2 BLOCK` ×2
+- `6.70` — `depth-1 EXPRSTMT` ×2
+- `6.70` — `depth-0 CALL` ×2
 
 **Structural overlap:** `0.80` (merge-worthy)
 
@@ -562,15 +562,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.87`
 
-**Evidence:** `317.25` (shape 301.50, concept 1.88, call 13.88)
+**Evidence:** `319.68` (shape 303.93, concept 1.88, call 13.88)
 
 **Trophic:** `0.91`
 
 **Shared structure:**
 
-- `13.28` — `depth-3 CALL` ×4
-- `13.28` — `depth-3 EXPRSTMT` ×4
-- `13.28` — `depth-2 EXPRSTMT` ×4
+- `13.40` — `depth-3 CALL` ×4
+- `13.40` — `depth-3 EXPRSTMT` ×4
+- `13.40` — `depth-2 EXPRSTMT` ×4
 
 **Structural overlap:** `0.87` (merge-worthy)
 
@@ -605,15 +605,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.79`
 
-**Evidence:** `339.66` (shape 308.60, concept 4.29, call 26.78)
+**Evidence:** `342.79` (shape 311.73, concept 4.29, call 26.78)
 
 **Trophic:** `0.94`
 
 **Shared structure:**
 
-- `6.84` — `depth-1 IF` ×3
-- `6.34` — `depth-3 BIN` ×4
-- `6.34` — `depth-2 BIN` ×4
+- `6.93` — `depth-1 IF` ×3
+- `6.46` — `depth-3 BIN` ×4
+- `6.46` — `depth-2 BIN` ×4
 
 **Structural overlap:** `0.78` (merge-worthy)
 
@@ -647,15 +647,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.66`
 
-**Evidence:** `509.82` (shape 484.52, concept 3.99, call 21.31)
+**Evidence:** `514.03` (shape 488.74, concept 3.99, call 21.31)
 
 **Trophic:** `0.76`
 
 **Shared structure:**
 
-- `13.28` — `depth-0 CASE` ×4
-- `11.66` — `depth-0 SLICE` ×4
-- `11.18` — `depth-3 CALL` ×3
+- `13.40` — `depth-0 CASE` ×4
+- `11.78` — `depth-0 SLICE` ×4
+- `11.27` — `depth-3 CALL` ×3
 
 **Structural overlap:** `0.88` (merge-worthy)
 
@@ -689,15 +689,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.74`
 
-**Evidence:** `317.57` (shape 286.50, concept 4.29, call 26.78)
+**Evidence:** `320.55` (shape 289.49, concept 4.29, call 26.78)
 
 **Trophic:** `0.90`
 
 **Shared structure:**
 
-- `6.84` — `depth-1 IF` ×3
-- `6.34` — `depth-3 BIN` ×4
-- `6.34` — `depth-2 BIN` ×4
+- `6.93` — `depth-1 IF` ×3
+- `6.46` — `depth-3 BIN` ×4
+- `6.46` — `depth-2 BIN` ×4
 
 **Structural overlap:** `0.78` (merge-worthy)
 
@@ -731,15 +731,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.74`
 
-**Evidence:** `317.58` (shape 286.50, concept 4.30, call 26.78)
+**Evidence:** `320.56` (shape 289.49, concept 4.30, call 26.78)
 
 **Trophic:** `0.90`
 
 **Shared structure:**
 
-- `6.84` — `depth-1 IF` ×3
-- `6.34` — `depth-3 BIN` ×4
-- `6.34` — `depth-2 BIN` ×4
+- `6.93` — `depth-1 IF` ×3
+- `6.46` — `depth-3 BIN` ×4
+- `6.46` — `depth-2 BIN` ×4
 
 **Structural overlap:** `0.79` (merge-worthy)
 
@@ -773,7 +773,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.78`
 
-**Evidence:** `368.84` (shape 346.30, concept 9.24, call 13.30)
+**Evidence:** `372.10` (shape 349.56, concept 9.24, call 13.30)
 
 **Trophic:** `0.82`
 
@@ -804,7 +804,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 14 families, 49 functions in a family, largest 6 members; 6 edges scored here that retrieval never proposed
 
-### Family 1 — 4 members, every pair `>= 0.44` code-shape, evidence `1580`
+### Family 1 — 4 members, every pair `>= 0.44` code-shape, evidence `1595`
 
 ```mermaid
 flowchart LR
@@ -827,7 +827,7 @@ flowchart LR
 | `doc/rest_docs.go:145` | `doc.GenReSTTreeCustom` | `(*cobra.Command, string, func(string) string, func(string, string) string) (error)` | io.WriteString+filepath.Join 0.78, c.DisableAutoGenTag+cmd.VisitParents 0.45, c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand 0.23 |
 | `doc/yaml_docs.go:60` | `doc.GenYamlTreeCustom` | `(*cobra.Command, string, func(string) string, func(string) string) (error)` | io.WriteString+filepath.Join 0.77, c.DisableAutoGenTag+cmd.VisitParents 0.45, c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand 0.23 |
 
-### Family 2 — 4 members, every pair `>= 0.54` code-shape, evidence `1126`
+### Family 2 — 4 members, every pair `>= 0.54` code-shape, evidence `1136`
 
 ```mermaid
 flowchart LR
@@ -850,7 +850,7 @@ flowchart LR
 | `command.go:1744` | `cobra.*Command.InheritedFlags` | `() (*flag.FlagSet)` | f.Name+flag.ContinueOnError 0.70, c.PersistentFlags+c.parentsPflags 0.66, f.Name+flag.ContinueOnError+flag.NewFlagSet 0.61, f.Annotations+c.flagErrorBuf 0.58, +2 more |
 | `command.go:1775` | `cobra.*Command.PersistentFlags` | `() (*flag.FlagSet)` | f.Name+flag.ContinueOnError 0.59, f.Annotations+c.flagErrorBuf 0.52, c.PersistentFlags+c.parentsPflags 0.51, f.Name+flag.ContinueOnError+flag.NewFlagSet 0.50 |
 
-### Family 3 — 6 members, every pair `>= 0.50` code-shape, evidence `901`
+### Family 3 — 6 members, every pair `>= 0.50` code-shape, evidence `899`
 
 ```mermaid
 flowchart LR
@@ -886,7 +886,7 @@ flowchart LR
 | `command.go:618` | `cobra.*Command.VersionTemplate` | `() (string)` | c.PrintErrln+c.Parent 0.53 |
 | `command.go:631` | `cobra.*Command.getVersionTemplateFunc` | `() (func(w io.Writer, data interface{}) error)` | c.PrintErrln+c.Parent 0.53 |
 
-### Family 4 — 3 members, every pair `>= 1.00` code-shape, evidence `868`
+### Family 4 — 3 members, every pair `>= 1.00` code-shape, evidence `876`
 
 ```mermaid
 flowchart LR
@@ -904,7 +904,7 @@ flowchart LR
 | `flag_groups.go:49` | `cobra.*Command.MarkFlagsOneRequired` | `(...string)` | f.Annotations+c.flagErrorBuf 0.59, c.DisableFlagParsing+sort.Strings 0.51 |
 | `flag_groups.go:65` | `cobra.*Command.MarkFlagsMutuallyExclusive` | `(...string)` | f.Annotations+c.flagErrorBuf 0.59, c.DisableFlagParsing+sort.Strings 0.47 |
 
-### Family 5 — 4 members, every pair `>= 0.65` code-shape, evidence `786`
+### Family 5 — 4 members, every pair `>= 0.65` code-shape, evidence `795`
 
 ```mermaid
 flowchart LR

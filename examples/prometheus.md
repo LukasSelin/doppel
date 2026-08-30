@@ -9,7 +9,7 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `95071c4` |
+| doppel | `cca7108` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -30,17 +30,17 @@ Conventions: strongest b.Reset+c.b (1.00), loosest b.output+b.add (0.13)
 Ecosystems: 3611 profiled (1868 dominance, 1743 coalition, 0 conflict, 0 weak)
 Calibration: rate 0.01 over 20000 null pairs -> threshold 0.33, struct-min 0.31, family-min 0.33
 Found 5469 functions. Retrieving candidates...
-Retrieval: shape 7332, concept 9015, call 8141 -> 19771 unique pairs
-  concept-only 31.2%  call-only 25.0%  suppressed-shape functions: 9  large identity buckets: 0  surviving labels: 28863
-Running structural comparison on 19771 pairs...
-  9357 pairs remain after struct-min=0.31 filter
-Families: 534 over 490 components, 1571 functions in a family, 3072 edges completed
-  2 component(s) skipped as too large or too dense: sizes [174 485]
+Retrieval: shape 7705, concept 9015, call 8141 -> 20114 unique pairs
+  concept-only 30.6%  call-only 24.6%  suppressed-shape functions: 12  large identity buckets: 0  surviving labels: 29106
+Running structural comparison on 20114 pairs...
+  9467 pairs remain after struct-min=0.31 filter
+Families: 536 over 499 components, 1583 functions in a family, 3141 edges completed
+  2 component(s) skipped as too large or too dense: sizes [174 511]
 ```
 
 # Code Similarity Report
 
-**Functions analyzed:** 5469 | **Threshold:** 0.60 | **Pairs found:** 10
+**Functions analyzed:** 5469 | **Threshold:** 0.38 | **Pairs found:** 10
 
 ---
 
@@ -1228,7 +1228,7 @@ flowchart LR
     p1["scrape<br/>42 internal"]
     p0 ---|"32"| p1
     p2["agent<br/>19 internal"]
-    p3["tsdb<br/>203 internal"]
+    p3["tsdb<br/>204 internal"]
     p2 ---|"16"| p3
     p4["aws<br/>130 internal"]
     p5["azure<br/>5 internal"]
@@ -1253,7 +1253,7 @@ flowchart LR
     p4 ---|"7"| p14
 ```
 
-_279 further package pairs are connected by merge-worthy duplication and are not drawn._
+_281 further package pairs are connected by merge-worthy duplication and are not drawn._
 
 ### How settled each package is
 
@@ -1284,7 +1284,7 @@ _78 further packages are modeled and not drawn._ Most uniform is `documentcli` (
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **19771 candidate pairs** (shape 7332, concept 9015, call 8141), of which 25% arrived on call evidence alone and 31% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **20114 candidate pairs** (shape 7705, concept 9015, call 8141), of which 25% arrived on call evidence alone and 31% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 3611 functions reached an equilibrium: **1868** settled on a single concept, **1743** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -1292,7 +1292,7 @@ Each function is also an arena where its candidate concepts compete for its evid
 
 **Compression ratio:** `9.07`x — this corpus's canonical function bodies contain **468473 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **51658 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **5469 functions**, **4063** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.50` / `1.00` / `1.00`, and 87% of them (3530 of 4063) already clear this run's threshold of `0.33`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 1406 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **5469 functions**, **4139** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.50` / `1.00` / `1.00`, and 87% of them (3619 of 4139) already clear this run's threshold of `0.33`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 1330 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -1895,15 +1895,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.78`
 
-**Evidence:** `3455.29` (shape 3317.55, concept 27.47, call 110.28)
+**Evidence:** `3471.26` (shape 3333.52, concept 27.47, call 110.28)
 
 **Trophic:** `0.83`
 
 **Shared structure:**
 
-- `30.04` — `depth-3 IF` ×4
-- `27.27` — `depth-2 IF` ×4
-- `26.37` — `depth-3 BLOCK` ×4
+- `30.18` — `depth-3 IF` ×4
+- `27.41` — `depth-2 IF` ×4
+- `26.52` — `depth-3 BLOCK` ×4
 
 **Structural overlap:** `0.70` (merge-worthy)
 
@@ -1937,15 +1937,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.86`
 
-**Evidence:** `2047.42` (shape 2011.45, concept 8.45, call 27.51)
+**Evidence:** `2058.72` (shape 2022.76, concept 8.45, call 27.51)
 
 **Trophic:** `0.88`
 
 **Shared structure:**
 
-- `48.02` — `depth-2 KV` ×10
-- `48.02` — `depth-1 KV` ×10
-- `38.47` — `depth-3 ASSIGN` ×6
+- `48.37` — `depth-2 KV` ×10
+- `48.37` — `depth-1 KV` ×10
+- `38.68` — `depth-3 ASSIGN` ×6
 
 **Structural overlap:** `0.91` (merge-worthy)
 
@@ -1981,15 +1981,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.93`
 
-**Evidence:** `1236.32` (shape 1169.37, concept 12.15, call 54.81)
+**Evidence:** `1242.27` (shape 1175.32, concept 12.15, call 54.81)
 
 **Trophic:** `0.98`
 
 **Shared structure:**
 
-- `12.51` — `depth-3 IF` ×2
-- `12.01` — `depth-2 IF` ×2
-- `11.80` — `depth-3 IF` ×2
+- `12.58` — `depth-3 IF` ×2
+- `12.08` — `depth-2 IF` ×2
+- `11.87` — `depth-3 IF` ×2
 
 **Structural overlap:** `0.97` (merge-worthy)
 
@@ -2025,15 +2025,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `1033.51` (shape 993.76, concept 14.31, call 25.43)
+**Evidence:** `1038.26` (shape 998.52, concept 14.31, call 25.43)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `22.26` — `depth-3 CALL` ×4
-- `21.25` — `depth-3 CALL` ×4
-- `21.25` — `depth-3 SEL` ×4
+- `22.40` — `depth-3 CALL` ×4
+- `21.39` — `depth-3 CALL` ×4
+- `21.39` — `depth-3 SEL` ×4
 
 **Structural overlap:** `0.93` (merge-worthy)
 
@@ -2068,15 +2068,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.93`
 
-**Evidence:** `1203.19` (shape 1109.46, concept 8.63, call 85.10)
+**Evidence:** `1209.57` (shape 1115.84, concept 8.63, call 85.10)
 
 **Trophic:** `0.98`
 
 **Shared structure:**
 
-- `32.22` — `depth-3 BIN` ×6
-- `32.22` — `depth-2 BIN` ×6
-- `14.61` — `depth-2 IF` ×3
+- `32.43` — `depth-3 BIN` ×6
+- `32.43` — `depth-2 BIN` ×6
+- `14.72` — `depth-2 IF` ×3
 
 **Structural overlap:** `0.79` (merge-worthy)
 
@@ -2111,15 +2111,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.93`
 
-**Evidence:** `1203.25` (shape 1109.46, concept 8.69, call 85.10)
+**Evidence:** `1209.63` (shape 1115.84, concept 8.69, call 85.10)
 
 **Trophic:** `0.98`
 
 **Shared structure:**
 
-- `32.22` — `depth-3 BIN` ×6
-- `32.22` — `depth-2 BIN` ×6
-- `14.61` — `depth-2 IF` ×3
+- `32.43` — `depth-3 BIN` ×6
+- `32.43` — `depth-2 BIN` ×6
+- `14.72` — `depth-2 IF` ×3
 
 **Structural overlap:** `0.79` (merge-worthy)
 
@@ -2150,15 +2150,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.96`
 
-**Evidence:** `1635.01` (shape 1627.79, concept 0.00, call 7.22)
+**Evidence:** `1642.71` (shape 1635.49, concept 0.00, call 7.22)
 
 **Trophic:** `0.96`
 
 **Shared structure:**
 
-- `30.04` — `depth-3 CALL` ×4
-- `30.04` — `depth-3 ASSIGN` ×4
-- `30.04` — `depth-2 ASSIGN` ×4
+- `30.18` — `depth-3 CALL` ×4
+- `30.18` — `depth-3 ASSIGN` ×4
+- `30.18` — `depth-2 ASSIGN` ×4
 
 **Structural overlap:** `0.64` (merge-worthy)
 
@@ -2191,15 +2191,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.93`
 
-**Evidence:** `1203.19` (shape 1109.46, concept 8.63, call 85.10)
+**Evidence:** `1209.56` (shape 1115.84, concept 8.63, call 85.10)
 
 **Trophic:** `0.98`
 
 **Shared structure:**
 
-- `32.22` — `depth-3 BIN` ×6
-- `32.22` — `depth-2 BIN` ×6
-- `14.61` — `depth-2 IF` ×3
+- `32.43` — `depth-3 BIN` ×6
+- `32.43` — `depth-2 BIN` ×6
+- `14.72` — `depth-2 IF` ×3
 
 **Structural overlap:** `0.78` (merge-worthy)
 
@@ -2230,15 +2230,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `1263.60` (shape 1263.60, concept 0.00, call 0.00)
+**Evidence:** `1270.23` (shape 1270.23, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `14.12` — `depth-1 ASSIGN` ×3
-- `13.63` — `depth-3 UNARY` ×2
-- `13.63` — `depth-3 BIN` ×2
+- `14.23` — `depth-1 ASSIGN` ×3
+- `13.70` — `depth-3 UNARY` ×2
+- `13.70` — `depth-3 BIN` ×2
 
 **Structural overlap:** `0.72` (merge-worthy)
 
@@ -2271,15 +2271,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.84` — most of the smaller body's shape is inside the larger
 
-**Evidence:** `4703.09` (shape 4643.05, concept 16.83, call 43.21)
+**Evidence:** `4723.18` (shape 4663.14, concept 16.83, call 43.21)
 
 **Trophic:** `0.69`
 
 **Shared structure:**
 
-- `55.11` — `depth-3 CALL` ×9
-- `55.11` — `depth-2 CALL` ×9
-- `39.56` — `depth-2 RANGE` ×6
+- `55.43` — `depth-3 CALL` ×9
+- `55.43` — `depth-2 CALL` ×9
+- `39.77` — `depth-2 RANGE` ×6
 
 **Structural overlap:** `0.59` (merge-worthy)
 
@@ -2297,9 +2297,9 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ## Families
 
-534 families, 1571 functions in a family, largest 34 members; 3072 edges scored here that retrieval never proposed
+536 families, 1583 functions in a family, largest 34 members; 3141 edges scored here that retrieval never proposed
 
-### Family 1 — 17 members, every pair `>= 0.33` code-shape, evidence `21841`  (70 edges scored here)
+### Family 1 — 17 members, every pair `>= 0.33` code-shape, evidence `21960`  (70 edges scored here)
 
 _Not drawn: 17 members is 136 connections. Every one of them holds — that is what makes this a family._
 
@@ -2318,7 +2318,7 @@ _Not drawn: 17 members is 136 connections. Every one of them holds — that is w
 
 _7 more members not listed._
 
-### Family 2 — 19 members, every pair `>= 0.34` code-shape, evidence `21624`  (98 edges scored here)
+### Family 2 — 19 members, every pair `>= 0.34` code-shape, evidence `21741`  (98 edges scored here)
 
 _Not drawn: 19 members is 171 connections. Every one of them holds — that is what makes this a family._
 
@@ -2337,7 +2337,7 @@ _Not drawn: 19 members is 171 connections. Every one of them holds — that is w
 
 _9 more members not listed._
 
-### Family 3 — 7 members, every pair `>= 0.35` code-shape, evidence `18562`  (1 edge scored here)
+### Family 3 — 7 members, every pair `>= 0.35` code-shape, evidence `18591`  (1 edge scored here)
 
 ```mermaid
 flowchart LR
@@ -2381,7 +2381,7 @@ flowchart LR
 | `util/fuzzing/corpus_gen/main.go:31` | `main.main` | `()` | FH.Schema+H.Schema 0.77 |
 | `web/ui/mantine-ui/src/promql/tools/gen_functions_docs/main.go:31` | `main.main` | `()` | FH.Schema+H.Schema 0.79, cp.Close+fd.Close 0.52, strings.ReplaceAll+tsdb.*memChunk.len 0.50, Status.State+buf1.PutBE32int 0.46, +1 more |
 
-### Family 4 — 13 members, every pair `>= 0.36` code-shape, evidence `18528`  (22 edges scored here)
+### Family 4 — 13 members, every pair `>= 0.36` code-shape, evidence `18588`  (22 edges scored here)
 
 _Not drawn: 13 members is 78 connections. Every one of them holds — that is what makes this a family._
 
@@ -2400,7 +2400,7 @@ _Not drawn: 13 members is 78 connections. Every one of them holds — that is wh
 
 _3 more members not listed._
 
-### Family 5 — 23 members, every pair `>= 0.33` code-shape, evidence `17405`  (175 edges scored here)
+### Family 5 — 23 members, every pair `>= 0.33` code-shape, evidence `17454`  (174 edges scored here)
 
 _Not drawn: 23 members is 253 connections. Every one of them holds — that is what makes this a family._
 
@@ -2419,7 +2419,7 @@ _Not drawn: 23 members is 253 connections. Every one of them holds — that is w
 
 _13 more members not listed._
 
-_529 more families not listed._
+_531 more families not listed._
 
-_2 component(s) too large or too dense to enumerate (sizes 174, 485); their families are not reported._
+_2 component(s) too large or too dense to enumerate (sizes 174, 511); their families are not reported._
 

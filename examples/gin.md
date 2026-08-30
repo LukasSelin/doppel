@@ -9,7 +9,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `95071c4` |
+| doppel | `cca7108` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -30,16 +30,16 @@ Conventions: strongest c.MustBindWith+gin.*Context.MustBindWith (1.00), loosest 
 Ecosystems: 420 profiled (306 dominance, 23 coalition, 0 conflict, 91 weak)
 Calibration: rate 0.01 over 20000 null pairs -> threshold 0.41, struct-min 0.50, family-min 0.41
 Found 497 functions. Retrieving candidates...
-Retrieval: shape 175, concept 1599, call 609 -> 2035 unique pairs
-  concept-only 64.0%  call-only 16.8%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1924
-Running structural comparison on 2035 pairs...
-  427 pairs remain after struct-min=0.50 filter
-Families: 29 over 49 components, 133 functions in a family, 113 edges completed
+Retrieval: shape 187, concept 1599, call 609 -> 2046 unique pairs
+  concept-only 63.7%  call-only 16.6%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1934
+Running structural comparison on 2046 pairs...
+  437 pairs remain after struct-min=0.50 filter
+Families: 29 over 48 components, 135 functions in a family, 114 edges completed
 ```
 
 # Code Similarity Report
 
-**Functions analyzed:** 497 | **Threshold:** 0.60 | **Pairs found:** 10
+**Functions analyzed:** 497 | **Threshold:** 0.38 | **Pairs found:** 10
 
 ---
 
@@ -241,7 +241,7 @@ Most uniform is `binding` (norm `0.92`); most varied is `json` (norm `0.63`). 17
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **2035 candidate pairs** (shape 175, concept 1599, call 609), of which 17% arrived on call evidence alone and 64% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **2046 candidate pairs** (shape 187, concept 1599, call 609), of which 17% arrived on call evidence alone and 64% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 420 functions reached an equilibrium: **306** settled on a single concept, **23** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -249,7 +249,7 @@ Each function is also an arena where its candidate concepts compete for its evid
 
 **Compression ratio:** `5.28`x — this corpus's canonical function bodies contain **17625 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **3336 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **497 functions**, **436** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.43` / `1.00` / `1.00`, and 56% of them (242 of 436) already clear this run's threshold of `0.41`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 61 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **497 functions**, **436** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.44` / `1.00` / `1.00`, and 56% of them (246 of 436) already clear this run's threshold of `0.41`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 61 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -458,15 +458,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `425.05` (shape 383.87, concept 7.91, call 33.26)
+**Evidence:** `430.75` (shape 389.58, concept 7.91, call 33.26)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `4.73` — `depth-3 CALL`
-- `4.73` — `depth-3 ASSIGN`
-- `4.73` — `depth-3 CALL`
+- `4.78` — `depth-3 CALL`
+- `4.78` — `depth-3 ASSIGN`
+- `4.78` — `depth-3 CALL`
 
 **Structural overlap:** `0.81` (merge-worthy)
 
@@ -499,15 +499,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.85`
 
-**Evidence:** `283.74` (shape 267.03, concept 4.43, call 12.27)
+**Evidence:** `287.23` (shape 270.53, concept 4.43, call 12.27)
 
 **Trophic:** `0.93`
 
 **Shared structure:**
 
-- `5.56` — `depth-1 EXPRSTMT` ×2
-- `5.56` — `depth-0 CALL` ×2
-- `4.73` — `depth-3 ASSIGN`
+- `5.67` — `depth-1 EXPRSTMT` ×2
+- `5.67` — `depth-0 CALL` ×2
+- `4.78` — `depth-3 ASSIGN`
 
 **Structural overlap:** `0.69` (merge-worthy)
 
@@ -540,15 +540,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.84` — most of the smaller body's shape is inside the larger
 
-**Evidence:** `291.05` (shape 274.45, concept 4.32, call 12.27)
+**Evidence:** `295.31` (shape 278.72, concept 4.32, call 12.27)
 
 **Trophic:** `0.85`
 
 **Shared structure:**
 
-- `5.56` — `depth-1 EXPRSTMT` ×2
-- `5.56` — `depth-0 CALL` ×2
-- `4.73` — `depth-3 UNARY`
+- `5.67` — `depth-1 EXPRSTMT` ×2
+- `5.67` — `depth-0 CALL` ×2
+- `4.78` — `depth-3 UNARY`
 
 **Structural overlap:** `0.71` (merge-worthy)
 
@@ -581,15 +581,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.82`
 
-**Evidence:** `221.47` (shape 204.90, concept 4.30, call 12.27)
+**Evidence:** `224.99` (shape 208.43, concept 4.30, call 12.27)
 
 **Trophic:** `0.86`
 
 **Shared structure:**
 
-- `5.56` — `depth-1 EXPRSTMT` ×2
-- `5.56` — `depth-0 CALL` ×2
-- `3.81` — `depth-3 CALL`
+- `5.67` — `depth-1 EXPRSTMT` ×2
+- `5.67` — `depth-0 CALL` ×2
+- `3.87` — `depth-3 CALL`
 
 **Structural overlap:** `0.76` (merge-worthy)
 
@@ -622,15 +622,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.75`
 
-**Evidence:** `233.78` (shape 205.30, concept 4.78, call 23.71)
+**Evidence:** `235.17` (shape 206.68, concept 4.78, call 23.71)
 
 **Trophic:** `0.84`
 
 **Shared structure:**
 
-- `5.87` — `depth-3 KV` ×2
-- `5.87` — `depth-2 KV` ×2
-- `5.86` — `depth-0 KV` ×3
+- `5.98` — `depth-3 KV` ×2
+- `5.98` — `depth-2 KV` ×2
+- `5.82` — `depth-1 KV` ×2
 
 **Structural overlap:** `0.78` (merge-worthy)
 
@@ -663,15 +663,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `104.29` (shape 93.98, concept 2.08, call 8.23)
+**Evidence:** `104.30` (shape 93.99, concept 2.08, call 8.23)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `4.73` — `depth-3 BLOCK`
-- `4.73` — `depth-3 EXPRSTMT`
-- `4.73` — `depth-3 RANGE`
+- `4.78` — `depth-3 BLOCK`
+- `4.78` — `depth-3 EXPRSTMT`
+- `4.78` — `depth-3 RANGE`
 
 **Structural overlap:** `0.81` (merge-worthy)
 
@@ -704,15 +704,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.93` — most of the smaller body's shape is inside the larger
 
-**Evidence:** `204.97` (shape 182.78, concept 1.92, call 20.27)
+**Evidence:** `206.21` (shape 184.02, concept 1.92, call 20.27)
 
 **Trophic:** `0.95`
 
 **Shared structure:**
 
-- `8.64` — `depth-3 CALL` ×2
-- `8.64` — `depth-2 CALL` ×2
-- `8.64` — `depth-1 CALL` ×2
+- `8.76` — `depth-3 CALL` ×2
+- `8.76` — `depth-2 CALL` ×2
+- `8.76` — `depth-1 CALL` ×2
 
 **Structural overlap:** `0.61` (merge-worthy)
 
@@ -745,15 +745,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `101.76` (shape 99.16, concept 2.60, call 0.00)
+**Evidence:** `103.27` (shape 100.67, concept 2.60, call 0.00)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `4.32` — `depth-3 ASSIGN`
-- `4.32` — `depth-3 BLOCK`
-- `4.32` — `depth-3 CALL`
+- `4.38` — `depth-3 ASSIGN`
+- `4.38` — `depth-3 BLOCK`
+- `4.38` — `depth-3 CALL`
 
 **Culture:** B realizes `binding+nil` atypically (typicality 0.17, concept median 0.35, convention 0.61)
 
@@ -787,15 +787,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `101.76` (shape 99.16, concept 2.60, call 0.00)
+**Evidence:** `103.27` (shape 100.67, concept 2.60, call 0.00)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `4.32` — `depth-3 ASSIGN`
-- `4.32` — `depth-3 BLOCK`
-- `4.32` — `depth-3 CALL`
+- `4.38` — `depth-3 ASSIGN`
+- `4.38` — `depth-3 BLOCK`
+- `4.38` — `depth-3 CALL`
 
 **Structural overlap:** `0.71` (merge-worthy)
 
@@ -827,15 +827,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `101.76` (shape 99.16, concept 2.60, call 0.00)
+**Evidence:** `103.27` (shape 100.67, concept 2.60, call 0.00)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `4.32` — `depth-3 ASSIGN`
-- `4.32` — `depth-3 BLOCK`
-- `4.32` — `depth-3 CALL`
+- `4.38` — `depth-3 ASSIGN`
+- `4.38` — `depth-3 BLOCK`
+- `4.38` — `depth-3 CALL`
 
 **Culture:** A realizes `binding+nil` atypically (typicality 0.17, concept median 0.35, convention 0.61)
 
@@ -854,9 +854,9 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ## Families
 
-29 families, 133 functions in a family, largest 16 members; 113 edges scored here that retrieval never proposed
+29 families, 135 functions in a family, largest 16 members; 114 edges scored here that retrieval never proposed
 
-### Family 1 — 6 members, every pair `>= 0.48` code-shape, evidence `3469`
+### Family 1 — 6 members, every pair `>= 0.48` code-shape, evidence `3522`
 
 ```mermaid
 flowchart LR
@@ -892,7 +892,7 @@ flowchart LR
 | `gin.go:630` | `gin.*Engine.RunQUIC` | `(string, string, string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.77, http.Server+engine.Handler 0.49 |
 | `gin.go:645` | `gin.*Engine.RunListener` | `(net.Listener) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.77, http.Server+engine.Handler 0.49 |
 
-### Family 2 — 5 members, every pair `>= 0.47` code-shape, evidence `708`
+### Family 2 — 5 members, every pair `>= 0.47` code-shape, evidence `719`
 
 ```mermaid
 flowchart LR
@@ -921,7 +921,7 @@ flowchart LR
 | `binding/xml.go:28` | `binding.decodeXML` | `(io.Reader, any) (error)` | delims.Left+delims.Right 0.66, binding+nil 0.35 |
 | `binding/yaml.go:29` | `binding.decodeYAML` | `(io.Reader, any) (error)` | delims.Left+delims.Right 0.66, binding+nil 0.35 |
 
-### Family 3 — 3 members, every pair `>= 0.45` code-shape, evidence `620`
+### Family 3 — 3 members, every pair `>= 0.45` code-shape, evidence `624`
 
 ```mermaid
 flowchart LR
@@ -939,7 +939,7 @@ flowchart LR
 | `gin.go:288` | `gin.*Engine.LoadHTMLFiles` | `(...string)` | delims.Left+delims.Right 0.84, delims.Left+delims.Right+engine.SetHTMLTemplate 0.78 |
 | `gin.go:300` | `gin.*Engine.LoadHTMLFS` | `(http.FileSystem, ...string)` | delims.Left+delims.Right 0.84, delims.Left+delims.Right+engine.SetHTMLTemplate 0.78 |
 
-### Family 4 — 5 members, every pair `>= 0.53` code-shape, evidence `608`, interface implementations of `Render(http.ResponseWriter) (error)`, in package `render`
+### Family 4 — 5 members, every pair `>= 0.53` code-shape, evidence `618`, interface implementations of `Render(http.ResponseWriter) (error)`, in package `render`
 
 ```mermaid
 flowchart LR
@@ -968,7 +968,7 @@ flowchart LR
 | `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.54, binding+nil 0.35 |
 | `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.54, binding+nil 0.35 |
 
-### Family 5 — 5 members, every pair `>= 0.46` code-shape, evidence `399`
+### Family 5 — 5 members, every pair `>= 0.46` code-shape, evidence `407`
 
 ```mermaid
 flowchart LR
