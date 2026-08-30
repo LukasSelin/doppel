@@ -9,7 +9,7 @@ CLI framework; one dominant type with a long method set, plus shell-completion g
 | Corpus | [cobra](https://github.com/spf13/cobra) |
 | Pinned at | `v1.10.2` (`88b30ab89da2d0d0abb153818746c5a2d30eccec`) |
 | Project since | 2015 |
-| doppel | `e53d59d` |
+| doppel | `bb0f86a` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -26,11 +26,13 @@ Culture: 2 concepts modeled, 15 associations, 0 unusual realizations
 Habitats: 2 modeled, 0 misfits; most uniform doc (norm 0.93), most diverse cobra (norm 0.91)
 Conventions: strongest validation (0.44), loosest file_io (0.42)
 Ecosystems: 125 profiled (125 dominance, 0 coalition, 0 conflict, 0 weak)
+Calibration: rate 0.01 over 17578 shape / 20000 overlap null pairs -> threshold 0.53, struct-min 0.44, family-min 0.53
 Found 269 functions. Retrieving candidates...
-Retrieval: shape 117, concept 85, call 712 -> 826 unique pairs
-  concept-only 6.9%  call-only 76.6%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 2819
-Running structural comparison on 826 pairs...
-Families: 18 over 43 components, 63 functions in a family, 3 edges completed
+Retrieval: shape 149, concept 85, call 712 -> 841 unique pairs
+  concept-only 6.7%  call-only 73.7%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 2819
+Running structural comparison on 841 pairs...
+  160 pairs remain after struct-min=0.44 filter
+Families: 15 over 42 components, 53 functions in a family, 9 edges completed
 ```
 
 # Code Similarity Report
@@ -115,8 +117,8 @@ Merge-worthy pairs folded up to their packages. An edge means two packages keep 
 
 ```mermaid
 flowchart LR
-    p0["cobra<br/>134 internal"]
-    p1["doc<br/>14 internal"]
+    p0["cobra<br/>99 internal"]
+    p1["doc<br/>10 internal"]
     p0 ---|"1"| p1
 ```
 
@@ -138,7 +140,7 @@ Most uniform is `doc` (norm `0.93`); most varied is `cobra` (norm `0.91`).
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **826 candidate pairs** (shape 117, concept 85, call 712), of which 77% arrived on call evidence alone and 7% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **841 candidate pairs** (shape 149, concept 85, call 712), of which 74% arrived on call evidence alone and 7% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 125 functions reached an equilibrium: **125** settled on a single concept, **0** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -554,31 +556,15 @@ Co-occurrence measured against chance across every function. Only relationships 
 
 ## Families
 
-18 families, 63 functions in a family, largest 9 members; 3 edges scored here that retrieval never proposed
+15 families, 53 functions in a family, largest 5 members; 9 edges scored here that retrieval never proposed
 
-### Family 1 — 9 members, every pair `>= 0.63` code-shape, evidence `2579`
-
-_Not drawn: 9 members is 36 connections. Every one of them holds — that is what makes this a family._
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `command.go:412` | `cobra.*Command.getOut` | `(io.Writer) (io.Writer)` | — |
-| `command.go:422` | `cobra.*Command.getErr` | `(io.Writer) (io.Writer)` | — |
-| `command.go:432` | `cobra.*Command.getIn` | `(io.Reader) (io.Reader)` | — |
-| `command.go:464` | `cobra.*Command.getUsageTemplateFunc` | `() (func(w io.Writer, data interface{}) error)` | — |
-| `command.go:505` | `cobra.*Command.getHelpTemplateFunc` | `() (func(w io.Writer, data interface{}) error)` | — |
-| `command.go:592` | `cobra.*Command.UsageTemplate` | `() (string)` | — |
-| `command.go:605` | `cobra.*Command.HelpTemplate` | `() (string)` | — |
-| `command.go:618` | `cobra.*Command.VersionTemplate` | `() (string)` | — |
-| `command.go:631` | `cobra.*Command.getVersionTemplateFunc` | `() (func(w io.Writer, data interface{}) error)` | — |
-
-### Family 2 — 3 members, every pair `>= 0.84` code-shape, evidence `1891`
+### Family 1 — 3 members, every pair `>= 0.56` code-shape, evidence `3103`
 
 ```mermaid
 flowchart LR
-    m0["doc.GenMarkdownTreeCustom"]
-    m1["doc.GenReSTTreeCustom"]
-    m2["doc.GenYamlTreeCustom"]
+    m0["doc.GenMarkdownCustom"]
+    m1["doc.GenReSTCustom"]
+    m2["doc.GenYamlCustom"]
     m0 --- m1
     m0 --- m2
     m1 --- m2
@@ -586,11 +572,34 @@ flowchart LR
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
+| `doc/md_docs.go:57` | `doc.GenMarkdownCustom` | `(*cobra.Command, io.Writer, func(string) string) (error)` | — |
+| `doc/rest_docs.go:62` | `doc.GenReSTCustom` | `(*cobra.Command, io.Writer, func(string, string) string) (error)` | — |
+| `doc/yaml_docs.go:93` | `doc.GenYamlCustom` | `(*cobra.Command, io.Writer, func(string) string) (error)` | serialization |
+
+### Family 2 — 4 members, every pair `>= 0.55` code-shape, evidence `2990`
+
+```mermaid
+flowchart LR
+    m0["doc.GenManTreeFromOpts"]
+    m1["doc.GenMarkdownTreeCustom"]
+    m2["doc.GenReSTTreeCustom"]
+    m3["doc.GenYamlTreeCustom"]
+    m0 --- m1
+    m0 --- m2
+    m0 --- m3
+    m1 --- m2
+    m1 --- m3
+    m2 --- m3
+```
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `doc/man_docs.go:48` | `doc.GenManTreeFromOpts` | `(*cobra.Command, GenManTreeOptions) (error)` | file_io |
 | `doc/md_docs.go:133` | `doc.GenMarkdownTreeCustom` | `(*cobra.Command, string, func(string) string, func(string) string) (error)` | file_io |
 | `doc/rest_docs.go:145` | `doc.GenReSTTreeCustom` | `(*cobra.Command, string, func(string) string, func(string, string) string) (error)` | file_io |
 | `doc/yaml_docs.go:60` | `doc.GenYamlTreeCustom` | `(*cobra.Command, string, func(string) string, func(string) string) (error)` | file_io |
 
-### Family 3 — 4 members, every pair `>= 0.64` code-shape, evidence `1702`
+### Family 3 — 4 members, every pair `>= 0.64` code-shape, evidence `1467`  (1 edge scored here)
 
 ```mermaid
 flowchart LR
@@ -660,5 +669,5 @@ flowchart LR
 | `flag_groups.go:49` | `cobra.*Command.MarkFlagsOneRequired` | `(...string)` | validation |
 | `flag_groups.go:65` | `cobra.*Command.MarkFlagsMutuallyExclusive` | `(...string)` | — |
 
-_13 more families not listed._
+_10 more families not listed._
 

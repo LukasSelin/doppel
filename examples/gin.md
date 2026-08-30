@@ -9,7 +9,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `e53d59d` |
+| doppel | `bb0f86a` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -26,11 +26,13 @@ Culture: 5 concepts modeled, 11 associations, 2 unusual realizations
 Habitats: 5 modeled, 17 misfits (0 excused by subsystem), 1 subsystems; most uniform binding (norm 0.91), most diverse json (norm 0.63)
 Conventions: strongest serialization (0.72), loosest caching (0.37)
 Ecosystems: 128 profiled (128 dominance, 0 coalition, 0 conflict, 0 weak)
+Calibration: rate 0.01 over 20000 null pairs -> threshold 0.49, struct-min 0.39, family-min 0.49
 Found 497 functions. Retrieving candidates...
-Retrieval: shape 156, concept 317, call 609 -> 1023 unique pairs
-  concept-only 29.2%  call-only 54.4%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 3321
-Running structural comparison on 1023 pairs...
-Families: 25 over 48 components, 109 functions in a family, 119 edges completed
+Retrieval: shape 260, concept 317, call 609 -> 1102 unique pairs
+  concept-only 27.0%  call-only 48.7%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 3321
+Running structural comparison on 1102 pairs...
+  422 pairs remain after struct-min=0.39 filter
+Families: 24 over 44 components, 128 functions in a family, 173 edges completed
 ```
 
 # Code Similarity Report
@@ -119,8 +121,8 @@ Merge-worthy pairs folded up to their packages. An edge means two packages keep 
 
 ```mermaid
 flowchart LR
-    p0["binding<br/>77 internal"]
-    p1["gin<br/>176 internal"]
+    p0["binding<br/>80 internal"]
+    p1["gin<br/>179 internal"]
     p0 ---|"2"| p1
 ```
 
@@ -146,7 +148,7 @@ Most uniform is `binding` (norm `0.91`); most varied is `json` (norm `0.63`). 17
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **1023 candidate pairs** (shape 156, concept 317, call 609), of which 54% arrived on call evidence alone and 29% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **1102 candidate pairs** (shape 260, concept 317, call 609), of which 49% arrived on call evidence alone and 27% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 128 functions reached an equilibrium: **128** settled on a single concept, **0** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -585,11 +587,11 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 ## Families
 
-25 families, 109 functions in a family, largest 14 members; 119 edges scored here that retrieval never proposed
+24 families, 128 functions in a family, largest 16 members; 173 edges scored here that retrieval never proposed
 
-### Family 1 — 13 members, every pair `>= 0.74` code-shape, evidence `2325`  (31 edges scored here)
+### Family 1 — 15 members, every pair `>= 0.55` code-shape, evidence `2727`  (49 edges scored here)
 
-_Not drawn: 13 members is 78 connections. Every one of them holds — that is what makes this a family._
+_Not drawn: 15 members is 105 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
@@ -604,117 +606,67 @@ _Not drawn: 13 members is 78 connections. Every one of them holds — that is wh
 | `context.go:1238` | `gin.*Context.ProtoBuf` | `(int, any)` | — |
 | `context.go:1243` | `gin.*Context.BSON` | `(int, any)` | — |
 
-_3 more members not listed._
+_5 more members not listed._
 
-### Family 2 — 6 members, every pair `>= 0.61` code-shape, evidence `2206`, interface implementations of `Render(http.ResponseWriter) (error)`, in package `render`
+### Family 2 — 5 members, every pair `>= 0.56` code-shape, evidence `2612`
 
 ```mermaid
 flowchart LR
-    m0["render.IndentedJSON.Render"]
-    m1["render.SecureJSON.Render"]
-    m2["render.JsonpJSON.Render"]
-    m3["render.ProtoBuf.Render"]
-    m4["render.TOML.Render"]
-    m5["render.YAML.Render"]
+    m0["gin.*Engine.Run"]
+    m1["gin.*Engine.RunTLS"]
+    m2["gin.*Engine.RunUnix"]
+    m3["gin.*Engine.RunQUIC"]
+    m4["gin.*Engine.RunListener"]
     m0 --- m1
     m0 --- m2
     m0 --- m3
     m0 --- m4
-    m0 --- m5
     m1 --- m2
     m1 --- m3
     m1 --- m4
-    m1 --- m5
     m2 --- m3
     m2 --- m4
-    m2 --- m5
     m3 --- m4
-    m3 --- m5
-    m4 --- m5
 ```
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `render/json.go:78` | `render.IndentedJSON.Render` | `(http.ResponseWriter) (error)` | — |
-| `render/json.go:94` | `render.SecureJSON.Render` | `(http.ResponseWriter) (error)` | — |
-| `render/json.go:117` | `render.JsonpJSON.Render` | `(http.ResponseWriter) (error)` | — |
-| `render/protobuf.go:21` | `render.ProtoBuf.Render` | `(http.ResponseWriter) (error)` | serialization |
-| `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | — |
-| `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | serialization |
+| `gin.go:540` | `gin.*Engine.Run` | `(...string) (error)` | — |
+| `gin.go:561` | `gin.*Engine.RunTLS` | `(string, string, string) (error)` | — |
+| `gin.go:581` | `gin.*Engine.RunUnix` | `(string) (error)` | file_io |
+| `gin.go:630` | `gin.*Engine.RunQUIC` | `(string, string, string) (error)` | — |
+| `gin.go:645` | `gin.*Engine.RunListener` | `(net.Listener) (error)` | — |
 
-### Family 3 — 6 members, every pair `>= 0.62` code-shape, evidence `1977`
+### Family 3 — 5 members, every pair `>= 0.50` code-shape, evidence `2570`
 
 ```mermaid
 flowchart LR
-    m0["render.WriteJSON"]
-    m1["render.IndentedJSON.Render"]
-    m2["render.SecureJSON.Render"]
-    m3["render.ProtoBuf.Render"]
-    m4["render.TOML.Render"]
-    m5["render.YAML.Render"]
+    m0["gin.*Engine.RunTLS"]
+    m1["gin.*Engine.RunUnix"]
+    m2["gin.*Engine.RunFd"]
+    m3["gin.*Engine.RunQUIC"]
+    m4["gin.*Engine.RunListener"]
     m0 --- m1
     m0 --- m2
     m0 --- m3
     m0 --- m4
-    m0 --- m5
     m1 --- m2
     m1 --- m3
     m1 --- m4
-    m1 --- m5
     m2 --- m3
     m2 --- m4
-    m2 --- m5
     m3 --- m4
-    m3 --- m5
-    m4 --- m5
 ```
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `render/json.go:67` | `render.WriteJSON` | `(http.ResponseWriter, any) (error)` | — |
-| `render/json.go:78` | `render.IndentedJSON.Render` | `(http.ResponseWriter) (error)` | — |
-| `render/json.go:94` | `render.SecureJSON.Render` | `(http.ResponseWriter) (error)` | — |
-| `render/protobuf.go:21` | `render.ProtoBuf.Render` | `(http.ResponseWriter) (error)` | serialization |
-| `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | — |
-| `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | serialization |
+| `gin.go:561` | `gin.*Engine.RunTLS` | `(string, string, string) (error)` | — |
+| `gin.go:581` | `gin.*Engine.RunUnix` | `(string) (error)` | file_io |
+| `gin.go:607` | `gin.*Engine.RunFd` | `(int) (error)` | — |
+| `gin.go:630` | `gin.*Engine.RunQUIC` | `(string, string, string) (error)` | — |
+| `gin.go:645` | `gin.*Engine.RunListener` | `(net.Listener) (error)` | — |
 
-### Family 4 — 6 members, every pair `>= 0.62` code-shape, evidence `1808`
-
-```mermaid
-flowchart LR
-    m0["render.BSON.Render"]
-    m1["render.WriteJSON"]
-    m2["render.IndentedJSON.Render"]
-    m3["render.ProtoBuf.Render"]
-    m4["render.TOML.Render"]
-    m5["render.YAML.Render"]
-    m0 --- m1
-    m0 --- m2
-    m0 --- m3
-    m0 --- m4
-    m0 --- m5
-    m1 --- m2
-    m1 --- m3
-    m1 --- m4
-    m1 --- m5
-    m2 --- m3
-    m2 --- m4
-    m2 --- m5
-    m3 --- m4
-    m3 --- m5
-    m4 --- m5
-```
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `render/bson.go:21` | `render.BSON.Render` | `(http.ResponseWriter) (error)` | — |
-| `render/json.go:67` | `render.WriteJSON` | `(http.ResponseWriter, any) (error)` | — |
-| `render/json.go:78` | `render.IndentedJSON.Render` | `(http.ResponseWriter) (error)` | — |
-| `render/protobuf.go:21` | `render.ProtoBuf.Render` | `(http.ResponseWriter) (error)` | serialization |
-| `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | — |
-| `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | serialization |
-
-### Family 5 — 5 members, every pair `>= 0.64` code-shape, evidence `1390`
+### Family 4 — 5 members, every pair `>= 0.64` code-shape, evidence `1390`
 
 ```mermaid
 flowchart LR
@@ -743,5 +695,34 @@ flowchart LR
 | `binding/xml.go:28` | `binding.decodeXML` | `(io.Reader, any) (error)` | validation, serialization |
 | `binding/yaml.go:29` | `binding.decodeYAML` | `(io.Reader, any) (error)` | validation |
 
-_20 more families not listed._
+### Family 5 — 5 members, every pair `>= 0.62` code-shape, evidence `1270`, interface implementations of `Render(http.ResponseWriter) (error)`, in package `render`
+
+```mermaid
+flowchart LR
+    m0["render.BSON.Render"]
+    m1["render.IndentedJSON.Render"]
+    m2["render.ProtoBuf.Render"]
+    m3["render.TOML.Render"]
+    m4["render.YAML.Render"]
+    m0 --- m1
+    m0 --- m2
+    m0 --- m3
+    m0 --- m4
+    m1 --- m2
+    m1 --- m3
+    m1 --- m4
+    m2 --- m3
+    m2 --- m4
+    m3 --- m4
+```
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `render/bson.go:21` | `render.BSON.Render` | `(http.ResponseWriter) (error)` | — |
+| `render/json.go:78` | `render.IndentedJSON.Render` | `(http.ResponseWriter) (error)` | — |
+| `render/protobuf.go:21` | `render.ProtoBuf.Render` | `(http.ResponseWriter) (error)` | serialization |
+| `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | — |
+| `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | serialization |
+
+_19 more families not listed._
 

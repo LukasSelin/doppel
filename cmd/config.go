@@ -32,6 +32,48 @@ type AnalysisConfig struct {
 	HookNotify *string  `json:"hook-notify,omitempty"`
 }
 
+// defaultCalibrateRate is the fraction of random unrelated pairs a run's
+// thresholds may admit, and the default for --calibrate.
+//
+// The thresholds it derives replace fixed numbers that could not mean the same
+// thing twice: a 0.60 code-shape floor is loose on a corpus of 81 functions and
+// strict on one of 8000, so every user inherited an operating point calibrated
+// for somebody else's repo. A rate is corpus-relative by construction — "admit
+// 1% of random pairs" is the same question at any size — which is what lets the
+// numeric flags stop being something an end user has to reason about.
+//
+// 0.01 rather than a looser rate because it is the rate the golden benchmark
+// measured: neutral on cobra's labels at every rate from 0.005 to 0.05, with the
+// candidate set growing from 816 to 1029 without a labeled pair changing rank.
+const defaultCalibrateRate = 0.01
+
+// calibrationOptOut turns calibration off for a run that pinned a threshold by
+// hand, and reports whether it did.
+//
+// Calibration replaces --threshold and --struct-min outright — a half-calibrated
+// run is the mixed question Params equality exists to forbid — so with it on by
+// default, an explicit --threshold would be silently discarded. Opting the whole
+// run out instead keeps the all-or-nothing property and lets the explicit flag
+// win, which is the precedence a user expects.
+//
+// It reads Changed rather than the values, so it must run after applyConfig:
+// config keys are applied through Flags().Set, which marks them Changed. That is
+// deliberate and load-bearing — an existing .doppel.json pinning threshold or
+// struct-min keeps its behaviour exactly, and only a config that names
+// calibrate explicitly opts back in.
+func calibrationOptOut(cmd *cobra.Command, rate *float64) bool {
+	if cmd.Flags().Changed("calibrate") {
+		return false
+	}
+	for _, name := range []string{"threshold", "struct-min", "family-min"} {
+		if f := cmd.Flags().Lookup(name); f != nil && f.Changed {
+			*rate = 0
+			return true
+		}
+	}
+	return false
+}
+
 // Hook notification modes. These decide who a Stop hook's findings reach, and
 // they are the one setting with a cost attached: reaching the agent means the
 // turn continues, because a Stop hook cannot put text in the model's context
@@ -146,14 +188,16 @@ func applyConfig(cmd *cobra.Command, cfg *AnalysisConfig) {
 // hook therefore always diffs the full candidate set.
 func hookParams(root string) (Params, error) {
 	p := Params{
-		Threshold:  0.60,
-		MinNodes:   12,
-		ChannelK:   5,
-		TestsMode:  "exclude",
-		Generated:  "exclude",
-		TopN:       0,
-		MaxPerFunc: 0,
-		StructMin:  0,
+		Threshold:       0.60,
+		MinNodes:        12,
+		ChannelK:        5,
+		TestsMode:       "exclude",
+		Generated:       "exclude",
+		TopN:            0,
+		MaxPerFunc:      0,
+		StructMin:       0,
+		NoOverlapFilter: true,
+		Calibrate:       defaultCalibrateRate,
 	}
 	cfg, err := loadConfig(filepath.Join(root, ".doppel.json"))
 	if err != nil {

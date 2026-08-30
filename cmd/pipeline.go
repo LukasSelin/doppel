@@ -36,6 +36,34 @@ type Params struct {
 	Generated  string  // generated-file population: include, exclude, or only
 	Calibrate  float64 // null admission rate; > 0 derives Threshold and StructMin from the corpus
 	Debug      bool
+	// Pinned says Threshold and StructMin were supplied at the rate in
+	// Calibrate rather than derived by this run, so calibration is skipped.
+	//
+	// It exists for the hook subcommands, which must all measure at one
+	// operating point: the Stop hook diffs against a session-start baseline,
+	// and re-deriving a threshold every turn lets an edit move the null
+	// distribution across a rounding boundary and make the baseline
+	// incomparable through no pair's fault. Session start derives the
+	// thresholds once; every later turn supplies them back.
+	//
+	// Deliberately absent from snapshot.Params: what a run measured is the
+	// effective Threshold and StructMin, which are recorded, and where they
+	// came from does not change the question being asked.
+	Pinned bool
+	// NoOverlapFilter says this run keeps every scored pair regardless of
+	// architectural overlap, and that calibration must not change that.
+	//
+	// Hook runs set it. They diff the full candidate set on purpose — a pair
+	// dropped for presentation reasons has not changed, and reporting it as a
+	// session's impact would be a lie — and StructMin zero is how they say so.
+	// Calibration derives an overlap floor along with the code-shape one, so
+	// without this it would silently install a filter that the hook contract
+	// says is not there.
+	//
+	// It does not make a run half-calibrated: the run has no overlap gate at
+	// all, and StructMin zero is recorded in the snapshot, so two runs still
+	// agree on what was measured exactly when they measured the same thing.
+	NoOverlapFilter bool
 }
 
 // Result is one complete analysis, up to but not including the final ranking.
@@ -217,13 +245,22 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 	// effective values travel in Params so a snapshot compares on what was
 	// actually used.
 	forkFloor := analyzer.ForkShapeFloor
-	if p.Calibrate > 0 {
+	if p.Calibrate > 0 && p.Pinned {
+		// Supplied, not derived — the thresholds are already in p. The fork
+		// floor still has to follow them, or "alike enough" would mean two
+		// different things in one run.
+		forkFloor = p.Threshold
+	}
+	if p.Calibrate > 0 && !p.Pinned {
 		r := calibrate.Run(units, docs, comp, calibrate.DefaultOptions(p.Calibrate, p.MinNodes))
 		res.Calibration = &r
 		printCalibration(progress, r)
 		if r.Applied() {
-			p.Threshold, p.StructMin = r.Threshold, r.StructMin
+			p.Threshold = r.Threshold
 			forkFloor = r.Threshold
+			if !p.NoOverlapFilter {
+				p.StructMin = r.StructMin
+			}
 		}
 	}
 	res.Params = p

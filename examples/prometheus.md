@@ -9,7 +9,7 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `e53d59d` |
+| doppel | `bb0f86a` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -26,11 +26,14 @@ Culture: 12 concepts modeled, 649 associations, 29 unusual realizations
 Habitats: 90 modeled, 195 misfits (145 excused by subsystem), 16 subsystems; most uniform tracing (norm 0.97), most diverse testhelpers (norm 0.55)
 Conventions: strongest error_wrapping (0.63), loosest retry (0.34)
 Ecosystems: 2400 profiled (1707 dominance, 693 coalition, 0 conflict, 0 weak)
+Calibration: rate 0.01 over 20000 null pairs -> threshold 0.42, struct-min 0.32, family-min 0.42
 Found 5469 functions. Retrieving candidates...
-Retrieval: shape 3319, concept 3669, call 8141 -> 13847 unique pairs
-  concept-only 25.0%  call-only 50.1%  suppressed-shape functions: 67  large identity buckets: 0  surviving patterns: 37732
-Running structural comparison on 13847 pairs...
-Families: 477 over 611 components, 1366 functions in a family, 4359 edges completed
+Retrieval: shape 7902, concept 3669, call 8141 -> 17363 unique pairs
+  concept-only 19.6%  call-only 34.3%  suppressed-shape functions: 67  large identity buckets: 0  surviving patterns: 37732
+Running structural comparison on 17363 pairs...
+  7202 pairs remain after struct-min=0.32 filter
+Families: 426 over 504 components, 1341 functions in a family, 2098 edges completed
+  2 component(s) skipped as too large or too dense: sizes [147 667]
 ```
 
 # Code Similarity Report
@@ -123,36 +126,36 @@ Merge-worthy pairs folded up to their packages. An edge means two packages keep 
 
 ```mermaid
 flowchart LR
-    p0["rules<br/>34 internal"]
-    p1["scrape<br/>39 internal"]
-    p0 ---|"33"| p1
-    p2["annotations<br/>47 internal"]
-    p3["histogram<br/>29 internal"]
-    p2 ---|"26"| p3
-    p4["agent<br/>30 internal"]
-    p5["tsdb<br/>264 internal"]
-    p4 ---|"24"| p5
-    p6["aws<br/>139 internal"]
-    p7["moby<br/>10 internal"]
-    p6 ---|"12"| p7
-    p8["promql<br/>240 internal"]
-    p9["storage<br/>74 internal"]
-    p8 ---|"11"| p9
-    p10["azure<br/>7 internal"]
-    p6 ---|"10"| p10
-    p11["linode"]
-    p6 ---|"10"| p11
-    p12["remote<br/>44 internal"]
-    p12 ---|"10"| p0
-    p0 ---|"10"| p5
-    p13["vultr"]
-    p6 ---|"9"| p13
-    p14["chunks<br/>17 internal"]
-    p14 ---|"8"| p5
-    p9 ---|"8"| p5
+    p0["rules<br/>33 internal"]
+    p1["scrape<br/>47 internal"]
+    p0 ---|"37"| p1
+    p2["annotations<br/>45 internal"]
+    p3["histogram<br/>40 internal"]
+    p2 ---|"30"| p3
+    p4["agent<br/>32 internal"]
+    p5["tsdb<br/>328 internal"]
+    p4 ---|"27"| p5
+    p6["aws<br/>149 internal"]
+    p7["azure<br/>8 internal"]
+    p6 ---|"13"| p7
+    p8["remote<br/>56 internal"]
+    p8 ---|"13"| p0
+    p8 ---|"13"| p1
+    p9["discovery<br/>9 internal"]
+    p9 ---|"12"| p1
+    p10["storage<br/>86 internal"]
+    p11["testhelpers<br/>47 internal"]
+    p10 ---|"12"| p11
+    p12["moby<br/>13 internal"]
+    p6 ---|"11"| p12
+    p13["promql<br/>276 internal"]
+    p13 ---|"11"| p10
+    p14["linode"]
+    p6 ---|"10"| p14
+    p10 ---|"10"| p5
 ```
 
-_289 further package pairs are connected by merge-worthy duplication and are not drawn._
+_328 further package pairs are connected by merge-worthy duplication and are not drawn._
 
 ### How settled each package is
 
@@ -183,7 +186,7 @@ _78 further packages are modeled and not drawn._ Most uniform is `tracing` (norm
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **13847 candidate pairs** (shape 3319, concept 3669, call 8141), of which 50% arrived on call evidence alone and 25% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **17363 candidate pairs** (shape 7902, concept 3669, call 8141), of which 34% arrived on call evidence alone and 20% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 2400 functions reached an equilibrium: **1707** settled on a single concept, **693** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -330,20 +333,22 @@ Co-occurrence measured against chance across every function. Only relationships 
 
 These carry a tag but look nothing like the other functions carrying it. Typicality is measured against the concept's own median, so a genuinely varied concept lowers its own bar and a tight one can flag nobody.
 
-| Function | Concept | Typicality | Concept median |
-|---|---|---:|---:|
-| `testutil.temporaryDirectory.Close` <br/>`util/testutil/directory.go:86` | `retry` | `0.10` | `0.32` |
-| `promql.*evaluator.eval` <br/>`promql/engine.go:2051` | `error_wrapping` | `0.13` | `0.35` |
-| `promql.*evaluator.eval` <br/>`promql/engine.go:2051` | `validation` | `0.14` | `0.35` |
-| `wlog.*Watcher.Start` <br/>`tsdb/wlog/watcher.go:257` | `concurrency` | `0.11` | `0.31` |
-| `scrape.*MetadataMetricsCollector.Describe` <br/>`scrape/metrics.go:353` | `concurrency` | `0.11` | `0.31` |
-| `main.main` <br/>`cmd/prometheus/main.go:368` | `validation` | `0.16` | `0.35` |
-| `main.*testGroup.test` <br/>`cmd/promtool/unittest.go:228` | `validation` | `0.16` | `0.35` |
-| `remote.*MetadataWatcher.Start` <br/>`storage/remote/metadata_watcher.go:89` | `concurrency` | `0.12` | `0.31` |
-| `web.*Handler.federation` <br/>`web/federate.go:55` | `validation` | `0.16` | `0.35` |
-| `azure.*Discovery.addToCache` <br/>`discovery/azure/azure.go:827` | `logging` | `0.08` | `0.27` |
+| Function | Concept | Typicality | Concept median | |
+|---|---|---:|---:|---|
+| `testutil.temporaryDirectory.Close` <br/>`util/testutil/directory.go:86` | `retry` | `0.10` | `0.32` | no near-duplicate |
+| `testutil.temporaryDirectory.Close` <br/>`util/testutil/directory.go:86` | `file_io` | `0.12` | `0.29` | no near-duplicate |
+| `treecache.ZookeeperLogger.Printf` <br/>`util/treecache/treecache.go:60` | `logging` | `0.12` | `0.27` | no near-duplicate |
+| `rules.*Manager.Run` <br/>`rules/manager.go:210` | `logging` | `0.12` | `0.27` | no near-duplicate |
+| `promql.*evaluator.eval` <br/>`promql/engine.go:2051` | `error_wrapping` | `0.13` | `0.35` |  |
+| `promql.*evaluator.eval` <br/>`promql/engine.go:2051` | `validation` | `0.14` | `0.35` |  |
+| `wlog.*Watcher.Start` <br/>`tsdb/wlog/watcher.go:257` | `concurrency` | `0.11` | `0.31` |  |
+| `scrape.*MetadataMetricsCollector.Describe` <br/>`scrape/metrics.go:353` | `concurrency` | `0.11` | `0.31` |  |
+| `main.main` <br/>`cmd/prometheus/main.go:368` | `validation` | `0.16` | `0.35` |  |
+| `main.*testGroup.test` <br/>`cmd/promtool/unittest.go:228` | `validation` | `0.16` | `0.35` |  |
 
 _19 more unusual realizations not listed._
+
+A row marked _no near-duplicate_ appears in no reported pair: nothing else in this report explains it, which makes it drift rather than duplication.
 
 ---
 
@@ -707,102 +712,122 @@ _19 more unusual realizations not listed._
 
 ## Families
 
-477 families, 1366 functions in a family, largest 55 members; 4359 edges scored here that retrieval never proposed
+426 families, 1341 functions in a family, largest 34 members; 2098 edges scored here that retrieval never proposed
 
-### Family 1 — 15 members, every pair `>= 0.60` code-shape, evidence `46062`  (32 edges scored here)
+### Family 1 — 9 members, every pair `>= 0.45` code-shape, evidence `21083`  (2 edges scored here)
+
+_Not drawn: 9 members is 36 connections. Every one of them holds — that is what makes this a family._
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `promql/parser/lex.go:418` | `parser.lexStatements` | `(*Lexer) (stateFn)` | — |
+| `promql/parser/lex.go:558` | `parser.lexHistogram` | `(*Lexer) (stateFn)` | — |
+| `promql/parser/lex.go:627` | `parser.lexHistogramDescriptor` | `(*Lexer) (stateFn)` | — |
+| `promql/parser/lex.go:664` | `parser.lexBuckets` | `(*Lexer) (stateFn)` | — |
+| `promql/parser/lex.go:696` | `parser.lexInsideBraces` | `(*Lexer) (stateFn)` | — |
+| `promql/parser/lex.go:750` | `parser.lexValueSequence` | `(*Lexer) (stateFn)` | — |
+| `promql/parser/lex.go:932` | `parser.lexNumber` | `(*Lexer) (stateFn)` | — |
+| `promql/parser/lex.go:984` | `parser.lexNumberOrDuration` | `(*Lexer) (stateFn)` | — |
+| `promql/parser/lex.go:1204` | `parser.lexDurationExpr` | `(*Lexer) (stateFn)` | — |
+
+### Family 2 — 15 members, every pair `>= 0.42` code-shape, evidence `19829`  (52 edges scored here)
 
 _Not drawn: 15 members is 105 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `web/api/v1/openapi_paths.go:28` | `v1.*OpenAPIBuilder.queryPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:55` | `v1.*OpenAPIBuilder.queryRangePath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:84` | `v1.*OpenAPIBuilder.queryExemplarsPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:108` | `v1.*OpenAPIBuilder.formatQueryPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:130` | `v1.*OpenAPIBuilder.parseQueryPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:152` | `v1.*OpenAPIBuilder.labelsPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:180` | `v1.*OpenAPIBuilder.labelValuesPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:214` | `v1.*OpenAPIBuilder.searchMetricNamesPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:250` | `v1.*OpenAPIBuilder.searchLabelNamesPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:285` | `v1.*OpenAPIBuilder.searchLabelValuesPath` | `() (*v3.PathItem)` | — |
+| `promql/functions.go:374` | `promql.extendedHistogramRate` | `(Matrix, parser.Expressions, *EvalNodeHelper, bool, bool) (Vector, annotations.Annotations)` | validation |
+| `promql/functions.go:452` | `promql.extrapolatedRate` | `(Matrix, parser.Expressions, *EvalNodeHelper, bool, bool) (Vector, annotations.Annotations)` | — |
+| `promql/functions.go:981` | `promql.funcDoubleExponentialSmoothing` | `([]Vector, Matrix, parser.Expressions, *EvalNodeHelper) (Vector, annotations.Annotations)` | — |
+| `promql/functions.go:1218` | `promql.funcAvgOverTime` | `([]Vector, Matrix, parser.Expressions, *EvalNodeHelper) (Vector, annotations.Annotations)` | — |
+| `promql/functions.go:1438` | `promql.funcMadOverTime` | `([]Vector, Matrix, parser.Expressions, *EvalNodeHelper) (Vector, annotations.Annotations)` | — |
+| `promql/functions.go:1529` | `promql.compareOverTime` | `(Matrix, parser.Expressions, *EvalNodeHelper, func(float64, float64) bool, bool) (Vector, annotations.Annotations)` | — |
+| `promql/functions.go:1572` | `promql.funcSumOverTime` | `([]Vector, Matrix, parser.Expressions, *EvalNodeHelper) (Vector, annotations.Annotations)` | — |
+| `promql/functions.go:1652` | `promql.funcQuantileOverTime` | `([]Vector, Matrix, parser.Expressions, *EvalNodeHelper) (Vector, annotations.Annotations)` | — |
+| `promql/functions.go:1676` | `promql.varianceOverTime` | `(Matrix, parser.Expressions, *EvalNodeHelper, func(float64) float64) (Vector, annotations.Annotations)` | — |
+| `promql/functions.go:1993` | `promql.funcDeriv` | `([]Vector, Matrix, parser.Expressions, *EvalNodeHelper) (Vector, annotations.Annotations)` | — |
 
 _5 more members not listed._
 
-### Family 2 — 17 members, every pair `>= 0.60` code-shape, evidence `44210`  (53 edges scored here)
+### Family 3 — 6 members, every pair `>= 0.62` code-shape, evidence `19109`
 
-_Not drawn: 17 members is 136 connections. Every one of them holds — that is what makes this a family._
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `web/api/v1/openapi_paths.go:28` | `v1.*OpenAPIBuilder.queryPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:55` | `v1.*OpenAPIBuilder.queryRangePath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:84` | `v1.*OpenAPIBuilder.queryExemplarsPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:108` | `v1.*OpenAPIBuilder.formatQueryPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:130` | `v1.*OpenAPIBuilder.parseQueryPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:152` | `v1.*OpenAPIBuilder.labelsPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:180` | `v1.*OpenAPIBuilder.labelValuesPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:250` | `v1.*OpenAPIBuilder.searchLabelNamesPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:285` | `v1.*OpenAPIBuilder.searchLabelValuesPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:321` | `v1.*OpenAPIBuilder.seriesPath` | `() (*v3.PathItem)` | — |
-
-_7 more members not listed._
-
-### Family 3 — 17 members, every pair `>= 0.60` code-shape, evidence `39215`  (56 edges scored here)
-
-_Not drawn: 17 members is 136 connections. Every one of them holds — that is what makes this a family._
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `web/api/v1/openapi_paths.go:28` | `v1.*OpenAPIBuilder.queryPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:55` | `v1.*OpenAPIBuilder.queryRangePath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:84` | `v1.*OpenAPIBuilder.queryExemplarsPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:108` | `v1.*OpenAPIBuilder.formatQueryPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:130` | `v1.*OpenAPIBuilder.parseQueryPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:152` | `v1.*OpenAPIBuilder.labelsPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:180` | `v1.*OpenAPIBuilder.labelValuesPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:285` | `v1.*OpenAPIBuilder.searchLabelValuesPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:321` | `v1.*OpenAPIBuilder.seriesPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:349` | `v1.*OpenAPIBuilder.metadataPath` | `() (*v3.PathItem)` | — |
-
-_7 more members not listed._
-
-### Family 4 — 17 members, every pair `>= 0.65` code-shape, evidence `35639`  (57 edges scored here)
-
-_Not drawn: 17 members is 136 connections. Every one of them holds — that is what makes this a family._
+```mermaid
+flowchart LR
+    m0["kubernetes.NewEndpoints"]
+    m1["kubernetes.NewEndpointSlice"]
+    m2["kubernetes.NewIngress"]
+    m3["kubernetes.NewNode"]
+    m4["kubernetes.NewPod"]
+    m5["kubernetes.NewService"]
+    m0 --- m1
+    m0 --- m2
+    m0 --- m3
+    m0 --- m4
+    m0 --- m5
+    m1 --- m2
+    m1 --- m3
+    m1 --- m4
+    m1 --- m5
+    m2 --- m3
+    m2 --- m4
+    m2 --- m5
+    m3 --- m4
+    m3 --- m5
+    m4 --- m5
+```
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `web/api/v1/openapi_paths.go:28` | `v1.*OpenAPIBuilder.queryPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:55` | `v1.*OpenAPIBuilder.queryRangePath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:84` | `v1.*OpenAPIBuilder.queryExemplarsPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:108` | `v1.*OpenAPIBuilder.formatQueryPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:130` | `v1.*OpenAPIBuilder.parseQueryPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:152` | `v1.*OpenAPIBuilder.labelsPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:180` | `v1.*OpenAPIBuilder.labelValuesPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:321` | `v1.*OpenAPIBuilder.seriesPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:349` | `v1.*OpenAPIBuilder.metadataPath` | `() (*v3.PathItem)` | — |
-| `web/api/v1/openapi_paths.go:377` | `v1.*OpenAPIBuilder.targetsPath` | `() (*v3.PathItem)` | — |
+| `discovery/kubernetes/endpoints.go:63` | `kubernetes.NewEndpoints` | `(*slog.Logger, cache.SharedIndexInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, bool, bool, bool, *prometheus.CounterVec) (*Endpoints)` | mapping, caching, logging |
+| `discovery/kubernetes/endpointslice.go:62` | `kubernetes.NewEndpointSlice` | `(*slog.Logger, cache.SharedIndexInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, bool, bool, bool, *prometheus.CounterVec) (*EndpointSlice)` | mapping, caching, logging |
+| `discovery/kubernetes/ingress.go:44` | `kubernetes.NewIngress` | `(*slog.Logger, cache.SharedIndexInformer, cache.SharedInformer, *prometheus.CounterVec) (*Ingress)` | caching |
+| `discovery/kubernetes/node.go:49` | `kubernetes.NewNode` | `(*slog.Logger, cache.SharedInformer, *prometheus.CounterVec) (*Node)` | caching |
+| `discovery/kubernetes/pod.go:63` | `kubernetes.NewPod` | `(*slog.Logger, cache.SharedIndexInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, bool, bool, bool, *prometheus.CounterVec) (*Pod)` | caching |
+| `discovery/kubernetes/service.go:45` | `kubernetes.NewService` | `(*slog.Logger, cache.SharedIndexInformer, cache.SharedInformer, *prometheus.CounterVec) (*Service)` | caching |
 
-_7 more members not listed._
+### Family 4 — 14 members, every pair `>= 0.42` code-shape, evidence `18949`  (44 edges scored here)
 
-### Family 5 — 43 members, every pair `>= 0.61` code-shape, evidence `33714`  (731 edges scored here)
-
-_Not drawn: 43 members is 903 connections. Every one of them holds — that is what makes this a family._
+_Not drawn: 14 members is 91 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `web/api/v1/openapi_examples.go:28` | `v1.queryPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
-| `web/api/v1/openapi_examples.go:57` | `v1.queryRangePostExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
-| `web/api/v1/openapi_examples.go:85` | `v1.queryExemplarsPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
-| `web/api/v1/openapi_examples.go:106` | `v1.formatQueryPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
-| `web/api/v1/openapi_examples.go:123` | `v1.parseQueryPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
-| `web/api/v1/openapi_examples.go:140` | `v1.labelsPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
-| `web/api/v1/openapi_examples.go:167` | `v1.searchMetricNamesPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
-| `web/api/v1/openapi_examples.go:184` | `v1.searchLabelNamesPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
-| `web/api/v1/openapi_examples.go:201` | `v1.searchLabelValuesPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
-| `web/api/v1/openapi_examples.go:219` | `v1.seriesPostExamples` | `() (*orderedmap.Map[string, *base.Example])` | — |
+| `promql/functions.go:374` | `promql.extendedHistogramRate` | `(Matrix, parser.Expressions, *EvalNodeHelper, bool, bool) (Vector, annotations.Annotations)` | validation |
+| `promql/functions.go:452` | `promql.extrapolatedRate` | `(Matrix, parser.Expressions, *EvalNodeHelper, bool, bool) (Vector, annotations.Annotations)` | — |
+| `promql/functions.go:981` | `promql.funcDoubleExponentialSmoothing` | `([]Vector, Matrix, parser.Expressions, *EvalNodeHelper) (Vector, annotations.Annotations)` | — |
+| `promql/functions.go:1218` | `promql.funcAvgOverTime` | `([]Vector, Matrix, parser.Expressions, *EvalNodeHelper) (Vector, annotations.Annotations)` | — |
+| `promql/functions.go:1438` | `promql.funcMadOverTime` | `([]Vector, Matrix, parser.Expressions, *EvalNodeHelper) (Vector, annotations.Annotations)` | — |
+| `promql/functions.go:1572` | `promql.funcSumOverTime` | `([]Vector, Matrix, parser.Expressions, *EvalNodeHelper) (Vector, annotations.Annotations)` | — |
+| `promql/functions.go:1652` | `promql.funcQuantileOverTime` | `([]Vector, Matrix, parser.Expressions, *EvalNodeHelper) (Vector, annotations.Annotations)` | — |
+| `promql/functions.go:1993` | `promql.funcDeriv` | `([]Vector, Matrix, parser.Expressions, *EvalNodeHelper) (Vector, annotations.Annotations)` | — |
+| `promql/functions.go:2020` | `promql.funcPredictLinear` | `([]Vector, Matrix, parser.Expressions, *EvalNodeHelper) (Vector, annotations.Annotations)` | — |
+| `promql/functions.go:2129` | `promql.funcHistogramFraction` | `([]Vector, Matrix, parser.Expressions, *EvalNodeHelper) (Vector, annotations.Annotations)` | — |
 
-_33 more members not listed._
+_4 more members not listed._
 
-_472 more families not listed._
+### Family 5 — 4 members, every pair `>= 0.87` code-shape, evidence `18772`
+
+```mermaid
+flowchart LR
+    m0["chunkenc.*FloatHistogramAppender.AppendFloatHistogram"]
+    m1["chunkenc.*FloatHistogramSTAppender.AppendFloatHistogram"]
+    m2["chunkenc.*HistogramAppender.AppendHistogram"]
+    m3["chunkenc.*HistogramSTAppender.AppendHistogram"]
+    m0 --- m1
+    m0 --- m2
+    m0 --- m3
+    m1 --- m2
+    m1 --- m3
+    m2 --- m3
+```
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `tsdb/chunkenc/float_histogram.go:699` | `chunkenc.*FloatHistogramAppender.AppendFloatHistogram` | `(Appender, int64, int64, *histogram.FloatHistogram, bool) (Chunk, bool, Appender, error)` | — |
+| `tsdb/chunkenc/float_histogram_st.go:325` | `chunkenc.*FloatHistogramSTAppender.AppendFloatHistogram` | `(Appender, int64, int64, *histogram.FloatHistogram, bool) (Chunk, bool, Appender, error)` | — |
+| `tsdb/chunkenc/histogram.go:751` | `chunkenc.*HistogramAppender.AppendHistogram` | `(Appender, int64, int64, *histogram.Histogram, bool) (Chunk, bool, Appender, error)` | — |
+| `tsdb/chunkenc/histogram_st.go:312` | `chunkenc.*HistogramSTAppender.AppendHistogram` | `(Appender, int64, int64, *histogram.Histogram, bool) (Chunk, bool, Appender, error)` | — |
+
+_421 more families not listed._
+
+_2 component(s) too large or too dense to enumerate (sizes 147, 667); their families are not reported._
 

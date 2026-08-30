@@ -17,15 +17,23 @@ corpus is a decade of accretion". Both ends are visible below.
 
 ## The ladder
 
-| Corpus | Since | Pinned | Functions | Pairs compared | Concepts modeled | Habitats |
-| --- | --- | --- | --- | --- | --- | --- |
-| [moby](moby.md) | 2013 | `v28.5.2` | 7644 | 17471 | 12 | 166 |
-| [prometheus](prometheus.md) | 2012 | `v3.14.0` | 5469 | 13847 | 12 | 90 |
-| [hugo](hugo.md) | 2013 | `v0.165.0` | 5438 | 13753 | 8 | 126 |
-| [gin](gin.md) | 2014 | `v1.12.0` | 497 | 1023 | 5 | 5 |
-| [cobra](cobra.md) | 2015 | `v1.10.2` | 269 | 826 | 2 | 2 |
-| [chi](chi.md) | 2015 | `v5.3.2` | 183 | 397 | 0 | 2 |
-| [conc](conc.md) | 2023 | `v0.3.0` | 81 | 79 | 1 | 4 |
+| Corpus | Since | Pinned | Functions | Pairs compared | Kept | Code-shape floor | Concepts modeled | Habitats |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| [moby](moby.md) | 2013 | `v28.5.2` | 7644 | 22233 | 8159 | 0.45 | 12 | 166 |
+| [prometheus](prometheus.md) | 2012 | `v3.14.0` | 5469 | 17363 | 7202 | 0.42 | 12 | 90 |
+| [hugo](hugo.md) | 2013 | `v0.165.0` | 5438 | 17546 | 5977 | 0.43 | 8 | 126 |
+| [gin](gin.md) | 2014 | `v1.12.0` | 497 | 1102 | 422 | 0.49 | 5 | 5 |
+| [cobra](cobra.md) | 2015 | `v1.10.2` | 269 | 841 | 160 | 0.53 | 2 | 2 |
+| [chi](chi.md) | 2015 | `v5.3.2` | 183 | 420 | 92 | 0.53 | 0 | 2 |
+| [conc](conc.md) | 2023 | `v0.3.0` | 81 | 60 | 5 | 0.85 | 1 | 4 |
+
+**The code-shape floor is not a setting — it is a measurement.** Each run derives
+it from what a random, unrelated pair scores in that corpus, at the default rate
+of one percent (`--calibrate`). The spread down that column is the argument for
+doing it that way: 0.42 on prometheus and 0.85 on conc are the *same* statement
+about how unusual a match has to be, and any single fixed number would have been
+wrong at one end of this ladder or the other. "Kept" is what survives the
+matching corpus-derived overlap floor.
 
 Counts are for the production population (`--tests exclude --generated exclude`,
 the defaults): hand-written non-test code, with files carrying Go's
@@ -53,13 +61,19 @@ rather than inventing structure.
 
 ## What each rung shows
 
-**[conc](conc.md) — the floor.** 81 functions, 79 compared pairs, one modeled
-concept. The report is nonetheless correct and readable: the `pool` package's
-pool flavors (`Pool`, `ErrorPool`, `ContextPool`, `ResultPool` and the
+**[conc](conc.md) — the floor, and the clearest case for calibration.** 81
+functions, 60 compared pairs, one modeled concept. The `pool` package's pool
+flavors (`Pool`, `ErrorPool`, `ContextPool`, `ResultPool` and the
 result-carrying combinations) genuinely repeat each other's `Go`, `Wait`,
-`WithContext` and `WithMaxGoroutines` methods, and doppel finds all of them.
-This is the case where evidence mass is small — top pairs score tens of nats,
-not hundreds — because there is barely a corpus to be rare *in*.
+`WithContext` and `WithMaxGoroutines` methods — which is exactly the problem a
+fixed threshold has here. At 0.60 the report was ten pairs of one-line builder
+methods, `WithMaxGoroutines` four times over, all real duplication and none of
+it worth a reader's attention. Calibration measures that looking alike is
+*normal* in this corpus and puts the floor at 0.85, leaving five pairs that say
+something: the `Go` methods across pool types, `addErr` beside
+`resultAggregator.add`, `ForEachIdx` beside `MapErr`. This is also the case
+where evidence mass is small — top pairs score tens of nats, not hundreds —
+because there is barely a corpus to be rare *in*.
 
 **[chi](chi.md) — small enough to check by hand.** Every reported pair can be
 opened and judged in a minute. It used to be the rung that showed a rough
@@ -91,17 +105,19 @@ which is what a vendored-and-diverged copy looks like. The three `tpl/*/init.go`
 repetition that nobody will consolidate.
 
 **[prometheus](prometheus.md) — layers.** Deep call graphs, 90 habitats, and
-782 coalition ecosystems against 1738 dominance — the highest coalition share
+693 coalition ecosystems against 1707 dominance — the highest coalition share
 on the ladder, because a scrape loop legitimately does storage *and* validation
 *and* remote I/O at once.
 
 **[moby](moby.md) — scale.** 7644 functions in about a second of analysis after
-parsing. 64% of compared pairs arrive through the call channel alone; 179
+parsing. 44% of compared pairs arrive through the call channel alone; 179
 functions are suppressed from the shape channel entirely and 3 identity buckets
 exceed the df cap — the common-idiom suppression the retrieval design exists
 for, visible in the numbers. (The suppressed count was 376 before the w5
 pattern windows: bodies whose every 3-gram was corpus idiom now retrieve
-through rarer 5-gram windows.)
+through rarer 5-gram windows. The call-only share was 64% before the code-shape
+floor became corpus-derived: moby's calibrated 0.45 admits shape candidates a
+fixed 0.60 turned away, so the channels are less lopsided than they looked.)
 
 ## Generated code is its own population
 

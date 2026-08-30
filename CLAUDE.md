@@ -892,7 +892,7 @@ One naming trap: the design's `components.nesting` is `fingerprint.Breakdown.**D
   "max-per-func": 2,
   "tests": "exclude",
   "generated": "exclude",
-  "calibrate": 0,
+  "calibrate": 0.01,
   "families": 5,
   "family-min": 0.60,
   "hook-notify": "agent"
@@ -911,9 +911,15 @@ pick the population (`include`/`exclude`/`only` each, both defaulting `exclude`)
 statistic is computed — tests because they are conventionally similar by design, generated files
 (Go's "Code generated ... DO NOT EDIT." marker, detected via `ast.IsGenerated` at parse time)
 because they are near-identical by construction and unactionable. `--calibrate <rate>` (config
-key `calibrate`, default 0 = off) derives `--threshold` and `--struct-min` from the corpus's own
+key `calibrate`, **default 0.01**) derives `--threshold` and `--struct-min` from the corpus's own
 null distribution and sets the family edge cut and fork floor to the same code-shape value — see
-*Calibration*; it overrides both flags outright.
+*Calibration*; it overrides both flags outright, and an explicitly pinned threshold turns it off
+for the whole run instead. `--min-nodes`, `--channel-k` and `--max-per-func` are `MarkHidden` on
+every command that registers them: they are retrieval and report budgets, not judgments about a
+corpus, and no question about a codebase answers what to set them to. Hidden, never removed —
+each still parses and still has a config key, so `internal/bench` and every script keep working;
+only `--help` shrinks. The three similarity floors stay **visible** because they are the
+documented escape hatch from calibration, and a hidden escape hatch is not one.
 
 `hook-notify` (`agent` | `user` | `off`) is read only by `doppel hook stop` and has no flag — there
 is no CLI surface a hook setting would belong to. `format` (`text` or `json`) is a key like any
@@ -926,7 +932,10 @@ Unknown keys are ignored rather than rejected, so a stale config file does not b
 
 `internal/calibrate` answers "what does a random, unrelated pair score *here*", so a threshold can
 be stated as a rate instead of a number. `--threshold 0.60` is loose on a corpus of 81 functions
-and strict on one of 8000; "admit 1% of random pairs" means the same thing on both. Measured at
+and strict on one of 8000; "admit 1% of random pairs" means the same thing on both. **This is the
+default** (`defaultCalibrateRate` = 0.01, in `cmd/config.go`): the three similarity floors are
+corpus-derived unless someone pins one, because a fixed floor is an operating point calibrated for
+somebody else's repo and no end user has a basis for moving it. Measured at
 rate 0.01: the calibrated code-shape threshold is **0.45 on moby, 0.53 on cobra, 0.50 on this
 repo, 0.85 on conc** (where random pool methods genuinely look alike) against the fixed 0.60, and
 struct-min lands between 0.33 and 0.51 against the fixed 0.40 merge gate.
@@ -951,15 +960,39 @@ compares on what was actually used, and a calibrated run against an uncalibrated
 incomparable, correctly. Calibration **replaces both thresholds unconditionally** — `applyConfig`
 sets flags through `Flags().Set`, which marks them Changed, so "explicit flag wins" is not
 honestly implementable once a config has applied, and a half-calibrated run is the mixed question
-Params equality exists to forbid. The stderr line is printed only when the flag is on, so the
-default output stays byte-identical. `doppel query` does not calibrate (it stops at `index()`).
+Params equality exists to forbid. `doppel query` does not calibrate (it stops at `index()`), so it
+alone still runs at the fixed 0.60.
+
+**Opting out is all-or-nothing, and by design.** `calibrationOptOut` (`cmd/config.go`, called from
+both `PreRunE`s after `applyConfig`) turns calibration off for the whole run when `--threshold`,
+`--struct-min` or `--family-min` is `Changed` and `--calibrate` is not. Without it a default-on
+calibration would accept an explicit `--threshold` and then silently discard it. Reading `Changed`
+rather than the values is what makes it run *after* `applyConfig`, and that ordering is
+load-bearing in the useful direction: config keys are applied through `Flags().Set`, which marks
+them Changed, so **an existing `.doppel.json` pinning `threshold` or `struct-min` keeps its
+behaviour byte-for-byte** and only a config naming `calibrate` opts back in. Verified: `analyze`
+under `--calibrate 0`, under an explicit `--threshold 0.60`, and under a config pinning
+`threshold` each reproduce the pre-change `--format json` byte-for-byte on a fixed tree.
+
+The stderr calibration line is now part of **default** output — it was previously suppressed to
+keep the default byte-identical, and that reason is gone. Printing it is the point: the operating
+point is the first thing a reader needs when it is no longer a constant.
 
 On cobra's golden labels calibration is neutral at every rate from 0.005 to 0.05: the retrieved
 set grows from 816 to 1 029 candidates and the overlap gate keeps between 83 and 384 of them,
 without a single labeled pair changing rank (`TestCalibrate`, guard `DOPPEL_BENCH_CALIBRATE=1`).
 That is the evidence that calibration changes *what is admitted and shown*, not the ordering —
-and why it stays opt-in until gin/chi labels can say whether the corpus-relative operating point
-finds merges the fixed one misses.
+which is what made it safe to default on. On doppel's own corpus at the default rate it derives
+threshold 0.48 / struct-min 0.39 / family-min 0.48, and the top 20 goes from 18 merge-worthy pairs
+to 20: the two it drops are exactly the two that were not merge-worthy, and the two it gains
+(`stripMarkerPrefix`/`stripMarkerSuffix`, `cultureChannelLine`/`habitatChannelLine`) are real
+duplicates. The gin/chi labels are still what would turn one corpus into a verdict.
+
+**The `--struct-min` change is the largest behavioural one here.** Its flag default is `0.0`,
+meaning no overlap filter ran at all by default; calibration gives it a real value (0.39 on this
+repo, 0.33–0.51 measured across the ladder), so pairs are now dropped that previously reached the
+report. That is the intended behaviour — 0.4 is what the config example and the merge gate always
+suggested — but it is the thing to look at first in a regenerated example.
 
 ## Impact measurement and the Claude Code plugin
 
@@ -1019,6 +1052,21 @@ reason rather than returning a partial delta.
   exits non-zero or writes to stderr** — every failure path ends at `emitNothing`. A SessionStart
   hook's stderr surfaces to the user as a broken-tool notice, and blocking a session over a
   measurement would be indefensible.
+- **Every hook subcommand measures at one operating point, derived once.** `hookParams` sets
+  `Calibrate` to the same 0.01 default and `NoOverlapFilter: true`; `session-start` derives the
+  thresholds and they land in the baseline's `snapshot.Params`, and `stop` / `user-prompt` supply
+  them back through `pinThresholds` (`Params.Pinned` skips the derivation). Recalibrating per turn
+  is what this avoids: the session is editing the corpus, so the null distribution moves, a
+  threshold shifts by a hundredth, `Params` compare unequal and the Stop hook goes silent for a
+  turn nothing was wrong with. A nil baseline means derive — right in all three places it can
+  happen (session start *is* the deriving run; `user-prompt` scopes a digest without diffing;
+  `stop` returns before that point when there is no baseline).
+
+  `Params.NoOverlapFilter` exists because calibration derives an overlap floor as well as a
+  code-shape one, and a hook run must not gain one: it diffs the **full** candidate set, and
+  `StructMin` zero is how it says so. It is not a half-calibrated run — there is no overlap gate
+  at all, and the recorded `StructMin` is 0, so two runs still agree exactly when they measured
+  the same thing.
 - `session-start` emits `additionalContext` (the corpus concept inventory — deliberately only
   what is session-stable: tag counts, absent tags, roles, one pair-count line; per-target findings
   live in the two hooks below, where a target exists) and writes the baseline **only if one does
@@ -1095,6 +1143,14 @@ shell and behaves identically on Windows and Unix, and which is also the only fo
   never read it, and no code path may short-circuit a stage because a baseline exists. If you find
   yourself adding a second state file, or reading this one to skip work, that is a design change,
   not an optimization. (`--format json` and `--output` write reports, not state.)
+
+  **One documented exception, `pinThresholds` in `cmd/hook.go`:** a hook run reads the baseline's
+  recorded `Threshold` and `Calibrate` and skips the calibration derivation. It is a supplied
+  *parameter*, not a cached *result* — the thresholds arrive exactly as `--threshold` would supply
+  them, every pipeline stage still runs from source every turn, and nothing analytical is reused.
+  The justification is that a session baseline exists to pin the question being asked, and the
+  operating point is part of that question; the alternative is the mid-session incomparability
+  described under the hook contract. It is the only such read, and widening it is a design change.
 - Cobra is the only direct dependency. Keep it that way unless there is a strong reason.
 - Skipped directories: anything dot- or underscore-prefixed (the go tool's own ignore rule, so
   `_examples/` demo trees never join the population), plus `vendor`, `testdata`, `build`. The
@@ -1285,12 +1341,14 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   deliberate: the alternative is path/name heuristics, which the tagger and retriever refuse
   everywhere else. Narrowing to a subtree remains the answer for focus (`prometheus/tsdb`
   reports the float/int histogram duplication by itself).
-- **A calibrated threshold can drift a hook baseline.** The Stop hook recalibrates every turn, so
-  editing code moves the null distribution and the derived threshold can cross a 0.01 boundary
-  mid-session, making the baseline incomparable through no pair's fault. Rounding to 0.01 is the
-  mitigation, not a cure; under `--tests include` the null is also a two-population mixture (cross
-  pairs are rejected, but test and production bodies are drawn together). Both are why
-  `calibrate` defaults to off.
+- **A calibrated threshold moves between separate `analyze` runs.** The hook half of this is
+  fixed — `pinThresholds` derives once per session and supplies the result back, so a baseline
+  cannot go incomparable through no pair's fault. Two plain `analyze` runs over a changed tree
+  still get different thresholds, which is correct (the corpus changed) but means a report's
+  numbers are only comparable to another report at the same stated operating point. Rounding to
+  0.01 bounds how often it moves, it does not stop it. Under `--tests include` the null is also a
+  two-population mixture (cross pairs are rejected, but test and production bodies are drawn
+  together), so the derived floor there describes neither population exactly.
 - **Committed examples drift silently.** `examples/*.md` is real output from a pinned tree, but
   nothing verifies it: any ranking change makes every file stale until somebody runs
   `task examples`. Regenerating is cheap (~10s for all seven) — do it in the same change that

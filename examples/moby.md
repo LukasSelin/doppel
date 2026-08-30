@@ -9,7 +9,7 @@ container engine; a decade of accretion across daemon, API, and plugin layers
 | Corpus | [moby](https://github.com/moby/moby) |
 | Pinned at | `v28.5.2` (`89c5e8fd66634b6128fc4c0e6f1236e2540e46e0`) |
 | Project since | 2013 |
-| doppel | `e53d59d` |
+| doppel | `bb0f86a` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -26,11 +26,14 @@ Culture: 12 concepts modeled, 790 associations, 113 unusual realizations
 Habitats: 166 modeled, 101 misfits (152 excused by subsystem), 58 subsystems; most uniform checker (norm 0.98), most diverse vfs (norm 0.56)
 Conventions: strongest error_wrapping (0.62), loosest db_access (0.37)
 Ecosystems: 3997 profiled (3689 dominance, 308 coalition, 0 conflict, 0 weak)
+Calibration: rate 0.01 over 20000 null pairs -> threshold 0.45, struct-min 0.33, family-min 0.45
 Found 7644 functions. Retrieving candidates...
-Retrieval: shape 3983, concept 2410, call 12442 -> 17471 unique pairs
-  concept-only 13.1%  call-only 63.6%  suppressed-shape functions: 179  large identity buckets: 3  surviving patterns: 46104
-Running structural comparison on 17471 pairs...
-Families: 656 over 702 components, 1522 functions in a family, 2814 edges completed
+Retrieval: shape 10161, concept 2410, call 12442 -> 22233 unique pairs
+  concept-only 10.2%  call-only 43.8%  suppressed-shape functions: 179  large identity buckets: 3  surviving patterns: 46104
+Running structural comparison on 22233 pairs...
+  8159 pairs remain after struct-min=0.33 filter
+Families: 1765 over 631 components, 1695 functions in a family, 10272 edges completed
+  1 component(s) skipped as too large or too dense: sizes [821]
   1 pairs suppressed by max-per-func=2
 ```
 
@@ -125,33 +128,33 @@ Merge-worthy pairs folded up to their packages. An edge means two packages keep 
 ```mermaid
 flowchart LR
     p0["ipvlan<br/>18 internal"]
-    p1["macvlan<br/>14 internal"]
+    p1["macvlan<br/>12 internal"]
     p0 ---|"60"| p1
-    p2["container<br/>164 internal"]
-    p3["libnetwork<br/>168 internal"]
-    p2 ---|"55"| p3
-    p4["daemon<br/>379 internal"]
-    p5["swarm<br/>79 internal"]
-    p4 ---|"47"| p5
+    p2["container<br/>179 internal"]
+    p3["libnetwork<br/>233 internal"]
+    p2 ---|"58"| p3
+    p4["daemon<br/>477 internal"]
+    p5["swarm<br/>81 internal"]
+    p4 ---|"50"| p5
     p6["containerimage"]
-    p6 ---|"29"| p3
-    p7["main<br/>45 internal"]
-    p3 ---|"29"| p7
-    p8["fuseoverlayfs<br/>4 internal"]
-    p9["overlay2<br/>5 internal"]
-    p8 ---|"22"| p9
-    p10["overlay<br/>41 internal"]
-    p0 ---|"22"| p10
-    p1 ---|"22"| p10
-    p11["bridge<br/>24 internal"]
-    p11 ---|"20"| p3
-    p12["windows<br/>21 internal"]
-    p11 ---|"20"| p12
-    p11 ---|"18"| p0
-    p11 ---|"17"| p1
+    p6 ---|"33"| p3
+    p7["main<br/>46 internal"]
+    p3 ---|"31"| p7
+    p8["overlay<br/>60 internal"]
+    p0 ---|"27"| p8
+    p9["bridge<br/>37 internal"]
+    p9 ---|"26"| p3
+    p10["fuseoverlayfs<br/>6 internal"]
+    p11["overlay2<br/>8 internal"]
+    p10 ---|"23"| p11
+    p1 ---|"21"| p8
+    p12["windows<br/>27 internal"]
+    p9 ---|"18"| p12
+    p9 ---|"13"| p0
+    p9 ---|"13"| p1
 ```
 
-_307 further package pairs are connected by merge-worthy duplication and are not drawn._
+_447 further package pairs are connected by merge-worthy duplication and are not drawn._
 
 ### How settled each package is
 
@@ -181,7 +184,7 @@ _154 further packages are modeled and not drawn._ Most uniform is `checker` (nor
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **17471 candidate pairs** (shape 3983, concept 2410, call 12442), of which 64% arrived on call evidence alone and 13% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **22233 candidate pairs** (shape 10161, concept 2410, call 12442), of which 44% arrived on call evidence alone and 10% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 3997 functions reached an equilibrium: **3689** settled on a single concept, **308** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -325,16 +328,16 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 | Function | Concept | Typicality | Concept median | |
 |---|---|---:|---:|---|
-| `client.*Client.Events` <br/>`client/events.go:18` | `concurrency` | `0.14` | `0.34` | no near-duplicate |
-| `sdjournal.noCopy.Unlock` <br/>`daemon/logger/journald/internal/sdjournal/sdjournal.go:264` | `concurrency` | `0.15` | `0.34` | no near-duplicate |
-| `events.*Events.Evict` <br/>`daemon/events/events.go:77` | `concurrency` | `0.15` | `0.34` | no near-duplicate |
-| `ioutils.NewCancelReadCloser` <br/>`pkg/ioutils/readers.go:51` | `concurrency` | `0.10` | `0.34` |  |
-| `ioutils.CopyCtx` <br/>`internal/ioutils/copy.go:13` | `concurrency` | `0.10` | `0.34` |  |
-| `network.collectPackets` <br/>`integration/internal/network/l2disco_linux.go:77` | `concurrency` | `0.11` | `0.34` |  |
-| `remote.*container.createIO` <br/>`libcontainerd/remote/client.go:496` | `concurrency` | `0.11` | `0.34` |  |
-| `distribution.*puller.pullSchema2Layers` <br/>`distribution/pull_v2.go:482` | `concurrency` | `0.12` | `0.34` |  |
-| `tarexport.*tarexporter.Load` <br/>`image/tarexport/load.go:33` | `concurrency` | `0.12` | `0.34` |  |
-| `service.*VolumesService.volumesToAPI` <br/>`volume/service/convert.go:34` | `concurrency` | `0.12` | `0.34` |  |
+| `network.collectPackets` <br/>`integration/internal/network/l2disco_linux.go:77` | `concurrency` | `0.11` | `0.34` | no near-duplicate |
+| `remote.*container.createIO` <br/>`libcontainerd/remote/client.go:496` | `concurrency` | `0.11` | `0.34` | no near-duplicate |
+| `distribution.*puller.pullSchema2Layers` <br/>`distribution/pull_v2.go:482` | `concurrency` | `0.12` | `0.34` | no near-duplicate |
+| `service.*VolumesService.volumesToAPI` <br/>`volume/service/convert.go:34` | `concurrency` | `0.12` | `0.34` | no near-duplicate |
+| `daemon.*Daemon.TamperWithContainerConfig` <br/>`testutil/daemon/daemon.go:1015` | `serialization` | `0.12` | `0.34` | no near-duplicate |
+| `containerd.attachStreamsFunc` <br/>`plugin/executor/containerd/containerd.go:192` | `concurrency` | `0.13` | `0.34` | no near-duplicate |
+| `network.StartDaftDNS` <br/>`integration/internal/network/dns.go:22` | `concurrency` | `0.13` | `0.34` | no near-duplicate |
+| `loggertest.readMessage` <br/>`daemon/logger/loggertest/logreader.go:536` | `concurrency` | `0.14` | `0.34` | no near-duplicate |
+| `network.collectPackets` <br/>`integration/internal/network/l2disco_linux.go:77` | `validation` | `0.10` | `0.30` | no near-duplicate |
+| `daemon.*Daemon.Containers` <br/>`daemon/list.go:105` | `concurrency` | `0.15` | `0.34` | no near-duplicate |
 
 _103 more unusual realizations not listed._
 
@@ -720,14 +723,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ## Families
 
-656 families, 1522 functions in a family, largest 44 members; 2814 edges scored here that retrieval never proposed
+1765 families, 1695 functions in a family, largest 77 members; 10272 edges scored here that retrieval never proposed
 
-### Family 1 — 10 members, every pair `>= 0.68` code-shape, evidence `41964`  (4 edges scored here)
+### Family 1 — 11 members, every pair `>= 0.56` code-shape, evidence `44338`  (7 edges scored here)
 
-_Not drawn: 10 members is 45 connections. Every one of them holds — that is what makes this a family._
+_Not drawn: 11 members is 55 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
+| `libnetwork/diagnostic/server.go:182` | `diagnostic.stackTrace` | `(http.ResponseWriter, *http.Request)` | logging |
 | `libnetwork/networkdb/networkdbdiagnostic.go:38` | `networkdb.*NetworkDB.dbJoin` | `(http.ResponseWriter, *http.Request)` | logging |
 | `libnetwork/networkdb/networkdbdiagnostic.go:71` | `networkdb.*NetworkDB.dbPeers` | `(http.ResponseWriter, *http.Request)` | logging |
 | `libnetwork/networkdb/networkdbdiagnostic.go:128` | `networkdb.*NetworkDB.dbCreateEntry` | `(http.ResponseWriter, *http.Request)` | logging |
@@ -737,139 +741,86 @@ _Not drawn: 10 members is 45 connections. Every one of them holds — that is wh
 | `libnetwork/networkdb/networkdbdiagnostic.go:308` | `networkdb.*NetworkDB.dbJoinNetwork` | `(http.ResponseWriter, *http.Request)` | logging |
 | `libnetwork/networkdb/networkdbdiagnostic.go:340` | `networkdb.*NetworkDB.dbLeaveNetwork` | `(http.ResponseWriter, *http.Request)` | logging |
 | `libnetwork/networkdb/networkdbdiagnostic.go:372` | `networkdb.*NetworkDB.dbGetTable` | `(http.ResponseWriter, *http.Request)` | logging |
-| `libnetwork/networkdb/networkdbdiagnostic.go:420` | `networkdb.*NetworkDB.dbNetworkStats` | `(http.ResponseWriter, *http.Request)` | logging |
 
-### Family 2 — 8 members, every pair `>= 0.81` code-shape, evidence `26374`  (2 edges scored here)
+_1 more members not listed._
 
-```mermaid
-flowchart LR
-    m0["dbclient.doWriteKeys"]
-    m1["dbclient.doDeleteKeys"]
-    m2["dbclient.doWriteDeleteUniqueKeys"]
-    m3["dbclient.doWriteUniqueKeys"]
-    m4["dbclient.doWriteDeleteLeaveJoin"]
-    m5["dbclient.doWriteDeleteWaitLeaveJoin"]
-    m6["dbclient.doWriteWaitLeave"]
-    m7["dbclient.doWriteWaitLeaveJoin"]
-    m0 --- m1
-    m0 --- m2
-    m0 --- m3
-    m0 --- m4
-    m0 --- m5
-    m0 --- m6
-    m0 --- m7
-    m1 --- m2
-    m1 --- m3
-    m1 --- m4
-    m1 --- m5
-    m1 --- m6
-    m1 --- m7
-    m2 --- m3
-    m2 --- m4
-    m2 --- m5
-    m2 --- m6
-    m2 --- m7
-    m3 --- m4
-    m3 --- m5
-    m3 --- m6
-    m3 --- m7
-    m4 --- m5
-    m4 --- m6
-    m4 --- m7
-    m5 --- m6
-    m5 --- m7
-    m6 --- m7
-```
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:464` | `dbclient.doWriteKeys` | `([]string, []string)` | concurrency |
-| `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:497` | `dbclient.doDeleteKeys` | `([]string, []string)` | concurrency |
-| `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:530` | `dbclient.doWriteDeleteUniqueKeys` | `([]string, []string)` | concurrency |
-| `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:567` | `dbclient.doWriteUniqueKeys` | `([]string, []string)` | concurrency |
-| `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:602` | `dbclient.doWriteDeleteLeaveJoin` | `([]string, []string)` | concurrency |
-| `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:631` | `dbclient.doWriteDeleteWaitLeaveJoin` | `([]string, []string)` | concurrency |
-| `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:677` | `dbclient.doWriteWaitLeave` | `([]string, []string)` | concurrency |
-| `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:713` | `dbclient.doWriteWaitLeaveJoin` | `([]string, []string)` | concurrency |
-
-### Family 3 — 11 members, every pair `>= 0.62` code-shape, evidence `16144`  (22 edges scored here), interface implementations of `UnmarshalJSON([]byte) (error)`, packages `driverapi`, `bridge`, `ipvlan`, `macvlan`, `windows` and `libnetwork`
+### Family 2 — 11 members, every pair `>= 0.56` code-shape, evidence `42303`  (13 edges scored here)
 
 _Not drawn: 11 members is 55 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `libnetwork/driverapi/ipamdata.go:32` | `driverapi.*IPAMData.UnmarshalJSON` | `([]byte) (error)` | serialization |
-| `libnetwork/drivers/bridge/bridge_store.go:167` | `bridge.*networkConfiguration.UnmarshalJSON` | `([]byte) (error)` | serialization |
-| `libnetwork/drivers/bridge/bridge_store.go:307` | `bridge.*bridgeEndpoint.UnmarshalJSON` | `([]byte) (error)` | serialization |
-| `libnetwork/drivers/ipvlan/ipvlan_store.go:155` | `ipvlan.*configuration.UnmarshalJSON` | `([]byte) (error)` | serialization |
-| `libnetwork/drivers/ipvlan/ipvlan_store.go:254` | `ipvlan.*endpoint.UnmarshalJSON` | `([]byte) (error)` | serialization |
-| `libnetwork/drivers/macvlan/macvlan_store.go:153` | `macvlan.*configuration.UnmarshalJSON` | `([]byte) (error)` | serialization |
-| `libnetwork/drivers/macvlan/macvlan_store.go:248` | `macvlan.*endpoint.UnmarshalJSON` | `([]byte) (error)` | serialization |
-| `libnetwork/drivers/windows/windows_store.go:218` | `windows.*hnsEndpoint.UnmarshalJSON` | `([]byte) (error)` | serialization |
-| `libnetwork/endpoint_info.go:86` | `libnetwork.*EndpointInterface.UnmarshalJSON` | `([]byte) (error)` | serialization |
-| `libnetwork/endpoint_info.go:471` | `libnetwork.*endpointJoinInfo.UnmarshalJSON` | `([]byte) (error)` | serialization |
+| `libnetwork/cmd/networkdb-test/dummyclient/dummyClient.go:58` | `dummyclient.watchTableEntries` | `(http.ResponseWriter, *http.Request)` | — |
+| `libnetwork/networkdb/networkdbdiagnostic.go:38` | `networkdb.*NetworkDB.dbJoin` | `(http.ResponseWriter, *http.Request)` | logging |
+| `libnetwork/networkdb/networkdbdiagnostic.go:71` | `networkdb.*NetworkDB.dbPeers` | `(http.ResponseWriter, *http.Request)` | logging |
+| `libnetwork/networkdb/networkdbdiagnostic.go:128` | `networkdb.*NetworkDB.dbCreateEntry` | `(http.ResponseWriter, *http.Request)` | logging |
+| `libnetwork/networkdb/networkdbdiagnostic.go:177` | `networkdb.*NetworkDB.dbUpdateEntry` | `(http.ResponseWriter, *http.Request)` | logging |
+| `libnetwork/networkdb/networkdbdiagnostic.go:225` | `networkdb.*NetworkDB.dbDeleteEntry` | `(http.ResponseWriter, *http.Request)` | logging |
+| `libnetwork/networkdb/networkdbdiagnostic.go:262` | `networkdb.*NetworkDB.dbGetEntry` | `(http.ResponseWriter, *http.Request)` | logging |
+| `libnetwork/networkdb/networkdbdiagnostic.go:308` | `networkdb.*NetworkDB.dbJoinNetwork` | `(http.ResponseWriter, *http.Request)` | logging |
+| `libnetwork/networkdb/networkdbdiagnostic.go:340` | `networkdb.*NetworkDB.dbLeaveNetwork` | `(http.ResponseWriter, *http.Request)` | logging |
+| `libnetwork/networkdb/networkdbdiagnostic.go:372` | `networkdb.*NetworkDB.dbGetTable` | `(http.ResponseWriter, *http.Request)` | logging |
 
 _1 more members not listed._
 
-### Family 4 — 7 members, every pair `>= 0.65` code-shape, evidence `15087`
+### Family 3 — 65 members, every pair `>= 0.45` code-shape, evidence `40315`  (1879 edges scored here)
 
-```mermaid
-flowchart LR
-    m0["graphtest.DriverBenchExists"]
-    m1["graphtest.DriverBenchGetEmpty"]
-    m2["graphtest.DriverBenchDiffBase"]
-    m3["graphtest.DriverBenchDiffN"]
-    m4["graphtest.DriverBenchDiffApplyN"]
-    m5["graphtest.DriverBenchDeepLayerDiff"]
-    m6["graphtest.DriverBenchDeepLayerRead"]
-    m0 --- m1
-    m0 --- m2
-    m0 --- m3
-    m0 --- m4
-    m0 --- m5
-    m0 --- m6
-    m1 --- m2
-    m1 --- m3
-    m1 --- m4
-    m1 --- m5
-    m1 --- m6
-    m2 --- m3
-    m2 --- m4
-    m2 --- m5
-    m2 --- m6
-    m3 --- m4
-    m3 --- m5
-    m3 --- m6
-    m4 --- m5
-    m4 --- m6
-    m5 --- m6
-```
+_Not drawn: 65 members is 2080 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `daemon/graphdriver/graphtest/graphbench_unix.go:16` | `graphtest.DriverBenchExists` | `(*testing.B, string, ...string)` | — |
-| `daemon/graphdriver/graphtest/graphbench_unix.go:35` | `graphtest.DriverBenchGetEmpty` | `(*testing.B, string, ...string)` | — |
-| `daemon/graphdriver/graphtest/graphbench_unix.go:60` | `graphtest.DriverBenchDiffBase` | `(*testing.B, string, ...string)` | file_io |
-| `daemon/graphdriver/graphtest/graphbench_unix.go:89` | `graphtest.DriverBenchDiffN` | `(*testing.B, int, int, string, ...string)` | file_io |
-| `daemon/graphdriver/graphtest/graphbench_unix.go:124` | `graphtest.DriverBenchDiffApplyN` | `(*testing.B, int, string, ...string)` | — |
-| `daemon/graphdriver/graphtest/graphbench_unix.go:190` | `graphtest.DriverBenchDeepLayerDiff` | `(*testing.B, int, string, ...string)` | file_io |
-| `daemon/graphdriver/graphtest/graphbench_unix.go:223` | `graphtest.DriverBenchDeepLayerRead` | `(*testing.B, int, string, ...string)` | validation, file_io |
+| `api/server/router/checkpoint/checkpoint_routes.go:11` | `checkpoint.*checkpointRouter.postContainerCheckpoint` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
+| `api/server/router/checkpoint/checkpoint_routes.go:30` | `checkpoint.*checkpointRouter.getContainerCheckpoints` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
+| `api/server/router/checkpoint/checkpoint_routes.go:48` | `checkpoint.*checkpointRouter.deleteContainerCheckpoint` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
+| `api/server/router/container/container_routes.go:35` | `container.*containerRouter.postCommit` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
+| `api/server/router/container/container_routes.go:76` | `container.*containerRouter.getContainersJSON` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
+| `api/server/router/container/container_routes.go:125` | `container.*containerRouter.getContainersStats` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
+| `api/server/router/container/container_routes.go:155` | `container.*containerRouter.getContainersLogs` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
+| `api/server/router/container/container_routes.go:233` | `container.*containerRouter.postContainersStop` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
+| `api/server/router/container/container_routes.go:261` | `container.*containerRouter.postContainersKill` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | error_wrapping |
+| `api/server/router/container/container_routes.go:275` | `container.*containerRouter.postContainersRestart` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
 
-### Family 5 — 9 members, every pair `>= 0.62` code-shape, evidence `14078`  (5 edges scored here)
+_55 more members not listed._
 
-_Not drawn: 9 members is 36 connections. Every one of them holds — that is what makes this a family._
+### Family 4 — 69 members, every pair `>= 0.45` code-shape, evidence `40125`  (2138 edges scored here)
+
+_Not drawn: 69 members is 2346 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `daemon/graphdriver/btrfs/btrfs.go:199` | `btrfs.subvolCreate` | `(string, string) (error)` | — |
-| `daemon/graphdriver/btrfs/btrfs.go:219` | `btrfs.subvolSnapshot` | `(string, string, string) (error)` | — |
-| `daemon/graphdriver/btrfs/btrfs.go:337` | `btrfs.*Driver.enableQuota` | `() (error)` | — |
-| `daemon/graphdriver/btrfs/btrfs.go:363` | `btrfs.*Driver.subvolRescanQuota` | `() (error)` | — |
-| `daemon/graphdriver/btrfs/btrfs.go:386` | `btrfs.subvolLimitQgroup` | `(string, uint64) (error)` | — |
-| `daemon/graphdriver/btrfs/btrfs.go:409` | `btrfs.qgroupStatus` | `(string) (error)` | — |
-| `daemon/graphdriver/btrfs/btrfs.go:437` | `btrfs.subvolLookupQgroup` | `(string) (uint64, error)` | — |
-| `quota/projectquota.go:280` | `quota.getProjectID` | `(string) (uint32, error)` | error_wrapping |
-| `quota/projectquota.go:298` | `quota.setProjectID` | `(string, uint32) (error)` | error_wrapping |
+| `api/server/router/checkpoint/checkpoint_routes.go:11` | `checkpoint.*checkpointRouter.postContainerCheckpoint` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
+| `api/server/router/checkpoint/checkpoint_routes.go:30` | `checkpoint.*checkpointRouter.getContainerCheckpoints` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
+| `api/server/router/checkpoint/checkpoint_routes.go:48` | `checkpoint.*checkpointRouter.deleteContainerCheckpoint` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
+| `api/server/router/container/container_routes.go:35` | `container.*containerRouter.postCommit` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
+| `api/server/router/container/container_routes.go:76` | `container.*containerRouter.getContainersJSON` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
+| `api/server/router/container/container_routes.go:125` | `container.*containerRouter.getContainersStats` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
+| `api/server/router/container/container_routes.go:155` | `container.*containerRouter.getContainersLogs` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
+| `api/server/router/container/container_routes.go:233` | `container.*containerRouter.postContainersStop` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
+| `api/server/router/container/container_routes.go:261` | `container.*containerRouter.postContainersKill` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | error_wrapping |
+| `api/server/router/container/container_routes.go:275` | `container.*containerRouter.postContainersRestart` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
 
-_651 more families not listed._
+_59 more members not listed._
+
+### Family 5 — 65 members, every pair `>= 0.45` code-shape, evidence `39950`  (1877 edges scored here)
+
+_Not drawn: 65 members is 2080 connections. Every one of them holds — that is what makes this a family._
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `api/server/router/checkpoint/checkpoint_routes.go:11` | `checkpoint.*checkpointRouter.postContainerCheckpoint` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
+| `api/server/router/checkpoint/checkpoint_routes.go:30` | `checkpoint.*checkpointRouter.getContainerCheckpoints` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
+| `api/server/router/checkpoint/checkpoint_routes.go:48` | `checkpoint.*checkpointRouter.deleteContainerCheckpoint` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
+| `api/server/router/container/container_routes.go:35` | `container.*containerRouter.postCommit` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
+| `api/server/router/container/container_routes.go:76` | `container.*containerRouter.getContainersJSON` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
+| `api/server/router/container/container_routes.go:125` | `container.*containerRouter.getContainersStats` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
+| `api/server/router/container/container_routes.go:155` | `container.*containerRouter.getContainersLogs` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
+| `api/server/router/container/container_routes.go:233` | `container.*containerRouter.postContainersStop` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
+| `api/server/router/container/container_routes.go:261` | `container.*containerRouter.postContainersKill` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | error_wrapping |
+| `api/server/router/container/container_routes.go:275` | `container.*containerRouter.postContainersRestart` | `(context.Context, http.ResponseWriter, *http.Request, map[string]string) (error)` | — |
+
+_55 more members not listed._
+
+_1760 more families not listed._
+
+_1 component(s) too large or too dense to enumerate (sizes 821); their families are not reported._
 

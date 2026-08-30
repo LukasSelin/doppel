@@ -9,7 +9,7 @@ static site generator; a large monolith with heavy template and resource subsyst
 | Corpus | [hugo](https://github.com/gohugoio/hugo) |
 | Pinned at | `v0.165.0` (`76a5e1880ab46688155b02e99bab9be2a6134492`) |
 | Project since | 2013 |
-| doppel | `e53d59d` |
+| doppel | `bb0f86a` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -26,11 +26,14 @@ Culture: 8 concepts modeled, 350 associations, 57 unusual realizations
 Habitats: 126 modeled, 538 misfits (121 excused by subsystem), 31 subsystems; most uniform partials (norm 0.98), most diverse page (norm 0.61)
 Conventions: strongest error_wrapping (0.64), loosest serialization (0.52)
 Ecosystems: 1997 profiled (1408 dominance, 589 coalition, 0 conflict, 0 weak)
+Calibration: rate 0.01 over 20000 null pairs -> threshold 0.43, struct-min 0.30, family-min 0.43
 Found 5438 functions. Retrieving candidates...
-Retrieval: shape 2195, concept 4057, call 8265 -> 13753 unique pairs
-  concept-only 28.2%  call-only 54.7%  suppressed-shape functions: 70  large identity buckets: 0  surviving patterns: 31542
-Running structural comparison on 13753 pairs...
-Families: 306 over 480 components, 939 functions in a family, 623 edges completed
+Retrieval: shape 6956, concept 4057, call 8265 -> 17546 unique pairs
+  concept-only 22.0%  call-only 37.7%  suppressed-shape functions: 70  large identity buckets: 0  surviving patterns: 31542
+Running structural comparison on 17546 pairs...
+  5977 pairs remain after struct-min=0.30 filter
+Families: 477 over 452 components, 1286 functions in a family, 1895 edges completed
+  1 component(s) skipped as too large or too dense: sizes [448]
 ```
 
 # Code Similarity Report
@@ -123,35 +126,35 @@ Merge-worthy pairs folded up to their packages. An edge means two packages keep 
 ```mermaid
 flowchart LR
     p0["babel"]
-    p1["cssjs<br/>3 internal"]
+    p1["cssjs<br/>4 internal"]
     p0 ---|"6"| p1
-    p2["navigation<br/>1 internal"]
-    p3["page<br/>106 internal"]
-    p2 ---|"6"| p3
-    p4["langs<br/>5 internal"]
-    p5["roles"]
-    p4 ---|"5"| p5
-    p6["versions"]
-    p4 ---|"5"| p6
+    p2["scss<br/>1 internal"]
+    p1 ---|"6"| p2
+    p3["navigation<br/>1 internal"]
+    p4["page<br/>132 internal"]
+    p3 ---|"6"| p4
+    p5["langs<br/>5 internal"]
+    p6["roles"]
     p5 ---|"5"| p6
-    p7["commands<br/>46 internal"]
-    p8["hugolib<br/>182 internal"]
-    p7 ---|"4"| p8
-    p9["dartsass"]
-    p1 ---|"4"| p9
-    p10["js<br/>1 internal"]
-    p1 ---|"4"| p10
-    p11["minifier"]
+    p7["versions"]
+    p5 ---|"5"| p7
+    p6 ---|"5"| p7
+    p8["commands<br/>59 internal"]
+    p9["hugolib<br/>238 internal"]
+    p8 ---|"4"| p9
+    p10["identity<br/>3 internal"]
+    p8 ---|"4"| p10
+    p11["dartsass"]
     p1 ---|"4"| p11
-    p12["filecache<br/>40 internal"]
-    p13["template<br/>121 internal"]
-    p12 ---|"4"| p13
-    p8 ---|"4"| p3
-    p14["allconfig"]
-    p14 ---|"3"| p7
+    p12["integrity"]
+    p1 ---|"4"| p12
+    p13["js<br/>1 internal"]
+    p1 ---|"4"| p13
+    p14["minifier"]
+    p1 ---|"4"| p14
 ```
 
-_279 further package pairs are connected by merge-worthy duplication and are not drawn._
+_333 further package pairs are connected by merge-worthy duplication and are not drawn._
 
 ### How settled each package is
 
@@ -181,7 +184,7 @@ _114 further packages are modeled and not drawn._ Most uniform is `partials` (no
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **13753 candidate pairs** (shape 2195, concept 4057, call 8265), of which 55% arrived on call evidence alone and 28% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **17546 candidate pairs** (shape 6956, concept 4057, call 8265), of which 38% arrived on call evidence alone and 22% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 1997 functions reached an equilibrium: **1408** settled on a single concept, **589** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -719,11 +722,11 @@ _47 more unusual realizations not listed._
 
 ## Families
 
-306 families, 939 functions in a family, largest 27 members; 623 edges scored here that retrieval never proposed
+477 families, 1286 functions in a family, largest 30 members; 1895 edges scored here that retrieval never proposed
 
-### Family 1 — 27 members, every pair `>= 0.61` code-shape, evidence `102861`  (195 edges scored here)
+### Family 1 — 30 members, every pair `>= 0.52` code-shape, evidence `105828`  (269 edges scored here)
 
-_Not drawn: 27 members is 351 connections. Every one of them holds — that is what makes this a family._
+_Not drawn: 30 members is 435 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
@@ -738,83 +741,85 @@ _Not drawn: 27 members is 351 connections. Every one of them holds — that is w
 | `tpl/fmt/init.go:25` | `fmt.init` | `()` | — |
 | `tpl/hash/hash.go:58` | `hash.init` | `()` | — |
 
-_17 more members not listed._
+_20 more members not listed._
 
-### Family 2 — 24 members, every pair `>= 0.61` code-shape, evidence `99661`  (139 edges scored here)
-
-_Not drawn: 24 members is 276 connections. Every one of them holds — that is what makes this a family._
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `tpl/cast/init.go:25` | `cast.init` | `()` | — |
-| `tpl/collections/init.go:25` | `collections.init` | `()` | — |
-| `tpl/compare/init.go:26` | `compare.init` | `()` | — |
-| `tpl/crypto/init.go:25` | `crypto.init` | `()` | — |
-| `tpl/debug/init.go:25` | `debug.init` | `()` | — |
-| `tpl/encoding/init.go:25` | `encoding.init` | `()` | — |
-| `tpl/fmt/init.go:25` | `fmt.init` | `()` | — |
-| `tpl/hash/hash.go:58` | `hash.init` | `()` | — |
-| `tpl/images/init.go:25` | `images.init` | `()` | — |
-| `tpl/inflect/init.go:25` | `inflect.init` | `()` | — |
-
-_14 more members not listed._
-
-### Family 3 — 27 members, every pair `>= 0.61` code-shape, evidence `98543`  (197 edges scored here)
+### Family 2 — 27 members, every pair `>= 0.43` code-shape, evidence `84532`  (213 edges scored here)
 
 _Not drawn: 27 members is 351 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
+| `tpl/cast/docshelper.go:26` | `cast.init` | `()` | — |
 | `tpl/cast/init.go:25` | `cast.init` | `()` | — |
 | `tpl/collections/init.go:25` | `collections.init` | `()` | — |
 | `tpl/compare/init.go:26` | `compare.init` | `()` | — |
 | `tpl/crypto/init.go:25` | `crypto.init` | `()` | — |
+| `tpl/css/css.go:229` | `css.init` | `()` | mapping, caching |
 | `tpl/debug/init.go:25` | `debug.init` | `()` | — |
 | `tpl/diagrams/init.go:26` | `diagrams.init` | `()` | — |
 | `tpl/encoding/init.go:25` | `encoding.init` | `()` | — |
 | `tpl/fmt/init.go:25` | `fmt.init` | `()` | — |
-| `tpl/hash/hash.go:58` | `hash.init` | `()` | — |
-| `tpl/hugo/init.go:26` | `hugo.init` | `()` | — |
 
 _17 more members not listed._
 
-### Family 4 — 27 members, every pair `>= 0.61` code-shape, evidence `92704`  (202 edges scored here)
+### Family 3 — 14 members, every pair `>= 0.45` code-shape, evidence `14051`  (63 edges scored here)
 
-_Not drawn: 27 members is 351 connections. Every one of them holds — that is what makes this a family._
+_Not drawn: 14 members is 91 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `tpl/cast/init.go:25` | `cast.init` | `()` | — |
-| `tpl/collections/init.go:25` | `collections.init` | `()` | — |
-| `tpl/compare/init.go:26` | `compare.init` | `()` | — |
-| `tpl/crypto/init.go:25` | `crypto.init` | `()` | — |
-| `tpl/debug/init.go:25` | `debug.init` | `()` | — |
-| `tpl/diagrams/init.go:26` | `diagrams.init` | `()` | — |
-| `tpl/encoding/init.go:25` | `encoding.init` | `()` | — |
-| `tpl/fmt/init.go:25` | `fmt.init` | `()` | — |
-| `tpl/hash/hash.go:58` | `hash.init` | `()` | — |
-| `tpl/hugo/init.go:26` | `hugo.init` | `()` | — |
+| `markup/goldmark/blockquotes/blockquotes.go:61` | `blockquotes.*htmlRenderer.renderBlockquote` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | — |
+| `markup/goldmark/codeblocks/render.go:59` | `codeblocks.*htmlRenderer.renderCodeBlock` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | — |
+| `markup/goldmark/passthrough/passthrough.go:92` | `passthrough.*htmlRenderer.renderPassthroughBlock` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | — |
+| `markup/goldmark/render_hooks.go:126` | `goldmark.*hookedRenderer.renderImage` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | — |
+| `markup/goldmark/render_hooks.go:200` | `goldmark.*hookedRenderer.renderImageDefault` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | — |
+| `markup/goldmark/render_hooks.go:229` | `goldmark.*hookedRenderer.renderLink` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | — |
+| `markup/goldmark/render_hooks.go:285` | `goldmark.*hookedRenderer.renderString` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | — |
+| `markup/goldmark/render_hooks.go:303` | `goldmark.*hookedRenderer.renderText` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | — |
+| `markup/goldmark/render_hooks.go:346` | `goldmark.*hookedRenderer.renderLinkDefault` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | — |
+| `markup/goldmark/render_hooks.go:367` | `goldmark.*hookedRenderer.renderAutoLink` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | — |
 
-_17 more members not listed._
+_4 more members not listed._
 
-### Family 5 — 27 members, every pair `>= 0.61` code-shape, evidence `88027`  (204 edges scored here)
+### Family 4 — 14 members, every pair `>= 0.44` code-shape, evidence `11774`  (55 edges scored here)
 
-_Not drawn: 27 members is 351 connections. Every one of them holds — that is what makes this a family._
+_Not drawn: 14 members is 91 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `tpl/cast/init.go:25` | `cast.init` | `()` | — |
-| `tpl/collections/init.go:25` | `collections.init` | `()` | — |
-| `tpl/compare/init.go:26` | `compare.init` | `()` | — |
-| `tpl/crypto/init.go:25` | `crypto.init` | `()` | — |
-| `tpl/debug/init.go:25` | `debug.init` | `()` | — |
-| `tpl/diagrams/init.go:26` | `diagrams.init` | `()` | — |
-| `tpl/encoding/init.go:25` | `encoding.init` | `()` | — |
-| `tpl/fmt/init.go:25` | `fmt.init` | `()` | — |
-| `tpl/hash/hash.go:58` | `hash.init` | `()` | — |
-| `tpl/hugo/init.go:26` | `hugo.init` | `()` | — |
+| `common/collections/append.go:26` | `collections.Append` | `(any, ...any) (any, error)` | validation |
+| `tpl/collections/apply.go:27` | `collections.*Namespace.Apply` | `(context.Context, any, string, ...any) (any, error)` | — |
+| `tpl/collections/collections.go:65` | `collections.*Namespace.After` | `(any, any) (any, error)` | — |
+| `tpl/collections/collections.go:197` | `collections.*Namespace.First` | `(any, any) (any, error)` | — |
+| `tpl/collections/collections.go:271` | `collections.*Namespace.Intersect` | `(any, any) (any, error)` | — |
+| `tpl/collections/collections.go:357` | `collections.*Namespace.Last` | `(any, any) (any, error)` | — |
+| `tpl/collections/collections.go:496` | `collections.*Namespace.Shuffle` | `(any) (any, error)` | — |
+| `tpl/collections/collections.go:637` | `collections.*Namespace.Union` | `(any, any) (any, error)` | validation, mapping |
+| `tpl/collections/collections.go:720` | `collections.*Namespace.Uniq` | `(any) (any, error)` | — |
+| `tpl/collections/complement.go:32` | `collections.*Namespace.Complement` | `(...any) (any, error)` | — |
 
-_17 more members not listed._
+_4 more members not listed._
 
-_301 more families not listed._
+### Family 5 — 14 members, every pair `>= 0.43` code-shape, evidence `10885`  (55 edges scored here)
+
+_Not drawn: 14 members is 91 connections. Every one of them holds — that is what makes this a family._
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `common/collections/append.go:26` | `collections.Append` | `(any, ...any) (any, error)` | validation |
+| `tpl/collections/apply.go:27` | `collections.*Namespace.Apply` | `(context.Context, any, string, ...any) (any, error)` | — |
+| `tpl/collections/collections.go:65` | `collections.*Namespace.After` | `(any, any) (any, error)` | — |
+| `tpl/collections/collections.go:101` | `collections.*Namespace.Delimit` | `(context.Context, any, any, ...any) (string, error)` | — |
+| `tpl/collections/collections.go:197` | `collections.*Namespace.First` | `(any, any) (any, error)` | — |
+| `tpl/collections/collections.go:357` | `collections.*Namespace.Last` | `(any, any) (any, error)` | — |
+| `tpl/collections/collections.go:496` | `collections.*Namespace.Shuffle` | `(any) (any, error)` | — |
+| `tpl/collections/collections.go:637` | `collections.*Namespace.Union` | `(any, any) (any, error)` | validation, mapping |
+| `tpl/collections/collections.go:720` | `collections.*Namespace.Uniq` | `(any) (any, error)` | — |
+| `tpl/collections/complement.go:32` | `collections.*Namespace.Complement` | `(...any) (any, error)` | — |
+
+_4 more members not listed._
+
+_472 more families not listed._
+
+_1 component(s) too large or too dense to enumerate (sizes 448); their families are not reported._
 

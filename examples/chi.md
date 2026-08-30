@@ -9,7 +9,7 @@ HTTP router; a narrow core with a middleware package beside it
 | Corpus | [chi](https://github.com/go-chi/chi) |
 | Pinned at | `v5.3.2` (`38939062c5df4d3e8814aad1a488983112627ced`) |
 | Project since | 2015 |
-| doppel | `e53d59d` |
+| doppel | `bb0f86a` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -25,11 +25,13 @@ Generating concept documents...
 Culture: 0 concepts modeled, 0 associations, 0 unusual realizations
 Habitats: 2 modeled, 1 misfits; most uniform chi (norm 0.91), most diverse middleware (norm 0.87)
 Ecosystems: 7 profiled (7 dominance, 0 coalition, 0 conflict, 0 weak)
+Calibration: rate 0.01 over 10440 shape / 16653 overlap null pairs -> threshold 0.53, struct-min 0.40, family-min 0.53
 Found 183 functions. Retrieving candidates...
-Retrieval: shape 50, concept 5, call 357 -> 397 unique pairs
-  concept-only 1.3%  call-only 86.1%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 2138
-Running structural comparison on 397 pairs...
-Families: 9 over 18 components, 32 functions in a family, 21 edges completed
+Retrieval: shape 86, concept 5, call 357 -> 420 unique pairs
+  concept-only 1.2%  call-only 78.3%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 2138
+Running structural comparison on 420 pairs...
+  92 pairs remain after struct-min=0.40 filter
+Families: 7 over 18 components, 30 functions in a family, 26 edges completed
   1 pairs suppressed by max-per-func=2
 ```
 
@@ -132,7 +134,7 @@ Most uniform is `chi` (norm `0.91`); most varied is `middleware` (norm `0.87`). 
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **397 candidate pairs** (shape 50, concept 5, call 357), of which 86% arrived on call evidence alone and 1% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **420 candidate pairs** (shape 86, concept 5, call 357), of which 78% arrived on call evidence alone and 1% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 7 functions reached an equilibrium: **7** settled on a single concept, **0** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -454,7 +456,7 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 ## Families
 
-9 families, 32 functions in a family, largest 10 members; 21 edges scored here that retrieval never proposed
+7 families, 30 functions in a family, largest 10 members; 26 edges scored here that retrieval never proposed
 
 ### Family 1 — 5 members, every pair `>= 0.60` code-shape, evidence `2060`
 
@@ -485,7 +487,36 @@ flowchart LR
 | `middleware/strip.go:41` | `middleware.RedirectSlashes` | `(http.Handler) (http.Handler)` | — |
 | `middleware/url_format.go:46` | `middleware.URLFormat` | `(http.Handler) (http.Handler)` | — |
 
-### Family 2 — 4 members, every pair `>= 1.00` code-shape, evidence `488`, interface implementations of `Flush()`, in package `middleware`
+### Family 2 — 5 members, every pair `>= 0.55` code-shape, evidence `1253`  (3 edges scored here)
+
+```mermaid
+flowchart LR
+    m0["middleware.CleanPath"]
+    m1["middleware.ClientIPFromRemoteAddr"]
+    m2["middleware.GetHead"]
+    m3["middleware.StripSlashes"]
+    m4["middleware.URLFormat"]
+    m0 --- m1
+    m0 --- m2
+    m0 --- m3
+    m0 --- m4
+    m1 --- m2
+    m1 --- m3
+    m1 --- m4
+    m2 --- m3
+    m2 --- m4
+    m3 --- m4
+```
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `middleware/clean_path.go:12` | `middleware.CleanPath` | `(http.Handler) (http.Handler)` | — |
+| `middleware/client_ip.go:187` | `middleware.ClientIPFromRemoteAddr` | `(http.Handler) (http.Handler)` | — |
+| `middleware/get_head.go:10` | `middleware.GetHead` | `(http.Handler) (http.Handler)` | — |
+| `middleware/strip.go:14` | `middleware.StripSlashes` | `(http.Handler) (http.Handler)` | — |
+| `middleware/url_format.go:46` | `middleware.URLFormat` | `(http.Handler) (http.Handler)` | — |
+
+### Family 3 — 4 members, every pair `>= 1.00` code-shape, evidence `488`, interface implementations of `Flush()`, in package `middleware`
 
 ```mermaid
 flowchart LR
@@ -508,30 +539,12 @@ flowchart LR
 | `middleware/wrap_writer.go:194` | `middleware.*httpFancyWriter.Flush` | `()` | — |
 | `middleware/wrap_writer.go:239` | `middleware.*http2FancyWriter.Flush` | `()` | — |
 
-### Family 3 — 3 members, every pair `>= 0.60` code-shape, evidence `437`
-
-```mermaid
-flowchart LR
-    m0["middleware.CleanPath"]
-    m1["middleware.GetHead"]
-    m2["middleware.RequestID"]
-    m0 --- m1
-    m0 --- m2
-    m1 --- m2
-```
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `middleware/clean_path.go:12` | `middleware.CleanPath` | `(http.Handler) (http.Handler)` | — |
-| `middleware/get_head.go:10` | `middleware.GetHead` | `(http.Handler) (http.Handler)` | — |
-| `middleware/request_id.go:67` | `middleware.RequestID` | `(http.Handler) (http.Handler)` | — |
-
-### Family 4 — 4 members, every pair `>= 0.62` code-shape, evidence `418`
+### Family 4 — 4 members, every pair `>= 0.56` code-shape, evidence `309`  (2 edges scored here)
 
 ```mermaid
 flowchart LR
     m0["middleware.SetHeader"]
-    m1["middleware.New"]
+    m1["middleware.Heartbeat"]
     m2["middleware.PageRoute"]
     m3["middleware.PathRewrite"]
     m0 --- m1
@@ -545,17 +558,17 @@ flowchart LR
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
 | `middleware/content_type.go:9` | `middleware.SetHeader` | `(string, string) (func(http.Handler) http.Handler)` | — |
-| `middleware/middleware.go:6` | `middleware.New` | `(http.Handler) (func(next http.Handler) http.Handler)` | — |
+| `middleware/heartbeat.go:12` | `middleware.Heartbeat` | `(string) (func(http.Handler) http.Handler)` | — |
 | `middleware/page_route.go:10` | `middleware.PageRoute` | `(string, http.Handler) (func(http.Handler) http.Handler)` | — |
 | `middleware/path_rewrite.go:9` | `middleware.PathRewrite` | `(string, string) (func(http.Handler) http.Handler)` | — |
 
-### Family 5 — 3 members, every pair `>= 0.62` code-shape, evidence `322`
+### Family 5 — 3 members, every pair `>= 0.64` code-shape, evidence `267`
 
 ```mermaid
 flowchart LR
-    m0["middleware.SetHeader"]
-    m1["middleware.Heartbeat"]
-    m2["middleware.PageRoute"]
+    m0["middleware.*compressResponseWriter.Hijack"]
+    m1["middleware.*compressResponseWriter.Push"]
+    m2["middleware.*compressResponseWriter.Close"]
     m0 --- m1
     m0 --- m2
     m1 --- m2
@@ -563,9 +576,9 @@ flowchart LR
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `middleware/content_type.go:9` | `middleware.SetHeader` | `(string, string) (func(http.Handler) http.Handler)` | — |
-| `middleware/heartbeat.go:12` | `middleware.Heartbeat` | `(string) (func(http.Handler) http.Handler)` | — |
-| `middleware/page_route.go:10` | `middleware.PageRoute` | `(string, http.Handler) (func(http.Handler) http.Handler)` | — |
+| `middleware/compress.go:365` | `middleware.*compressResponseWriter.Hijack` | `() (net.Conn, *bufio.ReadWriter, error)` | — |
+| `middleware/compress.go:372` | `middleware.*compressResponseWriter.Push` | `(string, *http.PushOptions) (error)` | — |
+| `middleware/compress.go:379` | `middleware.*compressResponseWriter.Close` | `() (error)` | — |
 
-_4 more families not listed._
+_2 more families not listed._
 
