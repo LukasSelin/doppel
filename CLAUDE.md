@@ -65,8 +65,8 @@ callers make it differently. `analyze()` takes a progress writer rather than usi
 directly: a hook must stay silent, since stderr from a SessionStart hook surfaces to the user as a
 broken-tool notice. Stages in execution order:
 
-1. **Walk & parse** — `filepath.WalkDir` + `parser.ShouldSkipDir`, then `parser.Parse` per `.go` file → `[]CodeUnit`. Unreadable files and parse errors are warned and skipped, never fatal. `canon.Canonicalize`, `fingerprint.Build`, `fingerprint.WLBag` over the canonical tree, and `extractSignals` (the seed rules' AST evidence) all run here, while the AST is still in hand.
-2. **Structural corpus statistics** — `fingerprint.LabelWeights` over every unit's WL bag (`Result.WL`, the `ln(N/df)` label surprisal that makes code shape corpus-weighted) and `fingerprint.ConsCorpus` over every canonical body (`Result.ConsStats`, the compression ratio). Both read each unit's own canonical AST and nothing else, which is why they come first: the population is settled and no concept vocabulary exists yet. Everything below is conceptual and needs the call graph.
+1. **Walk & parse** — `filepath.WalkDir` + `parser.ShouldSkipDir`, then `parser.Parse` per file whose extension a frontend claims and `--languages` admits → `[]CodeUnit`. Unreadable files and parse errors are warned and skipped, never fatal. The frontend produces a `syntax.File` — and, where it has a canonicalizer, the canonical body alongside the body as written; `fingerprint.Build` (which fills the WL bag from `syntax.Func.Shape`) and `extractSignals` (the seed rules' evidence) then run over the IR.
+2. **Structural corpus statistics** — `fingerprint.LabelWeights` over every unit's WL bag (`Result.WL`, the `ln(N/df)` label surprisal that makes code shape corpus-weighted) and `fingerprint.ConsCorpus` over every canonical body (`Result.ConsStats`, the compression ratio). Both read each unit's own canonical tree and nothing else, which is why they come first: the population is settled and no concept vocabulary exists yet. Everything below is conceptual and needs the call graph.
 3. **Build call graph** — `concepter.BuildCallGraph(units)` → `concepter.Graph`, both directions over **qualified names** (`package.Name`, methods keeping their receiver: `comparator.*Comparator.Compare`). A resolver maps each raw callee string to at most one unit: import-qualified selectors through the file's recorded import bindings (aliases included), variable-receiver method calls only when the method name is unique corpus-wide, bare names to the same-package function. Ambiguity drops the edge; recursion is excluded; only repo-internal edges exist. It runs **before** concepts now, because resolved calls are one of the channels a concept is learned from — and still before concept docs, which need caller lists.
 4. **Learn concepts** — `lexicon.Build(units, cg, seeds, …)` fills `unit.Concepts`: corpus-derived concepts with graded membership (see *The learned lexicon*). `tagger.Tag` still runs, but only to produce `seeds` — which functions a concept search starts from, and nothing else. Member counts and summed confidence feed the corpus IC in the same loop, and the learned concepts become the taxonomy's leaves for this run via `ontology.WithConcepts`.
 5. **Generate + enrich concept docs** — `concepter.New()` makes bare docs; **`mapper.Map` does the real work**: attaches qualified callers, resolved internal callees, and the depth-2 call-graph neighborhood; derives per-corpus role thresholds from the resolved degree distribution and classifies; aggregates caller/callee concepts (as graded `[]parser.Concept`, each keeping the strongest confidence any neighbour asserted) and packages from resolved edges. `culture.Build` then models the corpus's conceptual practice (see *Corpus culture*); its summary goes to stderr, and after the struct-min filter each surviving pair gets `Culture` notes for atypical realizations of its **shared** tags (positional attachment, like Evidence).
@@ -99,17 +99,14 @@ cmd/            CLI commands (Cobra).
   version.go    build identity, for deciding whether a baseline is still comparable
   ontology.go   doppel ontology: print the vocabulary, check its axioms
 internal/
-<<<<<<< HEAD
-  parser/       parser.go is a thin dispatcher (and owns ShouldSkipDir, the walk rule cmd and bench share); go_parser.go does the go/ast work; signals.go extracts the tagger's evidence channels → CodeUnit
-  canon/        Canonical AST shapes with a per-function rule log: canon.go + rules.go (the rule
-                set and canon.Version), alpha.go (rename), clone.go, key.go. Imported by parser only
-=======
   syntax/       The language-neutral IR: Kind/Role/Node/Func/File and Inspect. Imports nothing from this module
-  gofront/      The Go frontend: the only package that imports go/ast. gofront.go maps *ast.File → syntax.File; syntax_map.go is the node-for-node mapper
+  gofront/      The Go frontend: the only package that imports go/ast. gofront.go maps *ast.File → syntax.File and runs canon; syntax_map.go is the node-for-node mapper
   lexfront/     The language-agnostic frontend: spec.go is the per-language table, lexer.go tokenizes, segment.go finds functions, build.go builds the shallow tree
   parser/       frontend.go owns the Frontend interface, the extension registry, IsTestFile and SameBuildUnit; parser.go is the neutral syntax.File → CodeUnit projection (and owns ShouldSkipDir, the walk rule cmd and bench share); signals.go extracts the tagger's evidence channels over the IR; go_parser.go and lex_parser.go are the two registry adapters
->>>>>>> origin/master
-  fingerprint/  AST token shingles + control-flow histogram + signature types; the code-similarity score
+  canon/        Canonical Go AST shapes with a per-function rule log: canon.go + rules.go (the rule
+                set and canon.Version), alpha.go (rename), clone.go, key.go. Go-only by nature;
+                imported by gofront (to run it) and by analyzer (to name its rules)
+  fingerprint/  Token shingles + control-flow histogram + signature types over the neutral IR; the code-similarity score
                 wl.go is the WL label bag; wlexplain.go names its shallow labels for reports;
                 cons.go hash-conses the canonical forest; wlcodec.go encodes bags for the snapshot
   ontology/     The formal vocabulary: entity kinds, typed relations, concept taxonomy, roles, axioms
@@ -149,7 +146,12 @@ and `concepter.Graded` (the `[]parser.Concept` → `[]ontology.WeightedTerm` con
 
 Dependency directions that must hold: `analyzer` imports `comparator` (for the `Evidence` field), so
 `comparator` must never import `analyzer`. `parser` imports `fingerprint`, so `fingerprint` must
-never import `parser` — it works on `*ast.FuncDecl` directly. `ontology` imports nothing from this
+never import `parser` — it works on `syntax.Node` directly, and imports no frontend. `syntax`
+imports nothing from this module, the same rule `ontology` and `clique` follow. `gofront` imports
+`syntax` and `canon` and must never import `parser`: a frontend depending on the registry that
+dispatches to it is the cycle the split exists to avoid. `canon` imports nothing from this module
+either — it is `go/ast`-typed and Go-only, imported by `gofront` (which runs it) and by `analyzer`
+(which names its rules for a report), and by nothing else. `ontology` imports nothing from this
 module and must stay that way: `tagger`, `concepter` and `comparator` all depend on it. `retriever`
 imports `parser`, `fingerprint`, `concepter`, `ontology` and must never import `analyzer` or
 `comparator` — `cmd` bridges retriever candidates into `analyzer.SimilarPair`. `culture` imports
@@ -274,16 +276,6 @@ doppel ontology --defs                                # print the vocabulary and
   (`how-it-works.md` → `How-it-works`, which GitHub titles "How it works"), so the directory must
   stay **flat**: wiki page names cannot nest, and the job fails loudly rather than silently
   collapsing `a/page.md` and `b/page.md` onto one page. It pushes only when something changed.
-<<<<<<< HEAD
-- `.github/workflows/pages.yml` renders doppel's dashboard for doppel's own source
-  (`go run . analyze . -o _site/report.html`) and publishes it to GitHub Pages on every push to
-  `master`, with `.github/pages/index.html` as the landing page (`@@COMMIT@@`/`@@BUILT@@` are
-  substituted at build time). Deliberately **not** path-filtered: any change to the tool can change
-  the report. `_site/` is chosen because `parser.ShouldSkipDir` skips underscore-prefixed
-  directories, so the output cannot join the corpus of the run that writes it. Provenance is
-  stamped into the landing page only, never into the report — `ci.yml` diffs two `-o *.html` runs
-  and a timestamp inside one would fail it.
-=======
 - `.github/workflows/examples.yml` regenerates `examples/` from the pinned corpus ladder on
   every push to `master` that touches Go code, and commits the result as `github-actions[bot]`.
   The ladder is restored by `actions/cache` keyed on `internal/bench/corpora.go`, so the
@@ -292,25 +284,31 @@ doppel ontology --defs                                # print the vocabulary and
   moved — the generator excludes the `| doppel |` provenance row from its comparison, or an
   unchanged ranking would rewrite all seven files on every push. A push made with
   `GITHUB_TOKEN` triggers no workflow, so the bot commit neither loops nor re-runs `ci.yml`.
->>>>>>> origin/master
+  It runs on **push to `master` only, never on a pull request**, so a branch is never gated on
+  its examples being current — but master's own copy self-heals within one push either way,
+  which is why regenerating in the same change that moves ranking is still the rule.
+- `.github/workflows/pages.yml` renders doppel's dashboard for doppel's own source
+  (`go run . analyze . -o _site/report.html`) and publishes it to GitHub Pages on every push to
+  `master`, with `.github/pages/index.html` as the landing page (`@@COMMIT@@`/`@@BUILT@@` are
+  substituted at build time). Deliberately **not** path-filtered: any change to the tool can change
+  the report. `_site/` is chosen because `parser.ShouldSkipDir` skips underscore-prefixed
+  directories, so the output cannot join the corpus of the run that writes it. Provenance is
+  stamped into the landing page only, never into the report — `ci.yml` diffs two `-o *.html` runs
+  and a timestamp inside one would fail it.
 - `.gitattributes` forces LF for Go/shell/markdown/config so the bash hook works under Git Bash on Windows.
 
 ## Key types
 
-<<<<<<< HEAD
-- **CodeUnit** (`internal/parser/parser.go`) — one function/method from the AST: `Name`, `File`,
-  `StartLine`, `Body`, `Signature`, `Package`, `Concepts`, `DocComment`, `Exported`, `ReceiverType`,
-  `Callees`, `Fingerprint`, `Generated`, `Signals` (the seed rules' AST evidence channels), and
-  `Canonical`/`CanonRules` (canon's rewritten tree and the log of what it rewrote — the WL bag is
-  built from the first, `analyzer.Explain` reads the second). Methods are named `"*Server.Start"` — the receiver keeps its
-=======
 - **CodeUnit** (`internal/parser/parser.go`) — one function/method, projected from a
   `syntax.File` by `unitsFrom`: `Name`, `File`, `Lang`, `StartLine`, `Body`, `Signature`,
   `Package`, `Concepts`, `DocComment`, `Exported`, `ReceiverType`, `Callees`, `Fingerprint`,
-  `Generated`. `Lang` is what `SameBuildUnit` compares; `Package` falls back to the containing
-  directory for a language with no package clause, which is all `culture`'s habitat model needs
-  since it treats the key as opaque. Methods are named `"*Server.Start"` — the receiver keeps its
->>>>>>> origin/master
+  `Generated`, `Signals` (the seed rules' evidence channels), and `Canonical`/`CanonRules`
+  (the frontend's canonical body and the log of what its canonicalizer rewrote — the WL bag
+  and the hash-cons are built from the first, `analyzer.Explain` reads the second; both are
+  empty for a language with no canonicalizer). `Lang` is what `SameBuildUnit` compares;
+  `Package` falls back to the containing directory for a language with no package clause,
+  which is all `culture`'s habitat model needs since it treats the key as opaque.
+  Methods are named `"*Server.Start"` — the receiver keeps its
   star; `parser.MethodName` strips it back off. `Signature` is rendered text — `([]int) (int)`,
   types in order, names dropped, one entry per declared name — and is what the `sig:` line and the
   interface-implementation kind read; `Fingerprint.Types` (the sorted `in:`/`out:` type *set*) is
@@ -324,8 +322,9 @@ doppel ontology --defs                                # print the vocabulary and
   above all — and `parser.Certain` builds confidence-1 memberships for the callers that legitimately
   have bare IDs (test fixtures pinning behavior that has nothing to do with confidence).
 - **Fingerprint** (`internal/fingerprint/fingerprint.go`) — `WL` (the Weisfeiler-Lehman label
-  bag: rounds 0..3 merged, sorted ascending by label, built by the *parser* from canon's canonical
-  tree — the one field `Build` does not produce), `Shingles` (sorted, deduped 3-gram hashes),
+  bag: rounds 0..3 merged, sorted ascending by label, built from `syntax.Func.Shape` — the
+  frontend's canonical body where it has a canonicalizer, the body as written where it does
+  not), `Shingles` (sorted, deduped 3-gram hashes),
   `Flow` (control-flow histogram), `Depth` (nesting-entry histogram), `Types` (normalized
   param/result types) and `Nodes`. **`WL` is the only structural multiset left**: it feeds the
   `wl` code-shape component *and* the shape retrieval channel (see *Trophic structural energy*),
@@ -334,8 +333,9 @@ doppel ontology --defs                                # print the vocabulary and
   at) alongside the count, in padding the two-field struct already wasted — `Count` is `int32` to
   keep it at 16 bytes, which is why the merge loop's cost did not move. `Shingles` now feeds only
   `snapshot.Digest` — the digest answers "did this body change" about the code *as written*, which
-  is a different question from the canonical shape the score reads. The zero value means "no body"
-  and never matches anything.
+  is a different question from the canonical shape the score reads. `Build` reads **two** trees
+  for exactly that reason: `Body` for the token stream, the histograms and the node count, and
+  `Shape()` for the bag. The zero value means "no body" and never matches anything.
   `fingerprint.LabelIDF` (built once per run in `index()`) is the corpus surprisal `ln(N/df)` of
   every WL label, over presence df; an unseen label answers `ln(N)` (df 1), never 0 — a zero
   weight does not make a label neutral in a ratio, it makes it invisible.
@@ -432,11 +432,19 @@ Consequences worth knowing:
 ### Trophic structural energy
 
 The shape channel's features are the **Weisfeiler-Lehman label bag** (`fingerprint.WLBag`, built
-by the parser from canon's canonical tree): one label per node per refinement round h = 0..3,
-merged into one multiset. h=0 is the node kind (`IF`, `RETURN`, `CALL/Errorf` — a call keeps its
-selector name, identifiers collapse to `ID`); each further round folds in one more edge of
-children, so h=3 at an if-statement is that whole guard and h=3 at a loop is its body. `LabelIDF`
-is the same presence-df `ln(N/df)` the other channels use.
+in `Build` from `syntax.Func.Shape` — the frontend's canonical body where it has a canonicalizer):
+one label per node per refinement round h = 0..3, merged into one multiset. h=0 is the node kind
+(`IF`, `RETURN`, `CALL/Errorf` — a call keeps its callee name, identifiers collapse to `ID`); each
+further round folds in one more edge of children, so h=3 at an if-statement is that whole guard
+and h=3 at a loop is its body. `LabelIDF` is the same presence-df `ln(N/df)` the other channels
+use.
+
+`wlLabel0` is the one place `syntax.Kind` and `fingerprint.LabelKind` meet, and the mapping is
+total and one-to-one on purpose. `LabelKind` is this package's own enum rather than the IR's
+because the label is a hash of the kind's *name*: the name has to be pinned where the scoring
+lives, or the IR could reword a kind and silently move every score in the tool. `labelKindNames`
+is the hash input, `labelKindWords` the reader-facing word `wlexplain` prints — one table each,
+index-aligned, so a kind cannot be named one thing in a sentence and hashed as another in a bag.
 
 **The multi-level pattern multiset this replaced is gone** — `fingerprint.Pattern`,
 `extractPatterns`, `l0ExtraWidths`, `pattern.go` and `defuse.go` in full, which means the L0 token
@@ -1407,8 +1415,9 @@ panel if they turn out to be missed.
 ## Frontends
 
 A frontend's whole job is to produce `internal/syntax.File`. Everything downstream — the
-fingerprint, the five pattern levels, `TagSignals`, the call graph, the lexicon, culture,
-habitats, calibration, the report — reads that and knows nothing about any language.
+fingerprint, the Weisfeiler-Lehman label bag, the hash-cons, `TagSignals`, the call graph, the
+lexicon, culture, habitats, calibration, the report — reads that and knows nothing about any
+language.
 
 **The IR's contract is narrow but not loose.** A `syntax.Node` must exist for every node the
 frontend's own traversal would visit, in that traversal's order. Node identity and order are
@@ -1418,12 +1427,24 @@ pairing that `syntax.Inspect`'s nil-after-children callback provides. A frontend
 nodes changes scores rather than losing detail quietly. `Role` exists because position cannot
 carry slot identity — a for-loop with no init has its condition first — so slots are named.
 
+**The kind vocabulary is wider than the token stream needs, and that is the label bag's doing.**
+`walk` emits a token for two dozen kinds and silently ignores the rest; `WLBag` reads *every*
+node's kind, because a node whose kind collapses to `KindOther` does not vanish from its
+parent's child multiset — it merges with every other unnamed node there. A collapsed vocabulary
+therefore coarsens the bag rather than shrinking it, which is why `syntax.Kind` names array,
+map, struct, func, interface and channel types, fields and field lists, and general
+declarations, none of which the token stream has ever emitted. A frontend that can tell an array
+type from a map type should say so; one that cannot leaves them `KindOther` and loses
+discrimination rather than correctness.
+
 - **`internal/gofront`** maps `*ast.FuncDecl` onto the IR and is the only package in the module
-  importing `go/*`. It builds the tree **from `ast.Inspect`** rather than reimplementing
-  `ast.Walk`'s per-type field ordering, so order and node count are correct by construction and
-  there is no ordering table to fall out of sync with the stdlib; roles are recovered separately
-  by identity against the parent's named fields. `TestMapperPreservesNodeCount` and
-  `TestMapperPreservesOrder` pin both halves.
+  importing `go/*` outside `internal/canon`. It builds the tree **from `ast.Inspect`** rather
+  than reimplementing `ast.Walk`'s per-type field ordering, so order and node count are correct
+  by construction and there is no ordering table to fall out of sync with the stdlib; roles are
+  recovered separately by identity against the parent's named fields. `TestMapperPreservesNodeCount`
+  and `TestMapperPreservesOrder` pin both halves. It also **runs `internal/canon`** and maps the
+  canonical declaration a second time into `syntax.Func.Canon` — see *Canonicalization is a
+  frontend's job* below.
 - **`internal/lexfront`** has no grammar: one tokenizer, one block rule, and a per-language table
   of the things that genuinely cannot be guessed — extensions, comment and string delimiters,
   which keywords introduce a function or a container, whether parameters are name-first, and how
@@ -1447,13 +1468,67 @@ Bodyless declarations (assembly-implemented, external linkname) are excluded fro
 denominator: their `Fingerprint` is the zero value and they never match anything, so counting
 them would measure a difference that changes no result.
 
-**What the AST still buys, and it is one thing: types.** `lexfront` fills `syntax.Param.Type`
-with the empty string, so `Fingerprint.Types` is empty and the signature component — 0.15 of the
-composite — contributes nothing, with `sig: (?)` in the report saying so. Everything else
-survives: L0 tokens, L1 call and operator shapes, L2 statement renders, L3 loop summaries and
-adjacent-statement bigrams, L4 def-use edges, resolved callees, imports and literals. If that
-0.15 turns out to dominate, the fix is the existing `fingerprint.Weights` seam
-(`SimilarityWith`), which is already a no-op at defaults.
+**What the AST still buys is two things: types, and a canonicalizer.** `lexfront` fills
+`syntax.Param.Type` with the empty string, so `Fingerprint.Types` is empty and the signature
+component — 0.15 of the composite — contributes nothing, with `sig: (?)` in the report saying
+so. If that 0.15 turns out to dominate, the fix is the existing `fingerprint.Weights` seam
+(`SimilarityWith`), which is already a no-op at defaults. The second is the subject of the next
+two sections.
+
+### Canonicalization is a frontend's job
+
+`internal/canon` stays go/ast-typed and Go-only. That is not a leftover: every rule it applies is
+a claim about what Go code *means* — that `if !c {A} else {B}` and `if c {B} else {A}` are the
+same shape, that `x = x + 1` and `x++` are, that operands of `&&` may be reordered. The IR
+deliberately carries no semantics to make such a claim with, and a rule table shared across
+thirteen languages would be asserting Go's semantics about all of them.
+
+So `gofront` runs `canon.Canonicalize` on the `*ast.FuncDecl`, maps the **canonical** tree into
+`syntax.Func.Canon`, and records the fired rule IDs in `syntax.Func.CanonRules`. `Func.Shape()`
+returns `Canon` when there is one and `Body` otherwise, and that is the tree `WLBag` and `Cons`
+walk. `parser.CodeUnit.Canonical` is `Shape()` projected; `CanonRules` is the plain string list,
+because `syntax` cannot be typed on one frontend's rule enum. `analyzer.Explain` still imports
+`canon` to map an ID to a reader-facing word, and renders an unknown ID under its own name.
+
+**The move was arranged to change no Go score, and that was verified rather than argued.**
+`label_0` is a hash of a kind's *name* plus the one token that is part of it, so as long as every
+go/ast kind reaches the same `LabelKind` it did when the switch was typed on `ast.Node`, every
+label at every round is the same 64 bits. That is what the widened `syntax.Kind` vocabulary and
+the `IncDecStmt`/`GenDecl`/`ChanType` labels are for. Measured end to end: over all seven pinned
+corpora (~19 400 functions), `doppel analyze . --format json --languages go` before and after
+differs in exactly three top-level keys — `doppel`, `schema` and `params.languages`. Every unit,
+every WL bag, every pair, every score and every explanation sentence is byte-identical.
+
+### What a language without a canonicalizer gets
+
+Every language gets a WL bag, and with it the code-shape score, the shape retrieval channel,
+containment, the hash-cons compression ratio, and `analyzer.Explain`'s residual sentence. None
+of that is Go-only any more. What a `lexfront` language does *not* get is the canonical tree the
+bag is built over, so it is worth being exact about what its bag can and cannot claim.
+
+**It can claim**: that two bodies share structure, weighted by how surprising that structure is
+in this corpus. The recurrence is the same, the corpus weighting is the same, the bag is built
+over whatever tree the frontend produced, and `LabelWeights` counts df over that same
+population. Two Python functions with the same nesting and the same call names share labels, and
+`Containment` still says whether one body's shape reappears inside a larger one.
+
+**It cannot claim** the two things canonicalization buys. First, **rename invariance is only
+partial**: `label_0` collapses every identifier to `ID` regardless of frontend, so a renamed copy
+already matches — but alpha-renaming is what makes two functions that *bind* their locals in a
+different order agree, and without it they do not. Second, **spelling variants stay apart**:
+early return versus else, `x += 1` versus `x++`, `a && b` versus `b && a` are different shapes to
+a bag with no canonicalizer, where in Go they are one. Both failures are in the safe direction —
+less similar than they are, never more — which is the same direction `LabelIDF.Weight`'s
+unseen-label fallback fails in, and for the same reason.
+
+A shallow tree adds a third, independent limit that has nothing to do with canon: `lexfront`
+builds a block tree, not a parse tree, so most interior nodes are `KindOther` and the deeper
+refinement rounds fold in less. An h=3 label on a Go body summarises a whole guard; on a
+lexically-segmented body it summarises a nesting region. The bag is real evidence at both ends,
+but it is coarser at the second, and `CanonRules` being empty is the visible sign of it —
+`analyzer.Explain`'s "identical after rename" tier keys on bag equality, which still works, and
+simply reports "identical structure, no normalization needed" where a Go pair would have named
+the rules that got there.
 
 **Five defects the harness caught that review had not**, kept as tests in `internal/lexfront`
 because each was silent: statement keywords matching the declaration shape (`except ValueError:`
@@ -1722,6 +1797,19 @@ to rewrite on every turn:
   either predecessor is missing half of what 7 records, and the missing halves are exactly the
   corpus-relative ones a diff must never guess at.
 
+  **And then 6 was assigned a third time**, on the *language* line, where it added
+  `Params.Languages` — which languages a run read decides what the corpus *is*, so it sits with
+  `TestsMode` and `Generated` among the parameters that make two runs comparable, and a schema-5
+  baseline records no language at all. `Params` gained an explicit `Equal` in the same change: a
+  slice field stopped `==` from compiling, and joining the list into one string to keep the
+  operator would have hidden a real fact behind a convenience. **`Schema` 8 is the second
+  reconciliation**, and unlike 7 it is a numbering bump rather than a metric one. Nothing a
+  snapshot stores changed meaning: moving the WL bag onto the neutral IR was arranged to leave the
+  label vocabulary exactly where it was — same `label_0` names, same recurrence, same canonical
+  tree — and verified byte-identical over all seven pinned corpora, so a schema-7 `Unit.WL` and a
+  schema-8 one over the same Go body are the same bag. 8 exists because `Params` gained
+  `Languages`, which a schema-7 baseline cannot supply and this run must not invent.
+
   `Schema` 5 (shape line) was the same kind of bump as 3, one step further: `Pair.Score` changed metric (token shingles → corpus-weighted WL
   Jaccard) *and* became corpus-relative, so a schema-4 baseline and a schema-5 run would disagree
   about pairs nobody edited. It also added `Containment`, which earns its bytes the way rule four
@@ -1975,6 +2063,15 @@ shape is stable.
   `internal/lexfront` (a tokenizer and a block rule, no grammar, 13 languages). No external
   parser dependency, and none is wanted — `go/ast` ships with the toolchain and the lexical
   path has no dependency at all. See *Frontends* below for the measured trade.
+
+  **`internal/canon` is the one deliberate exception, and it is a frontend's business.**
+  Canonicalization is a claim about what code *means*, which the IR carries nothing to make, so
+  it stays `go/ast`-typed and Go-only, runs inside `gofront`, and reaches everything else as
+  `syntax.Func.Canon`. A language with no canonicalizer still gets a label bag, a code-shape
+  score, containment and the compression ratio — over its body as written. What it loses is
+  recall on pairs that differ only in a spelling canonicalization would have removed, never
+  correctness: the failure direction is "less similar than they are". *Frontends* states the
+  boundary exactly.
 - **No caches.** No run ever reads persisted state to avoid recomputation: `doppel hook stop`
   re-runs the whole pipeline from source every time, exactly as `analyze` does. The one persisted
   artifact is the **session baseline** written by `doppel hook session-start` — a measurement
@@ -2160,6 +2257,18 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   goes for any construct whose body opens more than one line after the header. Both fail toward
   a *missing* unit rather than a wrong one, which is why precision stays at 1.000 while recall
   is what moves.
+- **A non-Go label bag is real evidence, and it is coarser in two independent ways.** The bag,
+  the code-shape score, containment, the compression ratio and the explanation layer all work on
+  any frontend's tree. But no `lexfront` language has a canonicalizer, so two bodies differing
+  only in a spelling Go would normalize away — early return versus else, `x += 1` versus `x++`,
+  operands either way round a commutative operator, locals bound in a different order — stay
+  apart. And the tree is a *block* tree, so most interior nodes are `KindOther` and the deeper
+  refinement rounds fold in less: an h=3 label summarises a whole guard on a Go body and a
+  nesting region on a lexically-segmented one. Both errors point the same way, "less similar
+  than they are", which is the direction a reader can act on — but a cross-language recall
+  comparison has never been measured, and the numbers in *Frontends* are recall of *units*, not
+  of pairs. Nothing here is unfixable in principle: a per-language canonicalizer is a frontend
+  concern, and the seam for one already exists (`syntax.Func.Canon`).
 - **Resolver imprecision without go/types.** Call-graph edges are resolved from the AST alone:
   a local variable shadowing an import name is mistaken for the package; an external import whose
   path base equals an internal package name can produce a false edge on a name coincidence; import

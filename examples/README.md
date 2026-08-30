@@ -24,13 +24,13 @@ corpus is a decade of accretion". Both ends are visible below.
 <!-- BEGIN generated ladder -->
 | Corpus | Since | Pinned | Functions | Pairs compared | Kept | Code-shape floor | Concepts learned | Concepts modeled | Habitats |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| [moby](moby.md) | 2013 | `v28.5.2` | 7644 | 28372 | 13646 | 0.35 | 521 | 395 | 166 |
-| [prometheus](prometheus.md) | 2012 | `v3.14.0` | 5469 | 19771 | 9357 | 0.33 | 380 | 328 | 90 |
-| [hugo](hugo.md) | 2013 | `v0.165.0` | 5438 | 19698 | 7882 | 0.35 | 539 | 429 | 126 |
-| [gin](gin.md) | 2014 | `v1.12.0` | 497 | 2035 | 427 | 0.41 | 46 | 36 | 5 |
-| [cobra](cobra.md) | 2015 | `v1.10.2` | 269 | 1152 | 206 | 0.44 | 26 | 23 | 2 |
-| [chi](chi.md) | 2015 | `v5.3.2` | 183 | 755 | 113 | 0.45 | 21 | 19 | 2 |
-| [conc](conc.md) | 2023 | `v0.3.0` | 81 | 133 | 133 | 0.60 (declined) | 6 | 6 | 4 |
+| [moby](moby.md) | 2013 | `v28.5.2` | 7658 | 28065 | 13627 | 0.36 | 519 | 393 | 167 |
+| [prometheus](prometheus.md) | 2012 | `v3.14.0` | 5623 | 20492 | 9643 | 0.33 | 390 | 337 | 97 |
+| [hugo](hugo.md) | 2013 | `v0.165.0` | 5737 | 21425 | 8591 | 0.34 | 547 | 441 | 129 |
+| [gin](gin.md) | 2014 | `v1.12.0` | 497 | 2046 | 437 | 0.41 | 46 | 36 | 5 |
+| [cobra](cobra.md) | 2015 | `v1.10.2` | 269 | 1155 | 206 | 0.44 | 26 | 23 | 2 |
+| [chi](chi.md) | 2015 | `v5.3.2` | 183 | 761 | 116 | 0.45 | 21 | 19 | 2 |
+| [conc](conc.md) | 2023 | `v0.3.0` | 81 | 152 | 152 | declined | 6 | 6 | 4 |
 <!-- END generated ladder -->
 
 The table between those markers is generated: `task examples` rewrites it from
@@ -54,28 +54,40 @@ matching corpus-derived overlap floor.
 
 **conc is the one rung that declines calibration, and it says so.** Code shape is
 scored on Weisfeiler-Lehman label bags now, and the shape channel only indexes
-bodies of at least 18 AST nodes — so conc's 81 functions yield 351 eligible null
+bodies of at least 16 nodes — so conc's 81 functions yield too few eligible null
 pairs against the 1000 a calibration needs. Eight samples above a one-percent cut
 is not a calibration, so the run keeps the fixed 0.60 and prints why. That is the
 guard working, not the ladder's bottom rung failing: nothing here is silently
-derived from too little evidence.
+derived from too little evidence. It is also why conc's "Kept" equals its "Pairs
+compared": no calibration means no derived overlap floor, so nothing is filtered.
 
 **Two things changed at once on this ladder, and both are visible in the table.**
 Concepts are learned from each corpus rather than asserted from a fixed
 fourteen — "Concepts learned" is the lexicon's own vocabulary, and it scales with
-the corpus (6 on conc, 539 on hugo) where a fixed vocabulary could not. And code
+the corpus (6 on conc, 547 on hugo) where a fixed vocabulary could not. And code
 shape is a corpus-weighted WL Jaccard over canonicalized bodies rather than a
 Jaccard over token 3-grams, which is why every derived floor sits lower than it
 did: two unrelated bodies agree on much less of what is now being counted, so the
 99th percentile of the null moves down with it. The floors are not looser in
 meaning — they are the same one-percent statement about a different measurement.
 
-**"Compression" is the new corpus-health column.** Total canonical AST nodes over
-the count of distinct subtree shapes they hash-cons to. It never feeds a score;
-it says how repetitive a corpus is at all, before any pair is considered — and it
-tracks age and size rather than duplication *quality*: prometheus at 9.07x and
-conc at 3.64x is the difference between a decade of accretion and one idea
-written at once.
+**Compression is the corpus-health number to read next, and it is in each report
+rather than in this table.** Total canonical AST nodes over the count of distinct
+subtree shapes they hash-cons to. It never feeds a score; it says how repetitive
+a corpus is at all, before any pair is considered — and it tracks age and size
+rather than duplication *quality*: prometheus at ~9x and conc at ~3.6x is the
+difference between a decade of accretion and one idea written at once. It has no
+column above because it is not one of the quantities a run prints to stderr, and
+this table is generated from exactly those.
+
+**Three rungs analyse more than Go.** `--languages` defaults to every registered
+frontend, so prometheus's TypeScript web UI, hugo's and moby's stray non-Go
+sources now join their corpora — which is why those three rungs report more
+functions than a Go-only run would (prometheus 5623 against 5469). The lexical
+frontend fills no types, so those units carry `sig: (?)`; everything else about
+them is real. `--languages go` restores the Go-only population exactly, and the
+four remaining rungs carry no non-Go source at all, so their numbers are the same
+either way.
 
 Counts are for the production population (`--tests exclude --generated exclude`,
 the defaults): hand-written non-test code, with files carrying Go's
@@ -96,7 +108,7 @@ family, and moby's is the same networkdb diagnostic-handler group its pair
 list leads with. `doppel families <path>` prints the whole census rather than
 the report's first few.
 "Concepts modeled" is how many of the *learned* concepts reached the five-member
-floor culture needs to build a prototype — 395 of moby's 521, all six of conc's
+floor culture needs to build a prototype — 393 of moby's 519, all six of conc's
 six. It used to be a count out of fourteen and it now scales with the corpus,
 which is the change the lexicon was for: the culture, habitat and arena layers
 have real material at both ends of the ladder now, rather than real material at
@@ -105,10 +117,11 @@ the top and a fixed vocabulary with nothing to say at the bottom.
 ## What each rung shows
 
 **[conc](conc.md) — the floor, and the rung where the guards do the talking.** 81
-functions, 133 compared pairs, six learned concepts and no families at all. Two
+functions, 152 compared pairs, six learned concepts and no families at all. Two
 mechanisms decline here rather than guess: calibration, for want of eligible null
-pairs, and the shape channel, which admits only 3 of the 133 pairs — 88% of the
-corpus's pairs arrive on concept evidence alone. What survives is the `pool`
+pairs, and the shape channel, which admits 26 of the 152 pairs where the concept
+channel admits 120 — most of the corpus's pairs arrive on concept evidence alone
+and would not exist without it. What survives is the `pool`
 package repeating itself across its flavors: `ResultContextPool.Go` beside
 `ResultErrorPool.Go`, then `WithContext` at code-shape 1.00 on two different pool
 types. Evidence mass is small throughout — tens of nats, not hundreds — because
@@ -142,30 +155,33 @@ tails. It is the most concept-driven rung on the ladder, 64% of its pairs
 arriving on concept evidence alone, because a web framework's vocabulary is
 narrow and deeply shared.
 
-**[hugo](hugo.md) — habitats.** 126 packages large enough to have a temperature
-of their own, 539 learned concepts (the largest vocabulary on the ladder), and a
+**[hugo](hugo.md) — habitats.** 129 packages large enough to have a temperature
+of their own, 547 learned concepts (the largest vocabulary on the ladder), and a
 top of report that is a fork rather than a clone: `texttemplate/exec.go`'s
 `evalCallOld` beside `hugo_template.go`'s `evalCall`, then `evalFieldOld` beside
 `evalField` — what a vendored-and-diverged copy looks like, twice. The three
 `tpl/*/init.go` `init` functions pairing with each other are the other kind of
 finding: real repetition that nobody will consolidate.
 
-**[prometheus](prometheus.md) — layers.** Deep call graphs, 90 habitats, and
-1743 coalition ecosystems against 1868 dominance — the highest coalition share on
+**[prometheus](prometheus.md) — layers.** Deep call graphs, 97 habitats, and
+1780 coalition ecosystems against 1869 dominance — the highest coalition share on
 the ladder, because a scrape loop legitimately does storage *and* validation
 *and* remote I/O at once. Its top three are the v1/v2 scrape-appender fork, the
 `endpoints`/`endpointslice` constructors, and the float/integer histogram commit
 pair — three genuinely different kinds of duplication in the first three rows. It
-is also the most compressed corpus on the ladder at 9.07x.
+is also the most compressed corpus on the ladder at 8.93x, and the rung where the
+language default is most visible: its Mantine web UI is the largest body of
+non-Go source on the ladder, and its pages now appear in the report with no
+signature to score.
 
-**[moby](moby.md) — scale.** 7644 functions in a few seconds of analysis after
-parsing, 521 learned concepts, 620 families. The channel mix is now almost
-perfectly even — 30.0% of compared pairs arrive through the concept channel
-alone and 29.7% through the call channel alone — where it used to be 64%
+**[moby](moby.md) — scale.** 7658 functions in a few seconds of analysis after
+parsing, 519 learned concepts, 972 families. The channel mix is now almost
+perfectly even — 30.3% of compared pairs arrive through the concept channel
+alone and 30.5% through the call channel alone — where it used to be 64%
 call-only. Two changes did that: a corpus-learned vocabulary gives the concept
-channel far more to match on, and a calibrated 0.35 code-shape floor admits
-shape candidates a fixed 0.60 turned away. Only 9 functions are suppressed from
-the shape channel and 1 identity bucket exceeds the df cap, both far below what
+channel far more to match on, and a calibrated 0.36 code-shape floor admits
+shape candidates a fixed 0.60 turned away. Only 11 functions are suppressed from
+the shape channel and 2 identity buckets exceed the df cap, both far below what
 the pattern multiset produced, because a WL bag's deep labels are corpus-unique
 where a token 3-gram bag's were corpus idiom. The report and its largest family
 tell one story: `networkdbdiagnostic.go`'s HTTP diagnostic handlers, twelve of
