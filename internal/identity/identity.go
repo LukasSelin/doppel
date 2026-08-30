@@ -752,19 +752,28 @@ func (m *matcher) classify() []Change {
 // this new piece was already in the old body", which is the claim the class
 // makes.
 //
-// Two exclusions, both because the class would otherwise be false:
+// Three exclusions, each because the class would otherwise be false, and each
+// decided on digests rather than on a second threshold:
 //
-//   - F must not be unchanged. A body still present byte-for-byte was not
-//     split; something was copied out of it, which is a different finding and
-//     one this tool already reports as duplication.
-//   - No participating G may be unchanged either, for the same reason from
-//     the other end.
+//   - F must not survive. If any function in the new snapshot carries F's
+//     digest, F's body still exists byte-for-byte somewhere, so it was not
+//     divided — something was copied out of it, which is duplication and is
+//     what the rest of this tool reports.
+//   - No participating G may carry F's digest either. A piece identical to
+//     the whole is not a piece. This is the exclusion that keeps an
+//     exact-clone family from reading as a split: when the corpus already
+//     held three copies of one body and one of them was renamed, the rule's
+//     bare form finds an old body covering two new ones at containment
+//     1.0000 each and calls it a split, which is a confidently wrong answer
+//     about code nobody divided.
+//   - No participating G may be unchanged. A helper that already existed and
+//     was merely reused is not something F produced.
 //
 // Everything else is eligible, matched or not. A function can be edited *and*
-// split, and the task's phrase "an unmatched-or-even-matched old body" is
-// exactly that case: the largest piece usually keeps the original's name and
-// therefore matches it in an earlier pass, and requiring the residue would
-// make the rule fire only on the splits that renamed everything.
+// split, and "an unmatched-or-even-matched old body" is exactly that case:
+// the largest piece usually keeps the original's name and therefore matches
+// it in an earlier pass, and requiring the residue would make the rule fire
+// only on the splits that renamed everything.
 //
 // When the rule fires, F and every participating G are absorbed: they are
 // reported once, in the split, and nowhere else. F's own match is dissolved.
@@ -780,14 +789,24 @@ func (m *matcher) detectSplits() []Change {
 	for _, p := range m.cands {
 		byOld[p.a] = append(byOld[p.a], p.b)
 	}
+	survives := digestSet(m.b.units)
 	var out []Change
 	for i := range m.a.units {
-		if m.absorbedA[i] || m.isUnchanged(i) {
+		pivot := m.a.units[i]
+		if m.absorbedA[i] || survives[pivot.Digest] {
 			continue
 		}
-		parts := m.eligibleParts(i, byOld[i], func(j int) bool {
-			return m.absorbedB[j] || m.isUnchangedNew(j)
-		})
+		var parts []int
+		// byOld's slices come from m.cands, which is sorted, so parts comes
+		// out in ascending new index.
+		for _, j := range byOld[i] {
+			if m.absorbedB[j] || m.isUnchangedNew(j) || sameBody(pivot, m.b.units[j]) {
+				continue
+			}
+			if m.scoreOf(pair{a: i, b: j}).containment >= m.opt.SplitContainment {
+				parts = append(parts, j)
+			}
+		}
 		if len(parts) < 2 {
 			continue
 		}
@@ -801,14 +820,16 @@ func (m *matcher) detectMerges() []Change {
 	for _, p := range m.cands {
 		byNew[p.b] = append(byNew[p.b], p.a)
 	}
+	survived := digestSet(m.a.units)
 	var out []Change
 	for j := range m.b.units {
-		if m.absorbedB[j] || m.isUnchangedNew(j) {
+		pivot := m.b.units[j]
+		if m.absorbedB[j] || survived[pivot.Digest] {
 			continue
 		}
 		var parts []int
 		for _, i := range byNew[j] {
-			if m.absorbedA[i] || m.isUnchanged(i) {
+			if m.absorbedA[i] || m.isUnchanged(i) || sameBody(pivot, m.a.units[i]) {
 				continue
 			}
 			if m.scoreOf(pair{a: i, b: j}).containment >= m.opt.SplitContainment {
@@ -823,21 +844,24 @@ func (m *matcher) detectMerges() []Change {
 	return out
 }
 
-// eligibleParts collects the new-side participants of a split: candidates of
-// old function i whose containment clears the floor and that skip() does not
-// exclude. byOld's slices come from m.cands, which is sorted, so the result is
-// in ascending new index.
-func (m *matcher) eligibleParts(i int, cands []int, skip func(int) bool) []int {
-	var parts []int
-	for _, j := range cands {
-		if skip(j) {
-			continue
-		}
-		if m.scoreOf(pair{a: i, b: j}).containment >= m.opt.SplitContainment {
-			parts = append(parts, j)
+// digestSet indexes the non-empty body digests one side carries, so "did this
+// body survive anywhere" is a lookup rather than a scan. The empty digest is
+// never a member: a declaration with no body is not evidence that any body
+// survived.
+func digestSet(us []snapshot.Unit) map[string]bool {
+	set := make(map[string]bool, len(us))
+	for _, u := range us {
+		if u.Digest != "" {
+			set[u.Digest] = true
 		}
 	}
-	return parts
+	return set
+}
+
+// sameBody reports whether two units are the same body under possibly
+// different names. Empty digests never match, mirroring snapshot.Diff.
+func sameBody(a, b snapshot.Unit) bool {
+	return a.Digest != "" && a.Digest == b.Digest
 }
 
 func (m *matcher) absorbSplit(i int, parts []int) Change {

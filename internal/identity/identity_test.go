@@ -613,6 +613,28 @@ func TestParamsMismatchIsNoted(t *testing.T) {
 	}
 }
 
+// TestExactClonesAreNotASplit pins the exclusion that keeps a clone family
+// from reading as a division.
+//
+// The old corpus holds one body under two names — the kind of exact clone
+// this tool exists to find — and the new corpus renames one of them. Every
+// pair among the three reads containment 1.0000, so the bare "one old body
+// covers two new ones" rule would call it a split. Nothing was divided: the
+// bodies all still exist byte-for-byte, which is exactly what the digest
+// exclusions test.
+func TestExactClonesAreNotASplit(t *testing.T) {
+	twin := strings.Replace(bodyPipelineSum, "func Sum(", "func Total(", 1)
+	renamedTwin := strings.Replace(bodyPipelineSum, "func Sum(", "func Aggregate(", 1)
+	old, new := sides(t,
+		map[string]string{"a/a.go": pkg("a", bodyPipelineSum, twin)},
+		map[string]string{"a/a.go": pkg("a", bodyPipelineSum, renamedTwin)})
+	r := compare(t, old, new)
+	if r.Count(Split) != 0 || r.Count(Merged) != 0 {
+		t.Errorf("a clone family must not read as a split or a merge:\n%s", render(r))
+	}
+	wantClass(t, r, "a.Total", Renamed)
+}
+
 // TestUnrelatedFunctionsAreNotRenames pins the rename floor. Two functions
 // with nothing in common must not be paired off just because they are the
 // only leftovers.
