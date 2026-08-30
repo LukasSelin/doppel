@@ -853,7 +853,7 @@ Stages, all deterministic counting:
    `lift × idf` rather than `idf`, so coverage has no natural maximum either, and pretending it had
    one would make the number a rank in disguise.
 
-Seven decisions here were **measured, not assumed**, and each was wrong the first time:
+Eight decisions here were **measured, not assumed**, and each was wrong the first time:
 
 - **A fixed confidence cut cannot decide membership.** Confidence saturates around the median
   founding member, so `conf >= 0.5` means "at least the median founding member" and discards half
@@ -904,6 +904,34 @@ Seven decisions here were **measured, not assumed**, and each was wrong the firs
   else now covers less of itself with it and can lose the membership, where the old bar would have
   admitted it for sheer bulk. That is the intended reading of "how much of this function is this
   concept", and it is the direction the labels prefer.
+- **Drawing the bar from the corpus instead of the founders is the obvious repair, and it does not
+  work.** The objection to `FloorQuantile` is real and worth stating: founding members are by
+  construction the units that already carry the concept, so a quantile of *their* coverage asks the
+  elite where the entry line is, and one quantile over each concept's own sample still leaves the
+  floors spread **5-6x** from p10 to p90 across the ladder (moby 0.44 to 2.27). Deriving the bar
+  from the population being judged is what `calibrate` does for a threshold.
+
+  What the measurement found is that the *reached* population is the wrong reference, because it is
+  dominated by units carrying a trace of the vocabulary. Any rank-based bar over it lands at 2-5%
+  coverage and membership stops meaning anything: `FloorTouched` at every quantile tried takes moby
+  and hugo to **0.0% unlabelled**, every function saturating `MaxMemberships`, mean confidence
+  0.49 → 0.40, and the largest concept *growing* (cobra 19.3% → 33.5% of the corpus, chi 15.3% →
+  23.5%). A knee — the largest relative drop in the curve — was tried first and is worse in the
+  goal's own terms: it widens the spread to **700x**, because a curve with no cliff still has a
+  largest step, and an 8% step between two groups of equally typical members reads as one.
+
+  `FloorRelMax` is the one that works as intended. Anchored at a quarter of the concept's own
+  best-covered unit it narrows the spread to **1.7-2.2x** — the only rule that moves the number the
+  change exists to move — at neutral coverage (moby 9.4% → 8.8% unlabelled, assignments unchanged
+  at 2.1/fn) and neutral labels (cobra merge 5.3 → 5.2, refactor 12.8 → 13.1, fp 50.5 → 51.0, no
+  violations). **Not adopted**: it drops ~30% of the learned vocabulary on the large corpora (moby
+  519 → 365 concepts, whose founders cannot clear a bar set by one dominant member) and grows the
+  largest concept where the founding rule shrank it (moby 9.0% → 12.3%, hugo 4.5% → 7.9%). One
+  labeled corpus cannot certify that trade, and a comparable floor is a *property* rather than a
+  result — nothing downstream was shown to get better for having one. Same verdict shape as
+  `MinIDF`: `FloorRule` stays an Options-only seam, default `FloorFounding`, and
+  `TestLexiconMembershipLadder` re-runs the question. What would settle it is a second labeled
+  corpus, and a reason to care about floor comparability that is not aesthetic.
 - **The feature co-occurrence graph is not sparse.** Features co-occur far more freely than
   functions resemble each other, so the unbounded graph is one blob: it tripped `MaxComponent` and
   produced one emergent concept, and none at all with no seeds. Each feature keeps its `EdgeK` (8)
@@ -2326,8 +2354,9 @@ moved; the hook path does not have this, because it snapshots the full candidate
     stayed absolute.
   - `TestLexiconMembershipLadder` and `TestLexiconMembershipLabels` (guard
     `DOPPEL_BENCH_LEXICON=1`) measure the membership rule: per corpus and per variant, the
-    unlabelled share, assignments per function, concept count and largest concept as a share of
-    the corpus, plus the labeled rankings where labels exist. `Run.LexOpt` (and
+    unlabelled share, assignments per function, concept count, largest concept as a share of the
+    corpus, the p10/p50/p90 spread of the floors across concepts and how many concepts a
+    corpus-relative bar drops, plus the labeled rankings where labels exist. `Run.LexOpt` (and
     `AnalyzeLexicon`) is the seam they score through, the membership analogue of `AnalyzeWith`'s
     vocabulary seam. They assert nothing; see *The learned lexicon* for the measured result and
     why `MaxMemberships` is 3.
