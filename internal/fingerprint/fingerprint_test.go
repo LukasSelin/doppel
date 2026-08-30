@@ -1,10 +1,9 @@
 package fingerprint
 
 import (
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"testing"
+
+	"github.com/LukasSelin/doppel/internal/gofront"
 )
 
 const (
@@ -48,21 +47,20 @@ func (s *Server) Addr() string {
 }`
 )
 
-// build parses a single function declaration and fingerprints it.
+// build parses a single function declaration and fingerprints it. It goes
+// through the real Go frontend rather than handing go/ast to Build, because
+// Build no longer takes go/ast — which is the point: this package scores the
+// neutral IR and knows nothing about any language.
 func build(t *testing.T, src string) Fingerprint {
 	t.Helper()
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "snippet.go", "package p\n"+src, 0)
+	f, err := gofront.Parse("snippet.go", []byte("package p\n"+src))
 	if err != nil {
 		t.Fatalf("parse snippet: %v", err)
 	}
-	for _, decl := range file.Decls {
-		if fd, ok := decl.(*ast.FuncDecl); ok {
-			return Build(fd)
-		}
+	if f == nil || len(f.Funcs) == 0 {
+		t.Fatalf("no function declaration in snippet")
 	}
-	t.Fatalf("no function declaration in snippet")
-	return Fingerprint{}
+	return Build(&f.Funcs[0])
 }
 
 func TestSimilarityIdentical(t *testing.T) {

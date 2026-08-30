@@ -1,17 +1,19 @@
-// Package fingerprint builds deterministic static summaries of Go function
+// Package fingerprint builds deterministic static summaries of function
 // bodies and scores how similar two of them are. No network, no model, no
 // cache: the same source always yields the same fingerprint and the same score.
+//
+// It works on internal/syntax, not on any language's own AST, so a frontend
+// that can produce a syntax.Func gets a Fingerprint — and with it the
+// similarity score, the retrieval shape channel and all five pattern levels —
+// without this package learning anything about the language.
 package fingerprint
 
 import (
-	"bytes"
-	"go/ast"
-	"go/printer"
-	"go/token"
 	"hash/fnv"
 	"math"
 	"sort"
-	"strings"
+
+	"github.com/LukasSelin/doppel/internal/syntax"
 )
 
 // Weights for each component of the composite similarity Score.
@@ -66,7 +68,7 @@ type Fingerprint struct {
 	Flow     []int     // control-flow node histogram, length flowKinds
 	Depth    []int     // control-flow entry-depth histogram, length depthBuckets
 	Types    []string  // sorted, deduped normalized param + result types
-	Nodes    int       // AST node count of the body (size / triviality guard)
+	Nodes    int       // syntax node count of the body (size / triviality guard)
 	Patterns []Pattern // multi-level structural pattern multiset, sorted by hash
 }
 
@@ -80,20 +82,21 @@ type Breakdown struct {
 	Score     float64 // weighted composite, 0.0-1.0
 }
 
-// Build summarises a function declaration. A nil declaration or a declaration
-// without a body (external or forward-declared) yields the zero Fingerprint.
-func Build(fd *ast.FuncDecl) Fingerprint {
-	if fd == nil || fd.Body == nil {
+// Build summarises a function. A nil function or one without a body
+// (external, forward-declared, or unsegmentable by its frontend) yields the
+// zero Fingerprint.
+func Build(fn *syntax.Func) Fingerprint {
+	if fn == nil || fn.Body == nil {
 		return Fingerprint{}
 	}
-	tokens, flow, depth, nodes := walk(fd.Body)
+	tokens, flow, depth, nodes := walk(fn.Body)
 	return Fingerprint{
 		Shingles: shingle(tokens),
 		Flow:     flow,
 		Depth:    depth,
-		Types:    typeStrings(fd.Type),
+		Types:    typeStrings(fn),
 		Nodes:    nodes,
-		Patterns: extractPatterns(fd, tokens),
+		Patterns: extractPatterns(fn, tokens),
 	}
 }
 
@@ -176,9 +179,9 @@ func SimilarityWith(a, b Fingerprint, w Weights) Breakdown {
 // the last bucket), and the seven statement-bearing constructs — if, for,
 // range, switch, type switch, select, funclit — push a nesting level for
 // their children. The bool stack pairs each push with the f(nil) call
-// ast.Inspect makes after a node's children, which is the only reliable
+// syntax.Inspect makes after a node's children, which is the only reliable
 // after-children hook Inspect offers.
-func walk(body *ast.BlockStmt) (tokens []string, flow, depth []int, nodes int) {
+func walk(body *syntax.Node) (tokens []string, flow, depth []int, nodes int) {
 	flow = make([]int, flowKinds)
 	depth = make([]int, depthBuckets)
 	nesting := 0
@@ -190,7 +193,7 @@ func walk(body *ast.BlockStmt) (tokens []string, flow, depth []int, nodes int) {
 		}
 		depth[b]++
 	}
-	ast.Inspect(body, func(n ast.Node) bool {
+	syntax.Inspect(body, func(n *syntax.Node) bool {
 		if n == nil {
 			if last := len(nests) - 1; last >= 0 {
 				if nests[last] {
@@ -202,86 +205,86 @@ func walk(body *ast.BlockStmt) (tokens []string, flow, depth []int, nodes int) {
 		}
 		nodes++
 		opens := false
-		switch node := n.(type) {
-		case *ast.IfStmt:
+		switch n.Kind {
+		case syntax.KindIf:
 			flow[flowIf]++
 			enter()
 			opens = true
 			tokens = append(tokens, "IF")
-		case *ast.ForStmt:
+		case syntax.KindFor:
 			flow[flowFor]++
 			enter()
 			opens = true
 			tokens = append(tokens, "FOR")
-		case *ast.RangeStmt:
+		case syntax.KindRange:
 			flow[flowRange]++
 			enter()
 			opens = true
 			tokens = append(tokens, "RANGE")
-		case *ast.SwitchStmt:
+		case syntax.KindSwitch:
 			flow[flowSwitch]++
 			enter()
 			opens = true
 			tokens = append(tokens, "SWITCH")
-		case *ast.TypeSwitchStmt:
+		case syntax.KindTypeSwitch:
 			flow[flowTypeSwitch]++
 			enter()
 			opens = true
 			tokens = append(tokens, "TYPESWITCH")
-		case *ast.SelectStmt:
+		case syntax.KindSelect:
 			flow[flowSelect]++
 			enter()
 			opens = true
 			tokens = append(tokens, "SELECT")
-		case *ast.ReturnStmt:
+		case syntax.KindReturn:
 			flow[flowReturn]++
 			enter()
 			tokens = append(tokens, "RETURN")
-		case *ast.DeferStmt:
+		case syntax.KindDefer:
 			flow[flowDefer]++
 			enter()
 			tokens = append(tokens, "DEFER")
-		case *ast.GoStmt:
+		case syntax.KindGo:
 			flow[flowGo]++
 			enter()
 			tokens = append(tokens, "GO")
-		case *ast.FuncLit:
+		case syntax.KindFuncLit:
 			flow[flowFuncLit]++
 			enter()
 			opens = true
 			tokens = append(tokens, "FUNCLIT")
-		case *ast.CallExpr:
+		case syntax.KindCall:
 			tokens = append(tokens, "CALL")
-			if name := calleeName(node); name != "" {
+			if name := calleeName(n); name != "" {
 				tokens = append(tokens, "CALL:"+name)
 			}
-		case *ast.BinaryExpr:
-			tokens = append(tokens, "BIN:"+node.Op.String())
-		case *ast.UnaryExpr:
-			tokens = append(tokens, "UNARY:"+node.Op.String())
-		case *ast.AssignStmt:
-			tokens = append(tokens, "ASSIGN:"+node.Tok.String())
-		case *ast.BranchStmt:
-			tokens = append(tokens, "BRANCH:"+node.Tok.String())
-		case *ast.BasicLit:
-			tokens = append(tokens, "LIT:"+node.Kind.String())
-		case *ast.IncDecStmt:
+		case syntax.KindBinary:
+			tokens = append(tokens, "BIN:"+n.Label)
+		case syntax.KindUnary:
+			tokens = append(tokens, "UNARY:"+n.Label)
+		case syntax.KindAssign:
+			tokens = append(tokens, "ASSIGN:"+n.Label)
+		case syntax.KindBranch:
+			tokens = append(tokens, "BRANCH:"+n.Label)
+		case syntax.KindLit:
+			tokens = append(tokens, "LIT:"+n.Label)
+		case syntax.KindIncDec:
 			tokens = append(tokens, "INCDEC")
-		case *ast.IndexExpr:
+		case syntax.KindIndex:
 			tokens = append(tokens, "INDEX")
-		case *ast.SliceExpr:
+		case syntax.KindSlice:
 			tokens = append(tokens, "SLICE")
-		case *ast.StarExpr:
+		case syntax.KindStar:
 			tokens = append(tokens, "STAR")
-		case *ast.TypeAssertExpr:
+		case syntax.KindAssert:
 			tokens = append(tokens, "ASSERT")
-		case *ast.CompositeLit:
+		case syntax.KindComposite:
 			tokens = append(tokens, "COMPOSITE")
-		case *ast.KeyValueExpr:
+		case syntax.KindKeyValue:
 			tokens = append(tokens, "KV")
-		case *ast.SelectorExpr:
+		case syntax.KindSelector:
 			tokens = append(tokens, "SEL")
-		case *ast.Ident:
+		case syntax.KindIdent:
 			tokens = append(tokens, "ID")
 		}
 		if opens {
@@ -293,15 +296,21 @@ func walk(body *ast.BlockStmt) (tokens []string, flow, depth []int, nodes int) {
 	return tokens, flow, depth, nodes
 }
 
-// calleeName mirrors the selector handling in extractCallees over in the parser
-// package, but drops the receiver expression: the variable a method is called
-// on is arbitrary (e, s, cfg) while the method name is not.
-func calleeName(call *ast.CallExpr) string {
-	switch fn := call.Fun.(type) {
-	case *ast.Ident:
-		return fn.Name
-	case *ast.SelectorExpr:
-		return fn.Sel.Name
+// calleeName names the thing a call invokes, dropping the receiver: the
+// variable a method is called on is arbitrary (e, s, cfg) while the method
+// name is not. A frontend records the selected name in the selector node's
+// Label, so both call shapes read the same field.
+//
+// This deliberately differs from the parser's own callee extraction, which
+// keeps the receiver because the call graph resolves on it.
+func calleeName(call *syntax.Node) string {
+	fun := call.Slot(syntax.RoleFun)
+	if fun == nil {
+		return ""
+	}
+	switch fun.Kind {
+	case syntax.KindIdent, syntax.KindSelector:
+		return fun.Label
 	}
 	return ""
 }
@@ -338,28 +347,29 @@ func hashWindow(window []string) uint64 {
 	return h.Sum64()
 }
 
-// typeStrings renders the parameter and result types of a function, discarding
-// the parameter names. Inputs and outputs are prefixed so that a parameter of
-// type error does not match a returned error.
-func typeStrings(ft *ast.FuncType) []string {
-	if ft == nil {
+// typeStrings renders the parameter and result types of a function,
+// discarding the parameter names. Inputs and outputs are prefixed so that a
+// parameter of type error does not match a returned error.
+//
+// The result is a set, which is why it can read one entry per declared name
+// while the signature line reads one per declared name too: "a, b int"
+// contributes "in:int" once either way. Frontends therefore need only one
+// convention for Params, and the two consumers stay consistent.
+func typeStrings(fn *syntax.Func) []string {
+	if fn == nil {
 		return nil
 	}
 	seen := make(map[string]struct{})
-	collect := func(prefix string, fields *ast.FieldList) {
-		if fields == nil {
-			return
-		}
-		for _, field := range fields.List {
-			typ := PrintType(field.Type)
-			if typ == "" {
+	collect := func(prefix string, params []syntax.Param) {
+		for _, p := range params {
+			if p.Type == "" {
 				continue
 			}
-			seen[prefix+typ] = struct{}{}
+			seen[prefix+p.Type] = struct{}{}
 		}
 	}
-	collect("in:", ft.Params)
-	collect("out:", ft.Results)
+	collect("in:", fn.Params)
+	collect("out:", fn.Results)
 	if len(seen) == 0 {
 		return nil
 	}
@@ -369,19 +379,6 @@ func typeStrings(ft *ast.FuncType) []string {
 	}
 	sort.Strings(out)
 	return out
-}
-
-// PrintType renders a type expression with go/printer and collapses internal
-// whitespace, so a multi-line struct or func type is one token. It is exported
-// because parser needs exactly this rendering for CodeUnit.Signature and kept
-// a byte-identical copy of it; parser already imports fingerprint, so one
-// implementation serves both. An unprintable expression yields "".
-func PrintType(expr ast.Expr) string {
-	var buf bytes.Buffer
-	if err := printer.Fprint(&buf, token.NewFileSet(), expr); err != nil {
-		return ""
-	}
-	return strings.Join(strings.Fields(buf.String()), " ")
 }
 
 // jaccardUint64 intersects two sorted, deduplicated slices in a single pass.

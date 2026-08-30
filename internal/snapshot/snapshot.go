@@ -66,7 +66,14 @@ import (
 // from the corpus now rather than asserted by a rule table, so a schema-4
 // baseline's tags are names from a vocabulary that no longer exists — they
 // would not compare, they would silently fail to match anything.
-const Schema = 5
+//
+// 6 added Params.Languages. Which languages a run reads decides what the
+// corpus *is*, so it belongs with TestsMode and Generated among the
+// parameters that make two runs comparable or not. A schema-5 baseline
+// records no language at all, and defaulting it would assert something the
+// older run never measured — so it is a version bump rather than a field with
+// a fallback.
+const Schema = 6
 
 // Snapshot is one full analysis run.
 //
@@ -106,15 +113,43 @@ type Snapshot struct {
 // min-nodes is not an earlier answer to the same question, it is an answer to a
 // different one.
 type Params struct {
-	Threshold  float64 `json:"threshold"`
-	Top        int     `json:"top"`
-	MinNodes   int     `json:"minNodes"`
-	StructMin  float64 `json:"structMin"`
-	ChannelK   int     `json:"channelK"`
-	MaxPerFunc int     `json:"maxPerFunc"`
-	TestsMode  string  `json:"testsMode"`
-	Generated  string  `json:"generated"` // generated-file population: include, exclude, or only
-	Calibrate  float64 `json:"calibrate"` // null admission rate the thresholds were derived at; 0 = fixed thresholds
+	Threshold  float64  `json:"threshold"`
+	Top        int      `json:"top"`
+	MinNodes   int      `json:"minNodes"`
+	StructMin  float64  `json:"structMin"`
+	ChannelK   int      `json:"channelK"`
+	MaxPerFunc int      `json:"maxPerFunc"`
+	TestsMode  string   `json:"testsMode"`
+	Generated  string   `json:"generated"` // generated-file population: include, exclude, or only
+	Calibrate  float64  `json:"calibrate"` // null admission rate the thresholds were derived at; 0 = fixed thresholds
+	Languages  []string `json:"languages"` // the languages this run read, sorted; corpus-defining like TestsMode
+}
+
+// Equal reports whether two runs asked the same question.
+//
+// It exists because Params stopped being a comparable struct when Languages
+// arrived, and the alternative — storing the language list as one joined
+// string to keep == working — would have hidden a real fact behind a
+// convenience. Comparability is the whole purpose of this type, so it gets an
+// explicit definition rather than an incidental one.
+func (p Params) Equal(q Params) bool {
+	if p.Threshold != q.Threshold || p.Top != q.Top || p.MinNodes != q.MinNodes ||
+		p.StructMin != q.StructMin || p.ChannelK != q.ChannelK ||
+		p.MaxPerFunc != q.MaxPerFunc || p.TestsMode != q.TestsMode ||
+		p.Generated != q.Generated || p.Calibrate != q.Calibrate {
+		return false
+	}
+	if len(p.Languages) != len(q.Languages) {
+		return false
+	}
+	// Both sides are stored sorted, so this is order-sensitive on purpose:
+	// two runs that read the same languages produce the same list.
+	for i := range p.Languages {
+		if p.Languages[i] != q.Languages[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // TagCount is one concept tag and how many units carry it.

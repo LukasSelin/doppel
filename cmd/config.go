@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -15,21 +16,22 @@ import (
 // Keys mirror the flag names, so they are kebab-case, not snake_case.
 // Pointer fields let us distinguish "not set" from zero values.
 type AnalysisConfig struct {
-	Threshold  *float64 `json:"threshold,omitempty"`
-	TopN       *int     `json:"top,omitempty"`
-	MinNodes   *int     `json:"min-nodes,omitempty"`
-	StructMin  *float64 `json:"struct-min,omitempty"`
-	OutputFile *string  `json:"output,omitempty"`
-	ChannelK   *int     `json:"channel-k,omitempty"`
-	Debug      *bool    `json:"debug,omitempty"`
-	MaxPerFunc *int     `json:"max-per-func,omitempty"`
-	Tests      *string  `json:"tests,omitempty"`
-	Generated  *string  `json:"generated,omitempty"`
-	Calibrate  *float64 `json:"calibrate,omitempty"`
-	Format     *string  `json:"format,omitempty"`
-	Families   *int     `json:"families,omitempty"`
-	FamilyMin  *float64 `json:"family-min,omitempty"`
-	HookNotify *string  `json:"hook-notify,omitempty"`
+	Threshold  *float64  `json:"threshold,omitempty"`
+	TopN       *int      `json:"top,omitempty"`
+	MinNodes   *int      `json:"min-nodes,omitempty"`
+	StructMin  *float64  `json:"struct-min,omitempty"`
+	OutputFile *string   `json:"output,omitempty"`
+	ChannelK   *int      `json:"channel-k,omitempty"`
+	Debug      *bool     `json:"debug,omitempty"`
+	MaxPerFunc *int      `json:"max-per-func,omitempty"`
+	Tests      *string   `json:"tests,omitempty"`
+	Generated  *string   `json:"generated,omitempty"`
+	Languages  *[]string `json:"languages,omitempty"`
+	Calibrate  *float64  `json:"calibrate,omitempty"`
+	Format     *string   `json:"format,omitempty"`
+	Families   *int      `json:"families,omitempty"`
+	FamilyMin  *float64  `json:"family-min,omitempty"`
+	HookNotify *string   `json:"hook-notify,omitempty"`
 }
 
 // defaultCalibrateRate is the fraction of random unrelated pairs a run's
@@ -160,6 +162,9 @@ func applyConfig(cmd *cobra.Command, cfg *AnalysisConfig) {
 	if cfg.Generated != nil {
 		set("generated", *cfg.Generated)
 	}
+	if cfg.Languages != nil {
+		set("languages", strings.Join(*cfg.Languages, ","))
+	}
 	if cfg.Calibrate != nil {
 		set("calibrate", strconv.FormatFloat(*cfg.Calibrate, 'f', -1, 64))
 	}
@@ -220,6 +225,11 @@ func hookParams(root string) (Params, error) {
 	}
 	if cfg.Generated != nil {
 		p.Generated = *cfg.Generated
+	}
+	// Corpus-defining, like tests and generated: which languages are read
+	// decides what the population is, so a hook must measure the same one.
+	if cfg.Languages != nil {
+		p.Languages = *cfg.Languages
 	}
 	if cfg.Calibrate != nil {
 		p.Calibrate = *cfg.Calibrate
