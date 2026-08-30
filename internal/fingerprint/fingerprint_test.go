@@ -1,10 +1,9 @@
 package fingerprint
 
 import (
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"testing"
+
+	"github.com/LukasSelin/doppel/internal/gofront"
 )
 
 const (
@@ -48,6 +47,7 @@ func (s *Server) Addr() string {
 }`
 )
 
+<<<<<<< HEAD
 // build parses a single function declaration and fingerprints it.
 //
 // It fills WL itself, because Build deliberately does not: in production the
@@ -56,22 +56,31 @@ func (s *Server) Addr() string {
 // — these tests are about the scoring arithmetic over two bags, and what
 // canonicalization does to a bag's contents is internal/canon's and
 // internal/parser's to prove.
+=======
+// build parses a single function declaration and fingerprints it. It goes
+// through the real Go frontend rather than handing go/ast to Build, because
+// Build no longer takes go/ast — which is the point: this package scores the
+// neutral IR and knows nothing about any language.
+>>>>>>> origin/master
 func build(t *testing.T, src string) Fingerprint {
 	t.Helper()
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "snippet.go", "package p\n"+src, 0)
+	f, err := gofront.Parse("snippet.go", []byte("package p\n"+src))
 	if err != nil {
 		t.Fatalf("parse snippet: %v", err)
 	}
+<<<<<<< HEAD
 	for _, decl := range file.Decls {
 		if fd, ok := decl.(*ast.FuncDecl); ok {
 			fp := Build(fd)
 			fp.WL = WLBag(fd)
 			return fp
 		}
+=======
+	if f == nil || len(f.Funcs) == 0 {
+		t.Fatalf("no function declaration in snippet")
+>>>>>>> origin/master
 	}
-	t.Fatalf("no function declaration in snippet")
-	return Fingerprint{}
+	return Build(&f.Funcs[0])
 }
 
 // Unit tests score with nil weights — no corpus, so every label is worth 1

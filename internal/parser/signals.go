@@ -1,14 +1,13 @@
 package parser
 
 import (
-	"go/ast"
-	"path"
 	"sort"
-	"strconv"
 	"strings"
+
+	"github.com/LukasSelin/doppel/internal/syntax"
 )
 
-// TagSignals is the AST-level evidence the tagger reads instead of scanning
+// TagSignals is the structural evidence the tagger reads instead of scanning
 // raw source text. Substring-matching the body meant a comment saying "COMMIT"
 // tagged a function transaction and mtx.Lock() matched the keyword "tx.";
 // these fields separate the channels so each rule can look only where its
@@ -57,25 +56,17 @@ func (s TagSignals) RefPath(local string) (string, bool) {
 // call graph and the shared-callee comparison signal, and its exact output —
 // including its quirk of qualifying a call only when the receiver is a bare
 // identifier — must not drift when tagging needs change.
-func extractSignals(fd *ast.FuncDecl, file *ast.File) TagSignals {
+func extractSignals(fn syntax.Func, file syntax.File) TagSignals {
 	sig := TagSignals{}
 
 	importSet := make(map[string]struct{})
 	refs := make(map[string]string)
 	for _, imp := range file.Imports {
-		p, err := strconv.Unquote(imp.Path.Value)
-		if err != nil {
-			continue
-		}
-		importSet[p] = struct{}{}
-		local := path.Base(p)
-		if imp.Name != nil {
-			local = imp.Name.Name
-		}
-		if local == "." || local == "_" {
+		importSet[imp.Path] = struct{}{}
+		if imp.Local == "." || imp.Local == "_" {
 			continue // dot and blank imports bind no selector-usable name
 		}
-		refs[local] = p
+		refs[imp.Local] = imp.Path
 	}
 	sig.Imports = sortedSet(importSet)
 	if len(refs) > 0 {
@@ -94,55 +85,52 @@ func extractSignals(fd *ast.FuncDecl, file *ast.File) TagSignals {
 
 	// A function *named* retryFetch is evidence about the function even though
 	// its own name never appears inside its body.
-	idents[fd.Name.Name] = struct{}{}
+	idents[fn.Name] = struct{}{}
 
-	inspect := func(n ast.Node) bool {
-		switch node := n.(type) {
-		case *ast.SelectorExpr:
-			if x, ok := node.X.(*ast.Ident); ok {
-				selectors[x.Name+"."+node.Sel.Name] = struct{}{}
-			} else if x, ok := node.X.(*ast.SelectorExpr); ok {
-				// A nested selector like c.httpClient.Do used to record only
-				// the inner pair ("c.httpClient") and drop the outer call
-				// entirely, which is how a wrapper-client codebase reported
-				// zero http_call. Record the tail pair ("httpClient.Do") so
-				// receiver rules see the field the call goes through; one
-				// level deep, additive, and only for the tagger — Callees and
-				// the call graph never read Selectors.
-				selectors[x.Sel.Name+"."+node.Sel.Name] = struct{}{}
-			}
-		case *ast.BasicLit:
-			if node.Kind.String() == "STRING" {
-				if v, err := strconv.Unquote(node.Value); err == nil {
-					literals[v] = struct{}{}
-				} else {
-					literals[node.Value] = struct{}{}
+	inspect := func(n *syntax.Node) bool {
+		if n == nil {
+			return true
+		}
+		switch n.Kind {
+		case syntax.KindSelector:
+			// A selector's Label is the name it selects, so both shapes read
+			// the same two fields. For a nested selector like c.httpClient.Do
+			// the receiver is itself a selector and its Label is the field
+			// name, which records the tail pair ("httpClient.Do"): the inner
+			// pair alone used to be recorded and the outer call dropped, which
+			// is how a wrapper-client codebase reported zero http_call. One
+			// level deep, additive, and only for the tagger — Callees and the
+			// call graph never read Selectors.
+			if x := n.Slot(syntax.RoleX); x != nil {
+				switch x.Kind {
+				case syntax.KindIdent, syntax.KindSelector:
+					selectors[x.Label+"."+n.Label] = struct{}{}
 				}
 			}
-		case *ast.Ident:
-			idents[node.Name] = struct{}{}
-		case *ast.GoStmt:
+		case syntax.KindLit:
+			if n.Label == "STRING" {
+				literals[n.Text] = struct{}{}
+			}
+		case syntax.KindIdent:
+			idents[n.Label] = struct{}{}
+		case syntax.KindGo:
 			sig.HasGoStmt = true
-		case *ast.SelectStmt:
+		case syntax.KindSelect:
 			sig.HasSelect = true
-		case *ast.ChanType:
+		case syntax.KindChanType:
 			sig.HasChan = true
 		}
 		return true
 	}
-	if fd.Body != nil {
-		ast.Inspect(fd.Body, inspect)
-	}
+	syntax.Inspect(fn.Body, inspect)
 	// A function that takes or returns a channel is coordinating concurrent
 	// work even if its body never mentions one.
-	if fd.Type != nil {
-		ast.Inspect(fd.Type, func(n ast.Node) bool {
-			if _, ok := n.(*ast.ChanType); ok {
-				sig.HasChan = true
-			}
-			return true
-		})
-	}
+	syntax.Inspect(fn.Type, func(n *syntax.Node) bool {
+		if n != nil && n.Kind == syntax.KindChanType {
+			sig.HasChan = true
+		}
+		return true
+	})
 
 	sig.Selectors = sortedSet(selectors)
 	sig.StringLits = sortedSet(literals)

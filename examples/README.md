@@ -21,6 +21,7 @@ corpus is a decade of accretion". Both ends are visible below.
 
 ## The ladder
 
+<<<<<<< HEAD
 | Corpus | Since | Pinned | Functions | Pairs compared | Kept | Code-shape floor | Concepts learned | Concepts modeled | Habitats | Compression |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | [moby](moby.md) | 2013 | `v28.5.2` | 7644 | 28372 | 13646 | 0.35 | 521 | 395 | 166 | 8.60x |
@@ -30,6 +31,25 @@ corpus is a decade of accretion". Both ends are visible below.
 | [cobra](cobra.md) | 2015 | `v1.10.2` | 269 | 1152 | 206 | 0.44 | 26 | 23 | 2 | 5.51x |
 | [chi](chi.md) | 2015 | `v5.3.2` | 183 | 755 | 113 | 0.45 | 21 | 19 | 2 | 5.32x |
 | [conc](conc.md) | 2023 | `v0.3.0` | 81 | 133 | 133 | 0.60 (declined) | 6 | 6 | 4 | 3.64x |
+=======
+<!-- BEGIN generated ladder -->
+| Corpus | Since | Pinned | Functions | Pairs compared | Kept | Code-shape floor | Concepts modeled | Habitats |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| [moby](moby.md) | 2013 | `v28.5.2` | 7644 | 28936 | 13899 | 0.45 | 394 | 166 |
+| [prometheus](prometheus.md) | 2012 | `v3.14.0` | 5469 | 20098 | 9577 | 0.42 | 327 | 90 |
+| [hugo](hugo.md) | 2013 | `v0.165.0` | 5438 | 20976 | 8303 | 0.43 | 429 | 126 |
+| [gin](gin.md) | 2014 | `v1.12.0` | 497 | 2101 | 477 | 0.49 | 37 | 5 |
+| [cobra](cobra.md) | 2015 | `v1.10.2` | 269 | 1168 | 208 | 0.53 | 23 | 2 |
+| [chi](chi.md) | 2015 | `v5.3.2` | 183 | 750 | 118 | 0.53 | 19 | 2 |
+| [conc](conc.md) | 2023 | `v0.3.0` | 81 | 151 | 10 | 0.85 | 6 | 4 |
+<!-- END generated ladder -->
+
+The table between those markers is generated: `task examples` rewrites it from
+the same stderr diagnostics each report quotes, so its numbers cannot drift from
+the reports beside it. Everything else on this page is hand-written, the
+performance table included — that one is a stopwatch on one machine and no run
+can measure it.
+>>>>>>> origin/master
 
 **The code-shape floor is not a setting — it is a measurement.** Each run derives
 it from what a random, unrelated pair scores in that corpus, at the default rate
@@ -318,12 +338,24 @@ task examples
 ```
 
 ```bash
+<<<<<<< HEAD
 task baseline
 ```
 
 ```bash
 task ablate
 ```
+=======
+task examples-check
+```
+
+`task examples` rewrites a report only when its content moved, ignoring the row
+naming the doppel revision — so running it twice leaves the tree clean, and CI
+can regenerate on every push to `master` without committing seven files each
+time. `task examples-check` is the same run with nothing written: it reports
+what is stale and fails. The revision in each report's header is therefore the
+commit at which *that report's content* last changed, not the newest commit.
+>>>>>>> origin/master
 
 `task corpora` clones the pinned ladder (a few hundred megabytes) into
 `$DOPPEL_CORPORA`, defaulting to `doppel-corpora` under the user cache

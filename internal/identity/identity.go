@@ -349,7 +349,7 @@ func notes(base, head snapshot.Snapshot) []string {
 	if base.Ontology != head.Ontology {
 		out = append(out, fmt.Sprintf("different ontology versions (%s, %s); identity reads no concept, so this is recorded rather than refused", base.Ontology, head.Ontology))
 	}
-	if base.Params != head.Params {
+	if !base.Params.Equal(head.Params) {
 		out = append(out, fmt.Sprintf("different analysis params (%+v, %+v); a population change shows up as new and deleted functions", base.Params, head.Params))
 	}
 	return out

@@ -13,7 +13,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
-Regenerate with `task examples`.
+Regenerate with `task examples`; CI regenerates on every push to master.
 
 ## Run diagnostics
 

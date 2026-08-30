@@ -1,6 +1,6 @@
 package fingerprint
 
-import "go/ast"
+import "github.com/LukasSelin/doppel/internal/syntax"
 
 // Cons computes the hash-consing signature of every node in a function body:
 // one structural hash per node, identifying the exact subtree rooted there.
@@ -27,13 +27,14 @@ import "go/ast"
 //
 // # It is meant for the canonical tree
 //
-// As with WLBag, the caller passes canon's canonical form, not the parsed
-// declaration: two hand-written copies of the same logic should cons
-// together, and canonicalization is what removes the accidental choices
-// (bound-identifier naming, and everything else canon normalizes) that would
-// otherwise keep them apart. Only the body is walked — the signature is not
-// shape, and has its own Fingerprint.Types component. A nil declaration or
-// one without a body yields no hashes, mirroring WLBag's rule.
+// As with WLBag, the caller passes syntax.Func.Shape — the frontend's
+// canonical body where there is one — and not the body as written: two
+// hand-written copies of the same logic should cons together, and
+// canonicalization is what removes the accidental choices (bound-identifier
+// naming, and everything else it normalizes) that would otherwise keep them
+// apart. Only the body is walked — the signature is not shape, and has its own
+// Fingerprint.Types component. A nil tree yields no hashes, mirroring WLBag's
+// rule.
 //
 // # Cost and collisions
 //
@@ -43,15 +44,15 @@ import "go/ast"
 // them into one entry in the corpus-wide count ConsCorpus keeps — the same
 // collision budget WL already runs on, accepted for the same reason: a
 // cryptographic hash would be disproportionate for a compression estimate.
-func Cons(fd *ast.FuncDecl) []uint64 {
-	if fd == nil || fd.Body == nil {
+func Cons(root *syntax.Node) []uint64 {
+	if root == nil {
 		return nil
 	}
 	var hashes []uint64
 	var frames []consFrame
 	var kids []uint64
 
-	ast.Inspect(fd.Body, func(n ast.Node) bool {
+	syntax.Inspect(root, func(n *syntax.Node) bool {
 		if n != nil {
 			frames = append(frames, consFrame{label: wlLabel0Hash(n), start: len(kids)})
 			return true
@@ -75,8 +76,8 @@ func Cons(fd *ast.FuncDecl) []uint64 {
 }
 
 // consFrame is one open node during the walk: its label, captured at push
-// time because ast.Inspect's matching pop callback receives nil rather than
-// the node, and where its children's hashes start in the shared arena.
+// time because Inspect's matching pop callback receives nil rather than the
+// node, and where its children's hashes start in the shared arena.
 type consFrame struct {
 	label uint64
 	start int
@@ -118,16 +119,15 @@ func (s ConsStats) Ratio() float64 {
 }
 
 // ConsCorpus hash-conses every body's subtrees and reduces the result to the
-// two totals Ratio needs. Pass one canonical *ast.FuncDecl per function, in
-// any order and including nil ones (a declaration with no body contributes
-// nothing) — the result depends only on the multiset of hashes, never on
-// their order, so the corpus-wide dedup is a plain set-size count and needs
-// no sorting.
-func ConsCorpus(bodies []*ast.FuncDecl) ConsStats {
+// two totals Ratio needs. Pass one canonical body per function, in any order
+// and including nil ones (a declaration with no body contributes nothing) —
+// the result depends only on the multiset of hashes, never on their order, so
+// the corpus-wide dedup is a plain set-size count and needs no sorting.
+func ConsCorpus(bodies []*syntax.Node) ConsStats {
 	seen := make(map[uint64]struct{})
 	total := 0
-	for _, fd := range bodies {
-		for _, h := range Cons(fd) {
+	for _, body := range bodies {
+		for _, h := range Cons(body) {
 			total++
 			seen[h] = struct{}{}
 		}

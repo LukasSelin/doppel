@@ -2,13 +2,13 @@ package analyzer
 
 import (
 	"fmt"
-	"go/ast"
 	"slices"
 	"strings"
 
 	"github.com/LukasSelin/doppel/internal/canon"
 	"github.com/LukasSelin/doppel/internal/fingerprint"
 	"github.com/LukasSelin/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/syntax"
 )
 
 // Explain says, in one sentence, why two bodies came out as alike as they did
@@ -75,8 +75,13 @@ func Explain(a, b parser.CodeUnit) string {
 // Declaration order rather than firing order, matching canon.Result.Fired's
 // own choice: what a reader wants is which normalizations were needed, and the
 // round a rule happened to catch in is an artefact of the fixed-point loop.
-func firedUnion(as, bs []canon.RuleID) []string {
-	fired := make(map[canon.RuleID]bool, len(as)+len(bs))
+// The IDs arrive as plain strings, because syntax.Func carries them that way:
+// a canonicalizer belongs to a frontend, so the IR cannot be typed on any one
+// frontend's rule enum. canon's IDs are documented as stable API precisely so
+// that projection is lossless, and a rule from a canonicalizer this switch
+// does not know renders under its own name.
+func firedUnion(as, bs []string) []string {
+	fired := make(map[string]bool, len(as)+len(bs))
 	for _, id := range as {
 		fired[id] = true
 	}
@@ -85,11 +90,19 @@ func firedUnion(as, bs []canon.RuleID) []string {
 	}
 	var out []string
 	for _, r := range canon.Rules() {
-		if fired[r.ID] {
+		if fired[string(r.ID)] {
 			out = append(out, canonFriendly(r.ID))
+			delete(fired, string(r.ID))
 		}
 	}
-	return out
+	// Anything left fired under a canonicalizer canon does not own. Sorted,
+	// because there is no declaration order to inherit for it.
+	rest := make([]string, 0, len(fired))
+	for id := range fired {
+		rest = append(rest, id)
+	}
+	slices.Sort(rest)
+	return append(out, rest...)
 }
 
 // canonFriendly is the word a report uses for a canonicalization rule.
@@ -278,10 +291,10 @@ func countWord(n int) string {
 // A collision between the two sides resolves to A's naming, since A is merged
 // first. Both name the same kind unless the hash collided, and the ordering
 // makes the outcome the same on every run either way.
-func labelKinds(a, b *ast.FuncDecl) map[uint64]fingerprint.LowLabel {
+func labelKinds(a, b *syntax.Node) map[uint64]fingerprint.LowLabel {
 	out := make(map[uint64]fingerprint.LowLabel)
-	for _, fd := range []*ast.FuncDecl{a, b} {
-		for _, lk := range fingerprint.LowLabels(fd) {
+	for _, tree := range []*syntax.Node{a, b} {
+		for _, lk := range fingerprint.LowLabels(tree) {
 			if _, seen := out[lk.Label]; !seen {
 				out[lk.Label] = lk
 			}

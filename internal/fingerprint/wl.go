@@ -1,10 +1,11 @@
 package fingerprint
 
 import (
-	"go/ast"
 	"math"
 	"slices"
 	"strconv"
+
+	"github.com/LukasSelin/doppel/internal/syntax"
 )
 
 // wlRounds is how many Weisfeiler–Lehman refinement rounds run past the raw
@@ -22,13 +23,13 @@ const wlRounds = 3
 // it, and the two facts that let it be named to a reader. A bag is a slice of
 // these sorted ascending by Label, with no label repeated.
 //
-// A sorted slice rather than the map T2 shipped, now that something scores on
-// it. Every other multiset on a Fingerprint — Shingles — is already a sorted
-// slice, for the reason this one is too: scoring a pair is a single merge of
-// two sorted runs, and sorting inside the pair loop would dominate a stage
-// that runs on tens of thousands of pairs. Keeping the map as well and
-// deriving this from it would be two spellings of one multiset, which is the
-// drift this package refuses everywhere else.
+// A sorted slice rather than a map, now that something scores on it. Every
+// other multiset on a Fingerprint — Shingles — is already a sorted slice, for
+// the reason this one is too: scoring a pair is a single merge of two sorted
+// runs, and sorting inside the pair loop would dominate a stage that runs on
+// tens of thousands of pairs. Keeping a map as well and deriving this from it
+// would be two spellings of one multiset, which is the drift this package
+// refuses everywhere else.
 //
 // # H and Kind are free, and that is why they are here
 //
@@ -54,11 +55,12 @@ type LabelCount struct {
 // label_0 vocabulary, which every deeper label inherits through its self
 // chain.
 //
-// It is an enum rather than the string wlLabel0 used to build inline so that
-// a bag carries it for free (see LabelCount), and it is *the* vocabulary
-// rather than a second one: wlLabel0 returns a LabelKind and the hash is
-// computed over its String(), so a kind cannot exist in the switch without a
-// name or gain a name that hashes differently than it reads.
+// It is this package's own enum rather than syntax.Kind directly, for one
+// reason: the label is a hash of the kind's *name*, and the name has to be
+// pinned here where the scoring lives. syntax.Kind is the IR's vocabulary and
+// may grow a kind or reword one without meaning to move every score in the
+// tool; labelKindNames is the table that decides what a label is, and
+// wlLabel0 is the one place the two vocabularies meet.
 type LabelKind uint8
 
 // The label_0 vocabulary. Values are positional and are never serialized to
@@ -115,20 +117,15 @@ const (
 	KindValueSpec
 	KindTypeSpec
 	KindImportSpec
-	KindComment
-	KindCommentGroup
-	KindFuncDecl
-	KindFile
 	KindBadExpr
 	KindBadStmt
 	KindBadDecl
 	numLabelKinds
 )
 
-// labelKindNames is the hash input and the display name at once — the whole
-// point of routing both through one table. Index-aligned with the constants
-// above; TestLabelKindNames pins the length against numLabelKinds so a kind
-// added without a name fails the build's tests rather than hashing as "".
+// labelKindNames is the hash input; index-aligned with the constants above.
+// TestLabelKindNames pins the length against numLabelKinds so a kind added
+// without a name fails the build's tests rather than hashing as "".
 var labelKindNames = [numLabelKinds]string{
 	"NODE", "ID", "CALL", "BIN", "UNARY", "ASSIGN", "BRANCH", "LIT",
 	"IF", "FOR", "RANGE", "SWITCH", "TYPESWITCH", "SELECT", "RETURN",
@@ -137,8 +134,28 @@ var labelKindNames = [numLabelKinds]string{
 	"LABELED", "SEND", "DECLSTMT", "CASE", "COMM", "PAREN", "ELLIPSIS",
 	"INDEXLIST", "ARRAYTYPE", "STRUCTTYPE", "FUNCTYPE", "INTERFACETYPE",
 	"MAPTYPE", "CHANTYPE", "FIELD", "FIELDLIST", "GENDECL", "VALUESPEC",
-	"TYPESPEC", "IMPORTSPEC", "COMMENT", "COMMENTGROUP", "FUNCDECL",
-	"FILE", "BADEXPR", "BADSTMT", "BADDECL",
+	"TYPESPEC", "IMPORTSPEC", "BADEXPR", "BADSTMT", "BADDECL",
+}
+
+// labelKindWords is the reader-facing word for each kind, index-aligned with
+// labelKindNames. It is display-only and never reaches a hash, which is why
+// it can read like English where the hash name reads like a token.
+//
+// It is a table rather than a derivation. The words used to come from
+// reflecting on go/ast's type names with a small override map, which was
+// exactly right while this package was Go-typed and is not available at all
+// now that it walks a neutral tree — and a table is the honest replacement,
+// because a word chosen for a reader is not something a naming convention can
+// be trusted to produce.
+var labelKindWords = [numLabelKinds]string{
+	"node", "ident", "call", "binary", "unary", "assign", "branch", "literal",
+	"if", "for", "range", "switch", "typeswitch", "select", "return",
+	"defer", "go", "function literal", "increment", "index", "slice", "star",
+	"type assertion", "composite literal", "key-value", "selector", "block",
+	"expression statement", "empty", "labeled", "send", "declaration statement",
+	"case", "comm", "paren", "ellipsis", "indexlist", "arraytype", "structtype",
+	"functype", "interfacetype", "maptype", "chantype", "field", "fieldlist",
+	"declaration", "valuespec", "typespec", "importspec", "bad", "bad", "baddecl",
 }
 
 // String is the kind's name — the same bytes wlKind hashes.
@@ -149,20 +166,26 @@ func (k LabelKind) String() string {
 	return labelKindNames[k]
 }
 
+// Word is the kind's reader-facing name, for a report that has to say what
+// two bodies differ by.
+func (k LabelKind) Word() string {
+	if int(k) >= len(labelKindWords) {
+		return "node"
+	}
+	return labelKindWords[k]
+}
+
 // DescribeLabel names a label for a reader: the refinement round it was
 // produced at and the node kind it was computed at — "depth-2 IF".
 //
-// # This is a weaker explanation than what it replaced, and deliberately so
+// # This is a weaker explanation than a rendered pattern would be
 //
-// The pattern multiset this channel used to index carried a *render* — the
-// hash's own serialization, so "if(bin:!=(id,nil))" could not drift from the
-// thing that was counted. A WL label has no such string: it is a hash of a
-// whole subtree, and the only honest short name for it is where it sits and
-// what it sits on. "depth-2 IF" says a guard three levels deep matched
-// exactly, which is a real and checkable claim about a pair, but it does not
-// say *which* guard. Naming the subtree would mean rendering it, which is a
-// second serialization of the thing the hash already is — the drift this
-// package spent the pattern levels avoiding.
+// A WL label has no faithful short string: it is a hash of a whole subtree,
+// and the only honest short name for it is where it sits and what it sits on.
+// "depth-2 IF" says a guard three levels deep matched exactly, which is a real
+// and checkable claim about a pair, but it does not say *which* guard. Naming
+// the subtree would mean rendering it, which is a second serialization of the
+// thing the hash already is — a drift this package refuses.
 //
 // One definition, here, so the retriever's block and any later explanation
 // layer print a label the same way.
@@ -196,7 +219,7 @@ type labelAcc struct {
 	kind  LabelKind
 }
 
-// WLBag computes the Weisfeiler–Lehman label multiset of a function body.
+// WLBag computes the Weisfeiler–Lehman label multiset of a function's shape.
 //
 // The recurrence is the standard one — label_0(v) is the node's kind, and
 //
@@ -209,18 +232,20 @@ type labelAcc struct {
 // labels from different rounds can only collide the way any two FNV values
 // can, which is the collision budget the rest of this package already runs on.
 //
-// # It is meant for the canonical tree
+// # It walks the canonical shape when there is one
 //
-// The caller passes canon's canonical form, not the parsed declaration: the
-// bag is a shape key, and canonicalization is what makes two functions that
-// differ only in incidental choices produce the same shape. Nothing here
-// requires it — a raw declaration yields a perfectly well-formed bag — but
-// the labels then carry whichever accidents canon exists to remove.
+// The tree is syntax.Func.Shape: the frontend's canonical body where the
+// frontend has a canonicalizer, and the body as written where it does not.
+// The bag is a shape key, and canonicalization is what makes two functions
+// that differ only in incidental choices produce the same shape. Nothing here
+// requires it — a raw body yields a perfectly well-formed bag — but the labels
+// then carry whichever accidents a canonicalizer exists to remove. That is
+// what a language without one loses: recall on those pairs, never correctness.
 //
 // Only the body is walked, exactly as walk() does for the token stream. The
 // signature is not shape: it has its own Fingerprint.Types component, and
-// folding it in here would count it twice. A nil declaration or one without
-// a body yields a nil bag, mirroring the zero Fingerprint's "no body".
+// folding it in here would count it twice. A nil function or one without a
+// body yields a nil bag, mirroring the zero Fingerprint's "no body".
 //
 // # Cost
 //
@@ -229,8 +254,15 @@ type labelAcc struct {
 // is walked once rather than once per round. Children's vectors live in a
 // single arena reused across siblings, so a function costs one map and two
 // slices no matter how deep it nests.
-func WLBag(fd *ast.FuncDecl) []LabelCount {
-	if fd == nil || fd.Body == nil {
+func WLBag(fn *syntax.Func) []LabelCount {
+	return wlBagOf(fn.Shape())
+}
+
+// wlBagOf is WLBag over an already-chosen tree, so a caller holding only the
+// canonical body (the snapshot round-trip, the corpus statistics) does not
+// have to fabricate a syntax.Func to reach it.
+func wlBagOf(root *syntax.Node) []LabelCount {
+	if root == nil {
 		return nil
 	}
 	bag := make(map[uint64]*labelAcc)
@@ -238,7 +270,7 @@ func WLBag(fd *ast.FuncDecl) []LabelCount {
 	var kids []wlLabels
 	var buf []uint64
 
-	ast.Inspect(fd.Body, func(n ast.Node) bool {
+	syntax.Inspect(root, func(n *syntax.Node) bool {
 		if n != nil {
 			kind, name := wlLabel0(n)
 			frames = append(frames, wlFrame{
@@ -248,7 +280,7 @@ func WLBag(fd *ast.FuncDecl) []LabelCount {
 			})
 			return true
 		}
-		// ast.Inspect calls f(nil) after a node's children, and only for
+		// syntax.Inspect calls f(nil) after a node's children, and only for
 		// nodes whose f returned true. Returning true unconditionally above
 		// is what pairs every push with exactly one pop; the guard is for
 		// the day that stops being true, because a panic here would take
@@ -359,31 +391,40 @@ func wlKind(kind, name string) uint64 {
 
 // wlLabel0Hash is wlLabel0 for a caller that wants only the label — Cons,
 // which shares the label_0 vocabulary but keeps no per-label bookkeeping.
-func wlLabel0Hash(n ast.Node) uint64 {
+func wlLabel0Hash(n *syntax.Node) uint64 {
 	kind, name := wlLabel0(n)
 	return wlKind(kind.String(), name)
 }
 
-// wlLabel0 is the initial label: the node's kind.
+// wlLabel0 is the initial label: the node's kind, plus the one name that is
+// part of that kind.
 //
-// Two rules decide what "kind" means, and both are inherited rather than
-// invented:
+// It is the one place syntax.Kind and LabelKind meet, and the mapping is
+// total and one-to-one by design: an IR kind that collapsed several
+// constructs into one label would not lose them from the bag, it would merge
+// them into their parents' child multisets and make two different shapes
+// agree. A kind the IR does not name arrives as syntax.KindOther and labels
+// as NODE — still a node, still counted, just not distinguished.
 //
-//   - Where go/ast folds several syntactic constructs into one struct
-//     behind a token field, that token is part of the kind. walk() already
-//     splits ASSIGN, BRANCH, BIN, UNARY and LIT this way; := and = are not
-//     the same statement and const and var are not the same declaration.
-//   - A call keeps its selector name — CALL/Errorf, CALL/Lock — with the
+// Two rules decide what "part of the kind" means, and both are inherited from
+// the token stream rather than invented here:
+//
+//   - Where a language folds several constructs into one node behind a token,
+//     that token is part of the kind. The IR records it in Label, and ASSIGN,
+//     BRANCH, BIN, UNARY, LIT, INCDEC, GENDECL and CHANTYPE all read it: :=
+//     and = are not the same statement and const and var are not the same
+//     declaration.
+//   - A call keeps its callee name — CALL/Errorf, CALL/Lock — with the
 //     receiver expression dropped, exactly as walk() does. The name a
 //     function calls is intent; the variable it calls it on is arbitrary.
 //
 // # Identifiers collapse to ID, deliberately
 //
-// Every *ast.Ident labels as ID, with no name, which is walk()'s rule for
-// the token stream and is what makes a renamed copy produce an identical
-// bag. It matters twice over on a canonical tree, because canon has already
-// split identifiers into two populations and neither should be labelled by
-// name:
+// Every identifier labels as ID with no name, which is walk()'s rule for the
+// token stream and is what makes a renamed copy produce an identical bag. It
+// matters twice over on a canonical tree, because canonicalization has
+// already split identifiers into two populations and neither should be
+// labelled by name:
 //
 //   - Bound identifiers are positional after alpha-renaming — x0, x1, … in
 //     binding order. Labelling by name would put binding *order* into every
@@ -398,144 +439,117 @@ func wlLabel0Hash(n ast.Node) uint64 {
 //     refuses to be everywhere else.
 //
 // The name of the declaration itself never arises: only the body is walked.
-//
-// It returns the kind and the one name that is part of it, rather than the
-// finished hash, so the kind reaches the bag as well as the hash. wlKind is
-// still what turns the pair into a label, over kind.String() — the same bytes
-// the string switch used to pass, so no label moved when this became an enum.
-func wlLabel0(n ast.Node) (LabelKind, string) {
-	switch node := n.(type) {
-	// Kinds the token stream already names, spelled the same way.
-	case *ast.Ident:
-		return KindIdent, ""
-	case *ast.CallExpr:
-		return KindCall, calleeName(node)
-	case *ast.BinaryExpr:
-		return KindBinary, node.Op.String()
-	case *ast.UnaryExpr:
-		return KindUnary, node.Op.String()
-	case *ast.AssignStmt:
-		return KindAssign, node.Tok.String()
-	case *ast.BranchStmt:
-		return KindBranch, node.Tok.String()
-	case *ast.BasicLit:
-		return KindLit, node.Kind.String()
-	case *ast.IfStmt:
-		return KindIf, ""
-	case *ast.ForStmt:
-		return KindFor, ""
-	case *ast.RangeStmt:
-		return KindRange, ""
-	case *ast.SwitchStmt:
-		return KindSwitch, ""
-	case *ast.TypeSwitchStmt:
-		return KindTypeSwitch, ""
-	case *ast.SelectStmt:
-		return KindSelect, ""
-	case *ast.ReturnStmt:
-		return KindReturn, ""
-	case *ast.DeferStmt:
-		return KindDefer, ""
-	case *ast.GoStmt:
-		return KindGo, ""
-	case *ast.FuncLit:
-		return KindFuncLit, ""
-	case *ast.IncDecStmt:
-		return KindIncDec, node.Tok.String()
-	case *ast.IndexExpr:
-		return KindIndex, ""
-	case *ast.SliceExpr:
-		return KindSlice, ""
-	case *ast.StarExpr:
-		return KindStar, ""
-	case *ast.TypeAssertExpr:
-		return KindAssert, ""
-	case *ast.CompositeLit:
-		return KindComposite, ""
-	case *ast.KeyValueExpr:
-		return KindKeyValue, ""
-	case *ast.SelectorExpr:
-		return KindSelector, ""
+func wlLabel0(n *syntax.Node) (LabelKind, string) {
+	switch n.Kind {
+	// Kinds carrying the one token that is part of them.
+	case syntax.KindCall:
+		return KindCall, calleeName(n)
+	case syntax.KindBinary:
+		return KindBinary, n.Label
+	case syntax.KindUnary:
+		return KindUnary, n.Label
+	case syntax.KindAssign:
+		return KindAssign, n.Label
+	case syntax.KindBranch:
+		return KindBranch, n.Label
+	case syntax.KindLit:
+		return KindLit, n.Label
+	case syntax.KindIncDec:
+		return KindIncDec, n.Label
+	case syntax.KindGenDecl:
+		return KindGenDecl, n.Label
+	case syntax.KindChanType:
+		return KindChanType, n.Label
 
-	// Kinds the token stream drops. WL needs a label for every node, since
-	// a node with no label would silently vanish from its parent's child
-	// multiset and make two different shapes agree.
-	case *ast.BlockStmt:
+	// Kinds that are their kind and nothing else. An identifier is here
+	// rather than above precisely because its Label is dropped.
+	case syntax.KindIdent:
+		return KindIdent, ""
+	case syntax.KindIf:
+		return KindIf, ""
+	case syntax.KindFor:
+		return KindFor, ""
+	case syntax.KindRange:
+		return KindRange, ""
+	case syntax.KindSwitch:
+		return KindSwitch, ""
+	case syntax.KindTypeSwitch:
+		return KindTypeSwitch, ""
+	case syntax.KindSelect:
+		return KindSelect, ""
+	case syntax.KindReturn:
+		return KindReturn, ""
+	case syntax.KindDefer:
+		return KindDefer, ""
+	case syntax.KindGo:
+		return KindGo, ""
+	case syntax.KindFuncLit:
+		return KindFuncLit, ""
+	case syntax.KindIndex:
+		return KindIndex, ""
+	case syntax.KindSlice:
+		return KindSlice, ""
+	case syntax.KindStar:
+		return KindStar, ""
+	case syntax.KindAssert:
+		return KindAssert, ""
+	case syntax.KindComposite:
+		return KindComposite, ""
+	case syntax.KindKeyValue:
+		return KindKeyValue, ""
+	case syntax.KindSelector:
+		return KindSelector, ""
+	case syntax.KindBlock:
 		return KindBlock, ""
-	case *ast.ExprStmt:
+	case syntax.KindExprStmt:
 		return KindExprStmt, ""
-	case *ast.EmptyStmt:
+	case syntax.KindEmpty:
 		return KindEmpty, ""
-	case *ast.LabeledStmt:
+	case syntax.KindLabeled:
 		return KindLabeled, ""
-	case *ast.SendStmt:
+	case syntax.KindSend:
 		return KindSend, ""
-	case *ast.DeclStmt:
+	case syntax.KindDeclStmt:
 		return KindDeclStmt, ""
-	case *ast.CaseClause:
+	case syntax.KindCaseClause:
 		return KindCase, ""
-	case *ast.CommClause:
+	case syntax.KindCommClause:
 		return KindComm, ""
-	case *ast.ParenExpr:
+	case syntax.KindParen:
 		return KindParen, ""
-	case *ast.Ellipsis:
+	case syntax.KindEllipsis:
 		return KindEllipsis, ""
-	case *ast.IndexListExpr:
+	case syntax.KindIndexList:
 		return KindIndexList, ""
-	case *ast.ArrayType:
+	case syntax.KindArrayType:
 		return KindArrayType, ""
-	case *ast.StructType:
+	case syntax.KindStructType:
 		return KindStructType, ""
-	case *ast.FuncType:
+	case syntax.KindFuncType:
 		return KindFuncType, ""
-	case *ast.InterfaceType:
+	case syntax.KindInterfaceType:
 		return KindInterfaceType, ""
-	case *ast.MapType:
+	case syntax.KindMapType:
 		return KindMapType, ""
-	case *ast.ChanType:
-		return KindChanType, chanDir(node.Dir)
-	case *ast.Field:
+	case syntax.KindField:
 		return KindField, ""
-	case *ast.FieldList:
+	case syntax.KindFieldList:
 		return KindFieldList, ""
-	case *ast.GenDecl:
-		return KindGenDecl, node.Tok.String()
-	case *ast.ValueSpec:
+	case syntax.KindValueSpec:
 		return KindValueSpec, ""
-	case *ast.TypeSpec:
+	case syntax.KindTypeSpec:
 		return KindTypeSpec, ""
-	case *ast.ImportSpec:
+	case syntax.KindImportSpec:
 		return KindImportSpec, ""
-	case *ast.Comment:
-		return KindComment, ""
-	case *ast.CommentGroup:
-		return KindCommentGroup, ""
-	case *ast.FuncDecl:
-		return KindFuncDecl, ""
-	case *ast.File:
-		return KindFile, ""
-	case *ast.BadExpr:
+	case syntax.KindBadExpr:
 		return KindBadExpr, ""
-	case *ast.BadStmt:
+	case syntax.KindBadStmt:
 		return KindBadStmt, ""
-	case *ast.BadDecl:
+	case syntax.KindBadDecl:
 		return KindBadDecl, ""
 	}
-	// go/ast's node set is closed today; a kind added to it later lands
-	// here rather than disappearing from its parent's child multiset.
+	// syntax.KindOther, and any kind the IR grows before this switch does.
 	return KindNode, ""
-}
-
-// chanDir names a channel direction for the label. ast.ChanDir is a bit set,
-// so the bidirectional case is both bits.
-func chanDir(d ast.ChanDir) string {
-	switch d {
-	case ast.SEND:
-		return "send"
-	case ast.RECV:
-		return "recv"
-	}
-	return "both"
 }
 
 // LabelIDF is the corpus surprisal of every Weisfeiler–Lehman label: how many
@@ -606,9 +620,6 @@ func (w *LabelIDF) DF(label uint64) int {
 // label supply. A label every function carries weighs exactly 0.
 //
 // # An unseen label counts as df 1, the rarest thing the corpus can express
-//
-// T2 returned 0 here, on the reading that a label the corpus has never seen is
-// absence of evidence. Scoring makes that reading unsafe, so it is now ln(N).
 //
 // A weight of 0 does not make a label neutral in a weighted Jaccard — it makes
 // it *invisible*, dropping out of the numerator and the denominator alike. Two

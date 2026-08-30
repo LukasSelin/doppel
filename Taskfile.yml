@@ -86,6 +86,11 @@ tasks:
     cmds:
       - DOPPEL_BENCH_EXAMPLES=1 go test ./internal/bench/ -run TestGenerateExamples -v -timeout 30m
 
+  examples-check:
+    desc: Report whether examples/ is stale, without writing anything
+    cmds:
+      - DOPPEL_BENCH_EXAMPLES=1 DOPPEL_BENCH_EXAMPLES_CHECK=1 go test ./internal/bench/ -run TestGenerateExamples -v -timeout 30m
+
   baseline:
     desc: Score the golden labels and regenerate+checksum every fetched corpus's example report (in memory, self-contained) into examples/baseline.json; also refreshes examples/baseline-timings.json (machine-dependent, not part of the determinism guarantee)
     cmds:

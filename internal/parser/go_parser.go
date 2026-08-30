@@ -1,209 +1,31 @@
 package parser
 
 import (
-	"bytes"
-	"go/ast"
-	"go/parser"
-	"go/printer"
-	"go/token"
-	"os"
-	"sort"
 	"strings"
 
-	"github.com/LukasSelin/doppel/internal/canon"
-	"github.com/LukasSelin/doppel/internal/fingerprint"
+	"github.com/LukasSelin/doppel/internal/gofront"
+	"github.com/LukasSelin/doppel/internal/syntax"
 )
 
-func parseGo(path string) ([]CodeUnit, error) {
-	src, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	return parseGoSource(path, src)
+func init() { register(goFrontend{}) }
+
+// goFrontend adapts internal/gofront to the Frontend interface. The adapter
+// lives here rather than in gofront because the interface belongs to the
+// registry's owner, and gofront must stay free of any dependency on this
+// package — a frontend depending on the thing that dispatches to it is the
+// cycle this split exists to avoid.
+type goFrontend struct{}
+
+func (goFrontend) Lang() string { return gofront.Lang }
+
+func (goFrontend) Extensions() []string { return []string{".go"} }
+
+func (goFrontend) Parse(path string, src []byte) (*syntax.File, error) {
+	return gofront.Parse(path, src)
 }
 
-func parseGoSource(path string, src []byte) ([]CodeUnit, error) {
-	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, path, src, parser.ParseComments)
-	if err != nil {
-		// Return partial results if the file has syntax errors
-		return nil, nil
-	}
-
-	pkg := f.Name.Name
-	// Go's own convention (https://go.dev/s/generatedcode), checked by the
-	// stdlib: a "// Code generated ... DO NOT EDIT." line before the first
-	// non-comment text. Recorded per unit so --generated can pick the
-	// population the same way --tests does — a convention the ecosystem
-	// already declares, not a path or name heuristic.
-	generated := ast.IsGenerated(f)
-	var units []CodeUnit
-	for _, decl := range f.Decls {
-		fd, ok := decl.(*ast.FuncDecl)
-		if !ok {
-			continue
-		}
-
-		recvType := extractReceiverType(fd)
-		name := funcName(fd, recvType)
-		startLine := fset.Position(fd.Pos()).Line
-		body := extractSource(fset, fd, src)
-		sig := extractSignature(fd)
-
-		var docComment string
-		if fd.Doc != nil {
-			docComment = strings.TrimRight(fd.Doc.Text(), "\n")
-		}
-
-		// Canonicalization works on a deep copy and never touches fd, which
-		// matters here specifically: fingerprint.Build and extractSignals
-		// below read the same declaration, so an in-place rewrite would
-		// change every score and every tag in the tool without a line of
-		// scoring code changing. canon.Canonicalize owns that guarantee and
-		// internal/canon proves it over every function in this repo.
-		canonical := canon.Canonicalize(fd)
-
-		// The Weisfeiler-Lehman bag is the one fingerprint component built
-		// from the canonical tree rather than from fd. That is the point of
-		// it: the bag is a shape key, so it should not carry the incidental
-		// choices canon exists to remove. Everything else on the
-		// Fingerprint keeps measuring the code as written, which is what
-		// leaves every existing score byte-identical.
-		fp := fingerprint.Build(fd)
-		fp.WL = fingerprint.WLBag(canonical.Decl)
-
-		units = append(units, CodeUnit{
-			Name:         name,
-			File:         path,
-			StartLine:    startLine,
-			Body:         body,
-			Signature:    sig,
-			Package:      pkg,
-			DocComment:   docComment,
-			Exported:     fd.Name.IsExported(),
-			ReceiverType: recvType,
-			Callees:      extractCallees(fd),
-			Fingerprint:  fp,
-			Signals:      extractSignals(fd, f),
-			Generated:    generated,
-			Canonical:    canonical.Decl,
-			CanonRules:   canonical.Fired,
-		})
-	}
-	return units, nil
-}
-
-// funcName returns "ReceiverType.MethodName" for methods, "FuncName" for functions.
-func funcName(fd *ast.FuncDecl, recvType string) string {
-	if recvType == "" {
-		return fd.Name.Name
-	}
-	return recvType + "." + fd.Name.Name
-}
-
-// extractReceiverType returns the printed receiver type (e.g. "*Server") or "" for functions.
-func extractReceiverType(fd *ast.FuncDecl) string {
-	if fd.Recv == nil || len(fd.Recv.List) == 0 {
-		return ""
-	}
-	var buf bytes.Buffer
-	printer.Fprint(&buf, token.NewFileSet(), fd.Recv.List[0].Type)
-	return buf.String()
-}
-
-// extractSignature returns "(params) (results)" for a function declaration:
-// parameter and result types in declaration order, names dropped, one entry
-// per declared name ("a, b int" is "int, int"), results parenthesized whenever
-// any exist — "([]int) (int)", "(context.Context) (error)", "()".
-//
-// It prints each field's Type expression individually. The earlier version
-// handed the whole *ast.FieldList to go/printer, which accepts only Expr,
-// Stmt, Decl, Spec and File nodes and silently wrote nothing — so every unit
-// carried an empty signature and every report's Signature column was blank.
-// This string is rendered text only; fingerprint.Types is what scores.
-func extractSignature(fd *ast.FuncDecl) string {
-	if fd.Type == nil {
-		return "()"
-	}
-	sig := "(" + fieldTypes(fd.Type.Params) + ")"
-	if fd.Type.Results != nil && len(fd.Type.Results.List) > 0 {
-		sig += " (" + fieldTypes(fd.Type.Results) + ")"
-	}
-	return sig
-}
-
-// fieldTypes renders a field list's types, comma-separated, repeating a type
-// once per declared name so arity survives.
-func fieldTypes(fields *ast.FieldList) string {
-	if fields == nil {
-		return ""
-	}
-	var parts []string
-	for _, field := range fields.List {
-		t := printTypeExpr(field.Type)
-		n := len(field.Names)
-		if n == 0 {
-			n = 1
-		}
-		for i := 0; i < n; i++ {
-			parts = append(parts, t)
-		}
-	}
-	return strings.Join(parts, ", ")
-}
-
-// printTypeExpr renders a type expression for the signature text. The
-// rendering itself is fingerprint.PrintType — the two were byte-identical
-// clones — and the only difference stays here: a signature prints "?" for an
-// unrenderable type rather than dropping it silently.
-func printTypeExpr(expr ast.Expr) string {
-	if s := fingerprint.PrintType(expr); s != "" {
-		return s
-	}
-	return "?"
-}
-
-// extractSource returns the source text of the node.
-func extractSource(fset *token.FileSet, node ast.Node, src []byte) string {
-	start := fset.Position(node.Pos()).Offset
-	end := fset.Position(node.End()).Offset
-	if end > len(src) {
-		end = len(src)
-	}
-	return string(src[start:end])
-}
-
-// extractCallees walks the function body and returns a sorted, deduplicated list
-// of function/method names found in call expressions.
-func extractCallees(fd *ast.FuncDecl) []string {
-	if fd.Body == nil {
-		return nil
-	}
-	seen := make(map[string]struct{})
-	ast.Inspect(fd.Body, func(n ast.Node) bool {
-		call, ok := n.(*ast.CallExpr)
-		if !ok {
-			return true
-		}
-		switch fn := call.Fun.(type) {
-		case *ast.Ident:
-			seen[fn.Name] = struct{}{}
-		case *ast.SelectorExpr:
-			if x, ok := fn.X.(*ast.Ident); ok {
-				seen[x.Name+"."+fn.Sel.Name] = struct{}{}
-			} else {
-				seen[fn.Sel.Name] = struct{}{}
-			}
-		}
-		return true
-	})
-	if len(seen) == 0 {
-		return nil
-	}
-	callees := make([]string, 0, len(seen))
-	for name := range seen {
-		callees = append(callees, name)
-	}
-	sort.Strings(callees)
-	return callees
+// IsTestFile keys on Go's compiler-recognized suffix, not a naming heuristic:
+// the toolchain itself treats _test.go as a separate build unit.
+func (goFrontend) IsTestFile(path string) bool {
+	return strings.HasSuffix(path, "_test.go")
 }

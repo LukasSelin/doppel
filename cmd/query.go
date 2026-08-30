@@ -22,6 +22,7 @@ var (
 	queryMinNodes  int
 	queryChannelK  int
 	queryTests     string
+	queryLanguages []string
 	queryGenerated string
 	queryConfig    string
 )
@@ -80,6 +81,7 @@ func init() {
 	// a wider net is nearly free — and an exact-clone family larger than K gets
 	// cut on an index tie-break, which is how the nearest match goes missing.
 	queryCmd.Flags().IntVar(&queryChannelK, "channel-k", 10, "Candidates each function keeps per retrieval channel")
+	queryCmd.Flags().StringSliceVar(&queryLanguages, "languages", nil, "Languages to read, comma-separated (default: every language doppel has a frontend for). The extension allowlist is the whole scope rule — a file is in the corpus because a frontend claims its extension, never because its contents looked like code.")
 	queryCmd.Flags().StringVar(&queryTests, "tests", "exclude", "Test-function population: include, exclude, or only")
 	queryCmd.Flags().StringVar(&queryGenerated, "generated", "exclude", "Generated-file population: include, exclude, or only")
 	queryCmd.Flags().StringVar(&queryConfig, "config", "", "Path to JSON config file (default: .doppel.json if present)")
@@ -136,6 +138,7 @@ func runQuery(cmd *cobra.Command, args []string) error {
 		MinNodes:  queryMinNodes,
 		ChannelK:  queryChannelK,
 		TestsMode: queryTests,
+		Languages: queryLanguages,
 		Generated: queryGenerated,
 	}
 	res, err := index(args[0], p, cmd.ErrOrStderr(), probes)

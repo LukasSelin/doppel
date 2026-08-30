@@ -398,7 +398,7 @@ func TestPinnedRunStaysComparableToItsBaseline(t *testing.T) {
 		StructMin: got.StructMin, ChannelK: got.ChannelK, MaxPerFunc: got.MaxPerFunc,
 		TestsMode: got.TestsMode, Generated: got.Generated, Calibrate: got.Calibrate,
 	}
-	if head != base {
+	if !head.Equal(base) {
 		t.Errorf("pinned params differ from the baseline:\n head %+v\n base %+v", head, base)
 	}
 }

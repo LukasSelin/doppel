@@ -252,7 +252,7 @@ func incomparable(base, head Snapshot) string {
 		// exactly the schema-4-vs-5 failure this check's siblings exist to
 		// prevent, one layer lower.
 		return fmt.Sprintf("baseline used canon rule set %s, current %s", base.RuleSet, head.RuleSet)
-	case base.Params != head.Params:
+	case !base.Params.Equal(head.Params):
 		return fmt.Sprintf("baseline params %+v, current %+v", base.Params, head.Params)
 	}
 	return ""

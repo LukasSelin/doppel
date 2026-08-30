@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
-	"strings"
 
 	"github.com/LukasSelin/doppel/internal/analyzer"
 	"github.com/LukasSelin/doppel/internal/comparator"
@@ -37,7 +36,7 @@ func (p Population) valid() bool {
 	return false
 }
 
-func isTest(u parser.CodeUnit) bool { return strings.HasSuffix(u.File, "_test.go") }
+func isTest(u parser.CodeUnit) bool { return parser.IsTestUnit(u) }
 
 // qualifiedName renders a unit the way the reporter does: Package + "." +
 // Name, receiver stars kept.
@@ -203,7 +202,7 @@ func (r *Run) StageRetrieve(opt retriever.Options) {
 func (r *Run) StagePairs() {
 	pairs := make([]analyzer.SimilarPair, 0, len(r.Cands))
 	for _, c := range r.Cands {
-		if isTest(r.Units[c.AIdx]) != isTest(r.Units[c.BIdx]) {
+		if !parser.SameBuildUnit(r.Units[c.AIdx], r.Units[c.BIdx]) {
 			continue
 		}
 		pairs = append(pairs, analyzer.SimilarPair{

@@ -99,9 +99,16 @@ cmd/            CLI commands (Cobra).
   version.go    build identity, for deciding whether a baseline is still comparable
   ontology.go   doppel ontology: print the vocabulary, check its axioms
 internal/
+<<<<<<< HEAD
   parser/       parser.go is a thin dispatcher (and owns ShouldSkipDir, the walk rule cmd and bench share); go_parser.go does the go/ast work; signals.go extracts the tagger's evidence channels → CodeUnit
   canon/        Canonical AST shapes with a per-function rule log: canon.go + rules.go (the rule
                 set and canon.Version), alpha.go (rename), clone.go, key.go. Imported by parser only
+=======
+  syntax/       The language-neutral IR: Kind/Role/Node/Func/File and Inspect. Imports nothing from this module
+  gofront/      The Go frontend: the only package that imports go/ast. gofront.go maps *ast.File → syntax.File; syntax_map.go is the node-for-node mapper
+  lexfront/     The language-agnostic frontend: spec.go is the per-language table, lexer.go tokenizes, segment.go finds functions, build.go builds the shallow tree
+  parser/       frontend.go owns the Frontend interface, the extension registry, IsTestFile and SameBuildUnit; parser.go is the neutral syntax.File → CodeUnit projection (and owns ShouldSkipDir, the walk rule cmd and bench share); signals.go extracts the tagger's evidence channels over the IR; go_parser.go and lex_parser.go are the two registry adapters
+>>>>>>> origin/master
   fingerprint/  AST token shingles + control-flow histogram + signature types; the code-similarity score
                 wl.go is the WL label bag; wlexplain.go names its shallow labels for reports;
                 cons.go hash-conses the canonical forest; wlcodec.go encodes bags for the snapshot
@@ -267,6 +274,7 @@ doppel ontology --defs                                # print the vocabulary and
   (`how-it-works.md` → `How-it-works`, which GitHub titles "How it works"), so the directory must
   stay **flat**: wiki page names cannot nest, and the job fails loudly rather than silently
   collapsing `a/page.md` and `b/page.md` onto one page. It pushes only when something changed.
+<<<<<<< HEAD
 - `.github/workflows/pages.yml` renders doppel's dashboard for doppel's own source
   (`go run . analyze . -o _site/report.html`) and publishes it to GitHub Pages on every push to
   `master`, with `.github/pages/index.html` as the landing page (`@@COMMIT@@`/`@@BUILT@@` are
@@ -275,15 +283,34 @@ doppel ontology --defs                                # print the vocabulary and
   directories, so the output cannot join the corpus of the run that writes it. Provenance is
   stamped into the landing page only, never into the report — `ci.yml` diffs two `-o *.html` runs
   and a timestamp inside one would fail it.
+=======
+- `.github/workflows/examples.yml` regenerates `examples/` from the pinned corpus ladder on
+  every push to `master` that touches Go code, and commits the result as `github-actions[bot]`.
+  The ladder is restored by `actions/cache` keyed on `internal/bench/corpora.go`, so the
+  recurring cost is the analysis rather than a few hundred megabytes of clone, and a bumped
+  rung invalidates the cache exactly when it should. It commits only when a report's *content*
+  moved — the generator excludes the `| doppel |` provenance row from its comparison, or an
+  unchanged ranking would rewrite all seven files on every push. A push made with
+  `GITHUB_TOKEN` triggers no workflow, so the bot commit neither loops nor re-runs `ci.yml`.
+>>>>>>> origin/master
 - `.gitattributes` forces LF for Go/shell/markdown/config so the bash hook works under Git Bash on Windows.
 
 ## Key types
 
+<<<<<<< HEAD
 - **CodeUnit** (`internal/parser/parser.go`) — one function/method from the AST: `Name`, `File`,
   `StartLine`, `Body`, `Signature`, `Package`, `Concepts`, `DocComment`, `Exported`, `ReceiverType`,
   `Callees`, `Fingerprint`, `Generated`, `Signals` (the seed rules' AST evidence channels), and
   `Canonical`/`CanonRules` (canon's rewritten tree and the log of what it rewrote — the WL bag is
   built from the first, `analyzer.Explain` reads the second). Methods are named `"*Server.Start"` — the receiver keeps its
+=======
+- **CodeUnit** (`internal/parser/parser.go`) — one function/method, projected from a
+  `syntax.File` by `unitsFrom`: `Name`, `File`, `Lang`, `StartLine`, `Body`, `Signature`,
+  `Package`, `Concepts`, `DocComment`, `Exported`, `ReceiverType`, `Callees`, `Fingerprint`,
+  `Generated`. `Lang` is what `SameBuildUnit` compares; `Package` falls back to the containing
+  directory for a language with no package clause, which is all `culture`'s habitat model needs
+  since it treats the key as opaque. Methods are named `"*Server.Start"` — the receiver keeps its
+>>>>>>> origin/master
   star; `parser.MethodName` strips it back off. `Signature` is rendered text — `([]int) (int)`,
   types in order, names dropped, one entry per declared name — and is what the `sig:` line and the
   interface-implementation kind read; `Fingerprint.Types` (the sorted `in:`/`out:` type *set*) is
@@ -1262,9 +1289,12 @@ never learns about `culture`, and `cmd` queries the model.
 
 - **Two screens, and the two that are missing are missing for a reason.** *Map* is a political map
   of the corpus: every package (or concept — it is a toggle) is a polygon whose area is its share of
-  the functions, polygons tile the canvas with shared borders, and functions are dots inside their
-  own region, coloured by concept, sized by resolved fan-in and ringed when a habitat misfit. Pair
-  evidence is carried by the **borders** rather than by a line layer. *Neighbourhood* takes
+  the functions, polygons tile the canvas with shared borders, and each region is tinted by the
+  concept most of its functions carry. Pair evidence is carried by the **borders** rather than by
+  a line layer. Individual functions are deliberately **not** drawn: a per-function dot inside a
+  region encodes nothing the region does not already say — its position is an arbitrary spiral —
+  so it was clutter with a redundant click target, and the border/arc pair lists and the
+  neighbourhood picker remain the ways into a single function. *Neighbourhood* takes
   one function and shows its ranked neighbours, both bodies side by side, and the pair's evidence.
   A **delta** screen and a **concept-drift** screen were scoped and dropped: both need a snapshot
   *series*, and there is exactly one baseline per session in tmpdir, no timestamp inside a
@@ -1374,6 +1404,80 @@ silhouettes, the one piece of genuinely new data that page invented) and the tax
 census panels, which remain in the markdown report. The strips would port cleanly to a dashboard
 panel if they turn out to be missed.
 
+## Frontends
+
+A frontend's whole job is to produce `internal/syntax.File`. Everything downstream — the
+fingerprint, the five pattern levels, `TagSignals`, the call graph, the lexicon, culture,
+habitats, calibration, the report — reads that and knows nothing about any language.
+
+**The IR's contract is narrow but not loose.** A `syntax.Node` must exist for every node the
+frontend's own traversal would visit, in that traversal's order. Node identity and order are
+observable: `Fingerprint.Nodes` counts them (feeding `--min-nodes` and `SizeRatio`), the token
+stream is emitted in visit order, and the nesting-depth histogram is driven by the push/pop
+pairing that `syntax.Inspect`'s nil-after-children callback provides. A frontend that collapses
+nodes changes scores rather than losing detail quietly. `Role` exists because position cannot
+carry slot identity — a for-loop with no init has its condition first — so slots are named.
+
+- **`internal/gofront`** maps `*ast.FuncDecl` onto the IR and is the only package in the module
+  importing `go/*`. It builds the tree **from `ast.Inspect`** rather than reimplementing
+  `ast.Walk`'s per-type field ordering, so order and node count are correct by construction and
+  there is no ordering table to fall out of sync with the stdlib; roles are recovered separately
+  by identity against the parent's named fields. `TestMapperPreservesNodeCount` and
+  `TestMapperPreservesOrder` pin both halves.
+- **`internal/lexfront`** has no grammar: one tokenizer, one block rule, and a per-language table
+  of the things that genuinely cannot be guessed — extensions, comment and string delimiters,
+  which keywords introduce a function or a container, whether parameters are name-first, and how
+  tests are named. Adding a language is a table entry.
+
+**The trade is measured, not asserted.** `TestLexicalFidelity` (guard `DOPPEL_BENCH_LEXICAL=1`,
+`DOPPEL_BENCH_CORPUS` to aim it) runs both frontends over the same **Go** corpus and scores the
+lexical one against `go/ast` — the one language where the right answer is already known, which
+is why it is the honest control for a frontend meant for languages where it is not. Measured on
+the Go standard library:
+
+| corpus | functions | recall | precision | node count | param arity |
+| --- | --- | --- | --- | --- | --- |
+| runtime | 7 101 | 0.995 | 1.000 | 0.98× | 100% |
+| net/http | 2 904 | 0.996 | 1.000 | 0.94× | 100% |
+| crypto | 3 934 | 0.999 | 1.000 | 0.96× | 100% |
+| encoding/json | 1 235 | 0.999 | 1.000 | 0.94× | 100% |
+| go/types | 1 055 | 0.994 | 1.000 | 0.98× | 100% |
+
+Bodyless declarations (assembly-implemented, external linkname) are excluded from the
+denominator: their `Fingerprint` is the zero value and they never match anything, so counting
+them would measure a difference that changes no result.
+
+**What the AST still buys, and it is one thing: types.** `lexfront` fills `syntax.Param.Type`
+with the empty string, so `Fingerprint.Types` is empty and the signature component — 0.15 of the
+composite — contributes nothing, with `sig: (?)` in the report saying so. Everything else
+survives: L0 tokens, L1 call and operator shapes, L2 statement renders, L3 loop summaries and
+adjacent-statement bigrams, L4 def-use edges, resolved callees, imports and literals. If that
+0.15 turns out to dominate, the fix is the existing `fingerprint.Weights` seam
+(`SimilarityWith`), which is already a no-op at defaults.
+
+**Five defects the harness caught that review had not**, kept as tests in `internal/lexfront`
+because each was silent: statement keywords matching the declaration shape (`except ValueError:`
+was 46% of everything found on the Python standard library); a class with a parenthesised base
+swallowing every method inside it; the indent rule measured from the method's name rather than
+its `def`, ending each body on its own first statement; an unbounded body scan walking forward
+from `print("x")` to an unrelated `if` two lines later; and anonymous literals emitted as units
+called `func` (11% of this repo). A lexical frontend fails quietly by construction — there is no
+parse to fail — so the measurement *is* the correctness argument.
+
+**Cross-language pairs never exist.** `parser.SameBuildUnit` is one predicate over two rules:
+test and production code are different build units, and so are two languages one step further
+out. It replaced the `_test.go` suffix check that had been copy-pasted into `cmd/analyze.go`,
+`internal/bench`, `internal/calibrate` and `internal/analyzer/rank.go` — a clone doppel would
+have flagged on itself, and four places to miss when a second language arrived.
+
+**Scope is an extension allowlist, never a content heuristic.** A file is in the corpus because
+a frontend claims its extension and `--languages` admits that language. Prose, markdown, config
+and data are out by construction; nothing inspects a file to judge it code-like, which is the
+same refusal the tagger and retriever make everywhere else. `--languages` defaults to every
+registered frontend, so a Go repository with a vendored `.js` asset now analyses that asset too
+— which moves the calibrated thresholds, because the corpus genuinely changed. `--languages go`
+or the `languages` config key restores the old population exactly.
+
 ## Configuration
 
 `.doppel.json` at repo root, or `--config <path>`. A missing file is not an error; malformed JSON is.
@@ -1391,6 +1495,7 @@ panel if they turn out to be missed.
   "max-per-func": 2,
   "tests": "exclude",
   "generated": "exclude",
+  "languages": ["go"],
   "calibrate": 0.01,
   "families": 5,
   "family-min": 0.60,
@@ -1405,7 +1510,10 @@ Flag semantics after the retrieval redesign: `--threshold` floors code-shape for
 top-K; `--debug` adds retrieval provenance lines to the report; `--max-per-func` caps how many
 final-report pairs any one function may appear in (0 disables); `--families` bounds the report's
 family section (0 removes it) and `--family-min` is the code-shape every two members of a family
-must reach — both presentation, so neither is in `Params` and neither can invalidate a baseline; `--tests` and `--generated`
+must reach — both presentation, so neither is in `Params` and neither can invalidate a baseline; `--languages` picks which
+frontends are read (defaulting to all of them) and is corpus-defining, so it travels in `Params`
+and in `snapshot.Params` and a run reading Go alone is correctly incomparable to one reading Go
+and TypeScript; `--tests` and `--generated`
 pick the population (`include`/`exclude`/`only` each, both defaulting `exclude`) before any
 statistic is computed — tests because they are conventionally similar by design, generated files
 (Go's "Code generated ... DO NOT EDIT." marker, detected via `ast.IsGenerated` at parse time)
@@ -1859,7 +1967,14 @@ shape is stable.
 
 ## Conventions
 
-- Go-only. All parsing uses `go/ast` — no external parsers, no multi-language support.
+- **Language-neutral by construction, Go-first by fidelity.** Everything from `fingerprint`
+  outward reads `internal/syntax`, never any language's AST, so a frontend that can fill a
+  `syntax.File` gets the fingerprint, the evidence channels, the call graph, the learned
+  vocabulary and every corpus statistic without writing any of them. Two frontends exist:
+  `internal/gofront` (go/ast, full fidelity, the only package importing `go/*`) and
+  `internal/lexfront` (a tokenizer and a block rule, no grammar, 13 languages). No external
+  parser dependency, and none is wanted — `go/ast` ships with the toolchain and the lexical
+  path has no dependency at all. See *Frontends* below for the measured trade.
 - **No caches.** No run ever reads persisted state to avoid recomputation: `doppel hook stop`
   re-runs the whole pipeline from source every time, exactly as `analyze` does. The one persisted
   artifact is the **session baseline** written by `doppel hook session-start` — a measurement
@@ -1900,9 +2015,9 @@ shape is stable.
   only through `family`'s tests).
 - `lexicon`'s `TestNoSeeds` is the language-portability claim as a test: the learner must produce
   usable concepts from a corpus with **no seed labels at all**, because that is what a frontend for
-  another language starts from. After it passes, the only Go-specific pieces left are
-  `internal/parser`'s frontend and the seed rules, and a new frontend that fills `TagSignals` and a
-  `Fingerprint` gets concepts for free. Do not let it become a formality.
+  another language starts from. It is no longer a promissory note — the Python standard library
+  reports `Lexicon: 108 concepts (5 seeded, 103 emergent)`, and the emergent path is carrying the
+  whole vocabulary exactly as the test says it must. Do not let it become a formality.
 - **Measurement harness** (`internal/bench`), four jobs in one package:
   - `scoreLabels` ranks a corpus and scores a human-reviewed labels file against it: every
     labeled pair gets a rank or an absence reason, three assertions are hard (merges retrieved,
@@ -2012,12 +2127,39 @@ shape is stable.
     running the **built binary** with `cmd.Dir` set to the corpus — not the library — so the
     committed reports are what the documented command actually prints, culture/habitat/arena
     annotations included, with corpus-relative paths. The one stderr line naming a local path is
-    filtered out.
+    filtered out. It also rewrites the ladder table in `examples/README.md` between its two
+    markers, from `parseDiagnostics` over the same stderr block each report quotes — so the
+    table and the reports cannot describe different runs — and only when **every** rung is
+    fetched, because a partial ladder reads as a claim rather than as a partial measurement.
+    A file is written only when its content changed modulo the `| doppel |` provenance row,
+    which makes the recorded revision mean "where this report's content last moved" and makes
+    regeneration idempotent enough for CI to commit. `DOPPEL_BENCH_EXAMPLES_CHECK=1` compares
+    instead of writing (`task examples-check`).
+  - `TestExamplesManifest` and `TestLadderMatchesReports` are the offline half, unguarded and
+    in every `go test ./...`: the first asserts each rung has a report quoting the manifest's
+    pinned tag and commit and that the ladder markers exist, the second re-derives the whole
+    ladder table from the committed reports' diagnostics blocks and requires it byte-identical
+    to the committed table. Neither can see a ranking change — only running the tool over the
+    ladder measures that — but between them a repinned rung, a hand-edited table and a broken
+    diagnostics regex all fail without a clone.
 
 ## Rough edges
 
 Known traps, documented so they aren't rediscovered. None are fixed:
 
+- **Lexical fidelity is measured on Go and assumed elsewhere.** `TestLexicalFidelity` scores the
+  lexical frontend against `go/ast` on Go corpora at 0.994–0.999 recall and 1.000 precision, but
+  Go is a brace language with a keyword-led declaration syntax — the easy case for the block
+  rule. Python is exercised by unit tests and by hand (1 761 of 1 813 `def`s on a 75-file
+  standard-library corpus, the balance being nested closures, which are dropped by design); the
+  other eleven languages in `lexfront.Specs` are the machinery pointed at conventions written
+  down from knowledge, not from measurement. Labels for one non-Go corpus would turn a direction
+  into a verdict, exactly as the gin/chi labels would for scoring.
+- **The lexical frontend has no types, and one-line bodies are its blind spot.** A Python
+  `def f(): return x` is not found: the block rule needs a colon that ends its line. The same
+  goes for any construct whose body opens more than one line after the header. Both fail toward
+  a *missing* unit rather than a wrong one, which is why precision stays at 1.000 while recall
+  is what moves.
 - **Resolver imprecision without go/types.** Call-graph edges are resolved from the AST alone:
   a local variable shadowing an import name is mistaken for the package; an external import whose
   path base equals an internal package name can produce a false edge on a name coincidence; import
@@ -2147,13 +2289,18 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   0.01 bounds how often it moves, it does not stop it. Under `--tests include` the null is also a
   two-population mixture (cross pairs are rejected, but test and production bodies are drawn
   together), so the derived floor there describes neither population exactly.
-- **Committed examples drift silently.** `examples/*.md` is real output from a pinned tree, but
-  nothing verifies it: any ranking change makes every file stale until somebody runs
-  `task examples`. Regenerating is cheap (~10s for all seven) — do it in the same change that
-  moves ranking, and re-read the diff, because it is the fastest available review of what a
-  scoring change actually did. `task golden` is the assertion-backed half of that check; the
-  reports are the eyeball half. The measured numbers in `examples/README.md` are hand-copied
-  from a `task bench` run on one machine and go stale the same way.
+- **Committed examples are regenerated by CI, but only after the fact.** `examples.yml`
+  re-runs the ladder on every push to `master` and commits what moved, so the reports and the
+  ladder table no longer go stale silently. What it cannot do is tell you *before* you push:
+  a PR's reports are whatever its branch inherited, and the bot commit lands afterwards. Run
+  `task examples` in the same change that moves ranking and re-read the diff — it is the
+  fastest available review of what a scoring change actually did, and `task examples-check`
+  is the read-only form. `task golden` is the assertion-backed half of the check; the reports
+  are the eyeball half. The **performance table** in `examples/README.md` is still hand-copied
+  from a `task bench` run on one machine and still goes stale silently — no run can measure
+  another machine's stopwatch. The prose around both tables is hand-written too, so a corpus
+  whose character changes leaves the paragraph describing it wrong while every number beside
+  it is right.
 
 - **Families overlap, and that is reported rather than resolved.** A function can belong to
   several maximal cliques, so the family list can show it twice; the counts report *distinct*

@@ -113,7 +113,28 @@ import (
 // even for a reader who has both: a baseline written by either predecessor is
 // missing half of what 7 records, and the halves it is missing are exactly the
 // corpus-relative ones a diff must not guess at.
-const Schema = 7
+//
+// 6 (language line) added Params.Languages. Which languages a run reads
+// decides what the corpus *is*, so it belongs with TestsMode and Generated
+// among the parameters that make two runs comparable or not. A schema-5
+// baseline records no language at all, and defaulting it would assert
+// something the older run never measured — so it is a version bump rather
+// than a field with a fallback.
+//
+// 8 is the second reconciliation, and it is a numbering bump rather than a
+// metric one. The two lines collided again: 6 means "graded concepts plus
+// Languages" on one and "graded concepts plus WL retrieval" on the other, so a
+// file claiming 6 or 7 is again missing half of what a run now records. What
+// it is *not* is a change to what a stored quantity means. Moving the
+// Weisfeiler-Lehman bag onto the neutral IR was arranged to leave the label
+// vocabulary exactly where it was — same label_0 names, same recurrence, same
+// canonical tree — so a schema-7 Unit.WL and a schema-8 one over the same Go
+// body are byte-identical bags. The bump exists because Params gained
+// Languages, which a schema-7 baseline cannot supply and this run must not
+// invent: a run that read one language and a run that read four measured
+// different corpora, and every corpus-relative number in the file follows from
+// which one it was.
+const Schema = 8
 
 // Snapshot is one full analysis run.
 //
@@ -202,15 +223,43 @@ type CorpusMetrics struct {
 // min-nodes is not an earlier answer to the same question, it is an answer to a
 // different one.
 type Params struct {
-	Threshold  float64 `json:"threshold"`
-	Top        int     `json:"top"`
-	MinNodes   int     `json:"minNodes"`
-	StructMin  float64 `json:"structMin"`
-	ChannelK   int     `json:"channelK"`
-	MaxPerFunc int     `json:"maxPerFunc"`
-	TestsMode  string  `json:"testsMode"`
-	Generated  string  `json:"generated"` // generated-file population: include, exclude, or only
-	Calibrate  float64 `json:"calibrate"` // null admission rate the thresholds were derived at; 0 = fixed thresholds
+	Threshold  float64  `json:"threshold"`
+	Top        int      `json:"top"`
+	MinNodes   int      `json:"minNodes"`
+	StructMin  float64  `json:"structMin"`
+	ChannelK   int      `json:"channelK"`
+	MaxPerFunc int      `json:"maxPerFunc"`
+	TestsMode  string   `json:"testsMode"`
+	Generated  string   `json:"generated"` // generated-file population: include, exclude, or only
+	Calibrate  float64  `json:"calibrate"` // null admission rate the thresholds were derived at; 0 = fixed thresholds
+	Languages  []string `json:"languages"` // the languages this run read, sorted; corpus-defining like TestsMode
+}
+
+// Equal reports whether two runs asked the same question.
+//
+// It exists because Params stopped being a comparable struct when Languages
+// arrived, and the alternative — storing the language list as one joined
+// string to keep == working — would have hidden a real fact behind a
+// convenience. Comparability is the whole purpose of this type, so it gets an
+// explicit definition rather than an incidental one.
+func (p Params) Equal(q Params) bool {
+	if p.Threshold != q.Threshold || p.Top != q.Top || p.MinNodes != q.MinNodes ||
+		p.StructMin != q.StructMin || p.ChannelK != q.ChannelK ||
+		p.MaxPerFunc != q.MaxPerFunc || p.TestsMode != q.TestsMode ||
+		p.Generated != q.Generated || p.Calibrate != q.Calibrate {
+		return false
+	}
+	if len(p.Languages) != len(q.Languages) {
+		return false
+	}
+	// Both sides are stored sorted, so this is order-sensitive on purpose:
+	// two runs that read the same languages produce the same list.
+	for i := range p.Languages {
+		if p.Languages[i] != q.Languages[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // TagCount is one concept tag and how many units carry it.

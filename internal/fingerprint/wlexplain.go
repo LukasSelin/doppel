@@ -1,10 +1,10 @@
 package fingerprint
 
 import (
-	"go/ast"
-	"reflect"
 	"slices"
 	"strings"
+
+	"github.com/LukasSelin/doppel/internal/syntax"
 )
 
 // This file exists so a report can say *what* two bodies differ by, in words,
@@ -35,9 +35,10 @@ import (
 //
 // The recurrence, the hash and the label_0 function are WLBag's own, called
 // directly rather than re-implemented: a copy would be one edit away from
-// producing labels that name nodes in a bag they do not appear in. The one
-// thing not shared is the *display* name of a node kind, which WLBag has no
-// use for — see kindName.
+// producing labels that name nodes in a bag they do not appear in. Even the
+// display name is WLBag's, now that a label carries its LabelKind:
+// LabelKind.Word is the one table, so a kind cannot be named one thing here
+// and hashed as another there.
 
 // A LowLabel is one Weisfeiler-Lehman label from the shallow rounds together
 // with the kind of node that produced it.
@@ -58,14 +59,14 @@ type LowLabel struct {
 // with the kind of node it was computed at, sorted ascending by (Label, H,
 // Kind) and deduplicated on Label.
 //
-// The caller passes canon's canonical tree, for the same reason WLBag does:
-// these labels are meant to be looked up in a bag built from that tree, and a
-// raw declaration produces labels that are in no bag anyone holds.
+// The caller passes the canonical tree — syntax.Func.Shape, which is what
+// parser stores as CodeUnit.Canonical — for the same reason WLBag does: these
+// labels are meant to be looked up in a bag built from that tree, and a body
+// as written produces labels that are in no bag anyone holds.
 //
-// A nil declaration or one without a body yields nil, mirroring the zero
-// Fingerprint's "no body".
-func LowLabels(fd *ast.FuncDecl) []LowLabel {
-	if fd == nil || fd.Body == nil {
+// A nil tree yields nil, mirroring the zero Fingerprint's "no body".
+func LowLabels(root *syntax.Node) []LowLabel {
+	if root == nil {
 		return nil
 	}
 
@@ -84,9 +85,10 @@ func LowLabels(fd *ast.FuncDecl) []LowLabel {
 	var buf []uint64
 	var out []LowLabel
 
-	ast.Inspect(fd.Body, func(n ast.Node) bool {
+	syntax.Inspect(root, func(n *syntax.Node) bool {
 		if n != nil {
-			frames = append(frames, frame{label0: wlLabel0Hash(n), kind: kindName(n), start: len(kids)})
+			kind, name := wlLabel0(n)
+			frames = append(frames, frame{label0: wlKind(kind.String(), name), kind: kind.Word(), start: len(kids)})
 			return true
 		}
 		last := len(frames) - 1
@@ -130,52 +132,4 @@ func compareLowLabel(a, b LowLabel) int {
 		return a.H - b.H
 	}
 	return strings.Compare(a.Kind, b.Kind)
-}
-
-// kindNameOverrides renames the handful of node kinds whose Go type name
-// reads badly in a sentence. It is display-only and deliberately short: it
-// cannot drift from wlLabel0's kind strings, because it never reaches a hash.
-var kindNameOverrides = map[string]string{
-	"gendecl":      "declaration",
-	"basiclit":     "literal",
-	"funclit":      "function literal",
-	"compositelit": "composite literal",
-	"incdec":       "increment",
-	"typeassert":   "type assertion",
-	"expr":         "expression statement",  // *ast.ExprStmt, once "Stmt" is trimmed
-	"decl":         "declaration statement", // *ast.DeclStmt, the wrapper around a GenDecl
-	"keyvalue":     "key-value",
-}
-
-// kindName is the word a report uses for a node kind.
-//
-// It is derived from go/ast's own type name rather than from a switch
-// mirroring wlLabel0's. A parallel switch would be a second list of every
-// node kind in the language, kept in sync by hand, and getting it wrong would
-// silently name one construct after another. Reflection cannot omit a kind:
-// a node type added to go/ast tomorrow gets a reasonable word for free.
-//
-// The trailing Stmt/Expr/Clause is dropped because it is noise in a sentence
-// — "one extra defer" reads, "one extra deferstmt" does not — and "Decl" is
-// kept, since dropping it turns GenDecl into "gen".
-func kindName(n ast.Node) string {
-	t := reflect.TypeOf(n)
-	for t != nil && t.Kind() == reflect.Pointer {
-		t = t.Elem()
-	}
-	if t == nil {
-		return "node"
-	}
-	name := t.Name()
-	for _, suffix := range []string{"Stmt", "Expr", "Clause"} {
-		if len(name) > len(suffix) && strings.HasSuffix(name, suffix) {
-			name = name[:len(name)-len(suffix)]
-			break
-		}
-	}
-	name = strings.ToLower(name)
-	if alt, ok := kindNameOverrides[name]; ok {
-		return alt
-	}
-	return name
 }

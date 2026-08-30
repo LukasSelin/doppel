@@ -21,7 +21,6 @@ import (
 	"math"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/LukasSelin/doppel/internal/comparator"
 	"github.com/LukasSelin/doppel/internal/concepter"
@@ -157,13 +156,13 @@ func samplePopulation(units []parser.CodeUnit, idx []int, k int, seed uint64) []
 	if m < 2 {
 		return nil
 	}
-	isTest := func(i int) bool { return strings.HasSuffix(units[i].File, "_test.go") }
+	sameUnit := func(i, j int) bool { return parser.SameBuildUnit(units[i], units[j]) }
 	var pairs [][2]int
 	if m*(m-1)/2 <= k {
 		for a := 0; a < m; a++ {
 			for b := a + 1; b < m; b++ {
 				i, j := idx[a], idx[b]
-				if isTest(i) != isTest(j) {
+				if !sameUnit(i, j) {
 					continue
 				}
 				pairs = append(pairs, orderPair(i, j))
@@ -182,7 +181,7 @@ func samplePopulation(units []parser.CodeUnit, idx []int, k int, seed uint64) []
 				continue
 			}
 			i, j := idx[a], idx[b]
-			if isTest(i) != isTest(j) {
+			if !sameUnit(i, j) {
 				continue
 			}
 			p := orderPair(i, j)

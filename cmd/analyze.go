@@ -29,6 +29,7 @@ var (
 	maxPerFunc    int
 	testsMode     string
 	genMode       string
+	languages     []string
 	calibrateRate float64
 	familiesN     int
 	familyMin     float64
@@ -85,6 +86,7 @@ func init() {
 	analyzeCmd.Flags().IntVar(&channelK, "channel-k", 5, "Candidates each function keeps per retrieval channel")
 	analyzeCmd.Flags().BoolVar(&debugFlag, "debug", false, "Show per-pair retrieval provenance in the report")
 	analyzeCmd.Flags().IntVar(&maxPerFunc, "max-per-func", 2, "Maximum pairs any one function may appear in in the final report (0 = no cap)")
+	analyzeCmd.Flags().StringSliceVar(&languages, "languages", nil, "Languages to read, comma-separated (default: every language doppel has a frontend for). The extension allowlist is the whole scope rule — a file is in the corpus because a frontend claims its extension, never because its contents looked like code.")
 	analyzeCmd.Flags().StringVar(&testsMode, "tests", "exclude", "Test-function population: include, exclude, or only. Tests are conventionally similar, so the default models production code; cross test/prod pairs are never reported.")
 	analyzeCmd.Flags().StringVar(&genMode, "generated", "exclude", "Generated-file population: include, exclude, or only. Files carrying Go's \"Code generated ... DO NOT EDIT.\" marker are near-identical by construction and unactionable, so the default models hand-written code.")
 	analyzeCmd.Flags().Float64Var(&calibrateRate, "calibrate", defaultCalibrateRate, "Fraction of random unrelated pairs the thresholds may admit. Derives --threshold, --struct-min and --family-min from this corpus, so the operating point means the same thing at any size; 0 = use the fixed defaults")
@@ -110,6 +112,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		MaxPerFunc: maxPerFunc,
 		TestsMode:  testsMode,
 		Generated:  genMode,
+		Languages:  languages,
 		Calibrate:  calibrateRate,
 		Debug:      debugFlag,
 	}
@@ -428,10 +431,12 @@ func printHabitatSummary(w io.Writer, s culture.Stats) {
 	}
 }
 
-// isTestUnit reports whether a unit lives in a _test.go file — a
-// compiler-recognized build distinction, not a naming heuristic.
+// isTestUnit reports whether a unit is a test by its own language's
+// convention. The rule itself lives on the frontend — parser.IsTestUnit —
+// because it is per-language and was previously copy-pasted into four
+// packages that all had to agree.
 func isTestUnit(u parser.CodeUnit) bool {
-	return strings.HasSuffix(u.File, "_test.go")
+	return parser.IsTestUnit(u)
 }
 
 // filterTestUnits applies the --tests population policy. Filtering preserves

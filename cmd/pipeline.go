@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"go/ast"
 	"io"
 	"io/fs"
 	"path/filepath"
@@ -20,6 +19,7 @@ import (
 	"github.com/LukasSelin/doppel/internal/parser"
 	"github.com/LukasSelin/doppel/internal/retriever"
 	"github.com/LukasSelin/doppel/internal/snapshot"
+	"github.com/LukasSelin/doppel/internal/syntax"
 	"github.com/LukasSelin/doppel/internal/tagger"
 )
 
@@ -37,8 +37,9 @@ type Params struct {
 	ChannelK   int
 	MaxPerFunc int
 	TestsMode  string
-	Generated  string  // generated-file population: include, exclude, or only
-	Calibrate  float64 // null admission rate; > 0 derives Threshold and StructMin from the corpus
+	Generated  string   // generated-file population: include, exclude, or only
+	Languages  []string // language allowlist; empty means every registered frontend
+	Calibrate  float64  // null admission rate; > 0 derives Threshold and StructMin from the corpus
 	Debug      bool
 	// Pinned says Threshold and StructMin were supplied at the rate in
 	// Calibrate rather than derived by this run, so calibration is skipped.
@@ -196,6 +197,11 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 		return res, err
 	}
 
+	sel, unknown := parser.NewSelection(p.Languages)
+	if len(unknown) > 0 {
+		return res, fmt.Errorf("unknown languages %v: doppel has frontends for %v", unknown, parser.Languages())
+	}
+
 	fmt.Fprintf(progress, "Scanning %s ...\n", root)
 	var units []parser.CodeUnit
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
@@ -209,6 +215,12 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 			return filepath.SkipDir
 		}
 		if d.IsDir() {
+			return nil
+		}
+		// The extension allowlist is the whole scope rule: a file is in the
+		// corpus because a frontend claims it and the selection admits that
+		// language. Nothing inspects contents to judge a file code-like.
+		if !sel.Admits(path) {
 			return nil
 		}
 		parsed, err := parser.Parse(path)
@@ -260,7 +272,7 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 	// keep the two totals the ratio needs. Computed alongside WL because it
 	// is the same kind of fact — a static property of the canonical AST
 	// forest over exactly this population — and never feeds any score.
-	canonical := make([]*ast.FuncDecl, len(units))
+	canonical := make([]*syntax.Node, len(units))
 	for i := range units {
 		canonical[i] = units[i].Canonical
 	}
@@ -407,8 +419,11 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 	crossDropped := 0
 	for _, c := range cands {
 		// A test and a production function are never merge candidates —
-		// different build units. Only possible under --tests include.
-		if isTestUnit(units[c.AIdx]) != isTestUnit(units[c.BIdx]) {
+		// different build units. Nor are two functions in different
+		// languages, one step further out: they do not compare on shape,
+		// and merging them is not a thing anyone could do. Only reachable
+		// under --tests include, or in a mixed-language corpus.
+		if !parser.SameBuildUnit(units[c.AIdx], units[c.BIdx]) {
 			crossDropped++
 			continue
 		}
@@ -505,6 +520,14 @@ func filterByOverlap(pairs []analyzer.SimilarPair, min float64) []analyzer.Simil
 	return out
 }
 
+// languageSelection is the run's language allowlist. Errors are impossible
+// here: index() rejects an unknown language before any unit is parsed, so by
+// the time a snapshot exists the selection has already been validated.
+func languageSelection(p Params) parser.Selection {
+	sel, _ := parser.NewSelection(p.Languages)
+	return sel
+}
+
 // nnDistribution computes each function's best code-shape score among pairs,
 // which must be the retrieval union with Score already set on every entry
 // (true of both branches that call this: the full pre-struct-min set, and
@@ -569,6 +592,11 @@ func snapshotOf(res Result, pairs []analyzer.SimilarPair) snapshot.Snapshot {
 			TestsMode:  res.Params.TestsMode,
 			Generated:  res.Params.Generated,
 			Calibrate:  res.Params.Calibrate,
+			// Names() resolves an empty selection to the concrete list of
+			// languages actually read, so a baseline never records "whatever
+			// was built in" — which would compare equal across two builds
+			// that read different corpora.
+			Languages: languageSelection(res.Params).Names(),
 		},
 		snapshot.CorpusMetrics{
 			TotalNodes:           res.ConsStats.TotalNodes,

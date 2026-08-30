@@ -3,7 +3,8 @@ package analyzer
 import (
 	"math"
 	"sort"
-	"strings"
+
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 // SortByEvidence orders pairs for the final report: retrieval evidence mass
@@ -103,11 +104,11 @@ func RankKey(p SimilarPair, o RankOptions) float64 {
 	// they exercise, not through their driver skeleton — near-identical
 	// table-driven harnesses over different functions share no
 	// informative call tokens and key to zero, while tests of the same
-	// machinery keep their shared call mass. The suffix is the same
-	// compiler-recognized distinction --tests uses. Production pairs are
+	// machinery keep their shared call mass. The test rule is the same one
+	// --tests uses, asked of the unit's own frontend. Production pairs are
 	// untouched; under --tests only, the whole hygiene view becomes
 	// SUT-aware, which is the point.
-	if o.TestCallDiscount && strings.HasSuffix(p.A.File, "_test.go") && strings.HasSuffix(p.B.File, "_test.go") {
+	if o.TestCallDiscount && parser.IsTestUnit(p.A) && parser.IsTestUnit(p.B) {
 		k *= p.Retrieval.CallSim
 	}
 	return k
