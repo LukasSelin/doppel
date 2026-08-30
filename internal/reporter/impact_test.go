@@ -124,14 +124,15 @@ func TestImpactDigestDoesNotRankOnTheMergeWorthyFlagAlone(t *testing.T) {
 	}
 }
 
-func TestConceptDigestNamesPresentAndAbsentConcepts(t *testing.T) {
+func TestConceptDigestNamesPresentConceptsAndUnusedSeeds(t *testing.T) {
 	s := snapshot.Snapshot{
-		Functions: 3,
-		Params:    snapshot.Params{Threshold: 0.6, TestsMode: "exclude"},
-		Concepts:  []snapshot.TagCount{{Tag: "db_access", Count: 2}, {Tag: "retry", Count: 1}},
-		Roles:     []snapshot.RoleCount{{Role: "leaf", Count: 3}},
+		Functions:   3,
+		Params:      snapshot.Params{Threshold: 0.6, TestsMode: "exclude"},
+		Concepts:    []snapshot.TagCount{{Tag: "sql.Open+QueryRow", Count: 2}, {Tag: "retryWithBackoff+time.Sleep", Count: 1}},
+		UnusedSeeds: []string{"grpc_call", "http_call"},
+		Roles:       []snapshot.RoleCount{{Role: "leaf", Count: 3}},
 		Units: []snapshot.Unit{
-			{Key: "store.Save", Package: "store", Patterns: []string{"db_access"}},
+			{Key: "store.Save", Package: "store", Concepts: []snapshot.Concept{{ID: "sql.Open+QueryRow", Conf: 0.82}}},
 		},
 		Pairs: []snapshot.Pair{{A: "store.Save", B: "store.Load", Score: 0.8, Overlap: 0.5, MergeWorthy: true}},
 	}
@@ -141,7 +142,7 @@ func TestConceptDigestNamesPresentAndAbsentConcepts(t *testing.T) {
 		"myrepo",
 		"3 Go functions",
 		"test functions excluded",
-		"db_access 2",
+		"sql.Open+QueryRow 2",
 		"of which 1 are merge-worthy",
 	} {
 		if !strings.Contains(got, want) {
@@ -157,19 +158,21 @@ func TestConceptDigestNamesPresentAndAbsentConcepts(t *testing.T) {
 			t.Errorf("digest still contains %q, which moved out of SessionStart:\n%s", gone, got)
 		}
 	}
-	// The absent list is the direct answer to "is there already something
-	// doing this here?" when the answer is no.
+	// The unused-seed list is the direct answer to "is there already something
+	// doing this here?" when the answer is no. It names seeds — the one fixed
+	// vocabulary left — never learned concepts, which exist only because some
+	// function carries them and so can never be absent.
 	absentLine := ""
 	for _, line := range strings.Split(got, "\n") {
-		if strings.HasPrefix(line, "Concept tags with no occurrence") {
+		if strings.HasPrefix(line, "Kinds of work this corpus shows no practice for") {
 			absentLine = line
 		}
 	}
 	if absentLine == "" {
-		t.Fatalf("no absent-concepts line:\n%s", got)
+		t.Fatalf("no unused-seed line:\n%s", got)
 	}
-	if !strings.Contains(absentLine, "http_call") || strings.Contains(absentLine, "db_access") {
-		t.Errorf("absent line wrong: %q", absentLine)
+	if !strings.Contains(absentLine, "http_call") || strings.Contains(absentLine, "sql.Open") {
+		t.Errorf("unused-seed line wrong: %q", absentLine)
 	}
 }
 

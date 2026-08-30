@@ -5,12 +5,14 @@ import (
 	"io"
 	"io/fs"
 	"path/filepath"
+	"sort"
 
 	"github.com/LukasSelin/doppel/internal/analyzer"
 	"github.com/LukasSelin/doppel/internal/calibrate"
 	"github.com/LukasSelin/doppel/internal/comparator"
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/culture"
+	"github.com/LukasSelin/doppel/internal/lexicon"
 	"github.com/LukasSelin/doppel/internal/mapper"
 	"github.com/LukasSelin/doppel/internal/ontology"
 	"github.com/LukasSelin/doppel/internal/parser"
@@ -83,8 +85,11 @@ type Result struct {
 	Docs        []concepter.ConceptDoc
 	Graph       *concepter.Graph
 	Culture     *culture.Model
-	Calibration *calibrate.Result // nil unless Params.Calibrate > 0
-	TagCounts   map[ontology.TermID]int
+	Calibration *calibrate.Result           // nil unless Params.Calibrate > 0
+	TagCounts   map[ontology.TermID]int     // members per concept; the inventory's own counts
+	ConceptMass map[ontology.TermID]float64 // summed membership confidence; what weights IC
+	Lexicon     *lexicon.Model
+	UnusedSeeds []string // seed concepts this corpus grew no practice for
 	Onto        *ontology.Ontology
 	IC          *ontology.IC
 	Pairs       []analyzer.SimilarPair
@@ -130,7 +135,10 @@ func progressOr(w io.Writer) io.Writer {
 // to ask how a proposed function would sit in this corpus.
 func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (Result, error) {
 	progress = progressOr(progress)
-	res := Result{Root: root, Params: p, TagCounts: map[ontology.TermID]int{}}
+	res := Result{Root: root, Params: p,
+		TagCounts:   map[ontology.TermID]int{},
+		ConceptMass: map[ontology.TermID]float64{},
+	}
 
 	if err := validateMode("tests", p.TestsMode); err != nil {
 		return res, err
@@ -186,26 +194,60 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 		return res, nil
 	}
 
-	// Tag every unit, counting tag occurrences as we go: the counts become
-	// the corpus statistics that weight concept matching. A tag most units
-	// carry says little about any pair sharing it; a rare one says a lot.
-	tagCounts := make(map[ontology.TermID]int)
-	for i := range units {
-		units[i].Patterns = tagger.Tag(units[i])
-		for _, tag := range units[i].Patterns {
-			tagCounts[ontology.TermID(tag)]++
-		}
-	}
-	res.TagCounts = tagCounts
-
-	onto := ontology.Default()
-	ic := ontology.NewCorpusIC(onto, tagCounts)
-	res.Onto, res.IC = onto, ic
-
-	// Build call graph and generate concept documents for every unit.
-	// docs[i] describes units[i]; the pipeline relies on that alignment.
+	// The call graph comes first now, because the lexicon reads it: a
+	// function's resolved callees are one of the evidence channels a concept
+	// can be learned from, and the strongest one on most corpora.
 	cg := concepter.BuildCallGraph(units)
 	res.Graph = cg
+
+	// Learn this corpus's concept vocabulary. The rule tagger still runs, but
+	// only to seed the search: it says which functions to look at, and the
+	// corpus says what those functions actually have in common. Concepts no
+	// seed accounts for are discovered from feature co-occurrence, so a
+	// codebase whose vocabulary nobody wrote a rule for is not silent.
+	fmt.Fprintf(progress, "Learning concept vocabulary...\n")
+	seeds := make([][]string, len(units))
+	for i := range units {
+		seeds[i] = tagger.Tag(units[i])
+	}
+	lex := lexicon.Build(units, cg, seeds, lexicon.DefaultOptions())
+	res.Lexicon = lex
+	res.UnusedSeeds = unusedSeeds(lex)
+	ls := lex.Stats()
+	fmt.Fprintf(progress,
+		"Lexicon: %d concepts (%d seeded, %d emergent), %d/%d features above %d df, %d functions unlabeled\n",
+		ls.Seeded+ls.Emergent, ls.Seeded, ls.Emergent,
+		ls.FeaturesSurviving, ls.FeaturesTotal, ls.FeatureCap, ls.Untagged)
+	assignments := lex.Assignments()
+	for i := range units {
+		units[i].Concepts = assignments[i]
+	}
+
+	// Corpus statistics for concept matching, in two currencies. TagCounts is
+	// members per concept, which is what an inventory reports; ConceptMass is
+	// the summed confidence, which is what weights information content — a
+	// concept carried firmly by twenty functions is more of the corpus than one
+	// carried barely by twenty.
+	tagCounts := make(map[ontology.TermID]int)
+	conceptMass := make(map[ontology.TermID]float64)
+	for i := range units {
+		for _, c := range units[i].Concepts {
+			id := ontology.TermID(c.ID)
+			tagCounts[id]++
+			conceptMass[id] += c.Confidence
+		}
+	}
+	res.TagCounts, res.ConceptMass = tagCounts, conceptMass
+
+	// The vocabulary is per-corpus now: the abstract interior of the taxonomy
+	// survives, its fourteen authored leaves are replaced by what was learned.
+	onto := ontology.WithConcepts(ontology.Default(),
+		ontology.DerivedConceptTerms(ontology.Default(), derivedConcepts(lex)))
+	ic := ontology.NewCorpusICMass(onto, conceptMass)
+	res.Onto, res.IC = onto, ic
+
+	// Generate concept documents for every unit.
+	// docs[i] describes units[i]; the pipeline relies on that alignment.
 
 	fmt.Fprintf(progress, "Generating concept documents...\n")
 	cptr := concepter.New()
@@ -330,12 +372,12 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 	// misfits — positional lookup, like Evidence attachment; never name-keyed.
 	for i := range pairs {
 		pairs[i].Culture = cultureNotes(cult, pairs[i].AIdx, pairs[i].BIdx,
-			pairs[i].A.Patterns, pairs[i].B.Patterns)
+			parser.ConceptIDs(pairs[i].A.Concepts), parser.ConceptIDs(pairs[i].B.Concepts))
 		pairs[i].Habitat = habitatNotes(cult, pairs[i].AIdx, pairs[i].BIdx,
 			pairs[i].A.Package, pairs[i].B.Package)
 		pairs[i].Kind = analyzer.ClassifyPairWith(pairs[i].A, pairs[i].B, pairs[i].Score, forkFloor)
 		pairs[i].Profile = profileNotes(cult, pairs[i].AIdx, pairs[i].BIdx,
-			pairs[i].A.Patterns, pairs[i].B.Patterns)
+			parser.ConceptIDs(pairs[i].A.Concepts), parser.ConceptIDs(pairs[i].B.Concepts))
 	}
 	res.Pairs = pairs
 
@@ -374,7 +416,7 @@ func filterByOverlap(pairs []analyzer.SimilarPair, min float64) []analyzer.Simil
 
 // snapshotOf converts a run into the comparable record of it.
 func snapshotOf(res Result, pairs []analyzer.SimilarPair) snapshot.Snapshot {
-	return snapshot.Build(res.Units, res.Docs, pairs, res.TagCounts, res.Root, buildVersion(),
+	return snapshot.Build(res.Units, res.Docs, pairs, res.TagCounts, res.UnusedSeeds, res.Root, buildVersion(),
 		snapshot.Params{
 			Threshold:  res.Params.Threshold,
 			Top:        res.Params.TopN,
@@ -386,4 +428,48 @@ func snapshotOf(res Result, pairs []analyzer.SimilarPair) snapshot.Snapshot {
 			Generated:  res.Params.Generated,
 			Calibrate:  res.Params.Calibrate,
 		})
+}
+
+// derivedConcepts translates the learned lexicon into taxonomy placements.
+//
+// A seeded concept hangs where its seed's leaf hung — a concept grown from
+// db_access is a kind of data_store_access, whatever this corpus turned out to
+// mean by it — and an emergent one hangs beside whichever seeded concept it
+// most resembles, or from the root when it resembles none. That is the whole of
+// what the authored vocabulary still asserts: the shape of the interior, and
+// where a learned leaf plausibly belongs in it.
+func derivedConcepts(lex *lexicon.Model) []ontology.DerivedConcept {
+	concepts := lex.Concepts()
+	out := make([]ontology.DerivedConcept, len(concepts))
+	for i, c := range concepts {
+		out[i] = ontology.DerivedConcept{
+			ID:         c.ID,
+			Seed:       ontology.TermID(c.Seed),
+			AnchorSeed: ontology.TermID(c.Anchor),
+			Def:        c.Definition(),
+		}
+	}
+	return out
+}
+
+// unusedSeeds is the seed vocabulary minus the seeds that grew a concept: the
+// kinds of work this corpus shows no practice for.
+//
+// It replaces the old "concept tags with no occurrence" list, which compared a
+// run against the fourteen authored leaves. Those leaves are seeds now and
+// never appear in a derived vocabulary, so that comparison would report all
+// fourteen as absent on every corpus — confidently, and always wrongly.
+func unusedSeeds(lex *lexicon.Model) []string {
+	grown := make(map[string]bool)
+	for _, s := range lex.GrownSeeds() {
+		grown[s] = true
+	}
+	var out []string
+	for _, c := range tagger.Concepts() {
+		if !grown[c] {
+			out = append(out, c)
+		}
+	}
+	sort.Strings(out)
+	return out
 }

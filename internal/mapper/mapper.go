@@ -17,10 +17,10 @@ import (
 // evidence for the comparator — while ResolvedCallees carries the repo-
 // internal edges the role and context signals are computed from.
 func Map(units []parser.CodeUnit, g *concepter.Graph, c *concepter.Concepter) []concepter.ConceptDoc {
-	// Lookup: qualified name → intent tags. Package comes from the key itself.
-	patternsByQN := make(map[string][]string, len(units))
+	// Lookup: qualified name → learned concepts. Package comes from the key itself.
+	conceptsByQN := make(map[string][]parser.Concept, len(units))
 	for _, u := range units {
-		patternsByQN[concepter.QualifiedName(u)] = u.Patterns
+		conceptsByQN[concepter.QualifiedName(u)] = u.Concepts
 	}
 
 	// Derive the role thresholds from this corpus's own degree distribution
@@ -44,8 +44,8 @@ func Map(units []parser.CodeUnit, g *concepter.Graph, c *concepter.Concepter) []
 		doc.Neighborhood = g.Neighborhood(qn)
 
 		doc.Role = concepter.ClassifyRoleAt(len(doc.Callers), len(doc.ResolvedCallees), th)
-		doc.CallerPatterns = collectPatterns(doc.Callers, patternsByQN)
-		doc.CalleePatterns = collectPatterns(doc.ResolvedCallees, patternsByQN)
+		doc.CallerConcepts = collectConcepts(doc.Callers, conceptsByQN)
+		doc.CalleeConcepts = collectConcepts(doc.ResolvedCallees, conceptsByQN)
 		doc.CallerPackages = collectPackages(doc.Callers)
 		doc.CalleePackages = collectPackages(doc.ResolvedCallees)
 
@@ -54,16 +54,56 @@ func Map(units []parser.CodeUnit, g *concepter.Graph, c *concepter.Concepter) []
 	return docs
 }
 
-// collectPatterns aggregates and deduplicates intent tags from the named
-// units, returning them sorted for deterministic output.
-func collectPatterns(qualified []string, patternsByQN map[string][]string) []string {
-	seen := make(map[string]bool)
+// contextConcepts bounds an aggregated caller/callee concept set. A function
+// with forty callers can otherwise inherit most of the corpus vocabulary, which
+// is both meaningless as a signal — everything is related to everything — and
+// quadratically expensive, since the scorer matches the two sets pairwise. The
+// strongest few are what "the neighbourhood does this kind of work" can honestly
+// mean.
+const contextConcepts = 8
+
+// collectConcepts aggregates the learned concepts of the named units, keeping
+// the strongest confidence any of them asserted, bounded to the strongest
+// contextConcepts and returned sorted by ID for deterministic output.
+//
+// Strongest rather than mean: this is a signal about what the neighbourhood
+// does at all, and averaging over a wide caller set would dilute a concept one
+// caller unmistakably carries into nothing.
+func collectConcepts(qualified []string, conceptsByQN map[string][]parser.Concept) []parser.Concept {
+	best := make(map[string]float64)
 	for _, qn := range qualified {
-		for _, p := range patternsByQN[qn] {
-			seen[p] = true
+		for _, c := range conceptsByQN[qn] {
+			if c.Confidence > best[c.ID] {
+				best[c.ID] = c.Confidence
+			}
 		}
 	}
-	return sortedKeys(seen)
+	if len(best) == 0 {
+		return nil
+	}
+	ids := make([]string, 0, len(best))
+	for id := range best {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	if len(ids) > contextConcepts {
+		// Strongest first to choose, ties on ID so the cut is deterministic,
+		// then back to ID order because that is the invariant the field
+		// documents and the scorer's tie-breaks assume.
+		sort.SliceStable(ids, func(i, j int) bool {
+			if best[ids[i]] != best[ids[j]] {
+				return best[ids[i]] > best[ids[j]]
+			}
+			return ids[i] < ids[j]
+		})
+		ids = ids[:contextConcepts]
+		sort.Strings(ids)
+	}
+	out := make([]parser.Concept, len(ids))
+	for i, id := range ids {
+		out[i] = parser.Concept{ID: id, Confidence: best[id]}
+	}
+	return out
 }
 
 // collectPackages derives the deduplicated, sorted package set of the named

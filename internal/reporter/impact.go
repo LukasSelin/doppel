@@ -6,7 +6,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/LukasSelin/doppel/internal/ontology"
 	"github.com/LukasSelin/doppel/internal/snapshot"
 )
 
@@ -62,10 +61,11 @@ func ConceptDigest(s snapshot.Snapshot, root string) string {
 		for _, c := range byCountDesc(s.Concepts) {
 			present = append(present, fmt.Sprintf("%s %d", c.Tag, c.Count))
 		}
-		fmt.Fprintf(&b, "Concept tags present: %s.\n", strings.Join(present, ", "))
+		fmt.Fprintf(&b, "Concepts learned from this corpus, with member counts: %s.\n", strings.Join(present, ", "))
 	}
-	if absent := absentConcepts(s.Concepts); len(absent) > 0 {
-		fmt.Fprintf(&b, "Concept tags with no occurrence in this corpus: %s.\n", strings.Join(absent, ", "))
+	if len(s.UnusedSeeds) > 0 {
+		fmt.Fprintf(&b, "Kinds of work this corpus shows no practice for: %s.\n",
+			strings.Join(s.UnusedSeeds, ", "))
 	}
 
 	if len(s.Roles) > 0 {
@@ -303,22 +303,6 @@ func byCountDesc(tags []snapshot.TagCount) []snapshot.TagCount {
 // absentConcepts lists the vocabulary's concrete concepts that nothing in the
 // corpus carries — the direct answer to "is there already something doing this
 // here?" when the answer is no.
-func absentConcepts(present []snapshot.TagCount) []string {
-	have := make(map[string]bool, len(present))
-	for _, t := range present {
-		have[t.Tag] = true
-	}
-	var out []string
-	for _, term := range ontology.Default().TermsOfKind(ontology.KindConcept) {
-		if term.Abstract || have[string(term.ID)] {
-			continue
-		}
-		out = append(out, string(term.ID))
-	}
-	sort.Strings(out)
-	return out
-}
-
 func truncate(s string) string {
 	if len(s) <= digestMaxChars {
 		return s

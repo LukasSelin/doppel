@@ -6,6 +6,7 @@ import (
 
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/ontology"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 // The signal vector, weighted in declaration order, is the composite: the
@@ -23,15 +24,15 @@ func TestSignalVectorReproducesOverlap(t *testing.T) {
 	docs := []struct{ a, b concepter.ConceptDoc }{
 		{
 			concepter.ConceptDoc{Name: "foo", Package: "pkg", Exported: true, Role: "utility",
-				Callees: []string{"bar", "baz"}, Callers: []string{"main"}, Patterns: []string{"retry", "http_call"},
+				Callees: []string{"bar", "baz"}, Callers: []string{"main"}, Concepts: parser.Certain("retry", "http_call"),
 				CallerPackages: []string{"cmd"}, CalleePackages: []string{"util"}, Neighborhood: []string{"pkg.x", "pkg.y"}},
 			concepter.ConceptDoc{Name: "foo2", Package: "pkg", Exported: true, Role: "utility",
-				Callees: []string{"bar", "qux"}, Callers: []string{"main", "other"}, Patterns: []string{"retry", "db_access"},
+				Callees: []string{"bar", "qux"}, Callers: []string{"main", "other"}, Concepts: parser.Certain("retry", "db_access"),
 				CallerPackages: []string{"cmd", "api"}, CalleePackages: []string{"util"}, Neighborhood: []string{"pkg.x", "pkg.z"}},
 		},
 		{
-			concepter.ConceptDoc{Name: "alpha", Package: "pkgA", Exported: true, Role: "leaf", Callees: []string{"x"}, Patterns: []string{"retry"}},
-			concepter.ConceptDoc{Name: "beta", Package: "pkgB", Exported: false, Role: "orchestrator", Callees: []string{"y"}, Patterns: []string{"db_access"}},
+			concepter.ConceptDoc{Name: "alpha", Package: "pkgA", Exported: true, Role: "leaf", Callees: []string{"x"}, Concepts: parser.Certain("retry")},
+			concepter.ConceptDoc{Name: "beta", Package: "pkgB", Exported: false, Role: "orchestrator", Callees: []string{"y"}, Concepts: parser.Certain("db_access")},
 		},
 	}
 	o := ontology.Default()

@@ -23,8 +23,8 @@ func probeCorpus(t *testing.T, sources map[string]string) ([]parser.CodeUnit, *c
 	}
 	tagCounts := make(map[ontology.TermID]int)
 	for i := range units {
-		units[i].Patterns = tagger.Tag(units[i])
-		for _, tag := range units[i].Patterns {
+		units[i].Concepts = parser.Certain(tagger.Tag(units[i])...)
+		for _, tag := range parser.ConceptIDs(units[i].Concepts) {
 			tagCounts[ontology.TermID(tag)]++
 		}
 	}

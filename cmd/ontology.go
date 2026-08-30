@@ -22,10 +22,15 @@ var ontologyCmd = &cobra.Command{
 then check them against the ontology's axioms.
 
 The vocabulary decides how scores are computed: the concept taxonomy is what
-lets two functions tagged http_call and db_access score partial credit as
-cousins rather than zero, and the weight on each relation is that signal's
-contribution to the structural overlap score. This command exists so both can
-be reviewed without reading source.
+lets two functions doing related kinds of work score partial credit as cousins
+rather than zero, and the weight on each relation is that signal's contribution
+to the structural overlap score. This command exists so both can be reviewed
+without reading source.
+
+The concept leaves shown here are SEEDS, not the vocabulary a run reasons over.
+Concepts are learned per corpus: analyze replaces these fourteen leaves with
+what it finds in the code, hanging the learned concepts from the same abstract
+interior. Run "doppel analyze" to see a corpus's own vocabulary.
 
 Exits non-zero if any axiom is violated.`,
 	Args: cobra.NoArgs,
