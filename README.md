@@ -120,6 +120,11 @@ doppel query --near billing . < draft.go
 
 # Census: every group of 3+ mutually similar functions, not just pairs
 doppel families .
+
+# What happened to each function between two runs — renames and moves included
+doppel analyze . --format json > before.json
+doppel analyze . --format json > after.json
+doppel diff before.json after.json
 ```
 
 ### Querying before you write
@@ -182,6 +187,53 @@ A function can belong to more than one family; the counts report distinct functi
 whose every member pair satisfies one of the pair kinds says so on its line (`kind: interface
 implementations of Flush()`), and in the JSON as `kind`. `analyze` shows the most informative few
 inline; `doppel families` is the whole census, with `--format json` for a machine.
+
+### Comparing two runs
+
+`doppel diff` takes two snapshots written by `doppel analyze --format json` and matches their
+functions to each other by **body**, not by name — so a rename reads as a rename rather than as a
+deletion and an unrelated arrival. Every function lands in exactly one of eight classes and every
+line prints the evidence that produced it:
+
+```
+$ doppel diff before.json after.json
+269 functions before, 269 after
+split 1, merged 0, moved 1, renamed 2, edited 0, new 0, deleted 1, unchanged 264
+
+split 1
+  cobra.defaultUsageFunc (command.go:1974)  -> 2 bodies
+      -> cobra.usageBody (command.go:1994)  containment 0.9906
+      -> cobra.usageHeader (command.go:1974)  containment 0.9670
+
+moved 1
+  cobra.stringInSlice (cobra.go:225) -> sliceutil.stringInSlice (sliceutil/slice.go:3)
+      jaccard 1.0000  containment 1.0000  digests equal
+
+renamed 2
+  cobra.GetActiveHelpConfig (active_help.go:47) -> cobra.ActiveHelpConfig (active_help.go:47)  (body edited)
+      jaccard 0.6798  containment 0.9082  digests differ
+  cobra.OnlyValidArgs (args.go:51) -> cobra.ValidateArgs (args.go:51)
+      jaccard 1.0000  containment 1.0000  digests equal
+
+deleted 1
+  cobra.ExactValidArgs (args.go:129)  (no counterpart above the match floor)
+
+unchanged 264
+```
+
+A function that both moved and was renamed carries one class — the move — with the rename printed
+alongside it, and the same goes for a rename that also edited the body. `--unchanged` lists the
+unchanged functions instead of only counting them; `--format json` emits the whole result,
+unchanged findings included, with every slice already in a total order.
+
+Exit codes: **0** compared, **1** a file could not be read, **2** the two snapshots refuse
+comparison — a different schema, or a different canonicalization rule set, either of which would
+make the same untouched bodies look different. A different threshold, ontology or doppel build does
+*not* refuse: matching reads only each function's own body, so those are noted in the report and the
+comparison runs.
+
+This is a different question from what the Claude Code hooks answer. Those measure a session's
+impact on the pair list and deliberately claim nothing they cannot attribute to an edit.
 
 ### Flags
 
