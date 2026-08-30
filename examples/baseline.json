@@ -37,31 +37,31 @@
   "examples": [
     {
       "corpus": "chi",
-      "sha256": "2552f6f03a735dd87ebfcbcb43cd358c06f42754405de7db7fd2200d6b90340e"
+      "sha256": "43897a074cedbd92076ee75f3e7a8c473343a9a255996de9b2ab0b24c6859294"
     },
     {
       "corpus": "cobra",
-      "sha256": "74aefd84639a2119e2010cfa7eb73860ee24db3963a63718330ea0908be88565"
+      "sha256": "382f5ef330118f713a22fc474c234e00adae8b4ca2cb9da6a0fd8fc58b3e7937"
     },
     {
       "corpus": "conc",
-      "sha256": "6159b88dc8f707794244dfcbe7e1376025e9934ed1b985e6bdcd7647070fab3e"
+      "sha256": "45ce3fef1523a430a319bb463665f36613a46761979a2e9a59f5af15173ec8a5"
     },
     {
       "corpus": "gin",
-      "sha256": "5d679aac9f205775932c07b1ea8a3d94ccb5581258fd73cad3bba5ccfee4ac9a"
+      "sha256": "aefdb36067cbae6ecd517a8712a416f37998f11ca4e09af15930f42e964bfe64"
     },
     {
       "corpus": "hugo",
-      "sha256": "d398d01a237edd364ba42fabfcf534c41ec5651ca53c6e30ac7b12c554889972"
+      "sha256": "7eab821d22fefcf05e4624aa054b89b4d1f41c6ab0568f34b0308581b8504fd4"
     },
     {
       "corpus": "moby",
-      "sha256": "746fec6bdd8e1620d2f570f794b9e25ec7e81c0c7f08729feaa2c021a693170e"
+      "sha256": "9229d8caf63d161c912bd4b3a59de5f4bc4d5793be76416e4cf71410e9b6691c"
     },
     {
       "corpus": "prometheus",
-      "sha256": "73d5872440d9f4f8cbce2d89b1116cc8bd8009a2c7296587c79009b2afe5e1ff"
+      "sha256": "dd20ce9edf0f228860924c6ccb721b7ae975f41dbe1a841c479e5a08630e4b73"
     }
   ]
 }

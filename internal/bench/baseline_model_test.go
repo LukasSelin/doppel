@@ -4,9 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"os"
-	"path/filepath"
-	"sort"
+	"strings"
 )
 
 // classOrder is the fixed class ordering logScorecard already prints in, used
@@ -51,7 +49,12 @@ type CorpusBaseline struct {
 	AssertionsPassed bool            `json:"assertionsPassed"`
 }
 
-// ExampleChecksum is one committed example report's content hash.
+// ExampleChecksum is one example report's content hash, computed from a
+// freshly regenerated report (buildExampleReport in examples_test.go) with
+// its build-identity line normalized away — see normalizeForChecksum. It is
+// never read off examples/<corpus>.md on disk: a baseline that depended on
+// whatever happened to be committed there could report "unchanged" over a
+// stale file, or "changed" over nothing but a rebuild.
 type ExampleChecksum struct {
 	Corpus string `json:"corpus"`
 	SHA256 string `json:"sha256"`
@@ -59,9 +62,10 @@ type ExampleChecksum struct {
 
 // Baseline is the T0 gate: a number to beat, taken from the golden-labels
 // scorer (internal/bench's own reason-giving harness, not a re-derivation)
-// plus a checksum of every regenerated example report. It excludes anything
-// wall-clock or machine-dependent — see baseline-timings.json for that — so
-// two runs on an unchanged tree produce byte-identical JSON.
+// plus a checksum of every freshly regenerated example report. It excludes
+// anything wall-clock or machine-dependent — see baseline-timings.json for
+// that — so two runs on an unchanged tree, from a clean checkout, produce
+// byte-identical JSON.
 type Baseline struct {
 	Corpora  []CorpusBaseline  `json:"corpora"`
 	Examples []ExampleChecksum `json:"examples"`
@@ -103,37 +107,38 @@ func corpusBaselineOf(name string, lf LabelsFile, sc Scorecard) CorpusBaseline {
 	}
 }
 
-// sha256File hashes a file's exact bytes — the same bytes `task examples`
-// wrote and git diffs against, so this checksum catches regeneration drift
-// byte for byte, whitespace included.
-func sha256File(path string) (string, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
+// checksumRevLine is what normalizeForChecksum substitutes for the
+// "| doppel | `<rev>` |" metadata line before hashing an example report.
+const checksumRevLine = "| doppel | `<normalized-for-checksum>` |"
+
+// normalizeForChecksum replaces an example report's build-identity line —
+// "| doppel | `<git-rev>` |", the one line in buildExampleReport's output
+// that names the commit that generated it rather than anything about the
+// corpus or the ranking — with a fixed placeholder before hashing.
+//
+// This is load-bearing, not cosmetic: examples/baseline.json exists so a
+// later change can ask "did any report's content actually move", and
+// without this normalization every single commit — including ones that
+// touch nothing under internal/ or cmd/ — would flip every checksum,
+// because doppelRev is `git rev-parse --short HEAD` at generation time. That
+// would make the checksum indistinguishable from noise. Every other line —
+// the corpus metadata, the run diagnostics, the whole pair and family
+// list — is hashed byte for byte.
+func normalizeForChecksum(content []byte) []byte {
+	lines := strings.Split(string(content), "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(line, "| doppel | `") {
+			lines[i] = checksumRevLine
+		}
 	}
-	sum := sha256.Sum256(data)
-	return hex.EncodeToString(sum[:]), nil
+	return []byte(strings.Join(lines, "\n"))
 }
 
-// exampleChecksums hashes every examples/<corpus>.md the ladder names that is
-// present on disk, sorted by corpus name — independent of both Corpora's own
-// ladder order and any filesystem directory order, so reordering the ladder
-// or the directory listing cannot reorder this list.
-func exampleChecksums(examplesDir string) ([]ExampleChecksum, error) {
-	var out []ExampleChecksum
-	for _, c := range Corpora {
-		path := filepath.Join(examplesDir, c.Name+".md")
-		if _, err := os.Stat(path); err != nil {
-			continue
-		}
-		sum, err := sha256File(path)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, ExampleChecksum{Corpus: c.Name, SHA256: sum})
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Corpus < out[j].Corpus })
-	return out, nil
+// sha256Bytes hashes data in memory — used on a freshly regenerated,
+// normalized report, never on a file read back off disk.
+func sha256Bytes(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
 }
 
 // MarshalBaseline renders b the way examples/baseline.json is written:

@@ -37,6 +37,73 @@ func gitHead(dir string) string {
 	return strings.TrimSpace(string(out))
 }
 
+// buildDoppel builds the doppel binary into a fresh temp dir and returns its
+// path alongside the git rev that identifies the tree it was built from.
+// Extracted so TestGenerateExamples and the baseline checksum generator
+// (baseline_test.go) build it exactly once, the same way, rather than each
+// keeping its own copy of the build invocation.
+func buildDoppel(t *testing.T, root string) (bin, rev string) {
+	t.Helper()
+	bin = filepath.Join(t.TempDir(), "doppel")
+	if runtime.GOOS == "windows" {
+		bin += ".exe"
+	}
+	build := exec.Command("go", "build", "-o", bin, ".")
+	build.Dir = root
+	build.Stderr = os.Stderr
+	if err := build.Run(); err != nil {
+		t.Fatalf("build doppel: %v", err)
+	}
+	return bin, gitHead(root)
+}
+
+// buildExampleReport runs bin over corpus c exactly the way `task examples`
+// does — same flags, same corpus-relative working directory — and returns
+// the full example-report content: the metadata table, the run diagnostics,
+// then the markdown report body. This is the exact byte sequence
+// TestGenerateExamples writes to examples/<corpus>.md, extracted so the
+// baseline checksum generator can produce identical content without ever
+// touching examples/ itself.
+func buildExampleReport(t *testing.T, bin, doppelRev string, c Corpus) []byte {
+	t.Helper()
+	dir, err := Path(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	md := filepath.Join(t.TempDir(), "report.md")
+	args := []string{"analyze", ".", "--tests", "exclude",
+		"--top", fmt.Sprint(exampleTop), "--output", md}
+	cmd := exec.Command(bin, args...)
+	cmd.Dir = dir
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("analyze %s: %v\n%s", c.Name, err, stderr.String())
+	}
+	body, err := os.ReadFile(md)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	fmt.Fprintf(&out, "# %s\n\n", c.Name)
+	fmt.Fprintf(&out, "%s\n\n", c.Character)
+	fmt.Fprintf(&out, "**What this rung shows:** %s\n\n", c.Exercises)
+	fmt.Fprintf(&out, "| | |\n|---|---|\n")
+	fmt.Fprintf(&out, "| Corpus | [%s](%s) |\n", c.Name, strings.TrimSuffix(c.Repo, ".git"))
+	fmt.Fprintf(&out, "| Pinned at | `%s` (`%s`) |\n", c.Tag, c.Commit)
+	fmt.Fprintf(&out, "| Project since | %d |\n", c.Since)
+	fmt.Fprintf(&out, "| doppel | `%s` |\n", doppelRev)
+	fmt.Fprintf(&out, "| Command | `doppel %s` |\n\n", strings.Join(args[:len(args)-2], " "))
+	fmt.Fprintf(&out, "Run from the corpus root, so every path below is corpus-relative.\n")
+	fmt.Fprintf(&out, "Regenerate with `task examples`.\n\n")
+	fmt.Fprintf(&out, "## Run diagnostics\n\n")
+	fmt.Fprintf(&out, "The corpus-level models doppel builds before ranking anything, as printed to stderr:\n\n")
+	fmt.Fprintf(&out, "```\n%s```\n\n", diagnostics(stderr.String()))
+	out.Write(body)
+	return normalizeEOL(out.Bytes())
+}
+
 // TestGenerateExamples regenerates examples/<corpus>.md for every fetched
 // corpus.
 //
@@ -51,17 +118,7 @@ func TestGenerateExamples(t *testing.T) {
 		t.Skip("set DOPPEL_BENCH_EXAMPLES=1 to regenerate examples/ from the fetched corpora")
 	}
 	root := repoRoot(t)
-	bin := filepath.Join(t.TempDir(), "doppel")
-	if runtime.GOOS == "windows" {
-		bin += ".exe"
-	}
-	build := exec.Command("go", "build", "-o", bin, ".")
-	build.Dir = root
-	build.Stderr = os.Stderr
-	if err := build.Run(); err != nil {
-		t.Fatalf("build doppel: %v", err)
-	}
-	doppelRev := gitHead(root)
+	bin, doppelRev := buildDoppel(t, root)
 
 	outDir := filepath.Join(root, "examples")
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
@@ -76,47 +133,12 @@ func TestGenerateExamples(t *testing.T) {
 		}
 		any = true
 		t.Run(c.Name, func(t *testing.T) {
-			dir, err := Path(c)
-			if err != nil {
-				t.Fatal(err)
-			}
-			md := filepath.Join(t.TempDir(), "report.md")
-			args := []string{"analyze", ".", "--tests", "exclude",
-				"--top", fmt.Sprint(exampleTop), "--output", md}
-			cmd := exec.Command(bin, args...)
-			cmd.Dir = dir
-			var stderr bytes.Buffer
-			cmd.Stderr = &stderr
-			if err := cmd.Run(); err != nil {
-				t.Fatalf("analyze %s: %v\n%s", c.Name, err, stderr.String())
-			}
-			body, err := os.ReadFile(md)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			var out bytes.Buffer
-			fmt.Fprintf(&out, "# %s\n\n", c.Name)
-			fmt.Fprintf(&out, "%s\n\n", c.Character)
-			fmt.Fprintf(&out, "**What this rung shows:** %s\n\n", c.Exercises)
-			fmt.Fprintf(&out, "| | |\n|---|---|\n")
-			fmt.Fprintf(&out, "| Corpus | [%s](%s) |\n", c.Name, strings.TrimSuffix(c.Repo, ".git"))
-			fmt.Fprintf(&out, "| Pinned at | `%s` (`%s`) |\n", c.Tag, c.Commit)
-			fmt.Fprintf(&out, "| Project since | %d |\n", c.Since)
-			fmt.Fprintf(&out, "| doppel | `%s` |\n", doppelRev)
-			fmt.Fprintf(&out, "| Command | `doppel %s` |\n\n", strings.Join(args[:len(args)-2], " "))
-			fmt.Fprintf(&out, "Run from the corpus root, so every path below is corpus-relative.\n")
-			fmt.Fprintf(&out, "Regenerate with `task examples`.\n\n")
-			fmt.Fprintf(&out, "## Run diagnostics\n\n")
-			fmt.Fprintf(&out, "The corpus-level models doppel builds before ranking anything, as printed to stderr:\n\n")
-			fmt.Fprintf(&out, "```\n%s```\n\n", diagnostics(stderr.String()))
-			out.Write(body)
-
+			content := buildExampleReport(t, bin, doppelRev, c)
 			dst := filepath.Join(outDir, c.Name+".md")
-			if err := os.WriteFile(dst, normalizeEOL(out.Bytes()), 0o644); err != nil {
+			if err := os.WriteFile(dst, content, 0o644); err != nil {
 				t.Fatal(err)
 			}
-			t.Logf("wrote %s (%d bytes)", dst, out.Len())
+			t.Logf("wrote %s (%d bytes)", dst, len(content))
 		})
 	}
 	if !any {

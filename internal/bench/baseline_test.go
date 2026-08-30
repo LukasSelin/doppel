@@ -16,15 +16,21 @@ import (
 
 // TestGenerateBaseline is T0's "number to beat": it scores every committed
 // labels file against its matching corpus exactly as TestGoldenCorpora does
-// — same Load/Analyze/Score path, same population — then hashes every
-// example report currently on disk, and writes both into
-// examples/baseline.json.
+// — same Load/Analyze/Score path, same population — then builds the doppel
+// binary and regenerates every fetched corpus's example report in memory
+// (buildExampleReport, the same code TestGenerateExamples writes to disk),
+// normalizes away the build-identity line, hashes the result, and writes
+// both scorecards and checksums into examples/baseline.json.
 //
-// It deliberately does not regenerate examples/ itself: `task examples` is
-// its own documented step, and this test only reads whatever is on disk
-// afterward. That is what makes two consecutive `task baseline` runs on an
-// unchanged tree byte-identical — no rebuild, no re-parse, no wall clock in
-// the file this test writes.
+// This is entirely self-contained: it never reads examples/<corpus>.md, so
+// running it does not require `task examples` to have run first, and its
+// output does not depend on whatever happens to be sitting in examples/ at
+// the time. That is what makes examples/baseline.json reproducible from a
+// clean checkout at a fixed commit — the property the file exists to have.
+// It costs a full example-report regeneration (~10-60s across the fetched
+// ladder), which is the honest price of a baseline that measures the
+// current tree instead of trusting whatever a stale directory happens to
+// contain.
 //
 // A labeled corpus that fails its own golden hard assertions still gets
 // recorded (AssertionsPassed: false) rather than aborting the whole
@@ -32,7 +38,6 @@ import (
 // catch — but the test itself fails too, so `task baseline` cannot silently
 // launder a broken ranking into "the new normal" without a human noticing.
 //
-//	task examples   # regenerate examples/*.md first (own step, own task)
 //	task baseline   # DOPPEL_BENCH_BASELINE=1 go test ... -run TestGenerateBaseline
 func TestGenerateBaseline(t *testing.T) {
 	if os.Getenv("DOPPEL_BENCH_BASELINE") == "" {
@@ -92,24 +97,43 @@ func TestGenerateBaseline(t *testing.T) {
 	}
 	sort.Slice(corpora, func(i, j int) bool { return corpora[i].Corpus < corpora[j].Corpus })
 
-	examplesDir := filepath.Join(root, "examples")
-	checks, err := exampleChecksums(examplesDir)
-	if err != nil {
-		t.Fatal(err)
-	}
+	checks := computeExampleChecksums(t, root)
 	if len(checks) == 0 {
-		t.Fatal("no examples/<corpus>.md found on disk; run `task examples` first")
+		t.Fatal("no corpora fetched; run `task corpora` first")
 	}
 
 	out, err := MarshalBaseline(Baseline{Corpora: corpora, Examples: checks})
 	if err != nil {
 		t.Fatal(err)
 	}
-	dst := filepath.Join(examplesDir, "baseline.json")
+	dst := filepath.Join(root, "examples", "baseline.json")
 	if err := os.WriteFile(dst, out, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	t.Logf("wrote %s (%d bytes, %d labeled corpora, %d example checksums)", dst, len(out), len(corpora), len(checks))
+}
+
+// computeExampleChecksums builds the doppel binary and regenerates every
+// fetched corpus's example report in memory (buildExampleReport — the exact
+// content TestGenerateExamples writes to examples/<corpus>.md), normalizing
+// away the build-identity line before hashing so the checksum reflects
+// report content, not which commit happened to generate it. It never reads
+// or writes examples/*.md.
+func computeExampleChecksums(t *testing.T, root string) []ExampleChecksum {
+	t.Helper()
+	bin, doppelRev := buildDoppel(t, root)
+
+	var out []ExampleChecksum
+	for _, c := range Corpora {
+		if !Present(c) {
+			t.Logf("skipping %s: not fetched", c.Name)
+			continue
+		}
+		content := buildExampleReport(t, bin, doppelRev, c)
+		out = append(out, ExampleChecksum{Corpus: c.Name, SHA256: sha256Bytes(normalizeForChecksum(content))})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Corpus < out[j].Corpus })
+	return out
 }
 
 // baselineTimingsCorpora are the fast rungs TestGenerateBaselineTimings times.

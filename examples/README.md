@@ -197,12 +197,24 @@ Two things worth reading off it:
 [`baseline.json`](baseline.json) is the number every scoring change has to
 beat: the golden scorecard for every committed labels file (mean rank per
 label class, the hard-assertion violation counts, `assertionsPassed`) plus a
-SHA-256 of every `examples/<corpus>.md` on disk. It is strictly
-deterministic — no wall clock, no map iteration order, sorted corpora and
-classes — so `task baseline` run twice on an unchanged tree produces
-byte-identical output. It does **not** regenerate `examples/*.md` itself;
-run `task examples` first if you want the checksums to reflect a fresh
-regeneration rather than whatever is currently on disk.
+SHA-256 of every fetched corpus's example report. It is strictly
+deterministic and self-contained: `task baseline` builds the doppel binary
+and regenerates every report in memory — the same content `task examples`
+writes to `examples/<corpus>.md`, via the same code — rather than reading
+whatever happens to be sitting in `examples/` at the time. That is what
+makes it reproducible from a clean checkout at a fixed commit: no wall
+clock, no map iteration order, sorted corpora and classes, no dependency on
+the working tree's `examples/*.md` files. Two `task baseline` runs on the
+same commit, including a fresh clone of it, produce byte-identical output.
+
+Each report's `doppel` metadata row — the git revision that generated it —
+is normalized to a fixed placeholder before hashing (`normalizeForChecksum`
+in `internal/bench/baseline_model_test.go`). Without
+this, every commit would flip every checksum whether or not a single ranked
+pair moved, since that line always names current `HEAD`. A later task can
+rely on the contrapositive: **if a checksum is unchanged, the report's
+ranking content is unchanged**, and if it changed, the report's content
+(not merely the commit that produced it) actually moved.
 
 [`baseline-timings.json`](baseline-timings.json) is the companion file for
 per-stage pipeline timings (`BenchmarkCorpus`, restricted to the four fast
