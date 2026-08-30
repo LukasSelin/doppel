@@ -85,3 +85,32 @@ jobs:
           grep -q additionalContext /tmp/ss.json
           go run . hook stop < /tmp/hook.json > /tmp/stop.json
           test ! -s /tmp/stop.json
+
+      # The published page at lukasselin.github.io/doppel always shows master's
+      # tip, so there is no way to fetch the report as of one merge. This
+      # attaches that copy. Push to master only — the workflow's push trigger is
+      # already scoped to that branch, so this pair of conditions is exactly
+      # "a merge landed"; PR runs are unchanged.
+      #
+      # Rendered under RUNNER_TEMP rather than into the tree, for the reason
+      # pages.yml documents for _site/: an output file inside the working tree
+      # is a file the very run writing it would walk. Deliberately a third
+      # render rather than reusing the determinism check's /tmp/a.html — that
+      # file is an assertion's scratch space, and an artifact quietly depending
+      # on it would break the moment someone reworks the check.
+      - name: Render the self-report
+        if: matrix.os == 'ubuntu-latest' && github.event_name == 'push'
+        run: |
+          mkdir -p "$RUNNER_TEMP/doppel-report"
+          go run . analyze . -o "$RUNNER_TEMP/doppel-report/report.html"
+
+      - name: Upload the self-report
+        if: matrix.os == 'ubuntu-latest' && github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: doppel-report-${{ github.sha }}
+          path: ${{ runner.temp }}/doppel-report/report.html
+          retention-days: 30
+          # An empty artifact is worse than a failed job: it looks like the
+          # report was captured.
+          if-no-files-found: error
