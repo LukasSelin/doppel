@@ -217,7 +217,7 @@ func applyConfig(cmd *cobra.Command, cfg *AnalysisConfig) {
 // hook therefore always diffs the full candidate set.
 func hookParams(root string) (Params, error) {
 	p := Params{
-		Threshold:       0.60,
+		Threshold:       defaultThreshold,
 		MinNodes:        defaultMinNodes,
 		ChannelK:        5,
 		TestsMode:       "exclude",
