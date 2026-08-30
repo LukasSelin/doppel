@@ -1,0 +1,106 @@
+name: Examples
+
+# examples/ is real output, not documentation about output: every report is
+# what `doppel analyze` printed on a pinned public corpus. Nothing verified
+# that until this job existed, so any ranking change left all seven reports —
+# and the ladder table beside them — quietly describing an older tool.
+#
+# This regenerates them from the pinned ladder on every push to master and
+# commits the result, so the committed examples always describe the code in
+# the tree.
+on:
+  push:
+    branches: [master]
+    # The reports are a property of the Go corpus and nothing else, so a prose
+    # commit must not cost a ten-minute analysis of seven repositories. This
+    # is the opposite call from pages.yml, which has no filter because it
+    # publishes the landing page as well as the report.
+    paths:
+      - '**.go'
+      - go.mod
+      - go.sum
+      - .github/workflows/examples.yml
+  # A rebuild without a commit — after a cache eviction, or to confirm the job
+  # still reproduces the committed reports.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# The job pushes to master, so two runs must serialize rather than race.
+# Deliberately not cancel-in-progress, for the reason wiki.yml gives: a
+# superseded run is cheap, a half-written commit is not.
+concurrency:
+  group: examples
+  cancel-in-progress: false
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    env:
+      # Must stay outside the working tree: a corpus checked out under it
+      # would be walked by `doppel analyze .` on this repo, which is the same
+      # reason bench.Root() defaults outside the module.
+      DOPPEL_CORPORA: ${{ runner.temp }}/doppel-corpora
+
+    steps:
+      # The push event checks out a detached sha; this job pushes back, so it
+      # needs the branch.
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # Keyed on the manifest itself: the pinned commits live in corpora.go,
+      # so bumping a rung invalidates the cache exactly when it should and
+      # never otherwise. No restore-keys — a partial hit would mix trees from
+      # two manifests, and Fetch would then fail on a commit mismatch rather
+      # than repair it.
+      - name: Restore the pinned corpora
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/doppel-corpora
+          key: doppel-corpora-${{ hashFiles('internal/bench/corpora.go') }}
+
+      # A no-op per corpus already present. Fetch still verifies every HEAD
+      # against the manifest, so a moved tag fails here rather than silently
+      # changing every number in the reports.
+      - name: Fetch whatever the cache did not carry
+        run: DOPPEL_BENCH_FETCH=1 go test ./internal/bench/ -run TestFetchCorpora -v -timeout 30m
+
+      # Writes a report only when its content changed: the one line carrying
+      # the doppel revision is excluded from the comparison, or an unchanged
+      # ranking would rewrite all seven files on every push.
+      - name: Regenerate the reports and the ladder table
+        run: DOPPEL_BENCH_EXAMPLES=1 go test ./internal/bench/ -run TestGenerateExamples -v -timeout 30m
+
+      - name: Commit and push
+        run: |
+          set -euo pipefail
+
+          if [ -z "$(git status --porcelain examples/)" ]; then
+            echo "examples already current — nothing to commit"
+            exit 0
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add examples/
+          # Name the source commit, so a regenerated report is traceable back
+          # to the change that moved the ranking.
+          git commit -m "docs(examples): regenerate at ${GITHUB_SHA:0:7}"
+
+          # A human push can land while the analysis runs; the concurrency
+          # group only serializes this workflow against itself.
+          git pull --rebase --autostash origin master
+          # A push authenticated with GITHUB_TOKEN does not trigger workflows,
+          # so this cannot loop back into itself, and the examples commit does
+          # not re-run ci.yml. That is intended: examples/ is generated output
+          # and gates nothing.
+          git push origin HEAD:master
