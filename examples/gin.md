@@ -9,7 +9,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `616ab78` |
+| doppel | `7c27a17` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -21,16 +21,20 @@ The corpus-level models doppel builds before ranking anything, as printed to std
 
 ```
 Scanning . ...
+Learning concept vocabulary...
+Lexicon: 46 concepts (6 seeded, 40 emergent), 1348/3708 features above 182 df, 109 functions unlabeled
 Generating concept documents...
-Culture: 5 concepts modeled, 11 associations, 2 unusual realizations
-Habitats: 5 modeled, 17 misfits (0 excused by subsystem), 1 subsystems; most uniform binding (norm 0.91), most diverse json (norm 0.63)
-Conventions: strongest serialization (0.72), loosest caching (0.37)
-Ecosystems: 128 profiled (128 dominance, 0 coalition, 0 conflict, 0 weak)
+Culture: 37 concepts modeled, 161 associations, 37 unusual realizations
+Habitats: 5 modeled, 17 misfits (0 excused by subsystem), 1 subsystems; most uniform binding (norm 0.92), most diverse json (norm 0.63)
+Conventions: strongest c.ShouldBindBodyWith+gin.*Context.ShouldBindBody… (1.00), loosest gin.IsDebugging+gin.debugPrint (0.24)
+Ecosystems: 418 profiled (301 dominance, 28 coalition, 0 conflict, 89 weak)
+Calibration: rate 0.01 over 20000 null pairs -> threshold 0.49, struct-min 0.50, family-min 0.49
 Found 497 functions. Retrieving candidates...
-Retrieval: shape 28, concept 317, call 609 -> 919 unique pairs
-  concept-only 32.8%  call-only 62.7%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1924
-Running structural comparison on 919 pairs...
-Families: 10 over 26 components, 59 functions in a family, 76 edges completed
+Retrieval: shape 260, concept 1601, call 609 -> 2101 unique pairs
+  concept-only 61.7%  call-only 15.7%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 3321
+Running structural comparison on 2101 pairs...
+  477 pairs remain after struct-min=0.50 filter
+Families: 27 over 47 components, 155 functions in a family, 235 edges completed
 ```
 
 # Code Similarity Report
@@ -45,77 +49,182 @@ Families: 10 over 26 components, 59 functions in a family, 76 edges completed
 
 ### Concepts
 
-doppel reads intent from the AST into a fixed vocabulary and reasons over the tree, so two functions that share a *branch* score partial credit rather than nothing. Leaf counts below are this corpus.
+These concepts were **learned from this corpus**, not read off a fixed list: each one is a group of functions that share a way of being written, named after the evidence that identified it. They hang from an authored interior, so two functions under the same *branch* score partial credit rather than nothing. Counts below are members; membership is graded, and a function can carry several.
 
 ```mermaid
 flowchart LR
     c0(["concept"])
     c1(["io_operation"])
     c2(["remote_io"])
-    c3["http_call<br/>absent"]
-    c4["grpc_call<br/>absent"]
-    c5(["data_store_access"])
-    c6["db_access<br/>absent"]
-    c7["caching<br/>7"]
-    c8["transaction<br/>absent"]
-    c9["file_io<br/>9"]
-    c10["logging<br/>3"]
-    c11(["data_transformation"])
-    c12["mapping<br/>1"]
-    c13["validation<br/>24"]
-    c14["serialization<br/>28"]
-    c15(["control_flow"])
-    c16["concurrency<br/>7"]
-    c17(["fault_tolerance"])
-    c18["retry<br/>1"]
-    c19["circuit_breaker<br/>absent"]
-    c20(["error_handling"])
-    c21["error_wrapping<br/>absent"]
+    c3(["data_store_access"])
+    c4(["data_transformation"])
+    c5(["control_flow"])
+    c6(["fault_tolerance"])
+    c7(["error_handling"])
+    c8["API.Marshal+bytesconv.StringToBytes<br/>14"]
+    c9["Request.URL+req.URL<br/>6"]
+    c10["URL.Path+c.Writer<br/>8"]
+    c11["binding+nil<br/>247"]
+    c12["bytes.NewReader+bytes<br/>5"]
+    c13["bytesconv.BytesToString+bytesconv<br/>5"]
+    c14["bytesconv.StringToBytes+json.API<br/>8"]
+    c15["c.Abort+gin.*Context.Abort<br/>4"]
+    c16["c.MustBindWith+gin.*Context.MustBindWith<br/>8"]
+    c17["c.Next+c.Request<br/>4"]
+    c18["c.ShouldBindBodyWith+gin.*Context.ShouldBindBody…<br/>5"]
+    c19["c.ShouldBindWith+gin.*Context.ShouldBindWith<br/>8"]
+    c20["c.formCache+c.queryCache<br/>6"]
+    c21["c.hasRequestContext+Request.Context<br/>5"]
+    c22["c.requestHeader+gin.*Context.requestHeader<br/>7"]
+    c23["cmp+httputil<br/>8"]
+    c24["delims.Left+delims.Right<br/>22"]
+    c25["delims.Left+delims.Right+engine.SetHTMLTemplate<br/>39"]
+    c26["engine.MaxMultipartMemory+c.engine<br/>8"]
+    c27["field.Tag+Tag.Get<br/>4"]
+    c28["flag+atomic<br/>6"]
+    c29["fmt.Fprintf+runtime<br/>4"]
+    c30["gin+template<br/>20"]
+    c31["gin.*Context.Header+gin.*Context.Set<br/>5"]
+    c32["gin.IsDebugging+gin.debugPrint<br/>7"]
+    c33["gin.debugPrint+atomic<br/>5"]
+    c34["group.calculateAbsolutePath+group.engine<br/>19"]
+    c35["http.Server+engine.Handler<br/>5"]
+    c36["io.ReadAll+req.Body<br/>7"]
+    c37["json.Marshal+json.MarshalIndent<br/>31"]
+    c38["log<br/>3"]
+    c39["n.nType+n.priority<br/>27"]
+    c40["reflect.Array+reflect.Slice<br/>4"]
+    c41["reflect.Map+reflect.New<br/>10"]
+    c42["reflect.New+reflect.Array<br/>5"]
+    c43["reflect.New+value.Type<br/>4"]
+    c44["render.writeContentType+bytes<br/>6"]
+    c45["strings.Split+reflect<br/>4"]
+    c46["strings.TrimSpace+bytesconv<br/>4"]
+    c47["subtle+base64<br/>5"]
+    c48["tree.method+tree.root<br/>5"]
+    c49["value.Addr+field.Tag<br/>21"]
+    c50["value.Set+value.Type<br/>6"]
+    c51["w.WriteHeaderNow+w.ResponseWriter<br/>10"]
+    c52["writermem.WriteHeaderNow+c.writermem<br/>5"]
+    c53["xml+runtime<br/>13"]
     c0 --> c1
     c1 --> c2
-    c2 --> c3
-    c2 --> c4
-    c1 --> c5
+    c1 --> c3
+    c0 --> c4
+    c0 --> c5
     c5 --> c6
-    c5 --> c7
-    c5 --> c8
-    c1 --> c9
+    c0 --> c7
+    c4 --> c8
+    c4 --> c9
     c1 --> c10
-    c0 --> c11
-    c11 --> c12
-    c11 --> c13
-    c11 --> c14
-    c0 --> c15
-    c15 --> c16
-    c15 --> c17
-    c17 --> c18
-    c17 --> c19
-    c0 --> c20
-    c20 --> c21
-    classDef good fill:#d7ecd9,color:#1b3d20
-    classDef warn fill:#fbeecb,color:#4a3a12
-    classDef hot fill:#f7d6d6,color:#4a1c1c
-    class c3,c4,c6,c8,c19,c21 hot
+    c5 --> c11
+    c4 --> c12
+    c1 --> c13
+    c4 --> c14
+    c3 --> c15
+    c3 --> c16
+    c1 --> c17
+    c3 --> c18
+    c3 --> c19
+    c3 --> c20
+    c3 --> c21
+    c3 --> c22
+    c4 --> c23
+    c4 --> c24
+    c4 --> c25
+    c4 --> c26
+    c4 --> c27
+    c3 --> c28
+    c1 --> c29
+    c4 --> c30
+    c4 --> c31
+    c4 --> c32
+    c4 --> c33
+    c1 --> c34
+    c1 --> c35
+    c1 --> c36
+    c4 --> c37
+    c1 --> c38
+    c4 --> c39
+    c4 --> c40
+    c4 --> c41
+    c4 --> c42
+    c4 --> c43
+    c4 --> c44
+    c1 --> c45
+    c4 --> c46
+    c4 --> c47
+    c4 --> c48
+    c4 --> c49
+    c4 --> c50
+    c4 --> c51
+    c4 --> c52
+    c3 --> c53
 ```
 
-**Nothing here is tagged** `circuit_breaker`, `db_access`, `error_wrapping`, `grpc_call`, `http_call`, `transaction`. That is a direct answer to "does this codebase already do X" — for those concepts, it does not.
+**No practice here for** `circuit_breaker`, `db_access`, `error_wrapping`, `grpc_call`, `http_call`, `mapping`, `retry`, `transaction`. Concepts are learned from this corpus, so one can never be absent — it exists because functions carry it. These are the *seeds* the search started from that grew nothing: a direct answer to "does this codebase already do X".
 
 | Concept | Functions | Convention |
 |---|---:|---|
-| `serialization` | 28 | `0.72` (settled) |
-| `validation` | 24 | `0.52` (settled) |
-| `file_io` | 9 | `0.52` (settled) |
-| `caching` | 7 | `0.37` (loose) |
-| `concurrency` | 7 | `0.46` (loose) |
-| `logging` | 3 | — |
-| `mapping` | 1 | — |
-| `retry` | 1 | — |
+| `binding+nil` | 247 | `0.60` (settled) |
+| `delims.Left+delims.Right+engine.SetHTMLTemplate` | 39 | `0.48` (loose) |
+| `json.Marshal+json.MarshalIndent` | 31 | `0.52` (settled) |
+| `n.nType+n.priority` | 27 | `0.47` (loose) |
+| `delims.Left+delims.Right` | 22 | `0.39` (loose) |
+| `value.Addr+field.Tag` | 21 | `0.49` (loose) |
+| `gin+template` | 20 | `0.68` (settled) |
+| `group.calculateAbsolutePath+group.engine` | 19 | `0.53` (settled) |
+| `API.Marshal+bytesconv.StringToBytes` | 14 | `0.42` (loose) |
+| `xml+runtime` | 13 | `0.56` (settled) |
+| `reflect.Map+reflect.New` | 10 | `0.39` (loose) |
+| `w.WriteHeaderNow+w.ResponseWriter` | 10 | `0.29` (loose) |
+| `URL.Path+c.Writer` | 8 | `0.29` (loose) |
+| `bytesconv.StringToBytes+json.API` | 8 | `0.43` (loose) |
+| `c.MustBindWith+gin.*Context.MustBindWith` | 8 | `0.89` (unanimous) |
+| `c.ShouldBindWith+gin.*Context.ShouldBindWith` | 8 | `0.89` (unanimous) |
+| `cmp+httputil` | 8 | `0.40` (loose) |
+| `engine.MaxMultipartMemory+c.engine` | 8 | `0.37` (loose) |
+| `c.requestHeader+gin.*Context.requestHeader` | 7 | `0.43` (loose) |
+| `gin.IsDebugging+gin.debugPrint` | 7 | `0.24` (loose) |
+| `io.ReadAll+req.Body` | 7 | `0.50` (settled) |
+| `Request.URL+req.URL` | 6 | `0.29` (loose) |
+| `c.formCache+c.queryCache` | 6 | `0.34` (loose) |
+| `flag+atomic` | 6 | `0.61` (settled) |
+| `render.writeContentType+bytes` | 6 | `0.64` (settled) |
+| `value.Set+value.Type` | 6 | `0.43` (loose) |
+| `bytes.NewReader+bytes` | 5 | `0.86` (unanimous) |
+| `bytesconv.BytesToString+bytesconv` | 5 | `0.38` (loose) |
+| `c.ShouldBindBodyWith+gin.*Context.ShouldBindBody…` | 5 | `1.00` (unanimous) |
+| `c.hasRequestContext+Request.Context` | 5 | `0.54` (settled) |
+| `gin.*Context.Header+gin.*Context.Set` | 5 | `0.34` (loose) |
+| `gin.debugPrint+atomic` | 5 | `0.46` (loose) |
+| `http.Server+engine.Handler` | 5 | `0.91` (unanimous) |
+| `reflect.New+reflect.Array` | 5 | `0.38` (loose) |
+| `subtle+base64` | 5 | `0.27` (loose) |
+| `tree.method+tree.root` | 5 | `0.29` (loose) |
+| `writermem.WriteHeaderNow+c.writermem` | 5 | `0.30` (loose) |
+| `c.Abort+gin.*Context.Abort` | 4 | — |
+| `c.Next+c.Request` | 4 | — |
+| `field.Tag+Tag.Get` | 4 | — |
+| `fmt.Fprintf+runtime` | 4 | — |
+| `reflect.Array+reflect.Slice` | 4 | — |
+| `reflect.New+value.Type` | 4 | — |
+| `strings.Split+reflect` | 4 | — |
+| `strings.TrimSpace+bytesconv` | 4 | — |
+| `log` | 3 | — |
 
 Convention is how uniformly this corpus realizes a concept: `1.00` means every function carrying the tag does it the same way, and a low number means the tag covers several unrelated habits. A concept with fewer than five members is not modeled.
 
 ### Where the duplication is
 
 Merge-worthy pairs folded up to their packages. An edge means two packages keep solving the same problem separately; a count on a node means the repetition is inside one package.
+
+```mermaid
+flowchart LR
+    p0["gin<br/>188 internal"]
+    p1["render<br/>78 internal"]
+    p0 ---|"1"| p1
+```
 
 ### How settled each package is
 
@@ -124,30 +233,24 @@ A package with at least five functions gets a habitat model: doppel learns what 
 ```mermaid
 flowchart TD
     h0["json<br/>24 functions · norm 0.63<br/>9 misfits"]
-    h1["ginS<br/>25 functions · norm 0.76<br/>6 misfits"]
-    h2["render<br/>42 functions · norm 0.84<br/>2 misfits"]
-    h3["gin<br/>324 functions · norm 0.86"]
-    h4["binding<br/>79 functions · norm 0.91"]
+    h1["ginS<br/>25 functions · norm 0.70<br/>8 misfits"]
+    h2["render<br/>42 functions · norm 0.84"]
+    h3["gin<br/>324 functions · norm 0.89"]
+    h4["binding<br/>79 functions · norm 0.92"]
     classDef good fill:#d7ecd9,color:#1b3d20
     classDef warn fill:#fbeecb,color:#4a3a12
     classDef hot fill:#f7d6d6,color:#4a1c1c
-    class h1,h2,h3,h4 good
-    class h0 warn
+    class h2,h3,h4 good
+    class h0,h1 warn
 ```
 
-Most uniform is `binding` (norm `0.91`); most varied is `json` (norm `0.63`). 17 functions are alien to their package and to the subsystem around it.
+Most uniform is `binding` (norm `0.92`); most varied is `json` (norm `0.63`). 17 functions are alien to their package and to the subsystem around it.
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **919 candidate pairs** (shape 28, concept 317, call 609), of which 63% arrived on call evidence alone and 33% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **2101 candidate pairs** (shape 260, concept 1601, call 609), of which 16% arrived on call evidence alone and 62% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
-Each function is also an arena where its candidate concepts compete for its evidence. 128 functions reached an equilibrium: **128** settled on a single concept, **0** on a coalition, **0** hold concepts this corpus says do not go together.
-
-### Corpus metrics
-
-**Compression ratio:** `5.28`x — this corpus's canonical function bodies contain **17625 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **3336 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
-
-**Nearest-neighbour code-shape:** of **497 functions**, **298** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.43` / `1.00` / `1.00`, and 31% of them (93 of 298) already clear this run's threshold of `0.60`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 199 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+Each function is also an arena where its candidate concepts compete for its evidence. 418 functions reached an equilibrium: **301** settled on a single concept, **28** on a coalition, **0** hold concepts this corpus says do not go together.
 
 ---
 
@@ -159,78 +262,186 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 Only what is **distinctive**. A feature earns a row by being carried by this concept's members at least twice as often as by the corpus at large — nearly every Go function has a `return` and an `if`, so prevalence alone would describe the language rather than this codebase. Weights are how much a channel counts toward whether a member looks normal — calls 40, control flow 20, co-occurring tags 15, role 15, package 10.
 
-**`serialization`** — 28 functions
+**`binding+nil`** — 247 functions
+
+Nothing distinctive: its members do what the rest of the corpus does. The tag groups them; a shared way of writing them does not.
+
+**`delims.Left+delims.Right+engine.SetHTMLTemplate`** — 39 functions
 
 | Channel | Feature | | Members | vs corpus |
 |---|---|---|---|---|
-| package ×10 | `json` | `███████···` | 20 of 28 | 15× |
+| flow ×20 | `range` | `███·······` | 10 of 39 | 3.0× |
+| role ×15 | `orchestrator` | `████······` | 17 of 39 | 3.8× |
 
-**`validation`** — 24 functions
-
-| Channel | Feature | | Members | vs corpus |
-|---|---|---|---|---|
-| flow ×20 | `if` | `█████████·` | 21 of 24 | 2.4× |
-| role ×15 | `utility` | `███·······` | 6 of 24 | 2.0× |
-| package ×10 | `binding` | `████████··` | 18 of 24 | 4.7× |
-
-**`file_io`** — 9 functions
+**`json.Marshal+json.MarshalIndent`** — 31 functions
 
 | Channel | Feature | | Members | vs corpus |
 |---|---|---|---|---|
-| calls ×40 | `io.ReadAll` | `██████····` | 5 of 9 | 55× |
-| flow ×20 | `defer` | `███·······` | 3 of 9 | 13× |
-|  | `if` | `██████████` | 9 of 9 | 2.7× |
-| package ×10 | `binding` | `███·······` | 3 of 9 | 2.1× |
+| calls ×40 | `gin.*responseWriter.Write` | `███·······` | 8 of 31 | 11× |
+| cotags ×15 | `API.Marshal+bytesconv.StringToBytes` | `███·······` | 9 of 31 | 10× |
+| package ×10 | `json` | `██████····` | 20 of 31 | 13× |
+|  | `render` | `███·······` | 10 of 31 | 3.8× |
 
-**`caching`** — 7 functions
-
-| Channel | Feature | | Members | vs corpus |
-|---|---|---|---|---|
-| calls ×40 | `gin.*Context.initFormCache` | `███·······` | 2 of 7 | 71× |
-|  | `gin.*Context.initQueryCache` | `███·······` | 2 of 7 | 71× |
-|  | `gin.getMapFromFormData` | `███·······` | 2 of 7 | 71× |
-| role ×15 | `utility` | `██████····` | 4 of 7 | 4.6× |
-|  | `orchestrator` | `███·······` | 2 of 7 | 2.5× |
-
-**`concurrency`** — 7 functions
+**`n.nType+n.priority`** — 27 functions
 
 | Channel | Feature | | Members | vs corpus |
 |---|---|---|---|---|
-| flow ×20 | `defer` | `███·······` | 2 of 7 | 11× |
-| role ×15 | `utility` | `███·······` | 2 of 7 | 2.3× |
+| flow ×20 | `for` | `████······` | 10 of 27 | 10× |
+|  | `switch` | `███·······` | 7 of 27 | 5.2× |
+|  | `range` | `████······` | 11 of 27 | 4.7× |
+|  | `if` | `████████··` | 22 of 27 | 2.2× |
+| cotags ×15 | `delims.Left+delims.Right+engine.SetHTMLTemplate` | `███·······` | 8 of 27 | 3.8× |
+
+**`delims.Left+delims.Right`** — 22 functions
+
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| flow ×20 | `if` | `█████████·` | 19 of 22 | 2.4× |
+| cotags ×15 | `delims.Left+delims.Right+engine.SetHTMLTemplate` | `███·······` | 6 of 22 | 3.5× |
+| role ×15 | `utility` | `███·······` | 7 of 22 | 2.6× |
+| package ×10 | `binding` | `███████···` | 16 of 22 | 4.6× |
+
+**`value.Addr+field.Tag`** — 21 functions
+
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| calls ×40 | `reflect.ValueOf` | `███·······` | 7 of 21 | 17× |
+|  | `gin.*Context.Set` | `███·······` | 7 of 21 | 11× |
+| flow ×20 | `switch` | `███·······` | 7 of 21 | 6.6× |
+|  | `if` | `█████████·` | 19 of 21 | 2.5× |
+| cotags ×15 | `value.Set+value.Type` | `███·······` | 6 of 21 | 24× |
+|  | `reflect.Map+reflect.New` | `████······` | 8 of 21 | 19× |
+| package ×10 | `binding` | `██████████` | 20 of 21 | 6.0× |
+
+_31 further concepts are modeled and not described._
+
+### Which concepts share a function
+
+`++` at least four times chance, `+` at least twice, `−` at most half, `never` not once. A blank cell is ordinary company — near chance, which is not culture.
+
+| | `API.Marshal+bytesconv.StringToBytes` | `Request.URL+req.URL` | `URL.Path+c.Writer` | `binding+nil` | `bytes.NewReader+bytes` | `bytesconv.BytesToString+bytesconv` | `bytesconv.StringToBytes+json.API` | `c.Abort+gin.*Context.Abort` | `c.MustBindWith+gin.*Context.MustBindWith` | `c.Next+c.Request` | `c.ShouldBindBodyWith+gin.*Context.ShouldBindBody…` | `c.ShouldBindWith+gin.*Context.ShouldBindWith` | `c.formCache+c.queryCache` | `c.hasRequestContext+Request.Context` | `c.requestHeader+gin.*Context.requestHeader` | `cmp+httputil` | `delims.Left+delims.Right` | `delims.Left+delims.Right+engine.SetHTMLTemplate` | `engine.MaxMultipartMemory+c.engine` | `field.Tag+Tag.Get` | `flag+atomic` | `fmt.Fprintf+runtime` | `gin+template` | `gin.*Context.Header+gin.*Context.Set` | `gin.IsDebugging+gin.debugPrint` | `gin.debugPrint+atomic` | `group.calculateAbsolutePath+group.engine` | `http.Server+engine.Handler` | `io.ReadAll+req.Body` | `json.Marshal+json.MarshalIndent` | `log` | `n.nType+n.priority` | `reflect.Array+reflect.Slice` | `reflect.Map+reflect.New` | `reflect.New+reflect.Array` | `reflect.New+value.Type` | `render.writeContentType+bytes` | `strings.Split+reflect` | `strings.TrimSpace+bytesconv` | `subtle+base64` | `tree.method+tree.root` | `value.Addr+field.Tag` | `value.Set+value.Type` | `w.WriteHeaderNow+w.ResponseWriter` | `writermem.WriteHeaderNow+c.writermem` |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| **`Request.URL+req.URL`** |  | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| **`URL.Path+c.Writer`** |  | ++ | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| **`binding+nil`** |  |  |  | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| **`bytes.NewReader+bytes`** |  |  |  |  | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| **`bytesconv.BytesToString+bytesconv`** |  |  |  |  |  | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| **`bytesconv.StringToBytes+json.API`** | ++ |  |  |  |  |  | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| **`c.Abort+gin.*Context.Abort`** |  |  |  | + |  |  |  | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| **`c.MustBindWith+gin.*Context.MustBindWith`** |  |  |  | + |  |  |  |  | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| **`c.Next+c.Request`** |  |  |  |  |  |  |  |  |  | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| **`c.ShouldBindBodyWith+gin.*Context.ShouldBindBody…`** |  |  |  | + |  |  |  |  |  |  | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| **`c.ShouldBindWith+gin.*Context.ShouldBindWith`** |  |  |  | + |  |  |  |  |  |  |  | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| **`c.formCache+c.queryCache`** |  |  |  | + |  |  |  |  |  |  |  |  | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| **`c.hasRequestContext+Request.Context`** |  |  |  | + |  |  |  |  |  |  |  |  |  | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| **`c.requestHeader+gin.*Context.requestHeader`** |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| **`cmp+httputil`** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| **`delims.Left+delims.Right`** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| **`delims.Left+delims.Right+engine.SetHTMLTemplate`** |  | ++ | ++ |  |  |  |  |  |  |  |  |  |  |  |  |  | + | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| **`engine.MaxMultipartMemory+c.engine`** |  |  |  | + |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| **`field.Tag+Tag.Get`** |  |  |  | + |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| **`flag+atomic`** |  |  |  | + |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | | | | | | | | | | | | | | | | | | | | | | | | |
+| **`fmt.Fprintf+runtime`** |  |  |  | + |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | | | | | | | | | | | | | | | | | | | | | | | |
+| **`gin+template`** |  |  |  | − |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | | | | | | | | | | | | | | | | | | | | | | |
+| **`gin.*Context.Header+gin.*Context.Set`** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | | | | | | | | | | | | | | | | | | | | | |
+| **`gin.IsDebugging+gin.debugPrint`** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | | | | | | | | | | | | | | | | | | | | |
+| **`gin.debugPrint+atomic`** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ++ | | | | | | | | | | | | | | | | | | | | |
+| **`group.calculateAbsolutePath+group.engine`** |  |  |  | − |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | | | | | | | | | | | | | | | | | | |
+| **`http.Server+engine.Handler`** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ++ |  |  |  |  |  |  |  |  |  | | | | | | | | | | | | | | | | | | |
+| **`io.ReadAll+req.Body`** |  |  |  | + |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | | | | | | | | | | | | | | | | |
+| **`json.Marshal+json.MarshalIndent`** | ++ |  |  |  |  |  | ++ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | | | | | | | | | | | | | | | |
+| **`log`** |  |  |  | + |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | | | | | | | | | | | | | | |
+| **`n.nType+n.priority`** |  | ++ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | + |  | ++ |  |  |  |  |  |  |  |  |  |  |  | | | | | | | | | | | | | | |
+| **`reflect.Array+reflect.Slice`** |  |  |  | + |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | | | | | | | | | | | | |
+| **`reflect.Map+reflect.New`** |  |  |  | + |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | | | | | | | | | | | |
+| **`reflect.New+reflect.Array`** |  |  |  | + |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ++ | ++ | | | | | | | | | | | |
+| **`reflect.New+value.Type`** |  |  |  | + |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ++ | ++ | | | | | | | | | | |
+| **`render.writeContentType+bytes`** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | | | | | | | | |
+| **`strings.Split+reflect`** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | | | | | | | |
+| **`strings.TrimSpace+bytesconv`** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | | | | | | |
+| **`subtle+base64`** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | | | | | |
+| **`tree.method+tree.root`** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ++ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | | | | |
+| **`value.Addr+field.Tag`** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ++ |  |  |  |  |  |  |  |  |  |  |  | + | ++ | ++ | ++ | ++ |  |  |  |  |  | | | | |
+| **`value.Set+value.Type`** |  |  |  | + |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ++ | ++ | ++ |  |  |  |  |  | ++ | | | |
+| **`w.WriteHeaderNow+w.ResponseWriter`** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | |
+| **`writermem.WriteHeaderNow+c.writermem`** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ++ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | |
+| **`xml+runtime`** |  |  |  | − |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 
 ### What travels with what
 
 Co-occurrence measured against chance across every function. Only relationships at least twice — or at most half — as common as chance are reported; near-chance company is not culture. Each kind is listed separately, because there are far more call tokens than concepts and one shared list is all calls. Within a kind, strongest first means lift weighted by how many functions carry it — a 100× relationship holding for three functions is a weaker finding than a 30× one holding for thirty.
 
+**Together more than chance — tag~tag**
+
+- 8 of 8 `bytesconv.StringToBytes+json.API` functions also `API.Marshal+bytesconv.StringToBytes` — 36× chance
+- 5 of 5 `gin.debugPrint+atomic` functions also `gin.IsDebugging+gin.debugPrint` — 71× chance
+- 4 of 5 `reflect.New+reflect.Array` functions also `value.Set+value.Type` — 66× chance
+- 5 of 6 `value.Set+value.Type` functions also `reflect.Map+reflect.New` — 41× chance
+- 8 of 10 `reflect.Map+reflect.New` functions also `value.Addr+field.Tag` — 19× chance
+- 4 of 4 `reflect.New+value.Type` functions also `reflect.Map+reflect.New` — 50× chance
+- _39 more not listed_
+
 **Together more than chance — tag~role**
 
-- 4 of 7 `caching` functions also `utility` — 4.6× chance
-- 6 of 24 `validation` functions also `utility` — 2.0× chance
+- 3 of 5 `reflect.New+reflect.Array` functions also `passthrough` — 18× chance
+- 3 of 5 `writermem.WriteHeaderNow+c.writermem` functions also `passthrough` — 18× chance
+- 5 of 5 `http.Server+engine.Handler` functions also `orchestrator` — 8.7× chance
+- 17 of 39 `delims.Left+delims.Right+engine.SetHTMLTemplate` functions also `orchestrator` — 3.8× chance
+- 3 of 6 `Request.URL+req.URL` functions also `passthrough` — 15× chance
+- 3 of 6 `value.Set+value.Type` functions also `passthrough` — 15× chance
+- _15 more not listed_
 
 **Together more than chance — tag~call**
 
-- 5 of 9 `file_io` functions also `io.ReadAll` — 55× chance
-- 4 of 24 `validation` functions also `gin.*Engine.Delims` — 21× chance
-- 4 of 24 `validation` functions also `html/template.Must` — 21× chance
-- 4 of 24 `validation` functions also `html/template.New` — 21× chance
-- 3 of 24 `validation` functions also `binding.mapForm` — 21× chance
-- 3 of 24 `validation` functions also `gin.*Engine.SetHTMLTemplate` — 21× chance
-- _1 more not listed_
+- 7 of 7 `c.requestHeader+gin.*Context.requestHeader` functions also `gin.*Context.requestHeader` — 71× chance
+- 8 of 8 `c.MustBindWith+gin.*Context.MustBindWith` functions also `gin.*Context.MustBindWith` — 55× chance
+- 8 of 8 `c.ShouldBindWith+gin.*Context.ShouldBindWith` functions also `gin.*Context.ShouldBindWith` — 55× chance
+- 11 of 14 `API.Marshal+bytesconv.StringToBytes` functions also `gin.*responseWriter.Write` — 33× chance
+- 5 of 5 `bytes.NewReader+bytes` functions also `bytes.NewReader` — 99× chance
+- 5 of 5 `bytesconv.BytesToString+bytesconv` functions also `bytesconv.BytesToString` — 99× chance
+- _70 more not listed_
+
+**Apart more than chance — tag~tag**
+
+- 1 of 20 `gin+template` functions also `binding+nil` — 0.1× chance
+- 1 of 19 `group.calculateAbsolutePath+group.engine` functions also `binding+nil` — 0.1× chance
+- 3 of 13 `xml+runtime` functions also `binding+nil` — 0.5× chance
 
 **Apart more than chance — tag~role**
 
-- **no** `serialization` function has `orchestrator` — chance alone would give about 3 of 28
-- 1 of 7 `caching` functions also `leaf` — 0.2× chance
+- **no** `json.Marshal+json.MarshalIndent` function has `utility` — chance alone would give about 4 of 31
+- **no** `gin.*Context.Header+gin.*Context.Set` function has `leaf` — chance alone would give about 4 of 5
+- **no** `http.Server+engine.Handler` function has `leaf` — chance alone would give about 4 of 5
+- **no** `writermem.WriteHeaderNow+c.writermem` function has `leaf` — chance alone would give about 4 of 5
+- 11 of 39 `delims.Left+delims.Right+engine.SetHTMLTemplate` functions also `leaf` — 0.4× chance
+- 1 of 8 `bytesconv.StringToBytes+json.API` functions also `leaf` — 0.2× chance
+- _8 more not listed_
+
+**Apart more than chance — tag~call**
+
+- 1 of 247 `binding+nil` functions also `render.writeContentType` — 0.1× chance
+- 1 of 247 `binding+nil` functions also `gin.*RouterGroup.handle` — 0.2× chance
 
 ### Functions drifting from their own concept
 
 These carry a tag but look nothing like the other functions carrying it. Typicality is measured against the concept's own median, so a genuinely varied concept lowers its own bar and a tight one can flag nobody.
 
-| Function | Concept | Typicality | Concept median |
-|---|---|---:|---:|
-| `binding.decodeXML` <br/>`binding/xml.go:28` | `serialization` | `0.13` | `0.81` |
-| `gin.*Context.ClientIP` <br/>`context.go:975` | `validation` | `0.17` | `0.45` |
+| Function | Concept | Typicality | Concept median | |
+|---|---|---:|---:|---|
+| `gin.*RouterGroup.createStaticHandler` <br/>`routergroup.go:216` | `gin+template` | `0.06` | `0.94` | no near-duplicate |
+| `gin.*Context.ClientIP` <br/>`context.go:975` | `c.hasRequestContext+Request.Context` | `0.26` | `0.86` | no near-duplicate |
+| `gin.authPairs.searchCredential` <br/>`auth.go:32` | `API.Marshal+bytesconv.StringToBytes` | `0.24` | `0.55` | no near-duplicate |
+| `gin.*RouterGroup.createStaticHandler` <br/>`routergroup.go:216` | `group.calculateAbsolutePath+group.engine` | `0.24` | `0.55` | no near-duplicate |
+| `gin.*Engine.handleHTTPRequest` <br/>`gin.go:690` | `gin.*Context.Header+gin.*Context.Set` | `0.23` | `0.52` | no near-duplicate |
+| `gin.*Context.initFormCache` <br/>`context.go:638` | `c.formCache+c.queryCache` | `0.23` | `0.48` | no near-duplicate |
+| `gin.*Context.ClientIP` <br/>`context.go:975` | `engine.MaxMultipartMemory+c.engine` | `0.19` | `0.42` | no near-duplicate |
+| `binding.decodePlain` <br/>`binding/plain.go:31` | `binding+nil` | `0.13` | `0.35` | no near-duplicate |
+| `gin.New` <br/>`gin.go:202` | `delims.Left+delims.Right` | `0.19` | `0.39` | no near-duplicate |
+| `binding.*defaultValidator.lazyinit` <br/>`binding/default_validator.go:90` | `delims.Left+delims.Right` | `0.19` | `0.39` | no near-duplicate |
+
+_27 more unusual realizations not listed._
+
+A row marked _no near-duplicate_ appears in no reported pair: nothing else in this report explains it, which makes it drift rather than duplication.
 
 ---
 
@@ -238,110 +449,111 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `auth.go:48` | `gin.BasicAuthForRealm` | `(Accounts, string) (HandlerFunc)` | — |
-| **B** | `auth.go:98` | `gin.BasicAuthForProxy` | `(Accounts, string) (HandlerFunc)` | — |
+| **A** | `auth.go:48` | `gin.BasicAuthForRealm` | `(Accounts, string) (HandlerFunc)` | subtle+base64 0.66, gin.*Context.Header+gin.*Context.Set 0.57, c.requestHeader+gin.*Context.requestHeader 0.54 |
+| **B** | `auth.go:98` | `gin.BasicAuthForProxy` | `(Accounts, string) (HandlerFunc)` | subtle+base64 0.66, gin.*Context.Header+gin.*Context.Set 0.57, c.requestHeader+gin.*Context.requestHeader 0.54 |
 
-**Explain:** identical after rename, commutative-reorder
+**Profile A:** `gin.*Context.Header+gin.*Context.Set` 1.00 (dominance)
 
-**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+**Profile B:** `gin.*Context.Header+gin.*Context.Set` 1.00 (dominance)
 
-**Containment:** `1.00`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `417.13` (shape 383.87, concept 0.00, call 33.26)
+**Evidence:** `603.72` (shape 562.58, concept 7.88, call 33.26)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `4.73` — `depth-3 CALL`
-- `4.73` — `depth-3 ASSIGN`
-- `4.73` — `depth-3 CALL`
+- `4.93` — `seq[ assign:=(call:processAccounts) ; return(funclit) ]`
+- `4.93` — `seq[ assign:=(call:searchCredential) ; if(unary) ]`
+- `4.93` — `seq[ assign=(bin) ; assign:=(call:processAccounts) ]`
 
-**Structural overlap:** `0.63` (merge-worthy)
+**Structural overlap:** `0.81` (merge-worthy)
 
 - share 7 callees: [c.AbortWithStatus, c.Header, c.Set, c.requestHeader, pairs.searchCredential, processAccounts, strconv.Quote]
 - overlapping call-graph neighborhoods (0.97): 32 shared
+- share patterns: [c.requestHeader+gin.*Context.requestHeader, gin.*Context.Header+gin.*Context.Set, subtle+base64]
 - both are orchestrator functions
 - same package
-- callees do related work (1.00): [concurrency]
+- callees do related work (1.00): [c.Abort+gin.*Context.Abort, writermem.WriteHeaderNow+c.writermem, subtle+base64, bytesconv.StringToBytes+json.API, API.Marshal+bytesconv.StringToBytes, binding+nil]
 - same visibility
 - same receiver type: plain functions
 - call into same packages: [gin]
 
 ---
 
-## Match #2 — Code-shape: `0.6576`
+## Match #2 — Code-shape: `0.8484`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `gin.go:288` | `gin.*Engine.LoadHTMLFiles` | `(...string)` | validation |
-| **B** | `gin.go:300` | `gin.*Engine.LoadHTMLFS` | `(http.FileSystem, ...string)` | validation |
+| **A** | `gin.go:288` | `gin.*Engine.LoadHTMLFiles` | `(...string)` | delims.Left+delims.Right 0.79, delims.Left+delims.Right+engine.SetHTMLTemplate 0.79 |
+| **B** | `gin.go:300` | `gin.*Engine.LoadHTMLFS` | `(http.FileSystem, ...string)` | delims.Left+delims.Right 0.79, delims.Left+delims.Right+engine.SetHTMLTemplate 0.79 |
 
-**Explain:** differs by two extra call, two extra key-value, one extra composite literal, and 2 more kinds
+**Profile A:** `delims.Left+delims.Right` 1.00 (dominance)
 
-**Profile A:** `validation` 1.00 (dominance)
+**Profile B:** `delims.Left+delims.Right` 1.00 (dominance)
 
-**Profile B:** `validation` 1.00 (dominance)
+**Code similarity:** `ast 0.87  flow 1.00  nesting 1.00  sig 0.50  size 0.87`
 
-**Code similarity:** `wl 0.55  flow 1.00  nesting 1.00  sig 0.50  size 0.87`
+**Evidence:** `410.27` (shape 381.84, concept 4.72, call 23.71)
 
-**Containment:** `0.75`
-
-**Evidence:** `230.33` (shape 205.30, concept 1.32, call 23.71)
-
-**Trophic:** `0.84`
+**Trophic:** `0.85`
 
 **Shared structure:**
 
-- `5.87` — `depth-3 KV` ×2
-- `5.87` — `depth-2 KV` ×2
-- `5.86` — `depth-0 KV` ×3
+- `4.93` — `seq[ assign:=(call:Must) ; do(call:SetHTMLTemplate) ]`
+- `4.93` — `seq[ if(call:IsDebugging) ; assign:=(call:Must) ]`
+- `4.53` — `assign:=(call:Must)`
 
 **Structural overlap:** `0.78` (merge-worthy)
 
 - share 6 callees: [Delims, Funcs, IsDebugging, engine.SetHTMLTemplate, template.Must, template.New]
 - overlapping call-graph neighborhoods (1.00): 11 shared
-- share patterns: [validation]
+- share patterns: [delims.Left+delims.Right, delims.Left+delims.Right+engine.SetHTMLTemplate]
 - both are orchestrator functions
 - same package
-- callees do related work (1.00): [concurrency]
+- callees do related work (1.00): [delims.Left+delims.Right, delims.Left+delims.Right+engine.SetHTMLTemplate]
 - same visibility
 - same receiver type: Engine
 - call into same packages: [gin]
 
 ---
 
-## Match #3 — Code-shape: `0.6790`
+## Match #3 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `gin.go:540` | `gin.*Engine.Run` | `(...string) (error)` | — |
-| **B** | `gin.go:561` | `gin.*Engine.RunTLS` | `(string, string, string) (error)` | — |
+| **A** | `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.60, binding+nil 0.35, json.Marshal+json.MarshalIndent 0.31 |
+| **B** | `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.60, binding+nil 0.35, json.Marshal+json.MarshalIndent 0.31 |
 
-**Explain:** differs by one extra assign, four extra call, one extra selector, and 2 more kinds
+**Kind:** interface implementations — both implement `Render(http.ResponseWriter) (error)` on `TOML` and `YAML`, in package `render`
 
-**Code similarity:** `wl 0.63  flow 1.00  nesting 1.00  sig 0.33  size 0.87`
+**Profile A:** `API.Marshal+bytesconv.StringToBytes` 0.80, `bytesconv.StringToBytes+json.API` 0.20 (dominance)
 
-**Containment:** `0.85`
+**Profile B:** `API.Marshal+bytesconv.StringToBytes` 0.80, `bytesconv.StringToBytes+json.API` 0.20 (dominance)
 
-**Evidence:** `279.30` (shape 267.03, concept 0.00, call 12.27)
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Trophic:** `0.93`
+**Evidence:** `177.95` (shape 170.58, concept 3.65, call 3.72)
+
+**Trophic:** `1.00`
 
 **Shared structure:**
 
-- `5.56` — `depth-1 EXPRSTMT` ×2
-- `5.56` — `depth-0 CALL` ×2
-- `4.73` — `depth-3 ASSIGN`
+- `7.09` — `flow:call:Marshal→return`
+- `4.01` — `seq[ if(bin:!=(id,nil)) ; assign=(call:Write) ]`
+- `3.68` — `seq[ assign:=(call:Marshal) ; if(bin:!=(id,nil)) ]`
 
-**Structural overlap:** `0.48` (merge-worthy)
+**Structural overlap:** `0.71` (merge-worthy)
 
-- share 4 callees: [debugPrint, debugPrintError, engine.Handler, engine.isUnsafeTrustedProxies]
-- overlapping call-graph neighborhoods (0.86): 19 shared
-- both are orchestrator functions
+- share 2 callees: [r.WriteContentType, w.Write]
+- overlapping call-graph neighborhoods (1.00): 12 shared
+- share patterns: [API.Marshal+bytesconv.StringToBytes, binding+nil, json.Marshal+json.MarshalIndent]
+- both are leaf functions
 - same package
+- callees do related work (1.00): [w.WriteHeaderNow+w.ResponseWriter]
 - same visibility
-- same receiver type: Engine
+- both are methods, on TOML and YAML
 - call into same packages: [gin]
 
 ---
@@ -350,391 +562,402 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `binding/toml.go:29` | `binding.decodeToml` | `(io.Reader, any) (error)` | validation |
-| **B** | `binding/yaml.go:29` | `binding.decodeYAML` | `(io.Reader, any) (error)` | validation |
+| **A** | `binding/toml.go:29` | `binding.decodeToml` | `(io.Reader, any) (error)` | delims.Left+delims.Right 0.66, binding+nil 0.35 |
+| **B** | `binding/xml.go:28` | `binding.decodeXML` | `(io.Reader, any) (error)` | delims.Left+delims.Right 0.66, binding+nil 0.35 |
 
-**Explain:** identical after rename, commutative-reorder
+**Profile A:** `delims.Left+delims.Right` 1.00 (dominance)
 
-**Profile A:** `validation` 1.00 (dominance)
+**Profile B:** `delims.Left+delims.Right` 1.00 (dominance)
 
-**Profile B:** `validation` 1.00 (dominance)
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
-
-**Containment:** `1.00`
-
-**Evidence:** `100.48` (shape 99.16, concept 1.32, call 0.00)
+**Evidence:** `174.20` (shape 171.53, concept 2.67, call 0.00)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `4.32` — `depth-3 ASSIGN`
-- `4.32` — `depth-3 BLOCK`
-- `4.32` — `depth-3 CALL`
+- `4.53` — `seq[ assign:=(call:NewDecoder) ; if(bin:!=(id,nil)) ]`
+- `4.24` — `assign:=(call:NewDecoder)`
+- `4.24` — `flow:call:NewDecoder→call:Decode`
 
-**Structural overlap:** `0.66` (merge-worthy)
+**Culture:** B realizes `binding+nil` atypically (typicality 0.18, concept median 0.35, convention 0.60)
+
+**Structural overlap:** `0.71` (merge-worthy)
 
 - share 2 callees: [decoder.Decode, validate]
-- share patterns: [validation]
+- share patterns: [binding+nil, delims.Left+delims.Right]
 - both are utility functions
 - same package
+- callers do related work (1.00): [bytes.NewReader+bytes]
 - same visibility
 - same receiver type: plain functions
 - called from same packages: [binding]
 
 ---
 
-## Match #5 — Code-shape: `0.6290`
+## Match #5 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `gin.go:581` | `gin.*Engine.RunUnix` | `(string) (error)` | file_io |
-| **B** | `gin.go:645` | `gin.*Engine.RunListener` | `(net.Listener) (error)` | — |
+| **A** | `binding/toml.go:29` | `binding.decodeToml` | `(io.Reader, any) (error)` | delims.Left+delims.Right 0.66, binding+nil 0.35 |
+| **B** | `binding/yaml.go:29` | `binding.decodeYAML` | `(io.Reader, any) (error)` | delims.Left+delims.Right 0.66, binding+nil 0.35 |
 
-**Explain:** differs by two extra defer, one extra assign, one extra if, and 7 more kinds
+**Profile A:** `delims.Left+delims.Right` 1.00 (dominance)
 
-**Profile A:** `file_io` 1.00 (dominance)
+**Profile B:** `delims.Left+delims.Right` 1.00 (dominance)
 
-**Code similarity:** `wl 0.57  flow 0.94  nesting 0.99  sig 0.33  size 0.69`
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Containment:** `0.84` — most of the smaller body's shape is inside the larger
-
-**Evidence:** `286.72` (shape 274.45, concept 0.00, call 12.27)
-
-**Trophic:** `0.85`
-
-**Shared structure:**
-
-- `5.56` — `depth-1 EXPRSTMT` ×2
-- `5.56` — `depth-0 CALL` ×2
-- `4.73` — `depth-3 UNARY`
-
-**Structural overlap:** `0.50` (merge-worthy)
-
-- share 5 callees: [debugPrint, debugPrintError, engine.Handler, engine.isUnsafeTrustedProxies, server.Serve]
-- overlapping call-graph neighborhoods (1.00): 19 shared
-- both are orchestrator functions
-- same package
-- same visibility
-- same receiver type: Engine
-- call into same packages: [gin]
-
----
-
-## Match #6 — Code-shape: `0.7507`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `gin.go:561` | `gin.*Engine.RunTLS` | `(string, string, string) (error)` | — |
-| **B** | `gin.go:630` | `gin.*Engine.RunQUIC` | `(string, string, string) (error)` | — |
-
-**Explain:** differs by one extra assign, two extra call, two extra key-value, and 4 more kinds
-
-**Code similarity:** `wl 0.58  flow 1.00  nesting 1.00  sig 1.00  size 0.79`
-
-**Containment:** `0.82`
-
-**Evidence:** `217.17` (shape 204.90, concept 0.00, call 12.27)
-
-**Trophic:** `0.86`
-
-**Shared structure:**
-
-- `5.56` — `depth-1 EXPRSTMT` ×2
-- `5.56` — `depth-0 CALL` ×2
-- `3.81` — `depth-3 CALL`
-
-**Structural overlap:** `0.54` (merge-worthy)
-
-- share 4 callees: [debugPrint, debugPrintError, engine.Handler, engine.isUnsafeTrustedProxies]
-- overlapping call-graph neighborhoods (1.00): 19 shared
-- both are orchestrator functions
-- same package
-- same visibility
-- same receiver type: Engine
-- call into same packages: [gin]
-
----
-
-## Match #7 — Code-shape: `1.0000`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `binding/toml.go:29` | `binding.decodeToml` | `(io.Reader, any) (error)` | validation |
-| **B** | `binding/xml.go:28` | `binding.decodeXML` | `(io.Reader, any) (error)` | validation, serialization |
-
-**Explain:** identical after rename, commutative-reorder
-
-**Profile A:** `validation` 1.00 (dominance)
-
-**Profile B:** `validation` 1.00 (dominance)
-
-**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
-
-**Containment:** `1.00`
-
-**Evidence:** `100.48` (shape 99.16, concept 1.32, call 0.00)
+**Evidence:** `174.20` (shape 171.53, concept 2.67, call 0.00)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `4.32` — `depth-3 ASSIGN`
-- `4.32` — `depth-3 BLOCK`
-- `4.32` — `depth-3 CALL`
+- `4.53` — `seq[ assign:=(call:NewDecoder) ; if(bin:!=(id,nil)) ]`
+- `4.24` — `assign:=(call:NewDecoder)`
+- `4.24` — `flow:call:NewDecoder→call:Decode`
 
-**Structural overlap:** `0.57` (merge-worthy)
+**Structural overlap:** `0.71` (merge-worthy)
 
 - share 2 callees: [decoder.Decode, validate]
-- share patterns: [validation]
+- share patterns: [binding+nil, delims.Left+delims.Right]
 - both are utility functions
 - same package
+- callers do related work (1.00): [bytes.NewReader+bytes]
 - same visibility
 - same receiver type: plain functions
 - called from same packages: [binding]
 
 ---
 
-## Match #8 — Code-shape: `1.0000`
+## Match #6 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `binding/xml.go:28` | `binding.decodeXML` | `(io.Reader, any) (error)` | validation, serialization |
-| **B** | `binding/yaml.go:29` | `binding.decodeYAML` | `(io.Reader, any) (error)` | validation |
+| **A** | `binding/xml.go:28` | `binding.decodeXML` | `(io.Reader, any) (error)` | delims.Left+delims.Right 0.66, binding+nil 0.35 |
+| **B** | `binding/yaml.go:29` | `binding.decodeYAML` | `(io.Reader, any) (error)` | delims.Left+delims.Right 0.66, binding+nil 0.35 |
 
-**Explain:** identical after rename, commutative-reorder
+**Profile A:** `delims.Left+delims.Right` 1.00 (dominance)
 
-**Profile A:** `validation` 1.00 (dominance)
+**Profile B:** `delims.Left+delims.Right` 1.00 (dominance)
 
-**Profile B:** `validation` 1.00 (dominance)
+**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
-
-**Containment:** `1.00`
-
-**Evidence:** `100.48` (shape 99.16, concept 1.32, call 0.00)
+**Evidence:** `174.20` (shape 171.53, concept 2.67, call 0.00)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `4.32` — `depth-3 ASSIGN`
-- `4.32` — `depth-3 BLOCK`
-- `4.32` — `depth-3 CALL`
+- `4.53` — `seq[ assign:=(call:NewDecoder) ; if(bin:!=(id,nil)) ]`
+- `4.24` — `assign:=(call:NewDecoder)`
+- `4.24` — `flow:call:NewDecoder→call:Decode`
 
-**Structural overlap:** `0.57` (merge-worthy)
+**Culture:** A realizes `binding+nil` atypically (typicality 0.18, concept median 0.35, convention 0.60)
+
+**Structural overlap:** `0.71` (merge-worthy)
 
 - share 2 callees: [decoder.Decode, validate]
-- share patterns: [validation]
+- share patterns: [binding+nil, delims.Left+delims.Right]
 - both are utility functions
 - same package
+- callers do related work (1.00): [bytes.NewReader+bytes]
 - same visibility
 - same receiver type: plain functions
 - called from same packages: [binding]
 
 ---
 
-## Match #9 — Code-shape: `0.9625`
+## Match #7 — Code-shape: `0.7364`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `routergroup.go:147` | `gin.*RouterGroup.Any` | `(string, ...HandlerFunc) (IRoutes)` | — |
-| **B** | `routergroup.go:156` | `gin.*RouterGroup.Match` | `([]string, string, ...HandlerFunc) (IRoutes)` | — |
+| **A** | `routergroup.go:181` | `gin.*RouterGroup.staticFileHandler` | `(string, HandlerFunc) (IRoutes)` | group.calculateAbsolutePath+group.engine 0.55 |
+| **B** | `routergroup.go:203` | `gin.*RouterGroup.StaticFS` | `(string, http.FileSystem) (IRoutes)` | group.calculateAbsolutePath+group.engine 0.54 |
 
-**Explain:** identical after rename
+**Profile A:** `group.calculateAbsolutePath+group.engine` 1.00 (dominance)
 
-**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 0.75  size 1.00`
+**Profile B:** `group.calculateAbsolutePath+group.engine` 1.00 (dominance)
 
-**Containment:** `1.00`
+**Code similarity:** `ast 0.69  flow 1.00  nesting 1.00  sig 0.50  size 0.71`
 
-**Evidence:** `102.21` (shape 93.98, concept 0.00, call 8.23)
+**Evidence:** `315.38` (shape 293.23, concept 1.87, call 20.27)
 
-**Trophic:** `1.00`
-
-**Shared structure:**
-
-- `4.73` — `depth-3 BLOCK`
-- `4.73` — `depth-3 EXPRSTMT`
-- `4.73` — `depth-3 RANGE`
-
-**Structural overlap:** `0.58` (merge-worthy)
-
-- share 2 callees: [group.handle, group.returnObj]
-- overlapping call-graph neighborhoods (1.00): 16 shared
-- both are orchestrator functions
-- same package
-- same visibility
-- same receiver type: RouterGroup
-- call into same packages: [gin]
-
----
-
-## Match #10 — Code-shape: `0.7177`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `routergroup.go:181` | `gin.*RouterGroup.staticFileHandler` | `(string, HandlerFunc) (IRoutes)` | — |
-| **B** | `routergroup.go:203` | `gin.*RouterGroup.StaticFS` | `(string, http.FileSystem) (IRoutes)` | — |
-
-**Explain:** differs by two extra assign, two extra call, two extra selector, and 2 more kinds
-
-**Code similarity:** `wl 0.65  flow 1.00  nesting 1.00  sig 0.50  size 0.71`
-
-**Containment:** `0.93` — most of the smaller body's shape is inside the larger
-
-**Evidence:** `203.05` (shape 182.78, concept 0.00, call 20.27)
-
-**Trophic:** `0.95`
+**Trophic:** `0.88`
 
 **Shared structure:**
 
-- `8.64` — `depth-3 CALL` ×2
-- `8.64` — `depth-2 CALL` ×2
-- `8.64` — `depth-1 CALL` ×2
+- `9.05` — `flow:param→call:Contains`
+- `4.93` — `seq[ do(call:GET) ; do(call:HEAD) ]`
+- `4.93` — `seq[ do(call:HEAD) ; return(call:returnObj) ]`
 
-**Structural overlap:** `0.41` (merge-worthy)
+**Structural overlap:** `0.60` (merge-worthy)
 
 - share 5 callees: [group.GET, group.HEAD, group.returnObj, panic, strings.Contains]
 - overlapping call-graph neighborhoods (0.50): 7 shared
+- share patterns: [group.calculateAbsolutePath+group.engine]
 - related roles: passthrough ≈ orchestrator (both high fan-out, 0.50)
 - same package
+- callees do related work (0.27): [group.calculateAbsolutePath+group.engine]
 - same receiver type: RouterGroup
 - called from same packages: [gin]
 - call into same packages: [gin]
 
 ---
 
+## Match #8 — Code-shape: `0.6573`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `gin.go:581` | `gin.*Engine.RunUnix` | `(string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.78, http.Server+engine.Handler 0.52, binding+nil 0.35 |
+| **B** | `gin.go:645` | `gin.*Engine.RunListener` | `(net.Listener) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.76, http.Server+engine.Handler 0.50 |
+
+**Profile A:** `http.Server+engine.Handler` 1.00 (dominance)
+
+**Profile B:** `http.Server+engine.Handler` 1.00 (dominance)
+
+**Code similarity:** `ast 0.62  flow 0.94  nesting 0.99  sig 0.33  size 0.69`
+
+**Evidence:** `357.02` (shape 340.41, concept 4.34, call 12.27)
+
+**Trophic:** `0.80`
+
+**Shared structure:**
+
+- `5.97` — `do(call:debugPrint)`
+- `4.93` — `seq[ assign:=(unary) ; assign=(call:Serve) ]`
+- `4.93` — `seq[ assign=(call:Serve) ; return() ]`
+
+**Structural overlap:** `0.71` (merge-worthy)
+
+- share 5 callees: [debugPrint, debugPrintError, engine.Handler, engine.isUnsafeTrustedProxies, server.Serve]
+- overlapping call-graph neighborhoods (1.00): 19 shared
+- share patterns: [delims.Left+delims.Right+engine.SetHTMLTemplate, http.Server+engine.Handler]
+- both are orchestrator functions
+- same package
+- callees do related work (1.00): [fmt.Fprintf+runtime, gin.IsDebugging+gin.debugPrint, delims.Left+delims.Right+engine.SetHTMLTemplate, binding+nil]
+- same visibility
+- same receiver type: Engine
+- call into same packages: [gin]
+
+---
+
+## Match #9 — Code-shape: `0.7320`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `gin.go:561` | `gin.*Engine.RunTLS` | `(string, string, string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.77, http.Server+engine.Handler 0.52 |
+| **B** | `gin.go:645` | `gin.*Engine.RunListener` | `(net.Listener) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.76, http.Server+engine.Handler 0.50 |
+
+**Profile A:** `http.Server+engine.Handler` 1.00 (dominance)
+
+**Profile B:** `http.Server+engine.Handler` 1.00 (dominance)
+
+**Code similarity:** `ast 0.72  flow 1.00  nesting 1.00  sig 0.33  size 0.98`
+
+**Evidence:** `298.76` (shape 282.16, concept 4.34, call 12.27)
+
+**Trophic:** `0.80`
+
+**Shared structure:**
+
+- `5.97` — `do(call:debugPrint)`
+- `4.93` — `seq[ if(call:isUnsafeTrustedProxies) ; assign:=(unary) ]`
+- `4.01` — `seq[ do(call:debugPrint) ; defer(funclit) ]`
+
+**Structural overlap:** `0.73` (merge-worthy)
+
+- share 4 callees: [debugPrint, debugPrintError, engine.Handler, engine.isUnsafeTrustedProxies]
+- overlapping call-graph neighborhoods (1.00): 19 shared
+- share patterns: [delims.Left+delims.Right+engine.SetHTMLTemplate, http.Server+engine.Handler]
+- both are orchestrator functions
+- same package
+- callees do related work (1.00): [fmt.Fprintf+runtime, gin.IsDebugging+gin.debugPrint, delims.Left+delims.Right+engine.SetHTMLTemplate, binding+nil]
+- same visibility
+- same receiver type: Engine
+- call into same packages: [gin]
+
+---
+
+## Match #10 — Code-shape: `0.9357`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `render/protobuf.go:21` | `render.ProtoBuf.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.60, binding+nil 0.35, json.Marshal+json.MarshalIndent 0.31 |
+| **B** | `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.60, binding+nil 0.35, json.Marshal+json.MarshalIndent 0.31 |
+
+**Kind:** interface implementations — both implement `Render(http.ResponseWriter) (error)` on `ProtoBuf` and `TOML`, in package `render`
+
+**Profile A:** `API.Marshal+bytesconv.StringToBytes` 0.80, `bytesconv.StringToBytes+json.API` 0.20 (dominance)
+
+**Profile B:** `API.Marshal+bytesconv.StringToBytes` 0.80, `bytesconv.StringToBytes+json.API` 0.20 (dominance)
+
+**Code similarity:** `ast 0.89  flow 1.00  nesting 1.00  sig 1.00  size 0.89`
+
+**Evidence:** `173.02` (shape 165.65, concept 3.65, call 3.72)
+
+**Trophic:** `0.92`
+
+**Shared structure:**
+
+- `7.09` — `flow:call:Marshal→return`
+- `4.01` — `seq[ if(bin:!=(id,nil)) ; assign=(call:Write) ]`
+- `3.68` — `seq[ assign:=(call:Marshal) ; if(bin:!=(id,nil)) ]`
+
+**Structural overlap:** `0.71` (merge-worthy)
+
+- share 2 callees: [r.WriteContentType, w.Write]
+- overlapping call-graph neighborhoods (1.00): 12 shared
+- share patterns: [API.Marshal+bytesconv.StringToBytes, binding+nil, json.Marshal+json.MarshalIndent]
+- both are leaf functions
+- same package
+- callees do related work (1.00): [w.WriteHeaderNow+w.ResponseWriter]
+- same visibility
+- both are methods, on ProtoBuf and TOML
+- call into same packages: [gin]
+
+---
+
 ## Families
 
-10 families, 59 functions in a family, largest 14 members; 76 edges scored here that retrieval never proposed
+27 families, 155 functions in a family, largest 17 members; 235 edges scored here that retrieval never proposed
 
-### Family 1 — 4 members, every pair `>= 0.60` code-shape, evidence `1398`
+### Family 1 — 15 members, every pair `>= 0.55` code-shape, evidence `2751`  (49 edges scored here)
+
+_Not drawn: 15 members is 105 connections. Every one of them holds — that is what makes this a family._
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `context.go:1180` | `gin.*Context.IndentedJSON` | `(int, any)` | binding+nil 0.31 |
+| `context.go:1187` | `gin.*Context.SecureJSON` | `(int, any)` | binding+nil 0.31 |
+| `context.go:1205` | `gin.*Context.JSON` | `(int, any)` | binding+nil 0.31 |
+| `context.go:1211` | `gin.*Context.AsciiJSON` | `(int, any)` | binding+nil 0.31 |
+| `context.go:1217` | `gin.*Context.PureJSON` | `(int, any)` | binding+nil 0.31 |
+| `context.go:1223` | `gin.*Context.XML` | `(int, any)` | binding+nil 0.31 |
+| `context.go:1228` | `gin.*Context.YAML` | `(int, any)` | binding+nil 0.31 |
+| `context.go:1233` | `gin.*Context.TOML` | `(int, any)` | binding+nil 0.31 |
+| `context.go:1238` | `gin.*Context.ProtoBuf` | `(int, any)` | binding+nil 0.31 |
+| `context.go:1243` | `gin.*Context.BSON` | `(int, any)` | binding+nil 0.31 |
+
+_5 more members not listed._
+
+### Family 2 — 5 members, every pair `>= 0.56` code-shape, evidence `2656`
+
+```mermaid
+flowchart LR
+    m0["gin.*Engine.Run"]
+    m1["gin.*Engine.RunTLS"]
+    m2["gin.*Engine.RunUnix"]
+    m3["gin.*Engine.RunQUIC"]
+    m4["gin.*Engine.RunListener"]
+    m0 --- m1
+    m0 --- m2
+    m0 --- m3
+    m0 --- m4
+    m1 --- m2
+    m1 --- m3
+    m1 --- m4
+    m2 --- m3
+    m2 --- m4
+    m3 --- m4
+```
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `gin.go:540` | `gin.*Engine.Run` | `(...string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.78, http.Server+engine.Handler 0.50 |
+| `gin.go:561` | `gin.*Engine.RunTLS` | `(string, string, string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.77, http.Server+engine.Handler 0.52 |
+| `gin.go:581` | `gin.*Engine.RunUnix` | `(string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.78, http.Server+engine.Handler 0.52, binding+nil 0.35 |
+| `gin.go:630` | `gin.*Engine.RunQUIC` | `(string, string, string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.76, http.Server+engine.Handler 0.50 |
+| `gin.go:645` | `gin.*Engine.RunListener` | `(net.Listener) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.76, http.Server+engine.Handler 0.50 |
+
+### Family 3 — 5 members, every pair `>= 0.50` code-shape, evidence `2604`
 
 ```mermaid
 flowchart LR
     m0["gin.*Engine.RunTLS"]
     m1["gin.*Engine.RunUnix"]
-    m2["gin.*Engine.RunQUIC"]
-    m3["gin.*Engine.RunListener"]
-    m0 --- m1
-    m0 --- m2
-    m0 --- m3
-    m1 --- m2
-    m1 --- m3
-    m2 --- m3
-```
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `gin.go:561` | `gin.*Engine.RunTLS` | `(string, string, string) (error)` | — |
-| `gin.go:581` | `gin.*Engine.RunUnix` | `(string) (error)` | file_io |
-| `gin.go:630` | `gin.*Engine.RunQUIC` | `(string, string, string) (error)` | — |
-| `gin.go:645` | `gin.*Engine.RunListener` | `(net.Listener) (error)` | — |
-
-### Family 2 — 4 members, every pair `>= 0.65` code-shape, evidence `384`, interface implementations of `Render(http.ResponseWriter) (error)`, in package `render`
-
-```mermaid
-flowchart LR
-    m0["render.IndentedJSON.Render"]
-    m1["render.ProtoBuf.Render"]
-    m2["render.TOML.Render"]
-    m3["render.YAML.Render"]
-    m0 --- m1
-    m0 --- m2
-    m0 --- m3
-    m1 --- m2
-    m1 --- m3
-    m2 --- m3
-```
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `render/json.go:78` | `render.IndentedJSON.Render` | `(http.ResponseWriter) (error)` | — |
-| `render/protobuf.go:21` | `render.ProtoBuf.Render` | `(http.ResponseWriter) (error)` | serialization |
-| `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | — |
-| `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | serialization |
-
-### Family 3 — 3 members, every pair `>= 1.00` code-shape, evidence `301`
-
-```mermaid
-flowchart LR
-    m0["binding.decodeToml"]
-    m1["binding.decodeXML"]
-    m2["binding.decodeYAML"]
-    m0 --- m1
-    m0 --- m2
-    m1 --- m2
-```
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `binding/toml.go:29` | `binding.decodeToml` | `(io.Reader, any) (error)` | validation |
-| `binding/xml.go:28` | `binding.decodeXML` | `(io.Reader, any) (error)` | validation, serialization |
-| `binding/yaml.go:29` | `binding.decodeYAML` | `(io.Reader, any) (error)` | validation |
-
-### Family 4 — 14 members, every pair `>= 1.00` code-shape, evidence `118`  (55 edges scored here), interface implementations of `WriteContentType(http.ResponseWriter)`, in package `render`
-
-_Not drawn: 14 members is 91 connections. Every one of them holds — that is what makes this a family._
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `render/bson.go:32` | `render.BSON.WriteContentType` | `(http.ResponseWriter)` | — |
-| `render/html.go:99` | `render.HTML.WriteContentType` | `(http.ResponseWriter)` | — |
-| `render/json.go:62` | `render.JSON.WriteContentType` | `(http.ResponseWriter)` | — |
-| `render/json.go:89` | `render.IndentedJSON.WriteContentType` | `(http.ResponseWriter)` | — |
-| `render/json.go:112` | `render.SecureJSON.WriteContentType` | `(http.ResponseWriter)` | — |
-| `render/json.go:150` | `render.JsonpJSON.WriteContentType` | `(http.ResponseWriter)` | — |
-| `render/json.go:179` | `render.AsciiJSON.WriteContentType` | `(http.ResponseWriter)` | — |
-| `render/json.go:192` | `render.PureJSON.WriteContentType` | `(http.ResponseWriter)` | — |
-| `render/msgpack.go:29` | `render.MsgPack.WriteContentType` | `(http.ResponseWriter)` | — |
-| `render/protobuf.go:34` | `render.ProtoBuf.WriteContentType` | `(http.ResponseWriter)` | — |
-
-_4 more members not listed._
-
-### Family 5 — 7 members, every pair `>= 1.00` code-shape, evidence `72`  (3 edges scored here)
-
-```mermaid
-flowchart LR
-    m0["gin.*Context.BindJSON"]
-    m1["gin.*Context.BindXML"]
-    m2["gin.*Context.BindQuery"]
-    m3["gin.*Context.BindYAML"]
-    m4["gin.*Context.BindTOML"]
-    m5["gin.*Context.BindPlain"]
-    m6["gin.*Context.BindHeader"]
+    m2["gin.*Engine.RunFd"]
+    m3["gin.*Engine.RunQUIC"]
+    m4["gin.*Engine.RunListener"]
     m0 --- m1
     m0 --- m2
     m0 --- m3
     m0 --- m4
-    m0 --- m5
-    m0 --- m6
     m1 --- m2
     m1 --- m3
     m1 --- m4
-    m1 --- m5
-    m1 --- m6
     m2 --- m3
     m2 --- m4
-    m2 --- m5
-    m2 --- m6
     m3 --- m4
-    m3 --- m5
-    m3 --- m6
-    m4 --- m5
-    m4 --- m6
-    m5 --- m6
 ```
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `context.go:763` | `gin.*Context.BindJSON` | `(any) (error)` | — |
-| `context.go:768` | `gin.*Context.BindXML` | `(any) (error)` | — |
-| `context.go:773` | `gin.*Context.BindQuery` | `(any) (error)` | — |
-| `context.go:778` | `gin.*Context.BindYAML` | `(any) (error)` | — |
-| `context.go:783` | `gin.*Context.BindTOML` | `(any) (error)` | — |
-| `context.go:788` | `gin.*Context.BindPlain` | `(any) (error)` | — |
-| `context.go:793` | `gin.*Context.BindHeader` | `(any) (error)` | — |
+| `gin.go:561` | `gin.*Engine.RunTLS` | `(string, string, string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.77, http.Server+engine.Handler 0.52 |
+| `gin.go:581` | `gin.*Engine.RunUnix` | `(string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.78, http.Server+engine.Handler 0.52, binding+nil 0.35 |
+| `gin.go:607` | `gin.*Engine.RunFd` | `(int) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.74, binding+nil 0.35 |
+| `gin.go:630` | `gin.*Engine.RunQUIC` | `(string, string, string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.76, http.Server+engine.Handler 0.50 |
+| `gin.go:645` | `gin.*Engine.RunListener` | `(net.Listener) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.76, http.Server+engine.Handler 0.50 |
 
-_5 more families not listed._
+### Family 4 — 5 members, every pair `>= 0.64` code-shape, evidence `1402`
+
+```mermaid
+flowchart LR
+    m0["binding.decodeJSON"]
+    m1["binding.decodeMsgPack"]
+    m2["binding.decodeToml"]
+    m3["binding.decodeXML"]
+    m4["binding.decodeYAML"]
+    m0 --- m1
+    m0 --- m2
+    m0 --- m3
+    m0 --- m4
+    m1 --- m2
+    m1 --- m3
+    m1 --- m4
+    m2 --- m3
+    m2 --- m4
+    m3 --- m4
+```
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `binding/json.go:44` | `binding.decodeJSON` | `(io.Reader, any) (error)` | delims.Left+delims.Right 0.65, binding+nil 0.35 |
+| `binding/msgpack.go:31` | `binding.decodeMsgPack` | `(io.Reader, any) (error)` | delims.Left+delims.Right 0.56, binding+nil 0.35 |
+| `binding/toml.go:29` | `binding.decodeToml` | `(io.Reader, any) (error)` | delims.Left+delims.Right 0.66, binding+nil 0.35 |
+| `binding/xml.go:28` | `binding.decodeXML` | `(io.Reader, any) (error)` | delims.Left+delims.Right 0.66, binding+nil 0.35 |
+| `binding/yaml.go:29` | `binding.decodeYAML` | `(io.Reader, any) (error)` | delims.Left+delims.Right 0.66, binding+nil 0.35 |
+
+### Family 5 — 5 members, every pair `>= 0.62` code-shape, evidence `1304`, interface implementations of `Render(http.ResponseWriter) (error)`, in package `render`
+
+```mermaid
+flowchart LR
+    m0["render.BSON.Render"]
+    m1["render.IndentedJSON.Render"]
+    m2["render.ProtoBuf.Render"]
+    m3["render.TOML.Render"]
+    m4["render.YAML.Render"]
+    m0 --- m1
+    m0 --- m2
+    m0 --- m3
+    m0 --- m4
+    m1 --- m2
+    m1 --- m3
+    m1 --- m4
+    m2 --- m3
+    m2 --- m4
+    m3 --- m4
+```
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `render/bson.go:21` | `render.BSON.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.54, binding+nil 0.35, json.Marshal+json.MarshalIndent 0.31 |
+| `render/json.go:78` | `render.IndentedJSON.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.55, bytesconv.StringToBytes+json.API 0.42, json.Marshal+json.MarshalIndent 0.41, binding+nil 0.35 |
+| `render/protobuf.go:21` | `render.ProtoBuf.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.60, binding+nil 0.35, json.Marshal+json.MarshalIndent 0.31 |
+| `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.60, binding+nil 0.35, json.Marshal+json.MarshalIndent 0.31 |
+| `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.60, binding+nil 0.35, json.Marshal+json.MarshalIndent 0.31 |
+
+_22 more families not listed._
 

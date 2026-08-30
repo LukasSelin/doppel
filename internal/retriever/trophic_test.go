@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 const trophicScanLoop = `
@@ -78,8 +80,8 @@ func (e T%d) Label() string {
 	units := parseUnits(t, "fix.go", b.String())
 	a := unitIndex(t, units, "T0.Label")
 	bIdx := unitIndex(t, units, "T1.Label")
-	units[a].Patterns = []string{"mapping"}
-	units[bIdx].Patterns = []string{"mapping"}
+	units[a].Concepts = parser.Certain("mapping")
+	units[bIdx].Concepts = parser.Certain("mapping")
 
 	opt := DefaultOptions()
 	opt.MinNodes = 8

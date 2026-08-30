@@ -69,9 +69,12 @@ func buildOverview(res Result, suppressed int) *reporter.Overview {
 // conceptRows returns the concepts this corpus uses, the ones it never does,
 // and the taxonomy flattened parents-first for drawing.
 //
-// Absent concepts are a first-class answer, not a gap in a table: "nothing here
-// is tagged retry" settles a question that the list of present tags only
-// narrows. The hook's session-start digest already leads with the same fact.
+// The absent list is a first-class answer, not a gap in a table: "this codebase
+// has no retry practice" settles a question the list of present concepts only
+// narrows. It names *seeds*, not learned concepts — a learned concept cannot be
+// absent, since it exists only because some function carries it — so the seed
+// vocabulary is the one fixed list left to measure absence against. The hook's
+// session-start digest reports the same fact from the snapshot.
 func conceptRows(res Result) ([]reporter.TagRow, []string, []reporter.TaxonomyNode) {
 	var rows []reporter.TagRow
 	var absent []string
@@ -79,6 +82,7 @@ func conceptRows(res Result) ([]reporter.TagRow, []string, []reporter.TaxonomyNo
 
 	// Declaration order from the ontology, so the tree is emitted parents-first
 	// without a recursive walk and without any map deciding the order.
+	absent = append(absent, res.UnusedSeeds...)
 	for _, term := range res.Onto.TermsOfKind(ontology.KindConcept) {
 		count := res.TagCounts[term.ID]
 		tree = append(tree, reporter.TaxonomyNode{
@@ -91,7 +95,9 @@ func conceptRows(res Result) ([]reporter.TagRow, []string, []reporter.TaxonomyNo
 			continue
 		}
 		if count == 0 {
-			absent = append(absent, string(term.ID))
+			// Unreachable for a learned vocabulary — a concept exists because
+			// functions carry it — and kept as the guard that says so. The
+			// absent list comes from the seeds instead; see below.
 			continue
 		}
 		row := reporter.TagRow{Tag: string(term.ID), Count: count}
@@ -507,7 +513,7 @@ func practiceDrift(ov *reporter.Overview, res Result) {
 
 	var rows []reporter.DriftRow
 	for i, u := range res.Units {
-		for _, tag := range u.Patterns { // parser order: declaration order, stable
+		for _, tag := range parser.ConceptIDs(u.Concepts) { // ascending by ID, stable
 			if !res.Culture.Atypical(i, tag) {
 				continue
 			}

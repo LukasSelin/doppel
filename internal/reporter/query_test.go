@@ -10,11 +10,11 @@ import (
 )
 
 func queryFixture() (parser.CodeUnit, concepter.ConceptDoc, []QueryMatch) {
-	probe := parser.CodeUnit{Package: "billing", Name: "ValidateRef", Patterns: []string{"validation"}}
+	probe := parser.CodeUnit{Package: "billing", Name: "ValidateRef", Concepts: parser.Certain("validation")}
 	probeDoc := concepter.ConceptDoc{Role: "leaf"}
 	m := QueryMatch{
 		Unit: parser.CodeUnit{Package: "fedex", Name: "ValidateCreds", File: "internal/fedex/creds.go", StartLine: 41,
-			Patterns: []string{"validation"}},
+			Concepts: parser.Certain("validation")},
 		Doc:      concepter.ConceptDoc{Role: "leaf"},
 		Locality: 0.4,
 	}
@@ -34,7 +34,7 @@ func TestPrintQueryStatesEvidenceAndLocalityUnblended(t *testing.T) {
 
 	for _, want := range []string{
 		"query: billing.ValidateRef",
-		"tags: validation",
+		"concepts: validation 1.00",
 		"resolved calls: 2",
 		"fedex.ValidateCreds",
 		"internal/fedex/creds.go:41",

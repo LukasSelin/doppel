@@ -1,6 +1,10 @@
 package family
 
-import "sort"
+import (
+	"sort"
+
+	"github.com/LukasSelin/doppel/internal/clique"
+)
 
 // edge is one unordered pair, keyed low-index-first so a pair has exactly one
 // spelling.
@@ -92,30 +96,7 @@ func (g *graph) neighbors(a int) []int {
 // Vertices are scanned in index order and each component's frontier is walked
 // in index order, so the result never depends on map iteration.
 func (g *graph) components() [][]int {
-	seen := make([]bool, g.n)
-	var out [][]int
-	for v := 0; v < g.n; v++ {
-		if seen[v] || len(g.adj[v]) == 0 {
-			continue
-		}
-		var comp []int
-		stack := []int{v}
-		seen[v] = true
-		for len(stack) > 0 {
-			cur := stack[len(stack)-1]
-			stack = stack[:len(stack)-1]
-			comp = append(comp, cur)
-			for _, nb := range g.neighbors(cur) {
-				if !seen[nb] {
-					seen[nb] = true
-					stack = append(stack, nb)
-				}
-			}
-		}
-		sort.Ints(comp)
-		out = append(out, comp)
-	}
-	return out
+	return clique.Components(g.n, g.neighbors)
 }
 
 // describe turns a clique into a Family, reading the weights back off the

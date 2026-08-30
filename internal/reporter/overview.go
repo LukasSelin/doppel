@@ -30,7 +30,7 @@ type Overview struct {
 	Suppressed int // pairs dropped by the per-function diversity cap
 
 	Concepts []TagRow // concepts present, count desc then tag
-	Absent   []string // concepts in the vocabulary this corpus never uses
+	Absent   []string // seed concepts this corpus grew no practice for
 	Roles    []RoleRow
 
 	Taxonomy []TaxonomyNode // the concept tree, parents before children
@@ -355,9 +355,11 @@ func overviewConcepts(w io.Writer, ov *Overview) {
 		return
 	}
 	fmt.Fprintf(w, "### Concepts\n\n")
-	fmt.Fprintf(w, "doppel reads intent from the AST into a fixed vocabulary and reasons over the tree, "+
-		"so two functions that share a *branch* score partial credit rather than nothing. "+
-		"Leaf counts below are this corpus.\n\n")
+	fmt.Fprintf(w, "These concepts were **learned from this corpus**, not read off a fixed list: "+
+		"each one is a group of functions that share a way of being written, named after the "+
+		"evidence that identified it. They hang from an authored interior, so two functions "+
+		"under the same *branch* score partial credit rather than nothing. "+
+		"Counts below are members; membership is graded, and a function can carry several.\n\n")
 
 	if len(ov.Taxonomy) > 0 {
 		fmt.Fprintf(w, "```mermaid\nflowchart LR\n")
@@ -399,8 +401,8 @@ func overviewConcepts(w io.Writer, ov *Overview) {
 	}
 
 	if len(ov.Absent) > 0 {
-		fmt.Fprintf(w, "**Nothing here is tagged** `%s`. ", strings.Join(ov.Absent, "`, `"))
-		fmt.Fprintf(w, "That is a direct answer to \"does this codebase already do X\" — for those concepts, it does not.\n\n")
+		fmt.Fprintf(w, "**No practice here for** `%s`. ", strings.Join(ov.Absent, "`, `"))
+		fmt.Fprintf(w, "Concepts are learned from this corpus, so one can never be absent — it exists because functions carry it. These are the *seeds* the search started from that grew nothing: a direct answer to \"does this codebase already do X\".\n\n")
 	}
 
 	if len(ov.Concepts) > 0 {

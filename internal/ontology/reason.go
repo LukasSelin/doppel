@@ -75,16 +75,42 @@ func (o *Ontology) LCA(a, b TermID) (TermID, bool) {
 	if !okA || !okB || ta.Kind != tb.Kind {
 		return "", false
 	}
-	seen := make(map[TermID]bool)
-	for _, id := range o.chain(a) {
-		seen[id] = true
-	}
-	for _, id := range o.chain(b) {
-		if seen[id] {
-			return id, true
+	// Walk the deeper term up to the shallower one, then both up together.
+	// The chain-and-set form this replaces allocated a map on every call, and
+	// the scorer calls LCA once per candidate pairing of two concept sets —
+	// which was fine for fourteen tags and is a quarter of a run's time now
+	// that concepts are learned per corpus and a unit carries a dozen. Same
+	// answer, no allocation, O(depth) on a tree at most a handful deep.
+	da, db := o.depth[a], o.depth[b]
+	steps := 0
+	for da > db {
+		a = o.terms[a].Parent
+		da--
+		if steps++; steps > len(o.order) {
+			return "", false // malformed table: a cycle, not an ancestry
 		}
 	}
-	return "", false
+	for db > da {
+		b = o.terms[b].Parent
+		db--
+		if steps++; steps > len(o.order) {
+			return "", false
+		}
+	}
+	for a != b {
+		if a == "" || b == "" {
+			return "", false
+		}
+		a = o.terms[a].Parent
+		b = o.terms[b].Parent
+		if steps++; steps > len(o.order) {
+			return "", false
+		}
+	}
+	if a == "" {
+		return "", false
+	}
+	return a, true
 }
 
 // Relatedness scores two terms by Wu-Palmer similarity,

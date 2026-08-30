@@ -1,0 +1,340 @@
+/* Dashboard styles.
+ *
+ * Every colour, space and radius is a Broadsheet token — the one rule the
+ * design system calls out as its failure mode. Layout is this file's own
+ * business; the vendored sheet does not know about a graph canvas. */
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+
+.page {
+  min-height: 100vh;
+  padding: var(--space-6) var(--space-8) var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.mono {
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.kicker {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+}
+.rule-heavy { height: 5px; background: var(--color-text); }
+.rule-fine { height: 1px; background: var(--color-divider); }
+
+/* ── Masthead ─────────────────────────────────────────────────────────── */
+
+.masthead { display: flex; flex-direction: column; gap: var(--space-3); }
+.masthead-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding-top: var(--space-2);
+}
+.masthead-title { margin: var(--space-1) 0 0; font-size: 40px; line-height: 1; }
+
+.tabs { display: flex; gap: var(--space-1); }
+.tab {
+  font-family: var(--font-body);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: var(--space-2) var(--space-4);
+  background: transparent;
+  color: var(--color-neutral-700);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.tab:hover { color: var(--color-text); border-color: var(--color-neutral-500); }
+.tab[aria-selected="true"] {
+  background: var(--color-text);
+  color: var(--color-bg);
+  border-color: var(--color-text);
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-6);
+  padding-bottom: var(--space-3);
+}
+.fact { display: flex; flex-direction: column; gap: 2px; min-width: 92px; }
+.fact-n {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 26px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.fact-l {
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+}
+.fact-s { font-size: 12px; color: var(--color-neutral-600); }
+
+/* ── Screens ──────────────────────────────────────────────────────────── */
+
+.screen { flex: 1; min-height: 0; }
+.screen[hidden] { display: none; }
+
+.map-layout, .nb-layout { display: grid; gap: var(--space-6); }
+
+/* The map is a canvas and needs a box to fill. The neighbourhood is prose and
+   code, so it flows and the page scrolls — a fixed shell there would put a
+   200-line function inside a 300px window. */
+.map-layout {
+  grid-template-columns: 260px 1fr;
+  height: calc(100vh - 250px);
+  min-height: 480px;
+}
+.nb-layout { grid-template-columns: 280px 1fr; align-items: start; }
+
+/* ── Controls ─────────────────────────────────────────────────────────── */
+
+.controls, .nb-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-right: var(--space-2);
+}
+.controls { overflow-y: auto; }
+/* The picker follows the reader down a long body rather than scrolling away. */
+.nb-picker { position: sticky; top: var(--space-2); max-height: calc(100vh - 40px); overflow-y: auto; }
+.control { display: flex; flex-direction: column; gap: var(--space-1); }
+.control-label {
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+}
+.control-note { font-size: 12px; line-height: 1.5; color: var(--color-neutral-700); margin: 0; }
+.control-checks { gap: var(--space-2); font-size: 13px; }
+.control-checks label { display: flex; align-items: center; gap: var(--space-2); cursor: pointer; }
+
+select, input[type="search"] {
+  font-family: var(--font-body);
+  font-size: 13px;
+  padding: 6px 8px;
+  background: var(--color-neutral-100);
+  color: var(--color-text);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+}
+input[type="range"] { accent-color: var(--color-accent); width: 100%; }
+
+.legend { display: flex; flex-direction: column; gap: 4px; }
+.legend-row { display: flex; align-items: center; gap: var(--space-2); font-size: 12px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+/* A learned concept id is a vocabulary join — "sql.Open+QueryRow" — so it is
+   long by construction and must not push the count off the row. */
+.legend-id { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.legend-n { margin-left: auto; color: var(--color-neutral-600); font-variant-numeric: tabular-nums; flex: none; }
+
+/* ── Map ──────────────────────────────────────────────────────────────── */
+
+.map-canvas {
+  position: relative;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  background: var(--color-neutral-100);
+  overflow: hidden;
+}
+#map { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; }
+#map:active { cursor: grabbing; }
+
+.region { cursor: pointer; transition: fill-opacity 120ms; }
+.region:hover { fill-opacity: 0.34 !important; }
+
+/* A border is geometry; the paint on it is the evidence. The plain hairline is
+   the frontier between two regions that share nothing, and it is deliberately
+   quiet so the painted ones carry the eye. */
+.border { stroke: var(--color-neutral-500); stroke-opacity: 0.55; }
+.border.hot { stroke: var(--color-accent); stroke-opacity: 0.9; cursor: pointer; }
+.border.hot.merge { stroke: var(--color-accent-2); stroke-opacity: 0.95; }
+.border.hot:hover { stroke-opacity: 1; }
+
+/* Related regions the packing could not seat together. Dashed, so an arc never
+   reads as a border. */
+.arc { fill: none; stroke: var(--color-accent); stroke-opacity: 0.55; stroke-dasharray: 5 4; cursor: pointer; }
+.arc.merge { stroke: var(--color-accent-2); stroke-opacity: 0.75; }
+.arc:hover { stroke-opacity: 1; }
+
+.dot { cursor: pointer; }
+.dot.misfit { stroke: var(--color-text); stroke-opacity: 0.6; stroke-width: 1.2; }
+.dot:hover { stroke: var(--color-accent-2); stroke-width: 2; stroke-opacity: 1; }
+
+.region-label {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  fill: var(--color-neutral-900);
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: var(--color-bg);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.region-sub {
+  font-family: var(--font-body);
+  fill: var(--color-neutral-700);
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: var(--color-bg);
+  stroke-width: 2.5px;
+}
+
+.map-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-8);
+  color: var(--color-neutral-700);
+  font-size: 14px;
+  pointer-events: none;
+}
+.map-hint {
+  position: absolute;
+  right: var(--space-2);
+  bottom: var(--space-1);
+  font-size: 11px;
+  color: var(--color-neutral-600);
+  pointer-events: none;
+}
+
+.sel-title { font-size: 14px; margin: 2px 0 var(--space-1); word-break: break-all; }
+.sel-list { list-style: none; margin: 0; padding: 0; }
+.sel-list li {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--color-divider);
+  font-size: 12px;
+  cursor: pointer;
+}
+.sel-list li:hover { background: var(--color-neutral-200); }
+.sel-list .mono { display: block; word-break: break-all; }
+.sel-meta { display: block; font-size: 11px; color: var(--color-neutral-600); margin-top: 1px; }
+
+/* ── Neighbourhood ────────────────────────────────────────────────────── */
+
+.nb-units, .nb-neighbours ol { list-style: none; margin: 0; padding: 0; }
+.nb-units li, .nb-row {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-divider);
+  cursor: pointer;
+  font-size: 13px;
+}
+.nb-units li:hover, .nb-row:hover { background: var(--color-neutral-200); }
+.nb-units li[aria-selected="true"], .nb-row[aria-selected="true"] {
+  background: var(--color-accent-100);
+  box-shadow: inset 3px 0 0 var(--color-accent);
+}
+.nb-units .u-name { display: block; }
+.nb-units .u-meta, .nb-row .r-meta {
+  display: block;
+  font-size: 11px;
+  color: var(--color-neutral-600);
+  margin-top: 2px;
+}
+
+.nb-main { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.nb-head { display: flex; flex-direction: column; gap: var(--space-1); }
+.nb-head h2 { margin: 0; font-size: 22px; }
+.nb-body { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+.nb-neighbours { display: flex; flex-direction: column; gap: var(--space-2); position: sticky; top: var(--space-2); max-height: calc(100vh - 40px); overflow-y: auto; }
+.nb-detail { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+
+.scores { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); }
+.score { display: flex; flex-direction: column; }
+.score-n { font-size: 18px; font-variant-numeric: tabular-nums; }
+.score-l { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-700); }
+
+.bars { display: flex; flex-direction: column; gap: 3px; }
+.bar-row { display: grid; grid-template-columns: 64px 1fr 44px; align-items: center; gap: var(--space-2); font-size: 12px; }
+.bar-track { height: 8px; background: var(--color-neutral-300); border-radius: var(--radius-sm); overflow: hidden; }
+.bar-fill { height: 100%; background: var(--color-accent); }
+.bar-fill.hot { background: var(--color-accent-2); }
+.bar-n { text-align: right; font-variant-numeric: tabular-nums; color: var(--color-neutral-700); }
+
+.chains { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.chains li { display: grid; grid-template-columns: 44px 28px 1fr; gap: var(--space-2); font-size: 12px; align-items: baseline; }
+.chains .c-energy { font-variant-numeric: tabular-nums; color: var(--color-neutral-700); text-align: right; }
+.chains .c-level { color: var(--color-neutral-500); font-size: 11px; }
+.chains .c-render { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-word; }
+
+.reasons { margin: 0; padding-left: var(--space-4); font-size: 12px; line-height: 1.6; color: var(--color-neutral-800); }
+
+.panel { display: flex; flex-direction: column; gap: var(--space-2); }
+.panel-title {
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+}
+.panel-note { font-size: 12px; color: var(--color-neutral-600); margin: 0; line-height: 1.5; }
+
+/* Full width of the main column, not the detail column: two panes of Go at
+   285px each are unreadable, and the code is the point of this screen. */
+.bodies { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-2); }
+.body-pane {
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  background: var(--color-neutral-100);
+  overflow-x: auto;
+}
+.body-head {
+  position: sticky;
+  top: 0;
+  background: var(--color-neutral-200);
+  border-bottom: 1px solid var(--color-divider);
+  padding: 4px var(--space-2);
+  font-size: 11px;
+  color: var(--color-neutral-800);
+}
+.body-code {
+  margin: 0;
+  padding: var(--space-2) 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.body-code .ln { display: block; padding: 0 var(--space-2); white-space: pre; }
+.body-code .ln.add { background: color-mix(in srgb, var(--color-accent-2) 14%, transparent); }
+.body-code .ln.gap { background: var(--color-neutral-200); color: var(--color-neutral-500); }
+.body-missing { padding: var(--space-4); font-size: 12px; color: var(--color-neutral-600); }
+
+.tagset { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  padding: 1px 7px 1px 5px;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  color: var(--color-neutral-800);
+}
+.chip-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.chip-n { color: var(--color-neutral-600); }
+.chip.on { background: var(--color-text); color: var(--color-bg); border-color: var(--color-text); }
+.chip.on .chip-n { color: var(--color-neutral-400); }
+
+.empty { color: var(--color-neutral-600); font-size: 13px; padding: var(--space-4) 0; }
+
+.colophon {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-neutral-700);
+  border-top: 1px solid var(--color-divider);
+  padding-top: var(--space-3);
+}

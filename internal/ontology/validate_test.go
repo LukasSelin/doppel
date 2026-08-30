@@ -101,9 +101,12 @@ func TestValidateCatchesInconsistencies(t *testing.T) {
 			want: "kind concept has no root",
 		},
 		{
+			// A hand-authored kind: roles are still declared in this repo, so
+			// the spelling rule still applies to them. Concrete concept leaves
+			// are exempt — see TestValidateAcceptsDerivedConceptNames.
 			name:  "identifier that is not snake_case",
-			terms: []Term{documented("httpCall", KindConcept, "")},
-			want:  `term "httpCall" is not snake_case`,
+			terms: []Term{documented("highFanIn", KindRole, "")},
+			want:  `term "highFanIn" is not snake_case`,
 		},
 		{
 			name:  "term with no definition",
@@ -173,5 +176,41 @@ func TestRelationWeightsSumToOne(t *testing.T) {
 	}
 	if scored != 12 {
 		t.Errorf("got %d scored relations, want 12", scored)
+	}
+}
+
+// TestValidateAcceptsDerivedConceptNames pins the axiom-1 exemption. A learned
+// concept is named after the evidence that produced it, so its ID carries dots,
+// plus signs and capitals that no hand-authored term ever would — and must not
+// be reported as a vocabulary defect. The abstract interior, still authored by
+// hand, keeps the rule.
+func TestValidateAcceptsDerivedConceptNames(t *testing.T) {
+	derived := []DerivedConcept{
+		{ID: "sql.Open+QueryRow", Seed: ConDBAccess, Def: "Learned."},
+		{ID: "json.Marshal+Unmarshal", Def: "Learned."},
+	}
+	o := WithConcepts(Default(), DerivedConceptTerms(Default(), derived))
+	if errs := o.Validate(); len(errs) != 0 {
+		t.Fatalf("derived vocabulary failed validation: %v", errs)
+	}
+
+	// The seeded concept inherits its seed's parent, not the seed itself.
+	term, ok := o.Get("sql.Open+QueryRow")
+	if !ok {
+		t.Fatal("derived concept missing from the vocabulary")
+	}
+	if term.Parent != ConDataStoreAccess {
+		t.Errorf("parent = %q, want %q", term.Parent, ConDataStoreAccess)
+	}
+	// An emergent concept with no anchor hangs from the root.
+	if term, ok := o.Get("json.Marshal+Unmarshal"); !ok || term.Parent != ConConcept {
+		t.Errorf("emergent parent = %q, want %q", term.Parent, ConConcept)
+	}
+	// The built-in leaves are gone; the interior is not.
+	if _, ok := o.Get(ConDBAccess); ok {
+		t.Error("built-in leaf survived into a derived vocabulary")
+	}
+	if _, ok := o.Get(ConIOOperation); !ok {
+		t.Error("abstract interior did not survive into a derived vocabulary")
 	}
 }

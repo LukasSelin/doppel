@@ -10,6 +10,7 @@ import (
 	"github.com/LukasSelin/doppel/internal/comparator"
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/fingerprint"
+	"github.com/LukasSelin/doppel/internal/lexicon"
 	"github.com/LukasSelin/doppel/internal/mapper"
 	"github.com/LukasSelin/doppel/internal/ontology"
 	"github.com/LukasSelin/doppel/internal/parser"
@@ -97,6 +98,7 @@ func Load(root string, pop Population) ([]parser.CodeUnit, error) {
 type Run struct {
 	Units     []parser.CodeUnit
 	TagCounts map[ontology.TermID]int
+	Lexicon   *lexicon.Model
 	Onto      *ontology.Ontology
 	IC        *ontology.IC
 	Comp      *comparator.Comparator
@@ -120,26 +122,61 @@ type Run struct {
 // place and is safe to call repeatedly on the same predecessors, which is
 // what makes per-stage benchmarking honest.
 
-// StageTag tags every unit and accumulates the corpus tag counts. A Run with
-// Onto pre-set keeps it — the weight-override seam AnalyzeWith uses; nil means
-// the production default.
+// StageGraph resolves the corpus call graph. It runs before StageTag now,
+// because the learned lexicon reads resolved calls as one of its evidence
+// channels.
+func (r *Run) StageGraph() { r.Graph = concepter.BuildCallGraph(r.Units) }
+
+// StageTag learns the concept lexicon and assigns memberships, accumulating
+// both corpus statistics: member counts, and the summed confidence that weights
+// information content. A Run with Onto pre-set keeps it — the weight-override
+// seam AnalyzeWith uses; nil derives the per-corpus vocabulary, which is what
+// production does.
+//
+// This mirrors cmd/pipeline.go's index() exactly, and the two must move
+// together: a harness measuring a differently-tagged corpus than the tool is
+// the failure mode the shared walk rule already exists to prevent.
 func (r *Run) StageTag() {
-	r.TagCounts = make(map[ontology.TermID]int)
+	seeds := make([][]string, len(r.Units))
 	for i := range r.Units {
-		r.Units[i].Patterns = tagger.Tag(r.Units[i])
-		for _, tag := range r.Units[i].Patterns {
-			r.TagCounts[ontology.TermID(tag)]++
+		seeds[i] = tagger.Tag(r.Units[i])
+	}
+	r.Lexicon = lexicon.Build(r.Units, r.Graph, seeds, lexicon.DefaultOptions())
+	assignments := r.Lexicon.Assignments()
+
+	r.TagCounts = make(map[ontology.TermID]int)
+	mass := make(map[ontology.TermID]float64)
+	for i := range r.Units {
+		r.Units[i].Concepts = assignments[i]
+		for _, c := range r.Units[i].Concepts {
+			id := ontology.TermID(c.ID)
+			r.TagCounts[id]++
+			mass[id] += c.Confidence
 		}
 	}
 	if r.Onto == nil {
-		r.Onto = ontology.Default()
+		r.Onto = ontology.WithConcepts(ontology.Default(),
+			ontology.DerivedConceptTerms(ontology.Default(), derivedConcepts(r.Lexicon)))
 	}
-	r.IC = ontology.NewCorpusIC(r.Onto, r.TagCounts)
+	r.IC = ontology.NewCorpusICMass(r.Onto, mass)
 	r.Comp = comparator.New(ontology.NewScorer(r.Onto, r.IC))
 }
 
-// StageGraph resolves the corpus call graph.
-func (r *Run) StageGraph() { r.Graph = concepter.BuildCallGraph(r.Units) }
+// derivedConcepts translates the learned lexicon into taxonomy placements, the
+// same way cmd does.
+func derivedConcepts(lex *lexicon.Model) []ontology.DerivedConcept {
+	concepts := lex.Concepts()
+	out := make([]ontology.DerivedConcept, len(concepts))
+	for i, c := range concepts {
+		out[i] = ontology.DerivedConcept{
+			ID:         c.ID,
+			Seed:       ontology.TermID(c.Seed),
+			AnchorSeed: ontology.TermID(c.Anchor),
+			Def:        c.Definition(),
+		}
+	}
+	return out
+}
 
 // StageWL counts the Weisfeiler-Lehman label surprisals over the corpus. It
 // must run before StageRetrieve: code shape is corpus-weighted, and every
@@ -199,9 +236,12 @@ func Analyze(units []parser.CodeUnit, opt retriever.Options) *Run {
 // ablation and fitting harness scores through. A nil onto is Analyze exactly.
 func AnalyzeWith(units []parser.CodeUnit, opt retriever.Options, onto *ontology.Ontology) *Run {
 	r := &Run{Units: units, Onto: onto}
+	// Mirrors cmd's index(): the WL corpus weighting is a purely structural
+	// statistic and comes first, then the call graph, then the lexicon that
+	// reads it.
 	r.StageWL()
-	r.StageTag()
 	r.StageGraph()
+	r.StageTag()
 	r.StageMap()
 	r.StageRetrieve(opt)
 	r.StagePairs()

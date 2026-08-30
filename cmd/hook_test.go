@@ -336,3 +336,69 @@ func TestLedgerRetiresOnlyTheFindingsShown(t *testing.T) {
 		t.Errorf("%d findings still unreported after two turns, want 0", len(rest))
 	}
 }
+
+// A later turn measures at the operating point the baseline was written at.
+//
+// Deriving it again each turn is what this prevents: the session is editing the
+// corpus, so the null distribution moves, and a threshold that shifts by a
+// hundredth makes Params unequal and silences the Stop hook for a turn that
+// nothing was wrong with.
+func TestPinThresholdsSuppliesTheBaselineOperatingPoint(t *testing.T) {
+	p := Params{Threshold: 0.60, Calibrate: defaultCalibrateRate, NoOverlapFilter: true}
+	pinned := &snapshot.Params{Threshold: 0.48, StructMin: 0.39, Calibrate: 0.01}
+
+	got := pinThresholds(p, pinned)
+
+	if got.Threshold != 0.48 {
+		t.Errorf("Threshold = %v, want the baseline's 0.48", got.Threshold)
+	}
+	if !got.Pinned {
+		t.Error("Pinned = false: the run would derive its own thresholds")
+	}
+	if got.Calibrate != 0.01 {
+		t.Errorf("Calibrate = %v, want the baseline's 0.01", got.Calibrate)
+	}
+	// The baseline records the overlap floor for comparability, but a hook run
+	// never applies one — it diffs the full candidate set.
+	if got.StructMin != 0 {
+		t.Errorf("StructMin = %v, want 0: a hook must not gain an overlap filter", got.StructMin)
+	}
+}
+
+// No baseline means derive: session start is the run that establishes the
+// operating point, and user-prompt scopes a digest without diffing anything.
+func TestPinThresholdsWithoutABaselineDerives(t *testing.T) {
+	p := Params{Threshold: 0.60, Calibrate: defaultCalibrateRate}
+
+	got := pinThresholds(p, nil)
+
+	if got.Pinned {
+		t.Error("Pinned = true with no baseline: nothing supplied the thresholds")
+	}
+	if got.Calibrate != defaultCalibrateRate {
+		t.Errorf("Calibrate = %v, want %v: the run must derive its own", got.Calibrate, defaultCalibrateRate)
+	}
+}
+
+// A pinned run and the baseline it inherited from must compare as the same
+// question. This is the property the whole pinning mechanism exists for.
+func TestPinnedRunStaysComparableToItsBaseline(t *testing.T) {
+	base := snapshot.Params{
+		Threshold: 0.48, MinNodes: 12, ChannelK: 5,
+		TestsMode: "exclude", Generated: "exclude", Calibrate: 0.01,
+	}
+	p, err := hookParams(t.TempDir())
+	if err != nil {
+		t.Fatalf("hookParams: %v", err)
+	}
+	got := pinThresholds(p, &base)
+
+	head := snapshot.Params{
+		Threshold: got.Threshold, Top: got.TopN, MinNodes: got.MinNodes,
+		StructMin: got.StructMin, ChannelK: got.ChannelK, MaxPerFunc: got.MaxPerFunc,
+		TestsMode: got.TestsMode, Generated: got.Generated, Calibrate: got.Calibrate,
+	}
+	if head != base {
+		t.Errorf("pinned params differ from the baseline:\n head %+v\n base %+v", head, base)
+	}
+}

@@ -121,6 +121,10 @@ func (d Delta) Empty() bool {
 // tempt a caller into exiting non-zero over it. A mismatched schema, build,
 // ontology or param set means the two runs measured different things, and a
 // diff across them would be confidently wrong rather than merely unavailable.
+//
+// The full refusal list is Schema, Doppel, Ontology, RuleSet and Params — the
+// union of two development lines' conditions, kept whole because each line
+// refused for something the other could not see.
 func Diff(base, head Snapshot) Delta {
 	d := Delta{
 		Comparable:      true,

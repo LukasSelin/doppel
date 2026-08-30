@@ -45,6 +45,22 @@ tasks:
     cmds:
       - gofmt -w .
 
+  dashboard:
+    desc: Build the HTML dashboard for this repo and open it
+    vars:
+      OUT: '{{.OUT | default "/tmp/doppel-dashboard.html"}}'
+    cmds:
+      - go run . analyze . -o {{.OUT}}
+      - cmd: open {{.OUT}}
+        platforms: [darwin]
+
+  dashboard-dev:
+    desc: Rebuild the dashboard reading assets off disk, so a JS/CSS edit needs no rebuild
+    vars:
+      OUT: '{{.OUT | default "/tmp/doppel-dashboard.html"}}'
+    cmds:
+      - DOPPEL_DASHBOARD_ASSETS=internal/dashboard/assets go run . analyze . -o {{.OUT}}
+
   snapshot:
     desc: Print a deterministic JSON snapshot of this repo's analysis
     cmds:

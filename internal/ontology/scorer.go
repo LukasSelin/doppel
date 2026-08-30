@@ -208,3 +208,118 @@ func (s *Scorer) pairContribution(a, b TermID) (float64, TermID, bool) {
 	}
 	return s.ic.Of(lcs), lcs, true
 }
+
+// WeightedTerm is a term asserted with a confidence, which is what a learned
+// lexicon produces instead of a bare tag list. Weight is in (0,1]; the
+// string-set methods above are the special case where every weight is 1.
+type WeightedTerm struct {
+	ID     TermID
+	Weight float64
+}
+
+// SetRelatednessW is SetRelatedness over graded assertions:
+//
+//	Σ over matched pairs of min(w_a, w_b)·IC(LCS)  /  max(Σ w·IC over a, Σ w·IC over b)
+//
+// min rather than a product or a mean because sharing is bounded by the weaker
+// of the two claims: a concept one side barely carries cannot be strong shared
+// evidence however sure the other side is.
+//
+// The *matching* is deliberately left un-weighted — it is the same
+// contribution-ordered greedy over the same term IDs, and weights only rescale
+// the pairs it chose. That is not a shortcut: the greedy's optimality rests on
+// IC decomposing laminarly over the tree, an argument confidences break (a
+// down-weighted exact match can be worth less than two related pairs, which is
+// the classic case where greedy matching is not optimal). Keeping the choice of
+// pairs weight-free preserves the property the exhaustive oracle test verifies,
+// and confines confidence to what it honestly is: how much the chosen evidence
+// counts.
+func (s *Scorer) SetRelatednessW(a, b []WeightedTerm) (float64, []Match) {
+	if s.ic == nil {
+		return s.o.SetRelatedness(termIDs(a), termIDs(b))
+	}
+	as, aw := split(a)
+	bs, bw := split(b)
+	if len(as) == 0 || len(bs) == 0 {
+		return 0, nil
+	}
+	_, matched := s.matchShared(as, bs)
+	shared := s.weighAll(matched, aw, bw)
+
+	denom := s.weighedTotal(as, aw)
+	if sumB := s.weighedTotal(bs, bw); sumB > denom {
+		denom = sumB
+	}
+	if denom <= 0 {
+		return 0, matched
+	}
+	return shared / denom, matched
+}
+
+// SharedInformationW is the un-normalized numerator of SetRelatednessW: the
+// graded shared information in nats, which is what candidate retrieval wants.
+func (s *Scorer) SharedInformationW(a, b []WeightedTerm) (float64, []Match) {
+	if s.ic == nil {
+		return 0, nil
+	}
+	as, aw := split(a)
+	bs, bw := split(b)
+	if len(as) == 0 || len(bs) == 0 {
+		return 0, nil
+	}
+	_, matched := s.matchShared(as, bs)
+	return s.weighAll(matched, aw, bw), matched
+}
+
+// weighAll rescales a matching's contributions by the weaker side's weight.
+func (s *Scorer) weighAll(matched []Match, aw, bw map[TermID]float64) float64 {
+	var shared float64
+	for _, m := range matched { // consumption order: the addition order is fixed
+		contrib, _, ok := s.pairContribution(TermID(m.A), TermID(m.B))
+		if !ok || contrib <= 0 {
+			continue
+		}
+		w := aw[TermID(m.A)]
+		if bw[TermID(m.B)] < w {
+			w = bw[TermID(m.B)]
+		}
+		shared += w * contrib
+	}
+	return shared
+}
+
+// weighedTotal is one side's own information, each term counted only as far as
+// it is asserted.
+func (s *Scorer) weighedTotal(terms []string, w map[TermID]float64) float64 {
+	var sum float64
+	for _, t := range terms { // sorted: the addition order is fixed
+		sum += w[TermID(t)] * s.ic.Of(TermID(t))
+	}
+	return sum
+}
+
+// split separates graded terms into the sorted-unique ID slice the matcher
+// works on and a weight lookup. A term asserted twice keeps its strongest
+// weight, which cannot happen from the lexicon but must not silently pick one
+// at random if it ever does.
+func split(ts []WeightedTerm) ([]string, map[TermID]float64) {
+	w := make(map[TermID]float64, len(ts))
+	ids := make([]string, 0, len(ts))
+	for _, t := range ts {
+		if t.Weight > w[t.ID] {
+			w[t.ID] = t.Weight
+		}
+		ids = append(ids, string(t.ID))
+	}
+	return sortedUnique(ids), w
+}
+
+// termIDs drops the weights, for the corpus-independent path that has no use
+// for them.
+func termIDs(ts []WeightedTerm) []string {
+	out := make([]string, len(ts))
+	for i, t := range ts {
+		out[i] = string(t.ID)
+	}
+	return out
+}

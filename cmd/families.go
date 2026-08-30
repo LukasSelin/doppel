@@ -54,6 +54,8 @@ functions.`,
 		if cfg != nil {
 			applyConfig(cmd, cfg)
 		}
+		// After applyConfig, so a config-pinned threshold counts as explicit.
+		calibrationOptOut(cmd, &familiesCalibrate)
 		switch familiesFormat {
 		case formatText, formatJSON:
 		default:
@@ -68,15 +70,18 @@ functions.`,
 }
 
 func init() {
-	familiesCmd.Flags().Float64VarP(&familiesThreshold, "threshold", "t", 0.60, "Minimum code-shape score for structural-channel candidates (0.0–1.0)")
-	familiesCmd.Flags().IntVar(&familiesMinNodes, "min-nodes", 18, "Exclude functions with fewer body AST nodes from structural retrieval")
+	familiesCmd.Flags().Float64VarP(&familiesThreshold, "threshold", "t", 0.60, "Pin the code-shape floor for structural-channel candidates (0.0–1.0), turning off --calibrate.")
+	familiesCmd.Flags().IntVar(&familiesMinNodes, "min-nodes", defaultMinNodes, "Exclude functions with fewer body AST nodes from structural retrieval")
 	familiesCmd.Flags().IntVar(&familiesChannelK, "channel-k", 5, "Candidates each function keeps per retrieval channel")
 	familiesCmd.Flags().StringVar(&familiesTests, "tests", "exclude", "Test-function population: include, exclude, or only")
 	familiesCmd.Flags().StringVar(&familiesGenerated, "generated", "exclude", "Generated-file population: include, exclude, or only")
-	familiesCmd.Flags().Float64Var(&familiesCalibrate, "calibrate", 0, "Derive --threshold and --family-min from the corpus at this null admission rate; 0 = off")
-	familiesCmd.Flags().Float64Var(&familiesMin, "family-min", 0.60, "Minimum code-shape between every two members of a family (0.0–1.0)")
+	familiesCmd.Flags().Float64Var(&familiesCalibrate, "calibrate", defaultCalibrateRate, "Fraction of random unrelated pairs the thresholds may admit. Derives --threshold and --family-min from this corpus; 0 = use the fixed defaults")
+	familiesCmd.Flags().Float64Var(&familiesMin, "family-min", 0.60, "Pin the code-shape between every two members of a family (0.0–1.0), turning off --calibrate.")
 	familiesCmd.Flags().StringVar(&familiesConfig, "config", "", "Path to JSON config file (default: .doppel.json if present)")
 	familiesCmd.Flags().StringVar(&familiesFormat, "format", formatText, "Stdout format: text or json")
+	for _, name := range []string{"channel-k", "min-nodes"} {
+		_ = familiesCmd.Flags().MarkHidden(name)
+	}
 	rootCmd.AddCommand(familiesCmd)
 }
 
@@ -130,6 +135,12 @@ func runFamilies(cmd *cobra.Command, args []string) error {
 func familyMinFor(res Result, flag float64) float64 {
 	if res.Calibration != nil && res.Calibration.Applied() {
 		return res.Calibration.Threshold
+	}
+	// Pinned runs carry an already-derived threshold and no Calibration
+	// result. Following it here keeps "alike enough" one number per run
+	// whichever way the threshold arrived.
+	if res.Params.Pinned && res.Params.Calibrate > 0 {
+		return res.Params.Threshold
 	}
 	return flag
 }

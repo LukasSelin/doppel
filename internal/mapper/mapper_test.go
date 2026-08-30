@@ -33,7 +33,7 @@ func buildCorpus(t *testing.T, files map[string]string) ([]parser.CodeUnit, []co
 		units = append(units, parsed...)
 	}
 	for i := range units {
-		units[i].Patterns = tagger.Tag(units[i])
+		units[i].Concepts = parser.Certain(tagger.Tag(units[i])...)
 	}
 	g := concepter.BuildCallGraph(units)
 	docs := Map(units, g, concepter.New())
@@ -103,12 +103,12 @@ func useBoth() {
 	// beta.New is transaction. Under the bare-name index one clobbered the
 	// other.
 	wantTags := map[string]bool{"retry": true, "transaction": true}
-	if len(caller.CalleePatterns) != len(wantTags) {
-		t.Fatalf("CalleePatterns = %v, want retry+transaction", caller.CalleePatterns)
+	if len(caller.CalleeConcepts) != len(wantTags) {
+		t.Fatalf("CalleeConcepts = %v, want retry+transaction", caller.CalleeConcepts)
 	}
-	for _, p := range caller.CalleePatterns {
-		if !wantTags[p] {
-			t.Errorf("unexpected callee pattern %q", p)
+	for _, p := range caller.CalleeConcepts {
+		if !wantTags[p.ID] {
+			t.Errorf("unexpected callee concept %q", p.ID)
 		}
 	}
 	wantPkgs := []string{"alpha", "beta"}
@@ -136,8 +136,8 @@ func Save() {
 	if len(h.ResolvedCallees) != 1 || h.ResolvedCallees[0] != "store.Save" {
 		t.Fatalf("ResolvedCallees = %v, want [store.Save]", h.ResolvedCallees)
 	}
-	if strings.Join(h.CalleePatterns, ",") != "db_access" {
-		t.Errorf("CalleePatterns = %v, want [db_access]", h.CalleePatterns)
+	if strings.Join(parser.ConceptIDs(h.CalleeConcepts), ",") != "db_access" {
+		t.Errorf("CalleeConcepts = %v, want [db_access]", h.CalleeConcepts)
 	}
 	if strings.Join(h.CalleePackages, ",") != "store" {
 		t.Errorf("CalleePackages = %v, want [store]", h.CalleePackages)

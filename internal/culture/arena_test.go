@@ -11,7 +11,7 @@ import (
 
 // sqlUnit is a unit calling the external token database/sql.Open.
 func sqlUnit(nm, pkg string, tags ...string) parser.CodeUnit {
-	u := parser.CodeUnit{Name: nm, Package: pkg, Patterns: tags}
+	u := parser.CodeUnit{Name: nm, Package: pkg, Concepts: parser.Certain(tags...)}
 	u.Callees = []string{"sql.Open"}
 	u.Signals = parser.TagSignals{PackageRefs: []parser.PackageRef{{Local: "sql", Path: "database/sql"}}}
 	return u

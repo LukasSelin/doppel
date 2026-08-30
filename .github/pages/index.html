@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>doppel — architectural erosion in a Go codebase</title>
+<meta name="description" content="doppel measures architectural erosion in a Go codebase. This page hosts its interactive report for its own source.">
+<!-- The report inlines this same stylesheet, so the landing page and the
+     dashboard are visually one document. It is copied into the site by
+     .github/workflows/pages.yml; never hand-edit the vendored original. -->
+<link rel="stylesheet" href="broadsheet.css">
+<style>
+  /* Layout only. Every colour, space and radius below is a broadsheet token —
+     the design system's own rule, and what keeps this page and the report
+     from drifting apart. */
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: var(--space-6) var(--space-4) var(--space-8);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+  }
+  .kicker {
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-neutral-700);
+  }
+  .rule-heavy { height: 5px; background: var(--color-text); }
+  .rule-fine { height: 1px; background: var(--color-divider); }
+  .masthead { display: flex; flex-direction: column; gap: var(--space-3); }
+  .masthead-title { margin: var(--space-1) 0 0; font-size: 44px; line-height: 1; }
+  .lede { font-size: 19px; line-height: 1.5; margin: 0; }
+  p { line-height: 1.6; margin: 0; }
+  section { display: flex; flex-direction: column; gap: var(--space-3); }
+  h2 { margin: 0; font-size: 22px; }
+  a { color: var(--color-accent-700); }
+  .cta {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    align-self: flex-start;
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-text);
+    color: var(--color-bg);
+    text-decoration: none;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+  }
+  .cta:hover { background: var(--color-accent-800); }
+  .cta-title { font-family: var(--font-heading); font-size: 18px; }
+  .cta-note { font-size: 13px; opacity: 0.75; }
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--space-3);
+  }
+  .card { text-decoration: none; color: inherit; }
+  .card:hover { box-shadow: var(--shadow-sm); }
+  footer { font-size: 13px; color: var(--color-neutral-700); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="masthead">
+    <div class="rule-heavy"></div>
+    <div>
+      <div class="kicker">doppel · a report on its own source</div>
+      <h1 class="masthead-title">doppel</h1>
+    </div>
+    <p class="lede">
+      doppel measures <strong>architectural erosion</strong> in a Go codebase — the widening gap
+      between the structure a project intends and the one it actually has.
+    </p>
+    <div class="rule-fine"></div>
+  </header>
+
+  <section>
+    <a class="cta" href="report.html">
+      <span class="cta-title">Open the report</span>
+      <span class="cta-note">doppel's own source ›</span>
+    </a>
+    <p>
+      Not a demo corpus: the tool's own source, analysed by itself and regenerated from
+      <code>master</code> on every push. Every pair it names can be opened in
+      <a href="https://github.com/LukasSelin/doppel">the repository</a> and judged — which is the
+      only honest way to show a similarity tool working. One self-contained file, nothing to fetch.
+    </p>
+  </section>
+
+  <section>
+    <h2>What you are looking at</h2>
+    <p>
+      <strong>Map</strong> draws the corpus as a political map. Each package is a polygon whose
+      <em>area</em> is its share of the functions, so the picture is a cartogram rather than a floor
+      plan. Functions are dots inside their own region, coloured by the concept doppel learned from
+      this corpus rather than from a fixed list, sized by how many callers resolve to them. A
+      <span style="color: var(--color-accent-2)">painted border</span> between two regions is
+      duplication crossing it — the heavier the paint, the more of it.
+    </p>
+    <p>
+      <strong>Neighbourhood</strong> takes one function and ranks everything similar to it, with
+      both bodies side by side and the evidence underneath: the two similarity scores kept
+      deliberately unblended, the structural motifs the pair actually shares, and the callers,
+      callees and packages that corroborate the match.
+    </p>
+    <p class="text-muted">
+      Nothing on the page is a verdict. Doppel measures a codebase against its own practice, so what
+      it reports is "this repo has two of these" — whether that is worth merging is a judgment it
+      does not make.
+    </p>
+  </section>
+
+  <section>
+    <h2>Elsewhere</h2>
+    <div class="cards">
+      <a class="card" href="https://github.com/LukasSelin/doppel">
+        <div class="card-kicker">Source</div>
+        <div class="card-title">The repository</div>
+        <p class="card-body">A Go CLI, one direct dependency, no network at runtime.</p>
+      </a>
+      <a class="card" href="https://github.com/LukasSelin/doppel/wiki/How-it-works">
+        <div class="card-kicker">Internals</div>
+        <div class="card-title">How doppel works</div>
+        <p class="card-body">The pipeline stage by stage — retrieval, comparison, ranking.</p>
+      </a>
+      <a class="card" href="https://github.com/LukasSelin/doppel/blob/master/examples/README.md">
+        <div class="card-kicker">Evidence</div>
+        <div class="card-title">Seven public corpora</div>
+        <p class="card-body">Real output on moby, prometheus, hugo, gin, cobra, chi and conc.</p>
+      </a>
+      <a class="card" href="https://github.com/LukasSelin/doppel/releases/latest">
+        <div class="card-kicker">Install</div>
+        <div class="card-title">Latest release</div>
+        <p class="card-body">Prebuilt binaries for Linux, macOS and Windows.</p>
+      </a>
+    </div>
+  </section>
+
+  <footer>
+    <div class="rule-fine" style="margin-bottom: var(--space-3)"></div>
+    <!-- Substituted by .github/workflows/pages.yml. The report itself carries no
+         timestamp and no build identity, deliberately: an unchanged tree must
+         render byte-identical HTML, and CI checks exactly that. Provenance
+         belongs here instead. -->
+    Generated from
+    <a href="https://github.com/LukasSelin/doppel/commit/@@COMMIT@@"><code>@@COMMIT@@</code></a>
+    on @@BUILT@@.
+  </footer>
+
+</div>
+</body>
+</html>

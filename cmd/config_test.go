@@ -7,7 +7,7 @@ import (
 )
 
 // analyzeFlagNames are every flag applyConfig can touch.
-var analyzeFlagNames = []string{"threshold", "top", "min-nodes", "struct-min", "output", "channel-k", "debug", "max-per-func", "tests", "format", "families", "family-min"}
+var analyzeFlagNames = []string{"threshold", "top", "min-nodes", "struct-min", "output", "channel-k", "debug", "max-per-func", "tests", "format", "families", "family-min", "calibrate"}
 
 // resetAnalyzeFlags restores analyzeCmd to its registered defaults. The command
 // is a package-level singleton, so tests must not leak state into each other.
@@ -212,5 +212,112 @@ func TestHookParamsRejectsBadTestsMode(t *testing.T) {
 	}
 	if _, err := hookParams(dir); err == nil {
 		t.Error("hookParams accepted an invalid tests mode")
+	}
+}
+
+// Calibration is on by default, so the thresholds a run uses come from the
+// corpus rather than from a number the user had no basis to pick.
+func TestCalibrateIsOnByDefault(t *testing.T) {
+	resetAnalyzeFlags(t)
+	t.Cleanup(func() { resetAnalyzeFlags(t) })
+
+	if calibrateRate != defaultCalibrateRate {
+		t.Errorf("default --calibrate = %v, want %v", calibrateRate, defaultCalibrateRate)
+	}
+}
+
+// Pinning a threshold by hand opts the whole run out of calibration.
+//
+// Calibration replaces --threshold and --struct-min outright, so without the
+// opt-out an explicit flag would be accepted and then silently discarded.
+func TestExplicitThresholdOptsOutOfCalibration(t *testing.T) {
+	for _, name := range []string{"threshold", "struct-min", "family-min"} {
+		t.Run(name, func(t *testing.T) {
+			resetAnalyzeFlags(t)
+			t.Cleanup(func() { resetAnalyzeFlags(t) })
+
+			if err := analyzeCmd.Flags().Set(name, "0.5"); err != nil {
+				t.Fatalf("set %s: %v", name, err)
+			}
+			if !calibrationOptOut(analyzeCmd, &calibrateRate) {
+				t.Fatalf("explicit --%s did not opt out of calibration", name)
+			}
+			if calibrateRate != 0 {
+				t.Errorf("calibrate = %v, want 0", calibrateRate)
+			}
+		})
+	}
+}
+
+// A .doppel.json that pins a threshold opts out too, because applyConfig sets
+// flags through Flags().Set and that marks them Changed. This is what keeps an
+// existing config file's behaviour byte-identical across this change.
+func TestConfigPinnedThresholdOptsOutOfCalibration(t *testing.T) {
+	resetAnalyzeFlags(t)
+	t.Cleanup(func() { resetAnalyzeFlags(t) })
+
+	cfg, err := loadConfig(writeConfig(t, `{"threshold":0.6}`))
+	if err != nil {
+		t.Fatalf("loadConfig: %v", err)
+	}
+	applyConfig(analyzeCmd, cfg)
+
+	if !calibrationOptOut(analyzeCmd, &calibrateRate) {
+		t.Fatal("a config-pinned threshold did not opt out of calibration")
+	}
+	if calibrateRate != 0 {
+		t.Errorf("calibrate = %v, want 0", calibrateRate)
+	}
+}
+
+// An explicit calibrate beats an explicit threshold: the user named the rate
+// last, so the rate is what they meant.
+func TestExplicitCalibrateBeatsExplicitThreshold(t *testing.T) {
+	resetAnalyzeFlags(t)
+	t.Cleanup(func() { resetAnalyzeFlags(t) })
+
+	if err := analyzeCmd.Flags().Set("threshold", "0.5"); err != nil {
+		t.Fatalf("set threshold: %v", err)
+	}
+	if err := analyzeCmd.Flags().Set("calibrate", "0.02"); err != nil {
+		t.Fatalf("set calibrate: %v", err)
+	}
+	if calibrationOptOut(analyzeCmd, &calibrateRate) {
+		t.Error("an explicit --calibrate was overridden by --threshold")
+	}
+	if calibrateRate != 0.02 {
+		t.Errorf("calibrate = %v, want 0.02", calibrateRate)
+	}
+}
+
+// --calibrate 0 stays off, and needs no mechanism beyond the existing gate.
+func TestCalibrateZeroStaysOff(t *testing.T) {
+	resetAnalyzeFlags(t)
+	t.Cleanup(func() { resetAnalyzeFlags(t) })
+
+	if err := analyzeCmd.Flags().Set("calibrate", "0"); err != nil {
+		t.Fatalf("set calibrate: %v", err)
+	}
+	calibrationOptOut(analyzeCmd, &calibrateRate)
+	if calibrateRate != 0 {
+		t.Errorf("calibrate = %v, want 0", calibrateRate)
+	}
+}
+
+// A hook run calibrates, but must never gain an overlap filter from it: it
+// diffs the full candidate set, and StructMin zero is how it says so.
+func TestHookParamsCalibratesWithoutAnOverlapFilter(t *testing.T) {
+	p, err := hookParams(t.TempDir())
+	if err != nil {
+		t.Fatalf("hookParams: %v", err)
+	}
+	if p.Calibrate != defaultCalibrateRate {
+		t.Errorf("hook Calibrate = %v, want %v", p.Calibrate, defaultCalibrateRate)
+	}
+	if !p.NoOverlapFilter {
+		t.Error("a hook run must keep the full candidate set")
+	}
+	if p.StructMin != 0 {
+		t.Errorf("hook StructMin = %v, want 0", p.StructMin)
 	}
 }

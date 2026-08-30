@@ -10,6 +10,7 @@ import (
 	"github.com/LukasSelin/doppel/internal/analyzer"
 	"github.com/LukasSelin/doppel/internal/calibrate"
 	"github.com/LukasSelin/doppel/internal/culture"
+	"github.com/LukasSelin/doppel/internal/dashboard"
 	"github.com/LukasSelin/doppel/internal/parser"
 	"github.com/LukasSelin/doppel/internal/reporter"
 	"github.com/LukasSelin/doppel/internal/retriever"
@@ -57,6 +58,8 @@ var analyzeCmd = &cobra.Command{
 		if cfg != nil {
 			applyConfig(cmd, cfg)
 		}
+		// After applyConfig, so a config-pinned threshold counts as explicit.
+		calibrationOptOut(cmd, &calibrateRate)
 		// Validated after applyConfig so a bad value in .doppel.json is
 		// rejected exactly like a bad value on the command line.
 		switch outputFormat {
@@ -73,21 +76,27 @@ var analyzeCmd = &cobra.Command{
 }
 
 func init() {
-	analyzeCmd.Flags().Float64VarP(&threshold, "threshold", "t", 0.60, "Minimum code-shape score for structural-channel candidates (0.0–1.0)")
+	analyzeCmd.Flags().Float64VarP(&threshold, "threshold", "t", 0.60, "Pin the code-shape floor for structural-channel candidates (0.0–1.0), turning off --calibrate. Unset, this value is only the fallback for a corpus too small to calibrate.")
 	analyzeCmd.Flags().IntVarP(&topN, "top", "n", 20, "Maximum number of pairs in the final report")
-	analyzeCmd.Flags().IntVar(&minNodes, "min-nodes", 18, "Exclude functions with fewer body AST nodes from structural retrieval")
+	analyzeCmd.Flags().IntVar(&minNodes, "min-nodes", defaultMinNodes, "Exclude functions with fewer body AST nodes from structural retrieval")
 	analyzeCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write a report to this file. A .html path renders the full visual report; any other extension writes markdown. Stdout text report is still printed.")
 	analyzeCmd.Flags().StringVar(&configFile, "config", "", "Path to JSON config file (default: .doppel.json if present)")
-	analyzeCmd.Flags().Float64Var(&structMin, "struct-min", 0.0, "Minimum structural overlap score (0.0–1.0) to keep a pair")
+	analyzeCmd.Flags().Float64Var(&structMin, "struct-min", 0.0, "Pin the structural-overlap floor (0.0–1.0) for keeping a pair, turning off --calibrate. Unset, this value is only the fallback for a corpus too small to calibrate.")
 	analyzeCmd.Flags().IntVar(&channelK, "channel-k", 5, "Candidates each function keeps per retrieval channel")
 	analyzeCmd.Flags().BoolVar(&debugFlag, "debug", false, "Show per-pair retrieval provenance in the report")
 	analyzeCmd.Flags().IntVar(&maxPerFunc, "max-per-func", 2, "Maximum pairs any one function may appear in in the final report (0 = no cap)")
 	analyzeCmd.Flags().StringVar(&testsMode, "tests", "exclude", "Test-function population: include, exclude, or only. Tests are conventionally similar, so the default models production code; cross test/prod pairs are never reported.")
 	analyzeCmd.Flags().StringVar(&genMode, "generated", "exclude", "Generated-file population: include, exclude, or only. Files carrying Go's \"Code generated ... DO NOT EDIT.\" marker are near-identical by construction and unactionable, so the default models hand-written code.")
-	analyzeCmd.Flags().Float64Var(&calibrateRate, "calibrate", 0, "Set --threshold and --struct-min from the corpus: admit this fraction of random unrelated pairs (e.g. 0.01). Overrides both flags and sets --family-min to the same code-shape floor; 0 = off")
+	analyzeCmd.Flags().Float64Var(&calibrateRate, "calibrate", defaultCalibrateRate, "Fraction of random unrelated pairs the thresholds may admit. Derives --threshold, --struct-min and --family-min from this corpus, so the operating point means the same thing at any size; 0 = use the fixed defaults")
 	analyzeCmd.Flags().StringVar(&outputFormat, "format", formatText, "Stdout format: text or json")
 	analyzeCmd.Flags().IntVar(&familiesN, "families", 5, "Near-duplicate families to show in the report (0 = no families section)")
-	analyzeCmd.Flags().Float64Var(&familyMin, "family-min", 0.60, "Minimum code-shape between every two members of a family (0.0–1.0)")
+	analyzeCmd.Flags().Float64Var(&familyMin, "family-min", 0.60, "Pin the code-shape between every two members of a family (0.0–1.0), turning off --calibrate.")
+	// Hidden, not removed: retrieval budgets and the report's diversity cap
+	// are implementation detail an end user has no basis to set. Every flag
+	// still parses and every config key still applies — only --help shrinks.
+	for _, name := range []string{"channel-k", "min-nodes", "max-per-func"} {
+		_ = analyzeCmd.Flags().MarkHidden(name)
+	}
 	rootCmd.AddCommand(analyzeCmd)
 }
 
@@ -161,11 +170,18 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		// value: --format selects what goes to stdout, and a page of markup on
 		// stdout helps nobody — the file is the only place it makes sense.
 		if isHTMLPath(outputFile) {
-			r := buildHTMLReport(res, meta.Overview, fams, famStats, pairs, suppressed)
-			if err := reporter.PrintHTML(f, r); err != nil {
-				return fmt.Errorf("write html report: %w", err)
+			payload := buildDashboard(res, meta.Overview, fams, famStats, pairs, suppressed)
+			if err := dashboard.Print(f, payload); err != nil {
+				return fmt.Errorf("write dashboard: %w", err)
 			}
-			fmt.Fprintf(cmd.ErrOrStderr(), "HTML report written to %s\n", outputFile)
+			fmt.Fprintf(cmd.ErrOrStderr(), "Dashboard written to %s (%d functions, %d pairs)\n",
+				outputFile, len(payload.Units), len(payload.Edges))
+			if n := payload.Facts.BodiesOmitted; n > 0 {
+				fmt.Fprintf(cmd.ErrOrStderr(), "  %d function bodies omitted to bound the page size\n", n)
+			}
+			if n := payload.Facts.DetailOmitted; n > 0 {
+				fmt.Fprintf(cmd.ErrOrStderr(), "  %d pairs' shared structure omitted to bound the page size\n", n)
+			}
 		} else {
 			reporter.PrintMarkdown(f, pairs, meta)
 			reporter.PrintMarkdownFamilies(f, fams, famStats, res.Units, familiesN)
