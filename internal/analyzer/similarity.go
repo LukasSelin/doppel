@@ -113,7 +113,31 @@ type SharedChain struct {
 // above threshold, sorted by score descending, limited to topN results.
 // Units whose body has fewer than minNodes AST nodes are excluded: trivial
 // accessors match each other perfectly and drown out real candidates.
+//
+// # Where its label weights come from
+//
+// Code shape is corpus-weighted, and this function is handed a corpus: it
+// counts the label document frequencies over exactly the units it was given,
+// which is the only population it can honestly claim to know. That makes it
+// self-contained — a caller with a []CodeUnit gets a complete answer, with no
+// second object to build and no way to pass weights counted over a different
+// corpus than the one being compared.
+//
+// The population is `units` entire, not the minNodes-eligible subset. A tiny
+// function is excluded from being *reported*, not from being part of the
+// corpus whose idioms decide what a shared label is worth — the same rule the
+// pipeline follows, where --min-nodes gates the shape channel and never the
+// statistics.
+//
+// This is the simple library API; the pipeline builds its weights once in
+// index() and threads them, so nothing pays for this twice.
 func FindSimilar(units []parser.CodeUnit, threshold float64, topN, minNodes int) []SimilarPair {
+	bags := make([][]fingerprint.LabelCount, len(units))
+	for i := range units {
+		bags[i] = units[i].Fingerprint.WL
+	}
+	wl := fingerprint.LabelWeights(bags)
+
 	// Collect the indices worth comparing once, rather than re-testing inside
 	// the O(n^2) loop.
 	var idx []int
@@ -127,7 +151,7 @@ func FindSimilar(units []parser.CodeUnit, threshold float64, topN, minNodes int)
 	for a := 0; a < len(idx); a++ {
 		for b := a + 1; b < len(idx); b++ {
 			i, j := idx[a], idx[b]
-			bd := fingerprint.Similarity(units[i].Fingerprint, units[j].Fingerprint)
+			bd := fingerprint.Similarity(units[i].Fingerprint, units[j].Fingerprint, wl)
 			if bd.Score >= threshold {
 				pairs = append(pairs, SimilarPair{
 					A:         units[i],

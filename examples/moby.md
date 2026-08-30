@@ -9,7 +9,7 @@ container engine; a decade of accretion across daemon, API, and plugin layers
 | Corpus | [moby](https://github.com/moby/moby) |
 | Pinned at | `v28.5.2` (`89c5e8fd66634b6128fc4c0e6f1236e2540e46e0`) |
 | Project since | 2013 |
-| doppel | `e53d59d` |
+| doppel | `2e3a4cc` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -27,10 +27,10 @@ Habitats: 166 modeled, 101 misfits (152 excused by subsystem), 58 subsystems; mo
 Conventions: strongest error_wrapping (0.62), loosest db_access (0.37)
 Ecosystems: 3997 profiled (3689 dominance, 308 coalition, 0 conflict, 0 weak)
 Found 7644 functions. Retrieving candidates...
-Retrieval: shape 3983, concept 2410, call 12442 -> 17471 unique pairs
-  concept-only 13.1%  call-only 63.6%  suppressed-shape functions: 179  large identity buckets: 3  surviving patterns: 46104
-Running structural comparison on 17471 pairs...
-Families: 656 over 702 components, 1522 functions in a family, 2814 edges completed
+Retrieval: shape 1870, concept 2410, call 12442 -> 16037 unique pairs
+  concept-only 14.3%  call-only 73.5%  suppressed-shape functions: 179  large identity buckets: 3  surviving patterns: 46104
+Running structural comparison on 16037 pairs...
+Families: 182 over 514 components, 698 functions in a family, 939 edges completed
   1 pairs suppressed by max-per-func=2
 ```
 
@@ -124,34 +124,35 @@ Merge-worthy pairs folded up to their packages. An edge means two packages keep 
 
 ```mermaid
 flowchart LR
-    p0["ipvlan<br/>18 internal"]
-    p1["macvlan<br/>14 internal"]
-    p0 ---|"60"| p1
-    p2["container<br/>164 internal"]
-    p3["libnetwork<br/>168 internal"]
-    p2 ---|"55"| p3
-    p4["daemon<br/>379 internal"]
-    p5["swarm<br/>79 internal"]
-    p4 ---|"47"| p5
-    p6["containerimage"]
-    p6 ---|"29"| p3
-    p7["main<br/>45 internal"]
-    p3 ---|"29"| p7
-    p8["fuseoverlayfs<br/>4 internal"]
-    p9["overlay2<br/>5 internal"]
-    p8 ---|"22"| p9
-    p10["overlay<br/>41 internal"]
-    p0 ---|"22"| p10
-    p1 ---|"22"| p10
-    p11["bridge<br/>24 internal"]
-    p11 ---|"20"| p3
-    p12["windows<br/>21 internal"]
-    p11 ---|"20"| p12
-    p11 ---|"18"| p0
-    p11 ---|"17"| p1
+    p0["ipvlan<br/>12 internal"]
+    p1["macvlan<br/>8 internal"]
+    p0 ---|"54"| p1
+    p2["containerimage"]
+    p3["libnetwork<br/>111 internal"]
+    p2 ---|"28"| p3
+    p4["main<br/>25 internal"]
+    p3 ---|"27"| p4
+    p5["container<br/>141 internal"]
+    p5 ---|"21"| p3
+    p6["fuseoverlayfs<br/>4 internal"]
+    p7["overlay2<br/>4 internal"]
+    p6 ---|"20"| p7
+    p8["overlay<br/>29 internal"]
+    p1 ---|"19"| p8
+    p0 ---|"18"| p8
+    p9["diagnostic<br/>3 internal"]
+    p9 ---|"16"| p3
+    p10["bridge<br/>17 internal"]
+    p10 ---|"15"| p0
+    p11["windows<br/>10 internal"]
+    p10 ---|"15"| p11
+    p10 ---|"14"| p1
+    p12["daemon<br/>183 internal"]
+    p13["swarm<br/>55 internal"]
+    p12 ---|"14"| p13
 ```
 
-_307 further package pairs are connected by merge-worthy duplication and are not drawn._
+_185 further package pairs are connected by merge-worthy duplication and are not drawn._
 
 ### How settled each package is
 
@@ -181,7 +182,7 @@ _154 further packages are modeled and not drawn._ Most uniform is `checker` (nor
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **17471 candidate pairs** (shape 3983, concept 2410, call 12442), of which 64% arrived on call evidence alone and 13% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **16037 candidate pairs** (shape 1870, concept 2410, call 12442), of which 74% arrived on call evidence alone and 14% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 3997 functions reached an equilibrium: **3689** settled on a single concept, **308** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -342,7 +343,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #1 — Code-shape: `0.9535`
+## Match #1 — Code-shape: `0.9131`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -353,7 +354,9 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Profile B:** `logging` 1.00 (dominance)
 
-**Code similarity:** `ast 0.92  flow 1.00  nesting 1.00  sig 1.00  size 0.99`
+**Code similarity:** `wl 0.86  flow 1.00  nesting 1.00  sig 1.00  size 0.99`
+
+**Containment:** `0.93`
 
 **Evidence:** `1966.98` (shape 1919.55, concept 3.05, call 44.38)
 
@@ -379,7 +382,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #2 — Code-shape: `0.9297`
+## Match #2 — Code-shape: `0.8121`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -390,7 +393,9 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Profile B:** `concurrency` 1.00 (dominance)
 
-**Code similarity:** `ast 0.88  flow 1.00  nesting 1.00  sig 1.00  size 0.92`
+**Code similarity:** `wl 0.69  flow 1.00  nesting 1.00  sig 1.00  size 0.92`
+
+**Containment:** `0.85`
 
 **Evidence:** `1633.01` (shape 1581.67, concept 1.20, call 50.14)
 
@@ -418,7 +423,46 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #3 — Code-shape: `0.9443`
+## Match #3 — Code-shape: `0.9134`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `libnetwork/networkdb/networkdbdiagnostic.go:308` | `networkdb.*NetworkDB.dbJoinNetwork` | `(http.ResponseWriter, *http.Request)` | logging |
+| **B** | `libnetwork/networkdb/networkdbdiagnostic.go:340` | `networkdb.*NetworkDB.dbLeaveNetwork` | `(http.ResponseWriter, *http.Request)` | logging |
+
+**Profile A:** `logging` 1.00 (dominance)
+
+**Profile B:** `logging` 1.00 (dominance)
+
+**Code similarity:** `wl 0.86  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Containment:** `0.92`
+
+**Evidence:** `1134.27` (shape 1086.84, concept 3.05, call 44.38)
+
+**Trophic:** `0.99`
+
+**Shared structure:**
+
+- `18.34` — `do(call:HTTPReply)`
+- `17.91` — `flow:call:ParseHTTPFormOptions→call:HTTPReply`
+- `17.71` — `flow:param→call:HTTPReply`
+
+**Structural overlap:** `0.79` (merge-worthy)
+
+- share 18 callees: [Error, String, WithFields, caller.Name, context.TODO, diagnostic.CommandSucceed, diagnostic.DebugHTTPForm, diagnostic.FailCommand, diagnostic.HTTPReply, diagnostic.ParseHTTPFormOptions, diagnostic.WrongCommand, fmt.Sprintf, len, log.G, logger.Error, logger.Info, logger.WithError, r.ParseForm]
+- overlapping call-graph neighborhoods (0.84): 27 shared
+- share patterns: [logging]
+- both are orchestrator functions
+- same package
+- callees do related work (1.00): [serialization, concurrency]
+- same visibility
+- same receiver type: NetworkDB
+- call into same packages: [caller, diagnostic, networkdb]
+
+---
+
+## Match #4 — Code-shape: `0.8769`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -429,7 +473,9 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Profile B:** `concurrency` 1.00 (dominance)
 
-**Code similarity:** `ast 0.91  flow 1.00  nesting 1.00  sig 1.00  size 0.99`
+**Code similarity:** `wl 0.79  flow 1.00  nesting 1.00  sig 1.00  size 0.99`
+
+**Containment:** `0.89`
 
 **Evidence:** `1010.80` (shape 978.00, concept 1.20, call 31.60)
 
@@ -457,44 +503,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #4 — Code-shape: `0.9664`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `libnetwork/networkdb/networkdbdiagnostic.go:308` | `networkdb.*NetworkDB.dbJoinNetwork` | `(http.ResponseWriter, *http.Request)` | logging |
-| **B** | `libnetwork/networkdb/networkdbdiagnostic.go:340` | `networkdb.*NetworkDB.dbLeaveNetwork` | `(http.ResponseWriter, *http.Request)` | logging |
-
-**Profile A:** `logging` 1.00 (dominance)
-
-**Profile B:** `logging` 1.00 (dominance)
-
-**Code similarity:** `ast 0.94  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
-
-**Evidence:** `1134.27` (shape 1086.84, concept 3.05, call 44.38)
-
-**Trophic:** `0.99`
-
-**Shared structure:**
-
-- `18.34` — `do(call:HTTPReply)`
-- `17.91` — `flow:call:ParseHTTPFormOptions→call:HTTPReply`
-- `17.71` — `flow:param→call:HTTPReply`
-
-**Structural overlap:** `0.79` (merge-worthy)
-
-- share 18 callees: [Error, String, WithFields, caller.Name, context.TODO, diagnostic.CommandSucceed, diagnostic.DebugHTTPForm, diagnostic.FailCommand, diagnostic.HTTPReply, diagnostic.ParseHTTPFormOptions, diagnostic.WrongCommand, fmt.Sprintf, len, log.G, logger.Error, logger.Info, logger.WithError, r.ParseForm]
-- overlapping call-graph neighborhoods (0.84): 27 shared
-- share patterns: [logging]
-- both are orchestrator functions
-- same package
-- callees do related work (1.00): [serialization, concurrency]
-- same visibility
-- same receiver type: NetworkDB
-- call into same packages: [caller, diagnostic, networkdb]
-
----
-
-## Match #5 — Code-shape: `0.9265`
+## Match #5 — Code-shape: `0.7543`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -505,7 +514,9 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Profile B:** `concurrency` 1.00 (dominance)
 
-**Code similarity:** `ast 0.88  flow 0.99  nesting 1.00  sig 1.00  size 0.75`
+**Code similarity:** `wl 0.59  flow 0.99  nesting 1.00  sig 1.00  size 0.75`
+
+**Containment:** `0.88` — most of the smaller body's shape is inside the larger
 
 **Evidence:** `1381.36` (shape 1335.18, concept 1.20, call 44.98)
 
@@ -533,34 +544,36 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #6 — Code-shape: `0.9353`
+## Match #6 — Code-shape: `0.8209`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:567` | `dbclient.doWriteUniqueKeys` | `([]string, []string)` | concurrency |
+| **A** | `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:631` | `dbclient.doWriteDeleteWaitLeaveJoin` | `([]string, []string)` | concurrency |
 | **B** | `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:677` | `dbclient.doWriteWaitLeave` | `([]string, []string)` | concurrency |
 
 **Profile A:** `concurrency` 1.00 (dominance)
 
 **Profile B:** `concurrency` 1.00 (dominance)
 
-**Code similarity:** `ast 0.89  flow 1.00  nesting 1.00  sig 1.00  size 0.95`
+**Code similarity:** `wl 0.70  flow 0.99  nesting 1.00  sig 1.00  size 0.81`
 
-**Evidence:** `1178.57` (shape 1139.71, concept 1.20, call 37.65)
+**Containment:** `0.93`
 
-**Trophic:** `0.84`
+**Evidence:** `1305.21` (shape 1266.87, concept 1.20, call 37.14)
+
+**Trophic:** `0.81`
 
 **Shared structure:**
 
+- `19.12` — `flow:call:WithTimeout→call:G`
 - `13.20` — `flow:call:Atoi→call:waitWriters`
 - `13.20` — `flow:call:make→call:waitWriters`
-- `12.75` — `flow:call:WithTimeout→call:G`
 
-**Structural overlap:** `0.94` (merge-worthy)
+**Structural overlap:** `0.91` (merge-worthy)
 
-- share 14 callees: [Infof, cancel, checkTable, close, context.Background, context.WithTimeout, fmt.Fprintf, log.G, make, strconv.Atoi, strconv.Itoa, time.Duration, waitWriters, writeUniqueKeys]
+- share 14 callees: [Infof, cancel, checkTable, close, context.Background, context.WithTimeout, fmt.Fprintf, leaveNetwork, log.G, make, strconv.Atoi, strconv.Itoa, time.Duration, waitWriters]
 - share 1 callers: [dbclient.Client]
-- overlapping call-graph neighborhoods (0.97): 74 shared
+- overlapping call-graph neighborhoods (0.96): 75 shared
 - share patterns: [concurrency]
 - both are orchestrator functions
 - same package
@@ -572,40 +585,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #7 — Code-shape: `0.9081`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `libnetwork/drivers/ipvlan/ipvlan_joinleave.go:33` | `ipvlan.*driver.Join` | `(context.Context, string, string, string, driverapi.JoinInfo, map[string]interface{}, map[string]interface{}) (error)` | — |
-| **B** | `libnetwork/drivers/macvlan/macvlan_joinleave.go:21` | `macvlan.*driver.Join` | `(context.Context, string, string, string, driverapi.JoinInfo, map[string]interface{}, map[string]interface{}) (error)` | — |
-
-**Kind:** interface implementations — both implement `Join(context.Context, string, string, string, driverapi.JoinInfo, map[string]interface{}, map[string]interface{}) (error)` on `*driver` and `*driver`, sibling packages `ipvlan` and `macvlan`
-
-**Code similarity:** `ast 0.86  flow 1.00  nesting 0.85  sig 1.00  size 0.76`
-
-**Evidence:** `1977.00` (shape 1919.05, concept 0.00, call 57.94)
-
-**Trophic:** `0.88`
-
-**Shared structure:**
-
-- `48.11` — `flow:call:getNetwork→cond`
-- `29.52` — `flow:call:getNetwork→return`
-- `28.27` — `flow:call:getNetwork→call:Errorf`
-
-**Structural overlap:** `0.51` (merge-worthy)
-
-- share 26 callees: [Debugf, Start, String, attribute.String, d.getNetwork, d.storeUpdate, fmt.Errorf, iNames.SetNames, jinfo.DisableGatewayService, jinfo.InterfaceName, jinfo.SetGateway, jinfo.SetGatewayIPv6, len, log.G, n.endpoint, n.getSubnetforIPv4, n.getSubnetforIPv6, net.ParseCIDR, netlabel.GetIfname, netutils.GenerateIfaceName, ns.NlHandle, otel.Tracer, span.End, trace.WithAttributes, v4gw.String, v6gw.String]
-- overlapping call-graph neighborhoods (0.98): 134 shared
-- both are orchestrator functions
-- callees do related work (1.00): [concurrency]
-- same visibility
-- same receiver type: driver
-- call into same packages: [libnetwork, netlabel, netutils, ns, tailfile]
-
----
-
-## Match #8 — Code-shape: `0.8508`
+## Match #7 — Code-shape: `0.8284`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -616,7 +596,9 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Profile B:** `logging` 1.00 (dominance)
 
-**Code similarity:** `ast 0.76  flow 0.98  nesting 0.98  sig 1.00  size 0.82`
+**Code similarity:** `wl 0.72  flow 0.98  nesting 0.98  sig 1.00  size 0.82`
+
+**Containment:** `0.93`
 
 **Evidence:** `1381.44` (shape 1334.02, concept 3.05, call 44.38)
 
@@ -642,45 +624,42 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #9 — Code-shape: `0.6408`
+## Match #8 — Code-shape: `0.7909`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `daemon/logger/loggertest/logreader.go:73` | `loggertest.Reader.testTail` | `(*testing.T, bool)` | validation, logging |
-| **B** | `daemon/logger/loggertest/logreader.go:196` | `loggertest.Reader.TestFollow` | `(*testing.T)` | validation, concurrency, logging |
+| **A** | `libnetwork/drivers/ipvlan/ipvlan_joinleave.go:33` | `ipvlan.*driver.Join` | `(context.Context, string, string, string, driverapi.JoinInfo, map[string]interface{}, map[string]interface{}) (error)` | — |
+| **B** | `libnetwork/drivers/macvlan/macvlan_joinleave.go:21` | `macvlan.*driver.Join` | `(context.Context, string, string, string, driverapi.JoinInfo, map[string]interface{}, map[string]interface{}) (error)` | — |
 
-**Profile A:** `logging` 1.00 (dominance)
+**Kind:** interface implementations — both implement `Join(context.Context, string, string, string, driverapi.JoinInfo, map[string]interface{}, map[string]interface{}) (error)` on `*driver` and `*driver`, sibling packages `ipvlan` and `macvlan`
 
-**Profile B:** `logging` 1.00 (dominance)
+**Code similarity:** `wl 0.66  flow 1.00  nesting 0.85  sig 1.00  size 0.76`
 
-**Code similarity:** `ast 0.56  flow 0.94  nesting 0.86  sig 0.50  size 0.56`
+**Containment:** `0.92` — most of the smaller body's shape is inside the larger
 
-**Evidence:** `4483.96` (shape 4440.46, concept 5.08, call 38.42)
+**Evidence:** `1977.00` (shape 1919.05, concept 0.00, call 57.94)
 
-**Trophic:** `0.58`
+**Trophic:** `0.88`
 
 **Shared structure:**
 
-- `60.63` — `flow:call:ReadLogs→call:readAll`
-- `60.63` — `flow:param→call:readAll`
-- `60.58` — `do(call:Run)`
+- `48.11` — `flow:call:getNetwork→cond`
+- `29.52` — `flow:call:getNetwork→return`
+- `28.27` — `flow:call:getNetwork→call:Errorf`
 
-**Culture:** B realizes `validation` atypically (typicality 0.13, concept median 0.30, convention 0.59)
+**Structural overlap:** `0.51` (merge-worthy)
 
-**Structural overlap:** `0.66` (merge-worthy)
-
-- share 14 callees: [Add, Truncate, assert.DeepEqual, assert.NilError, context.TODO, factory, l.Close, logMessages, lw.ConsumerGone, makeTestMessages, readAll, t.Parallel, t.Run, tr.Factory]
-- overlapping call-graph neighborhoods (0.92): 11 shared
-- share patterns: [logging, validation]
+- share 26 callees: [Debugf, Start, String, attribute.String, d.getNetwork, d.storeUpdate, fmt.Errorf, iNames.SetNames, jinfo.DisableGatewayService, jinfo.InterfaceName, jinfo.SetGateway, jinfo.SetGatewayIPv6, len, log.G, n.endpoint, n.getSubnetforIPv4, n.getSubnetforIPv6, net.ParseCIDR, netlabel.GetIfname, netutils.GenerateIfaceName, ns.NlHandle, otel.Tracer, span.End, trace.WithAttributes, v4gw.String, v6gw.String]
+- overlapping call-graph neighborhoods (0.98): 134 shared
 - both are orchestrator functions
-- same package
-- callees do related work (1.00): [mapping, logging, validation]
-- same receiver type: Reader
-- call into same packages: [logger, loggertest]
+- callees do related work (1.00): [concurrency]
+- same visibility
+- same receiver type: driver
+- call into same packages: [libnetwork, netlabel, netutils, ns, tailfile]
 
 ---
 
-## Match #10 — Code-shape: `0.8631`
+## Match #9 — Code-shape: `0.8474`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -693,7 +672,9 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Profile B:** `file_io` 1.00 (dominance)
 
-**Code similarity:** `ast 0.77  flow 1.00  nesting 0.99  sig 1.00  size 0.84`
+**Code similarity:** `wl 0.75  flow 1.00  nesting 0.99  sig 1.00  size 0.84`
+
+**Containment:** `0.95`
 
 **Evidence:** `1441.84` (shape 1399.43, concept 2.18, call 40.23)
 
@@ -718,18 +699,94 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
+## Match #10 — Code-shape: `1.0000`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `libnetwork/drivers/ipvlan/ipvlan_store.go:254` | `ipvlan.*endpoint.UnmarshalJSON` | `([]byte) (error)` | serialization |
+| **B** | `libnetwork/drivers/macvlan/macvlan_store.go:248` | `macvlan.*endpoint.UnmarshalJSON` | `([]byte) (error)` | serialization |
+
+**Kind:** interface implementations — both implement `UnmarshalJSON([]byte) (error)` on `*endpoint` and `*endpoint`, sibling packages `ipvlan` and `macvlan`
+
+**Profile A:** `serialization` 1.00 (dominance)
+
+**Profile B:** `serialization` 1.00 (dominance)
+
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Containment:** `1.00`
+
+**Evidence:** `915.71` (shape 895.00, concept 2.30, call 18.41)
+
+**Trophic:** `1.00`
+
+**Shared structure:**
+
+- `21.20` — `flow:call:Unmarshal→call:InternalErrorf`
+- `18.11` — `return(call:InternalErrorf)`
+- `16.76` — `assign=(assert)`
+
+**Structural overlap:** `0.67` (merge-worthy)
+
+- share 5 callees: [fmt.Errorf, json.Unmarshal, net.ParseMAC, types.InternalErrorf, types.ParseCIDR]
+- overlapping call-graph neighborhoods (1.00): 26 shared
+- share patterns: [serialization]
+- both are orchestrator functions
+- same visibility
+- same receiver type: endpoint
+- call into same packages: [types]
+
+---
+
 ## Families
 
-656 families, 1522 functions in a family, largest 44 members; 2814 edges scored here that retrieval never proposed
+182 families, 698 functions in a family, largest 34 members; 939 edges scored here that retrieval never proposed
 
-### Family 1 — 10 members, every pair `>= 0.68` code-shape, evidence `41964`  (4 edges scored here)
+### Family 1 — 8 members, every pair `>= 0.61` code-shape, evidence `29396`  (2 edges scored here)
 
-_Not drawn: 10 members is 45 connections. Every one of them holds — that is what makes this a family._
+```mermaid
+flowchart LR
+    m0["networkdb.*NetworkDB.dbJoin"]
+    m1["networkdb.*NetworkDB.dbCreateEntry"]
+    m2["networkdb.*NetworkDB.dbUpdateEntry"]
+    m3["networkdb.*NetworkDB.dbDeleteEntry"]
+    m4["networkdb.*NetworkDB.dbGetEntry"]
+    m5["networkdb.*NetworkDB.dbJoinNetwork"]
+    m6["networkdb.*NetworkDB.dbLeaveNetwork"]
+    m7["networkdb.*NetworkDB.dbGetTable"]
+    m0 --- m1
+    m0 --- m2
+    m0 --- m3
+    m0 --- m4
+    m0 --- m5
+    m0 --- m6
+    m0 --- m7
+    m1 --- m2
+    m1 --- m3
+    m1 --- m4
+    m1 --- m5
+    m1 --- m6
+    m1 --- m7
+    m2 --- m3
+    m2 --- m4
+    m2 --- m5
+    m2 --- m6
+    m2 --- m7
+    m3 --- m4
+    m3 --- m5
+    m3 --- m6
+    m3 --- m7
+    m4 --- m5
+    m4 --- m6
+    m4 --- m7
+    m5 --- m6
+    m5 --- m7
+    m6 --- m7
+```
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
 | `libnetwork/networkdb/networkdbdiagnostic.go:38` | `networkdb.*NetworkDB.dbJoin` | `(http.ResponseWriter, *http.Request)` | logging |
-| `libnetwork/networkdb/networkdbdiagnostic.go:71` | `networkdb.*NetworkDB.dbPeers` | `(http.ResponseWriter, *http.Request)` | logging |
 | `libnetwork/networkdb/networkdbdiagnostic.go:128` | `networkdb.*NetworkDB.dbCreateEntry` | `(http.ResponseWriter, *http.Request)` | logging |
 | `libnetwork/networkdb/networkdbdiagnostic.go:177` | `networkdb.*NetworkDB.dbUpdateEntry` | `(http.ResponseWriter, *http.Request)` | logging |
 | `libnetwork/networkdb/networkdbdiagnostic.go:225` | `networkdb.*NetworkDB.dbDeleteEntry` | `(http.ResponseWriter, *http.Request)` | logging |
@@ -737,9 +794,8 @@ _Not drawn: 10 members is 45 connections. Every one of them holds — that is wh
 | `libnetwork/networkdb/networkdbdiagnostic.go:308` | `networkdb.*NetworkDB.dbJoinNetwork` | `(http.ResponseWriter, *http.Request)` | logging |
 | `libnetwork/networkdb/networkdbdiagnostic.go:340` | `networkdb.*NetworkDB.dbLeaveNetwork` | `(http.ResponseWriter, *http.Request)` | logging |
 | `libnetwork/networkdb/networkdbdiagnostic.go:372` | `networkdb.*NetworkDB.dbGetTable` | `(http.ResponseWriter, *http.Request)` | logging |
-| `libnetwork/networkdb/networkdbdiagnostic.go:420` | `networkdb.*NetworkDB.dbNetworkStats` | `(http.ResponseWriter, *http.Request)` | logging |
 
-### Family 2 — 8 members, every pair `>= 0.81` code-shape, evidence `26374`  (2 edges scored here)
+### Family 2 — 8 members, every pair `>= 0.62` code-shape, evidence `26374`  (2 edges scored here)
 
 ```mermaid
 flowchart LR
@@ -792,84 +848,128 @@ flowchart LR
 | `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:677` | `dbclient.doWriteWaitLeave` | `([]string, []string)` | concurrency |
 | `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:713` | `dbclient.doWriteWaitLeaveJoin` | `([]string, []string)` | concurrency |
 
-### Family 3 — 11 members, every pair `>= 0.62` code-shape, evidence `16144`  (22 edges scored here), interface implementations of `UnmarshalJSON([]byte) (error)`, packages `driverapi`, `bridge`, `ipvlan`, `macvlan`, `windows` and `libnetwork`
-
-_Not drawn: 11 members is 55 connections. Every one of them holds — that is what makes this a family._
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `libnetwork/driverapi/ipamdata.go:32` | `driverapi.*IPAMData.UnmarshalJSON` | `([]byte) (error)` | serialization |
-| `libnetwork/drivers/bridge/bridge_store.go:167` | `bridge.*networkConfiguration.UnmarshalJSON` | `([]byte) (error)` | serialization |
-| `libnetwork/drivers/bridge/bridge_store.go:307` | `bridge.*bridgeEndpoint.UnmarshalJSON` | `([]byte) (error)` | serialization |
-| `libnetwork/drivers/ipvlan/ipvlan_store.go:155` | `ipvlan.*configuration.UnmarshalJSON` | `([]byte) (error)` | serialization |
-| `libnetwork/drivers/ipvlan/ipvlan_store.go:254` | `ipvlan.*endpoint.UnmarshalJSON` | `([]byte) (error)` | serialization |
-| `libnetwork/drivers/macvlan/macvlan_store.go:153` | `macvlan.*configuration.UnmarshalJSON` | `([]byte) (error)` | serialization |
-| `libnetwork/drivers/macvlan/macvlan_store.go:248` | `macvlan.*endpoint.UnmarshalJSON` | `([]byte) (error)` | serialization |
-| `libnetwork/drivers/windows/windows_store.go:218` | `windows.*hnsEndpoint.UnmarshalJSON` | `([]byte) (error)` | serialization |
-| `libnetwork/endpoint_info.go:86` | `libnetwork.*EndpointInterface.UnmarshalJSON` | `([]byte) (error)` | serialization |
-| `libnetwork/endpoint_info.go:471` | `libnetwork.*endpointJoinInfo.UnmarshalJSON` | `([]byte) (error)` | serialization |
-
-_1 more members not listed._
-
-### Family 4 — 7 members, every pair `>= 0.65` code-shape, evidence `15087`
+### Family 3 — 8 members, every pair `>= 0.61` code-shape, evidence `23009`  (4 edges scored here)
 
 ```mermaid
 flowchart LR
-    m0["graphtest.DriverBenchExists"]
-    m1["graphtest.DriverBenchGetEmpty"]
-    m2["graphtest.DriverBenchDiffBase"]
-    m3["graphtest.DriverBenchDiffN"]
-    m4["graphtest.DriverBenchDiffApplyN"]
-    m5["graphtest.DriverBenchDeepLayerDiff"]
-    m6["graphtest.DriverBenchDeepLayerRead"]
+    m0["networkdb.*NetworkDB.dbJoin"]
+    m1["networkdb.*NetworkDB.dbPeers"]
+    m2["networkdb.*NetworkDB.dbDeleteEntry"]
+    m3["networkdb.*NetworkDB.dbGetEntry"]
+    m4["networkdb.*NetworkDB.dbJoinNetwork"]
+    m5["networkdb.*NetworkDB.dbLeaveNetwork"]
+    m6["networkdb.*NetworkDB.dbGetTable"]
+    m7["networkdb.*NetworkDB.dbNetworkStats"]
     m0 --- m1
     m0 --- m2
     m0 --- m3
     m0 --- m4
     m0 --- m5
     m0 --- m6
+    m0 --- m7
     m1 --- m2
     m1 --- m3
     m1 --- m4
     m1 --- m5
     m1 --- m6
+    m1 --- m7
     m2 --- m3
     m2 --- m4
     m2 --- m5
     m2 --- m6
+    m2 --- m7
     m3 --- m4
     m3 --- m5
     m3 --- m6
+    m3 --- m7
     m4 --- m5
     m4 --- m6
+    m4 --- m7
     m5 --- m6
+    m5 --- m7
+    m6 --- m7
 ```
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `daemon/graphdriver/graphtest/graphbench_unix.go:16` | `graphtest.DriverBenchExists` | `(*testing.B, string, ...string)` | — |
-| `daemon/graphdriver/graphtest/graphbench_unix.go:35` | `graphtest.DriverBenchGetEmpty` | `(*testing.B, string, ...string)` | — |
-| `daemon/graphdriver/graphtest/graphbench_unix.go:60` | `graphtest.DriverBenchDiffBase` | `(*testing.B, string, ...string)` | file_io |
-| `daemon/graphdriver/graphtest/graphbench_unix.go:89` | `graphtest.DriverBenchDiffN` | `(*testing.B, int, int, string, ...string)` | file_io |
-| `daemon/graphdriver/graphtest/graphbench_unix.go:124` | `graphtest.DriverBenchDiffApplyN` | `(*testing.B, int, string, ...string)` | — |
-| `daemon/graphdriver/graphtest/graphbench_unix.go:190` | `graphtest.DriverBenchDeepLayerDiff` | `(*testing.B, int, string, ...string)` | file_io |
-| `daemon/graphdriver/graphtest/graphbench_unix.go:223` | `graphtest.DriverBenchDeepLayerRead` | `(*testing.B, int, string, ...string)` | validation, file_io |
+| `libnetwork/networkdb/networkdbdiagnostic.go:38` | `networkdb.*NetworkDB.dbJoin` | `(http.ResponseWriter, *http.Request)` | logging |
+| `libnetwork/networkdb/networkdbdiagnostic.go:71` | `networkdb.*NetworkDB.dbPeers` | `(http.ResponseWriter, *http.Request)` | logging |
+| `libnetwork/networkdb/networkdbdiagnostic.go:225` | `networkdb.*NetworkDB.dbDeleteEntry` | `(http.ResponseWriter, *http.Request)` | logging |
+| `libnetwork/networkdb/networkdbdiagnostic.go:262` | `networkdb.*NetworkDB.dbGetEntry` | `(http.ResponseWriter, *http.Request)` | logging |
+| `libnetwork/networkdb/networkdbdiagnostic.go:308` | `networkdb.*NetworkDB.dbJoinNetwork` | `(http.ResponseWriter, *http.Request)` | logging |
+| `libnetwork/networkdb/networkdbdiagnostic.go:340` | `networkdb.*NetworkDB.dbLeaveNetwork` | `(http.ResponseWriter, *http.Request)` | logging |
+| `libnetwork/networkdb/networkdbdiagnostic.go:372` | `networkdb.*NetworkDB.dbGetTable` | `(http.ResponseWriter, *http.Request)` | logging |
+| `libnetwork/networkdb/networkdbdiagnostic.go:420` | `networkdb.*NetworkDB.dbNetworkStats` | `(http.ResponseWriter, *http.Request)` | logging |
 
-### Family 5 — 9 members, every pair `>= 0.62` code-shape, evidence `14078`  (5 edges scored here)
+### Family 4 — 10 members, every pair `>= 0.66` code-shape, evidence `8699`  (10 edges scored here)
 
-_Not drawn: 9 members is 36 connections. Every one of them holds — that is what makes this a family._
+_Not drawn: 10 members is 45 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `daemon/graphdriver/btrfs/btrfs.go:199` | `btrfs.subvolCreate` | `(string, string) (error)` | — |
-| `daemon/graphdriver/btrfs/btrfs.go:219` | `btrfs.subvolSnapshot` | `(string, string, string) (error)` | — |
-| `daemon/graphdriver/btrfs/btrfs.go:337` | `btrfs.*Driver.enableQuota` | `() (error)` | — |
-| `daemon/graphdriver/btrfs/btrfs.go:363` | `btrfs.*Driver.subvolRescanQuota` | `() (error)` | — |
-| `daemon/graphdriver/btrfs/btrfs.go:386` | `btrfs.subvolLimitQgroup` | `(string, uint64) (error)` | — |
-| `daemon/graphdriver/btrfs/btrfs.go:409` | `btrfs.qgroupStatus` | `(string) (error)` | — |
-| `daemon/graphdriver/btrfs/btrfs.go:437` | `btrfs.subvolLookupQgroup` | `(string) (uint64, error)` | — |
-| `quota/projectquota.go:280` | `quota.getProjectID` | `(string) (uint32, error)` | error_wrapping |
-| `quota/projectquota.go:298` | `quota.setProjectID` | `(string, uint32) (error)` | error_wrapping |
+| `daemon/logger/awslogs/cloudwatchlogs.go:116` | `awslogs.init` | `()` | validation, logging |
+| `daemon/logger/etwlogs/etwlogs_windows.go:52` | `etwlogs.init` | `()` | logging |
+| `daemon/logger/fluentd/fluentd.go:68` | `fluentd.init` | `()` | validation, logging |
+| `daemon/logger/gcplogs/gcplogging.go:46` | `gcplogs.init` | `()` | validation, logging |
+| `daemon/logger/gelf/gelf.go:28` | `gelf.init` | `()` | validation, logging |
+| `daemon/logger/journald/journald.go:69` | `journald.init` | `()` | validation, logging |
+| `daemon/logger/jsonfilelog/jsonfilelog.go:37` | `jsonfilelog.init` | `()` | validation, logging |
+| `daemon/logger/local/local.go:55` | `local.init` | `()` | validation, logging |
+| `daemon/logger/splunk/splunk.go:143` | `splunk.init` | `()` | validation, logging |
+| `daemon/logger/syslog/syslog.go:54` | `syslog.init` | `()` | validation, logging |
 
-_651 more families not listed._
+### Family 5 — 8 members, every pair `>= 0.65` code-shape, evidence `7685`
+
+```mermaid
+flowchart LR
+    m0["client.*Client.ConfigInspectWithRaw"]
+    m1["client.*Client.ContainerInspectWithRaw"]
+    m2["client.*Client.NetworkInspectWithRaw"]
+    m3["client.*Client.NodeInspectWithRaw"]
+    m4["client.*Client.SecretInspectWithRaw"]
+    m5["client.*Client.ServiceInspectWithRaw"]
+    m6["client.*Client.TaskInspectWithRaw"]
+    m7["client.*Client.VolumeInspectWithRaw"]
+    m0 --- m1
+    m0 --- m2
+    m0 --- m3
+    m0 --- m4
+    m0 --- m5
+    m0 --- m6
+    m0 --- m7
+    m1 --- m2
+    m1 --- m3
+    m1 --- m4
+    m1 --- m5
+    m1 --- m6
+    m1 --- m7
+    m2 --- m3
+    m2 --- m4
+    m2 --- m5
+    m2 --- m6
+    m2 --- m7
+    m3 --- m4
+    m3 --- m5
+    m3 --- m6
+    m3 --- m7
+    m4 --- m5
+    m4 --- m6
+    m4 --- m7
+    m5 --- m6
+    m5 --- m7
+    m6 --- m7
+```
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `client/config_inspect.go:13` | `client.*Client.ConfigInspectWithRaw` | `(context.Context, string) (swarm.Config, []byte, error)` | serialization, file_io |
+| `client/container_inspect.go:32` | `client.*Client.ContainerInspectWithRaw` | `(context.Context, string, bool) (container.InspectResponse, []byte, error)` | serialization, file_io |
+| `client/network_inspect.go:20` | `client.*Client.NetworkInspectWithRaw` | `(context.Context, string, network.InspectOptions) (network.Inspect, []byte, error)` | serialization, file_io |
+| `client/node_inspect.go:13` | `client.*Client.NodeInspectWithRaw` | `(context.Context, string) (swarm.Node, []byte, error)` | serialization, file_io |
+| `client/secret_inspect.go:13` | `client.*Client.SecretInspectWithRaw` | `(context.Context, string) (swarm.Secret, []byte, error)` | serialization, file_io |
+| `client/service_inspect.go:15` | `client.*Client.ServiceInspectWithRaw` | `(context.Context, string, swarm.ServiceInspectOptions) (swarm.Service, []byte, error)` | serialization, file_io |
+| `client/task_inspect.go:13` | `client.*Client.TaskInspectWithRaw` | `(context.Context, string) (swarm.Task, []byte, error)` | serialization, file_io |
+| `client/volume_inspect.go:19` | `client.*Client.VolumeInspectWithRaw` | `(context.Context, string) (volume.Volume, []byte, error)` | serialization, file_io |
+
+_177 more families not listed._
 

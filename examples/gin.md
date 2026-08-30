@@ -9,7 +9,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `e53d59d` |
+| doppel | `2e3a4cc` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -27,10 +27,10 @@ Habitats: 5 modeled, 17 misfits (0 excused by subsystem), 1 subsystems; most uni
 Conventions: strongest serialization (0.72), loosest caching (0.37)
 Ecosystems: 128 profiled (128 dominance, 0 coalition, 0 conflict, 0 weak)
 Found 497 functions. Retrieving candidates...
-Retrieval: shape 156, concept 317, call 609 -> 1023 unique pairs
-  concept-only 29.2%  call-only 54.4%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 3321
-Running structural comparison on 1023 pairs...
-Families: 25 over 48 components, 109 functions in a family, 119 edges completed
+Retrieval: shape 63, concept 317, call 609 -> 952 unique pairs
+  concept-only 31.6%  call-only 60.4%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 3321
+Running structural comparison on 952 pairs...
+Families: 11 over 30 components, 68 functions in a family, 82 edges completed
 ```
 
 # Code Similarity Report
@@ -117,13 +117,6 @@ Convention is how uniformly this corpus realizes a concept: `1.00` means every f
 
 Merge-worthy pairs folded up to their packages. An edge means two packages keep solving the same problem separately; a count on a node means the repetition is inside one package.
 
-```mermaid
-flowchart LR
-    p0["binding<br/>77 internal"]
-    p1["gin<br/>176 internal"]
-    p0 ---|"2"| p1
-```
-
 ### How settled each package is
 
 A package with at least five functions gets a habitat model: doppel learns what is normal there and measures how surprising each member is against it. **Norm** is how uniform the package's practice is. A **misfit** is a function alien to its package *and* to the wider subsystem around it — one that fits its neighbours a directory up is normal for this codebase and is not reported.
@@ -146,7 +139,7 @@ Most uniform is `binding` (norm `0.91`); most varied is `json` (norm `0.63`). 17
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **1023 candidate pairs** (shape 156, concept 317, call 609), of which 54% arrived on call evidence alone and 29% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **952 candidate pairs** (shape 63, concept 317, call 609), of which 60% arrived on call evidence alone and 32% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 128 functions reached an equilibrium: **128** settled on a single concept, **0** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -242,7 +235,9 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 | **A** | `auth.go:48` | `gin.BasicAuthForRealm` | `(Accounts, string) (HandlerFunc)` | — |
 | **B** | `auth.go:98` | `gin.BasicAuthForProxy` | `(Accounts, string) (HandlerFunc)` | — |
 
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Containment:** `1.00`
 
 **Evidence:** `595.84` (shape 562.58, concept 0.00, call 33.26)
 
@@ -267,7 +262,7 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 ---
 
-## Match #2 — Code-shape: `0.8484`
+## Match #2 — Code-shape: `0.6576`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -278,7 +273,9 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 0.87  flow 1.00  nesting 1.00  sig 0.50  size 0.87`
+**Code similarity:** `wl 0.55  flow 1.00  nesting 1.00  sig 0.50  size 0.87`
+
+**Containment:** `0.75`
 
 **Evidence:** `406.87` (shape 381.84, concept 1.32, call 23.71)
 
@@ -315,7 +312,9 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Containment:** `1.00`
 
 **Evidence:** `172.86` (shape 171.53, concept 1.32, call 0.00)
 
@@ -350,7 +349,9 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Containment:** `1.00`
 
 **Evidence:** `172.86` (shape 171.53, concept 1.32, call 0.00)
 
@@ -385,7 +386,9 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Containment:** `1.00`
 
 **Evidence:** `172.86` (shape 171.53, concept 1.32, call 0.00)
 
@@ -409,7 +412,77 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 ---
 
-## Match #6 — Code-shape: `0.9357`
+## Match #6 — Code-shape: `1.0000`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | — |
+| **B** | `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | serialization |
+
+**Kind:** interface implementations — both implement `Render(http.ResponseWriter) (error)` on `TOML` and `YAML`, in package `render`
+
+**Profile B:** `serialization` 1.00 (dominance)
+
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Containment:** `1.00`
+
+**Evidence:** `174.30` (shape 170.58, concept 0.00, call 3.72)
+
+**Trophic:** `1.00`
+
+**Shared structure:**
+
+- `7.09` — `flow:call:Marshal→return`
+- `4.01` — `seq[ if(bin:!=(id,nil)) ; assign=(call:Write) ]`
+- `3.68` — `seq[ assign:=(call:Marshal) ; if(bin:!=(id,nil)) ]`
+
+**Structural overlap:** `0.49` (merge-worthy)
+
+- share 2 callees: [r.WriteContentType, w.Write]
+- overlapping call-graph neighborhoods (1.00): 12 shared
+- both are leaf functions
+- same package
+- same visibility
+- both are methods, on TOML and YAML
+- call into same packages: [gin]
+
+---
+
+## Match #7 — Code-shape: `0.7177`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `routergroup.go:181` | `gin.*RouterGroup.staticFileHandler` | `(string, HandlerFunc) (IRoutes)` | — |
+| **B** | `routergroup.go:203` | `gin.*RouterGroup.StaticFS` | `(string, http.FileSystem) (IRoutes)` | — |
+
+**Code similarity:** `wl 0.65  flow 1.00  nesting 1.00  sig 0.50  size 0.71`
+
+**Containment:** `0.93` — most of the smaller body's shape is inside the larger
+
+**Evidence:** `313.50` (shape 293.23, concept 0.00, call 20.27)
+
+**Trophic:** `0.88`
+
+**Shared structure:**
+
+- `9.05` — `flow:param→call:Contains`
+- `4.93` — `seq[ do(call:GET) ; do(call:HEAD) ]`
+- `4.93` — `seq[ do(call:HEAD) ; return(call:returnObj) ]`
+
+**Structural overlap:** `0.41` (merge-worthy)
+
+- share 5 callees: [group.GET, group.HEAD, group.returnObj, panic, strings.Contains]
+- overlapping call-graph neighborhoods (0.50): 7 shared
+- related roles: passthrough ≈ orchestrator (both high fan-out, 0.50)
+- same package
+- same receiver type: RouterGroup
+- called from same packages: [gin]
+- call into same packages: [gin]
+
+---
+
+## Match #8 — Code-shape: `0.7382`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -422,7 +495,9 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Profile B:** `serialization` 1.00 (dominance)
 
-**Code similarity:** `ast 0.89  flow 1.00  nesting 1.00  sig 1.00  size 0.89`
+**Code similarity:** `wl 0.56  flow 1.00  nesting 1.00  sig 1.00  size 0.89`
+
+**Containment:** `0.78`
 
 **Evidence:** `170.55` (shape 165.65, concept 1.18, call 3.72)
 
@@ -447,106 +522,7 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 ---
 
-## Match #7 — Code-shape: `1.0000`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | — |
-| **B** | `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | serialization |
-
-**Kind:** interface implementations — both implement `Render(http.ResponseWriter) (error)` on `TOML` and `YAML`, in package `render`
-
-**Profile B:** `serialization` 1.00 (dominance)
-
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
-
-**Evidence:** `174.30` (shape 170.58, concept 0.00, call 3.72)
-
-**Trophic:** `1.00`
-
-**Shared structure:**
-
-- `7.09` — `flow:call:Marshal→return`
-- `4.01` — `seq[ if(bin:!=(id,nil)) ; assign=(call:Write) ]`
-- `3.68` — `seq[ assign:=(call:Marshal) ; if(bin:!=(id,nil)) ]`
-
-**Structural overlap:** `0.49` (merge-worthy)
-
-- share 2 callees: [r.WriteContentType, w.Write]
-- overlapping call-graph neighborhoods (1.00): 12 shared
-- both are leaf functions
-- same package
-- same visibility
-- both are methods, on TOML and YAML
-- call into same packages: [gin]
-
----
-
-## Match #8 — Code-shape: `0.7364`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `routergroup.go:181` | `gin.*RouterGroup.staticFileHandler` | `(string, HandlerFunc) (IRoutes)` | — |
-| **B** | `routergroup.go:203` | `gin.*RouterGroup.StaticFS` | `(string, http.FileSystem) (IRoutes)` | — |
-
-**Code similarity:** `ast 0.69  flow 1.00  nesting 1.00  sig 0.50  size 0.71`
-
-**Evidence:** `313.50` (shape 293.23, concept 0.00, call 20.27)
-
-**Trophic:** `0.88`
-
-**Shared structure:**
-
-- `9.05` — `flow:param→call:Contains`
-- `4.93` — `seq[ do(call:GET) ; do(call:HEAD) ]`
-- `4.93` — `seq[ do(call:HEAD) ; return(call:returnObj) ]`
-
-**Structural overlap:** `0.41` (merge-worthy)
-
-- share 5 callees: [group.GET, group.HEAD, group.returnObj, panic, strings.Contains]
-- overlapping call-graph neighborhoods (0.50): 7 shared
-- related roles: passthrough ≈ orchestrator (both high fan-out, 0.50)
-- same package
-- same receiver type: RouterGroup
-- called from same packages: [gin]
-- call into same packages: [gin]
-
----
-
-## Match #9 — Code-shape: `0.6573`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `gin.go:581` | `gin.*Engine.RunUnix` | `(string) (error)` | file_io |
-| **B** | `gin.go:645` | `gin.*Engine.RunListener` | `(net.Listener) (error)` | — |
-
-**Profile A:** `file_io` 1.00 (dominance)
-
-**Code similarity:** `ast 0.62  flow 0.94  nesting 0.99  sig 0.33  size 0.69`
-
-**Evidence:** `352.68` (shape 340.41, concept 0.00, call 12.27)
-
-**Trophic:** `0.80`
-
-**Shared structure:**
-
-- `5.97` — `do(call:debugPrint)`
-- `4.93` — `seq[ assign:=(unary) ; assign=(call:Serve) ]`
-- `4.93` — `seq[ assign=(call:Serve) ; return() ]`
-
-**Structural overlap:** `0.50` (merge-worthy)
-
-- share 5 callees: [debugPrint, debugPrintError, engine.Handler, engine.isUnsafeTrustedProxies, server.Serve]
-- overlapping call-graph neighborhoods (1.00): 19 shared
-- both are orchestrator functions
-- same package
-- same visibility
-- same receiver type: Engine
-- call into same packages: [gin]
-
----
-
-## Match #10 — Code-shape: `1.0000`
+## Match #9 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -557,7 +533,9 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Containment:** `1.00`
 
 **Evidence:** `87.23` (shape 80.39, concept 1.32, call 5.52)
 
@@ -583,18 +561,75 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 ---
 
+## Match #10 — Code-shape: `0.6290`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `gin.go:581` | `gin.*Engine.RunUnix` | `(string) (error)` | file_io |
+| **B** | `gin.go:645` | `gin.*Engine.RunListener` | `(net.Listener) (error)` | — |
+
+**Profile A:** `file_io` 1.00 (dominance)
+
+**Code similarity:** `wl 0.57  flow 0.94  nesting 0.99  sig 0.33  size 0.69`
+
+**Containment:** `0.84` — most of the smaller body's shape is inside the larger
+
+**Evidence:** `352.68` (shape 340.41, concept 0.00, call 12.27)
+
+**Trophic:** `0.80`
+
+**Shared structure:**
+
+- `5.97` — `do(call:debugPrint)`
+- `4.93` — `seq[ assign:=(unary) ; assign=(call:Serve) ]`
+- `4.93` — `seq[ assign=(call:Serve) ; return() ]`
+
+**Structural overlap:** `0.50` (merge-worthy)
+
+- share 5 callees: [debugPrint, debugPrintError, engine.Handler, engine.isUnsafeTrustedProxies, server.Serve]
+- overlapping call-graph neighborhoods (1.00): 19 shared
+- both are orchestrator functions
+- same package
+- same visibility
+- same receiver type: Engine
+- call into same packages: [gin]
+
+---
+
 ## Families
 
-25 families, 109 functions in a family, largest 14 members; 119 edges scored here that retrieval never proposed
+11 families, 68 functions in a family, largest 14 members; 82 edges scored here that retrieval never proposed
 
-### Family 1 — 13 members, every pair `>= 0.74` code-shape, evidence `2325`  (31 edges scored here)
+### Family 1 — 4 members, every pair `>= 0.60` code-shape, evidence `1624`
 
-_Not drawn: 13 members is 78 connections. Every one of them holds — that is what makes this a family._
+```mermaid
+flowchart LR
+    m0["gin.*Engine.RunTLS"]
+    m1["gin.*Engine.RunUnix"]
+    m2["gin.*Engine.RunQUIC"]
+    m3["gin.*Engine.RunListener"]
+    m0 --- m1
+    m0 --- m2
+    m0 --- m3
+    m1 --- m2
+    m1 --- m3
+    m2 --- m3
+```
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `gin.go:561` | `gin.*Engine.RunTLS` | `(string, string, string) (error)` | — |
+| `gin.go:581` | `gin.*Engine.RunUnix` | `(string) (error)` | file_io |
+| `gin.go:630` | `gin.*Engine.RunQUIC` | `(string, string, string) (error)` | — |
+| `gin.go:645` | `gin.*Engine.RunListener` | `(net.Listener) (error)` | — |
+
+### Family 2 — 9 members, every pair `>= 1.00` code-shape, evidence `1454`  (6 edges scored here)
+
+_Not drawn: 9 members is 36 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
 | `context.go:1180` | `gin.*Context.IndentedJSON` | `(int, any)` | — |
-| `context.go:1187` | `gin.*Context.SecureJSON` | `(int, any)` | — |
 | `context.go:1205` | `gin.*Context.JSON` | `(int, any)` | — |
 | `context.go:1211` | `gin.*Context.AsciiJSON` | `(int, any)` | — |
 | `context.go:1217` | `gin.*Context.PureJSON` | `(int, any)` | — |
@@ -604,144 +639,65 @@ _Not drawn: 13 members is 78 connections. Every one of them holds — that is wh
 | `context.go:1238` | `gin.*Context.ProtoBuf` | `(int, any)` | — |
 | `context.go:1243` | `gin.*Context.BSON` | `(int, any)` | — |
 
-_3 more members not listed._
-
-### Family 2 — 6 members, every pair `>= 0.61` code-shape, evidence `2206`, interface implementations of `Render(http.ResponseWriter) (error)`, in package `render`
+### Family 3 — 4 members, every pair `>= 0.65` code-shape, evidence `824`, interface implementations of `Render(http.ResponseWriter) (error)`, in package `render`
 
 ```mermaid
 flowchart LR
     m0["render.IndentedJSON.Render"]
-    m1["render.SecureJSON.Render"]
-    m2["render.JsonpJSON.Render"]
-    m3["render.ProtoBuf.Render"]
-    m4["render.TOML.Render"]
-    m5["render.YAML.Render"]
+    m1["render.ProtoBuf.Render"]
+    m2["render.TOML.Render"]
+    m3["render.YAML.Render"]
     m0 --- m1
     m0 --- m2
     m0 --- m3
-    m0 --- m4
-    m0 --- m5
     m1 --- m2
     m1 --- m3
-    m1 --- m4
-    m1 --- m5
     m2 --- m3
-    m2 --- m4
-    m2 --- m5
-    m3 --- m4
-    m3 --- m5
-    m4 --- m5
 ```
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
 | `render/json.go:78` | `render.IndentedJSON.Render` | `(http.ResponseWriter) (error)` | — |
-| `render/json.go:94` | `render.SecureJSON.Render` | `(http.ResponseWriter) (error)` | — |
-| `render/json.go:117` | `render.JsonpJSON.Render` | `(http.ResponseWriter) (error)` | — |
 | `render/protobuf.go:21` | `render.ProtoBuf.Render` | `(http.ResponseWriter) (error)` | serialization |
 | `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | — |
 | `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | serialization |
 
-### Family 3 — 6 members, every pair `>= 0.62` code-shape, evidence `1977`
+### Family 4 — 3 members, every pair `>= 1.00` code-shape, evidence `519`
 
 ```mermaid
 flowchart LR
-    m0["render.WriteJSON"]
-    m1["render.IndentedJSON.Render"]
-    m2["render.SecureJSON.Render"]
-    m3["render.ProtoBuf.Render"]
-    m4["render.TOML.Render"]
-    m5["render.YAML.Render"]
+    m0["binding.decodeToml"]
+    m1["binding.decodeXML"]
+    m2["binding.decodeYAML"]
     m0 --- m1
     m0 --- m2
-    m0 --- m3
-    m0 --- m4
-    m0 --- m5
     m1 --- m2
-    m1 --- m3
-    m1 --- m4
-    m1 --- m5
-    m2 --- m3
-    m2 --- m4
-    m2 --- m5
-    m3 --- m4
-    m3 --- m5
-    m4 --- m5
 ```
 
 | Location | Function | Signature | Patterns |
 |---|---|---|---|
-| `render/json.go:67` | `render.WriteJSON` | `(http.ResponseWriter, any) (error)` | — |
-| `render/json.go:78` | `render.IndentedJSON.Render` | `(http.ResponseWriter) (error)` | — |
-| `render/json.go:94` | `render.SecureJSON.Render` | `(http.ResponseWriter) (error)` | — |
-| `render/protobuf.go:21` | `render.ProtoBuf.Render` | `(http.ResponseWriter) (error)` | serialization |
-| `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | — |
-| `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | serialization |
-
-### Family 4 — 6 members, every pair `>= 0.62` code-shape, evidence `1808`
-
-```mermaid
-flowchart LR
-    m0["render.BSON.Render"]
-    m1["render.WriteJSON"]
-    m2["render.IndentedJSON.Render"]
-    m3["render.ProtoBuf.Render"]
-    m4["render.TOML.Render"]
-    m5["render.YAML.Render"]
-    m0 --- m1
-    m0 --- m2
-    m0 --- m3
-    m0 --- m4
-    m0 --- m5
-    m1 --- m2
-    m1 --- m3
-    m1 --- m4
-    m1 --- m5
-    m2 --- m3
-    m2 --- m4
-    m2 --- m5
-    m3 --- m4
-    m3 --- m5
-    m4 --- m5
-```
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `render/bson.go:21` | `render.BSON.Render` | `(http.ResponseWriter) (error)` | — |
-| `render/json.go:67` | `render.WriteJSON` | `(http.ResponseWriter, any) (error)` | — |
-| `render/json.go:78` | `render.IndentedJSON.Render` | `(http.ResponseWriter) (error)` | — |
-| `render/protobuf.go:21` | `render.ProtoBuf.Render` | `(http.ResponseWriter) (error)` | serialization |
-| `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | — |
-| `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | serialization |
-
-### Family 5 — 5 members, every pair `>= 0.64` code-shape, evidence `1390`
-
-```mermaid
-flowchart LR
-    m0["binding.decodeJSON"]
-    m1["binding.decodeMsgPack"]
-    m2["binding.decodeToml"]
-    m3["binding.decodeXML"]
-    m4["binding.decodeYAML"]
-    m0 --- m1
-    m0 --- m2
-    m0 --- m3
-    m0 --- m4
-    m1 --- m2
-    m1 --- m3
-    m1 --- m4
-    m2 --- m3
-    m2 --- m4
-    m3 --- m4
-```
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `binding/json.go:44` | `binding.decodeJSON` | `(io.Reader, any) (error)` | validation |
-| `binding/msgpack.go:31` | `binding.decodeMsgPack` | `(io.Reader, any) (error)` | validation |
 | `binding/toml.go:29` | `binding.decodeToml` | `(io.Reader, any) (error)` | validation |
 | `binding/xml.go:28` | `binding.decodeXML` | `(io.Reader, any) (error)` | validation, serialization |
 | `binding/yaml.go:29` | `binding.decodeYAML` | `(io.Reader, any) (error)` | validation |
 
-_20 more families not listed._
+### Family 5 — 14 members, every pair `>= 1.00` code-shape, evidence `118`  (55 edges scored here), interface implementations of `WriteContentType(http.ResponseWriter)`, in package `render`
+
+_Not drawn: 14 members is 91 connections. Every one of them holds — that is what makes this a family._
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `render/bson.go:32` | `render.BSON.WriteContentType` | `(http.ResponseWriter)` | — |
+| `render/html.go:99` | `render.HTML.WriteContentType` | `(http.ResponseWriter)` | — |
+| `render/json.go:62` | `render.JSON.WriteContentType` | `(http.ResponseWriter)` | — |
+| `render/json.go:89` | `render.IndentedJSON.WriteContentType` | `(http.ResponseWriter)` | — |
+| `render/json.go:112` | `render.SecureJSON.WriteContentType` | `(http.ResponseWriter)` | — |
+| `render/json.go:150` | `render.JsonpJSON.WriteContentType` | `(http.ResponseWriter)` | — |
+| `render/json.go:179` | `render.AsciiJSON.WriteContentType` | `(http.ResponseWriter)` | — |
+| `render/json.go:192` | `render.PureJSON.WriteContentType` | `(http.ResponseWriter)` | — |
+| `render/msgpack.go:29` | `render.MsgPack.WriteContentType` | `(http.ResponseWriter)` | — |
+| `render/protobuf.go:34` | `render.ProtoBuf.WriteContentType` | `(http.ResponseWriter)` | — |
+
+_4 more members not listed._
+
+_6 more families not listed._
 

@@ -104,7 +104,7 @@ func runFamilies(cmd *cobra.Command, args []string) error {
 
 	o := family.DefaultOptions()
 	o.Min = familyMinFor(res, familiesMin)
-	fams, stats := family.Build(res.Units, res.Pairs, o)
+	fams, stats := family.Build(res.Units, res.Pairs, res.WL, o)
 	printFamilyStats(cmd.ErrOrStderr(), stats)
 
 	if familiesFormat == formatJSON {
@@ -143,7 +143,7 @@ func buildFamilies(res Result, progress io.Writer) ([]family.Family, family.Stat
 	}
 	o := family.DefaultOptions()
 	o.Min = familyMinFor(res, familyMin)
-	fams, stats := family.Build(res.Units, res.Pairs, o)
+	fams, stats := family.Build(res.Units, res.Pairs, res.WL, o)
 	printFamilyStats(progress, stats)
 	return fams, stats
 }

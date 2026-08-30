@@ -9,7 +9,7 @@ CLI framework; one dominant type with a long method set, plus shell-completion g
 | Corpus | [cobra](https://github.com/spf13/cobra) |
 | Pinned at | `v1.10.2` (`88b30ab89da2d0d0abb153818746c5a2d30eccec`) |
 | Project since | 2015 |
-| doppel | `e53d59d` |
+| doppel | `2e3a4cc` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -27,10 +27,10 @@ Habitats: 2 modeled, 0 misfits; most uniform doc (norm 0.93), most diverse cobra
 Conventions: strongest validation (0.44), loosest file_io (0.42)
 Ecosystems: 125 profiled (125 dominance, 0 coalition, 0 conflict, 0 weak)
 Found 269 functions. Retrieving candidates...
-Retrieval: shape 117, concept 85, call 712 -> 826 unique pairs
-  concept-only 6.9%  call-only 76.6%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 2819
-Running structural comparison on 826 pairs...
-Families: 18 over 43 components, 63 functions in a family, 3 edges completed
+Retrieval: shape 59, concept 85, call 712 -> 796 unique pairs
+  concept-only 7.2%  call-only 83.0%  suppressed-shape functions: 0  large identity buckets: 0  surviving patterns: 2819
+Running structural comparison on 796 pairs...
+Families: 11 over 29 components, 37 functions in a family
 ```
 
 # Code Similarity Report
@@ -115,7 +115,7 @@ Merge-worthy pairs folded up to their packages. An edge means two packages keep 
 
 ```mermaid
 flowchart LR
-    p0["cobra<br/>134 internal"]
+    p0["cobra<br/>101 internal"]
     p1["doc<br/>14 internal"]
     p0 ---|"1"| p1
 ```
@@ -138,7 +138,7 @@ Most uniform is `doc` (norm `0.93`); most varied is `cobra` (norm `0.91`).
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **826 candidate pairs** (shape 117, concept 85, call 712), of which 77% arrived on call evidence alone and 7% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **796 candidate pairs** (shape 59, concept 85, call 712), of which 83% arrived on call evidence alone and 7% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 125 functions reached an equilibrium: **125** settled on a single concept, **0** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -196,14 +196,16 @@ Co-occurrence measured against chance across every function. Only relationships 
 
 ---
 
-## Match #1 — Code-shape: `0.8207`
+## Match #1 — Code-shape: `0.6492`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
 | **A** | `doc/md_docs.go:57` | `doc.GenMarkdownCustom` | `(*cobra.Command, io.Writer, func(string) string) (error)` | — |
 | **B** | `doc/rest_docs.go:62` | `doc.GenReSTCustom` | `(*cobra.Command, io.Writer, func(string, string) string) (error)` | — |
 
-**Code similarity:** `ast 0.80  flow 1.00  nesting 1.00  sig 0.60  size 0.86`
+**Code similarity:** `wl 0.52  flow 1.00  nesting 1.00  sig 0.60  size 0.86`
+
+**Containment:** `0.74`
 
 **Evidence:** `1878.46` (shape 1820.49, concept 0.00, call 57.97)
 
@@ -229,7 +231,7 @@ Co-occurrence measured against chance across every function. Only relationships 
 
 ---
 
-## Match #2 — Code-shape: `0.8777`
+## Match #2 — Code-shape: `0.7643`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -240,7 +242,9 @@ Co-occurrence measured against chance across every function. Only relationships 
 
 **Profile B:** `file_io` 1.00 (dominance)
 
-**Code similarity:** `ast 0.85  flow 1.00  nesting 1.00  sig 0.80  size 1.00`
+**Code similarity:** `wl 0.66  flow 1.00  nesting 1.00  sig 0.80  size 1.00`
+
+**Containment:** `0.79`
 
 **Evidence:** `654.63` (shape 626.62, concept 1.24, call 26.78)
 
@@ -277,7 +281,9 @@ Co-occurrence measured against chance across every function. Only relationships 
 
 **Profile B:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Containment:** `1.00`
 
 **Evidence:** `409.97` (shape 398.02, concept 1.07, call 10.87)
 
@@ -302,39 +308,7 @@ Co-occurrence measured against chance across every function. Only relationships 
 
 ---
 
-## Match #4 — Code-shape: `0.9806`
-
-| | Location | Function | Signature | Patterns |
-|---|---|---|---|---|
-| **A** | `doc/md_docs.go:32` | `doc.printOptions` | `(*bytes.Buffer, *cobra.Command, string) (error)` | — |
-| **B** | `doc/rest_docs.go:30` | `doc.printOptionsReST` | `(*bytes.Buffer, *cobra.Command, string) (error)` | — |
-
-**Code similarity:** `ast 0.97  flow 1.00  nesting 1.00  sig 1.00  size 0.86`
-
-**Evidence:** `607.03` (shape 593.16, concept 0.00, call 13.88)
-
-**Trophic:** `0.93`
-
-**Shared structure:**
-
-- `16.55` — `flow:param→call:WriteString`
-- `13.16` — `do(call:WriteString)`
-- `9.09` — `seq[ do(call:PrintDefaults) ; do(call:WriteString) ]`
-
-**Structural overlap:** `0.60` (merge-worthy)
-
-- share 9 callees: [buf.WriteString, cmd.InheritedFlags, cmd.NonInheritedFlags, flags.HasAvailableFlags, flags.PrintDefaults, flags.SetOutput, parentFlags.HasAvailableFlags, parentFlags.PrintDefaults, parentFlags.SetOutput]
-- overlapping call-graph neighborhoods (0.90): 36 shared
-- both are orchestrator functions
-- same package
-- same visibility
-- same receiver type: plain functions
-- called from same packages: [doc]
-- call into same packages: [cobra]
-
----
-
-## Match #5 — Code-shape: `0.8425`
+## Match #4 — Code-shape: `0.7216`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -345,7 +319,9 @@ Co-occurrence measured against chance across every function. Only relationships 
 
 **Profile B:** `file_io` 1.00 (dominance)
 
-**Code similarity:** `ast 0.79  flow 1.00  nesting 1.00  sig 0.80  size 1.00`
+**Code similarity:** `wl 0.59  flow 1.00  nesting 1.00  sig 0.80  size 1.00`
+
+**Containment:** `0.74`
 
 **Evidence:** `617.95` (shape 589.93, concept 1.24, call 26.78)
 
@@ -371,7 +347,7 @@ Co-occurrence measured against chance across every function. Only relationships 
 
 ---
 
-## Match #6 — Code-shape: `0.8725`
+## Match #5 — Code-shape: `0.7505`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
@@ -382,7 +358,9 @@ Co-occurrence measured against chance across every function. Only relationships 
 
 **Profile B:** `file_io` 1.00 (dominance)
 
-**Code similarity:** `ast 0.79  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+**Code similarity:** `wl 0.58  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Containment:** `0.74`
 
 **Evidence:** `617.95` (shape 589.93, concept 1.24, call 26.78)
 
@@ -408,6 +386,40 @@ Co-occurrence measured against chance across every function. Only relationships 
 
 ---
 
+## Match #6 — Code-shape: `0.8043`
+
+| | Location | Function | Signature | Patterns |
+|---|---|---|---|---|
+| **A** | `doc/md_docs.go:32` | `doc.printOptions` | `(*bytes.Buffer, *cobra.Command, string) (error)` | — |
+| **B** | `doc/rest_docs.go:30` | `doc.printOptionsReST` | `(*bytes.Buffer, *cobra.Command, string) (error)` | — |
+
+**Code similarity:** `wl 0.67  flow 1.00  nesting 1.00  sig 1.00  size 0.86`
+
+**Containment:** `0.87`
+
+**Evidence:** `607.03` (shape 593.16, concept 0.00, call 13.88)
+
+**Trophic:** `0.93`
+
+**Shared structure:**
+
+- `16.55` — `flow:param→call:WriteString`
+- `13.16` — `do(call:WriteString)`
+- `9.09` — `seq[ do(call:PrintDefaults) ; do(call:WriteString) ]`
+
+**Structural overlap:** `0.60` (merge-worthy)
+
+- share 9 callees: [buf.WriteString, cmd.InheritedFlags, cmd.NonInheritedFlags, flags.HasAvailableFlags, flags.PrintDefaults, flags.SetOutput, parentFlags.HasAvailableFlags, parentFlags.PrintDefaults, parentFlags.SetOutput]
+- overlapping call-graph neighborhoods (0.90): 36 shared
+- both are orchestrator functions
+- same package
+- same visibility
+- same receiver type: plain functions
+- called from same packages: [doc]
+- call into same packages: [cobra]
+
+---
+
 ## Match #7 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Patterns |
@@ -417,7 +429,9 @@ Co-occurrence measured against chance across every function. Only relationships 
 
 **Profile A:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Containment:** `1.00`
 
 **Evidence:** `408.90` (shape 398.02, concept 0.00, call 10.87)
 
@@ -450,7 +464,9 @@ Co-occurrence measured against chance across every function. Only relationships 
 
 **Profile A:** `validation` 1.00 (dominance)
 
-**Code similarity:** `ast 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Containment:** `1.00`
 
 **Evidence:** `408.90` (shape 398.02, concept 0.00, call 10.87)
 
@@ -474,79 +490,70 @@ Co-occurrence measured against chance across every function. Only relationships 
 
 ---
 
-## Match #9 — Code-shape: `0.8473`
+## Match #9 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `flag_groups.go:144` | `cobra.validateRequiredFlagGroups` | `(map[string]map[string]bool) (error)` | validation |
-| **B** | `flag_groups.go:188` | `cobra.validateExclusiveFlagGroups` | `(map[string]map[string]bool) (error)` | validation |
+| **A** | `command.go:1688` | `cobra.*Command.Flags` | `() (*flag.FlagSet)` | — |
+| **B** | `command.go:1775` | `cobra.*Command.PersistentFlags` | `() (*flag.FlagSet)` | — |
 
-**Profile A:** `validation` 1.00 (dominance)
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Profile B:** `validation` 1.00 (dominance)
+**Containment:** `1.00`
 
-**Code similarity:** `ast 0.75  flow 1.00  nesting 1.00  sig 1.00  size 0.97`
+**Evidence:** `247.35` (shape 237.16, concept 0.00, call 10.19)
 
-**Evidence:** `328.36` (shape 316.26, concept 1.07, call 11.03)
-
-**Trophic:** `0.80`
+**Trophic:** `1.00`
 
 **Shared structure:**
 
-- `7.25` — `flow:call:append→call:len`
-- `4.54` — `seq[ if(bin:\|\|(bin,bin)) ; do(call:Strings) ]`
-- `4.54` — `seq[ range ; if(bin:\|\|(bin,bin)) ]`
+- `5.50` — `if(bin:==(sel,nil))`
+- `4.54` — `seq[ if(bin:==(sel,nil)) ; return(sel) ]`
+- `3.85` — `seq[ assign=(call:NewFlagSet) ; if(bin:==(sel,nil)) ]`
 
-**Structural overlap:** `0.95` (merge-worthy)
+**Structural overlap:** `0.60` (merge-worthy)
 
-- share 5 callees: [append, fmt.Errorf, len, sort.Strings, sortedKeys]
-- share 1 callers: [cobra.*Command.ValidateFlagGroups]
-- overlapping call-graph neighborhoods (1.00): 6 shared
-- share patterns: [validation]
-- both are leaf functions
+- share 4 callees: [SetOutput, c.DisplayName, flag.NewFlagSet, new]
+- share 3 callers: [cobra.*Command.LocalFlags, cobra.*Command.SetGlobalNormalizationFunc, cobra.*Command.mergePersistentFlags]
+- overlapping call-graph neighborhoods (0.42): 43 shared
+- both are passthrough functions
 - same package
-- callers do related work (1.00): [validation]
 - same visibility
-- same receiver type: plain functions
+- same receiver type: Command
 - called from same packages: [cobra]
 - call into same packages: [cobra]
 
 ---
 
-## Match #10 — Code-shape: `0.8653`
+## Match #10 — Code-shape: `0.6023`
 
 | | Location | Function | Signature | Patterns |
 |---|---|---|---|---|
-| **A** | `flag_groups.go:167` | `cobra.validateOneRequiredFlagGroups` | `(map[string]map[string]bool) (error)` | validation |
-| **B** | `flag_groups.go:188` | `cobra.validateExclusiveFlagGroups` | `(map[string]map[string]bool) (error)` | validation |
+| **A** | `command.go:674` | `cobra.stripFlags` | `([]string, *Command) ([]string)` | — |
+| **B** | `command.go:715` | `cobra.*Command.argsMinusFirstX` | `([]string, string) ([]string)` | — |
 
-**Profile A:** `validation` 1.00 (dominance)
+**Code similarity:** `wl 0.47  flow 0.98  nesting 0.97  sig 0.50  size 0.94`
 
-**Profile B:** `validation` 1.00 (dominance)
+**Containment:** `0.66`
 
-**Code similarity:** `ast 0.78  flow 1.00  nesting 1.00  sig 1.00  size 0.89`
+**Evidence:** `675.32` (shape 654.01, concept 0.00, call 21.31)
 
-**Evidence:** `292.37` (shape 280.27, concept 1.07, call 11.03)
-
-**Trophic:** `0.81`
+**Trophic:** `0.74`
 
 **Shared structure:**
 
-- `4.14` — `range{ call:append call:len call:Strings call:Errorf }`
-- `4.14` — `seq[ assign:=(call:sortedKeys) ; range ]`
-- `4.14` — `seq[ do(call:Strings) ; return(call:Errorf) ]`
+- `8.25` — `flow:param→call:len`
+- `4.54` — `seq[ if(bin:==(call:len,lit:INT)) ; do(call:mergePersistentFlags) ]`
+- `4.54` — `flow:call:Flags→call:hasNoOptDefVal`
 
-**Structural overlap:** `0.95` (merge-worthy)
+**Structural overlap:** `0.65` (merge-worthy)
 
-- share 5 callees: [append, fmt.Errorf, len, sort.Strings, sortedKeys]
-- share 1 callers: [cobra.*Command.ValidateFlagGroups]
-- overlapping call-graph neighborhoods (1.00): 6 shared
-- share patterns: [validation]
-- both are leaf functions
+- share 8 callees: [append, c.Flags, c.mergePersistentFlags, hasNoOptDefVal, len, shortHasNoOptDefVal, strings.Contains, strings.HasPrefix]
+- share 1 callers: [cobra.*Command.Find]
+- overlapping call-graph neighborhoods (1.00): 42 shared
+- both are orchestrator functions
 - same package
-- callers do related work (1.00): [validation]
 - same visibility
-- same receiver type: plain functions
 - called from same packages: [cobra]
 - call into same packages: [cobra]
 
@@ -554,25 +561,9 @@ Co-occurrence measured against chance across every function. Only relationships 
 
 ## Families
 
-18 families, 63 functions in a family, largest 9 members; 3 edges scored here that retrieval never proposed
+11 families, 37 functions in a family, largest 5 members
 
-### Family 1 — 9 members, every pair `>= 0.63` code-shape, evidence `2579`
-
-_Not drawn: 9 members is 36 connections. Every one of them holds — that is what makes this a family._
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `command.go:412` | `cobra.*Command.getOut` | `(io.Writer) (io.Writer)` | — |
-| `command.go:422` | `cobra.*Command.getErr` | `(io.Writer) (io.Writer)` | — |
-| `command.go:432` | `cobra.*Command.getIn` | `(io.Reader) (io.Reader)` | — |
-| `command.go:464` | `cobra.*Command.getUsageTemplateFunc` | `() (func(w io.Writer, data interface{}) error)` | — |
-| `command.go:505` | `cobra.*Command.getHelpTemplateFunc` | `() (func(w io.Writer, data interface{}) error)` | — |
-| `command.go:592` | `cobra.*Command.UsageTemplate` | `() (string)` | — |
-| `command.go:605` | `cobra.*Command.HelpTemplate` | `() (string)` | — |
-| `command.go:618` | `cobra.*Command.VersionTemplate` | `() (string)` | — |
-| `command.go:631` | `cobra.*Command.getVersionTemplateFunc` | `() (func(w io.Writer, data interface{}) error)` | — |
-
-### Family 2 — 3 members, every pair `>= 0.84` code-shape, evidence `1891`
+### Family 1 — 3 members, every pair `>= 0.72` code-shape, evidence `1891`
 
 ```mermaid
 flowchart LR
@@ -590,30 +581,7 @@ flowchart LR
 | `doc/rest_docs.go:145` | `doc.GenReSTTreeCustom` | `(*cobra.Command, string, func(string) string, func(string, string) string) (error)` | file_io |
 | `doc/yaml_docs.go:60` | `doc.GenYamlTreeCustom` | `(*cobra.Command, string, func(string) string, func(string) string) (error)` | file_io |
 
-### Family 3 — 4 members, every pair `>= 0.64` code-shape, evidence `1702`
-
-```mermaid
-flowchart LR
-    m0["cobra.*Command.Flags"]
-    m1["cobra.*Command.LocalFlags"]
-    m2["cobra.*Command.InheritedFlags"]
-    m3["cobra.*Command.PersistentFlags"]
-    m0 --- m1
-    m0 --- m2
-    m0 --- m3
-    m1 --- m2
-    m1 --- m3
-    m2 --- m3
-```
-
-| Location | Function | Signature | Patterns |
-|---|---|---|---|
-| `command.go:1688` | `cobra.*Command.Flags` | `() (*flag.FlagSet)` | — |
-| `command.go:1716` | `cobra.*Command.LocalFlags` | `() (*flag.FlagSet)` | — |
-| `command.go:1744` | `cobra.*Command.InheritedFlags` | `() (*flag.FlagSet)` | — |
-| `command.go:1775` | `cobra.*Command.PersistentFlags` | `() (*flag.FlagSet)` | — |
-
-### Family 4 — 5 members, every pair `>= 0.81` code-shape, evidence `1244`
+### Family 2 — 5 members, every pair `>= 0.62` code-shape, evidence `1244`
 
 ```mermaid
 flowchart LR
@@ -642,7 +610,7 @@ flowchart LR
 | `powershell_completions.go:320` | `cobra.*Command.genPowerShellCompletionFile` | `(string, bool) (error)` | file_io |
 | `zsh_completions.go:70` | `cobra.*Command.genZshCompletionFile` | `(string, bool) (error)` | file_io |
 
-### Family 5 — 3 members, every pair `>= 1.00` code-shape, evidence `1228`
+### Family 3 — 3 members, every pair `>= 1.00` code-shape, evidence `1228`
 
 ```mermaid
 flowchart LR
@@ -660,5 +628,46 @@ flowchart LR
 | `flag_groups.go:49` | `cobra.*Command.MarkFlagsOneRequired` | `(...string)` | validation |
 | `flag_groups.go:65` | `cobra.*Command.MarkFlagsMutuallyExclusive` | `(...string)` | — |
 
-_13 more families not listed._
+### Family 4 — 3 members, every pair `>= 0.61` code-shape, evidence `869`
+
+```mermaid
+flowchart LR
+    m0["cobra.validateRequiredFlagGroups"]
+    m1["cobra.validateOneRequiredFlagGroups"]
+    m2["cobra.validateExclusiveFlagGroups"]
+    m0 --- m1
+    m0 --- m2
+    m1 --- m2
+```
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `flag_groups.go:144` | `cobra.validateRequiredFlagGroups` | `(map[string]map[string]bool) (error)` | validation |
+| `flag_groups.go:167` | `cobra.validateOneRequiredFlagGroups` | `(map[string]map[string]bool) (error)` | validation |
+| `flag_groups.go:188` | `cobra.validateExclusiveFlagGroups` | `(map[string]map[string]bool) (error)` | validation |
+
+### Family 5 — 4 members, every pair `>= 0.65` code-shape, evidence `626`
+
+```mermaid
+flowchart LR
+    m0["cobra.MinimumNArgs"]
+    m1["cobra.MaximumNArgs"]
+    m2["cobra.ExactArgs"]
+    m3["cobra.RangeArgs"]
+    m0 --- m1
+    m0 --- m2
+    m0 --- m3
+    m1 --- m2
+    m1 --- m3
+    m2 --- m3
+```
+
+| Location | Function | Signature | Patterns |
+|---|---|---|---|
+| `args.go:74` | `cobra.MinimumNArgs` | `(int) (PositionalArgs)` | — |
+| `args.go:84` | `cobra.MaximumNArgs` | `(int) (PositionalArgs)` | — |
+| `args.go:94` | `cobra.ExactArgs` | `(int) (PositionalArgs)` | — |
+| `args.go:104` | `cobra.RangeArgs` | `(int, int) (PositionalArgs)` | — |
+
+_6 more families not listed._
 

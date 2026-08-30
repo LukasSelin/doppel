@@ -54,8 +54,9 @@ func sampleInputs() ([]parser.CodeUnit, []concepter.ConceptDoc, []analyzer.Simil
 	ev := comparator.StructuralEvidence{OverlapScore: 0.5, ContextMergeWorthy: true, Reasons: []string{"both <read> & write"}}
 	pairs := []analyzer.SimilarPair{{
 		A: units[0], B: units[1], AIdx: 0, BIdx: 1, Score: 0.8,
-		Breakdown: fingerprint.Breakdown{AST: 0.7, Flow: 0.9, Signature: 1, SizeRatio: 0.66, Score: 0.8},
-		Evidence:  &ev,
+		Breakdown: fingerprint.Breakdown{WL: 0.7, Flow: 0.9, Signature: 1, SizeRatio: 0.66,
+			Containment: 0.9, Score: 0.8},
+		Evidence: &ev,
 	}}
 	counts := map[ontology.TermID]int{"mapping": 1, "db_access": 1, "retry": 1}
 	return units, docs, pairs, counts

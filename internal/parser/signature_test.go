@@ -49,7 +49,10 @@ func TestSignatureDoesNotChangeFingerprint(t *testing.T) {
 	if want := []string{"in:[]int", "out:int"}; !reflect.DeepEqual(u.Fingerprint.Types, want) {
 		t.Errorf("Fingerprint.Types = %v, want %v", u.Fingerprint.Types, want)
 	}
-	if bd := fingerprint.Similarity(u.Fingerprint, u.Fingerprint); bd.Signature != 1.0 || bd.Score != 1.0 {
+	// nil weights: no corpus to ask, so every WL label is worth 1 and the
+	// shape component is a plain multiset Jaccard. A fingerprint against
+	// itself is still exactly 1.0 under either weighting.
+	if bd := fingerprint.Similarity(u.Fingerprint, u.Fingerprint, nil); bd.Signature != 1.0 || bd.Score != 1.0 {
 		t.Errorf("self-similarity = %+v, want exact 1.0", bd)
 	}
 }

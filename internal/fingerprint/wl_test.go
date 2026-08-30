@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"slices"
 	"testing"
 )
 
@@ -24,9 +25,46 @@ func parseFunc(t *testing.T, src string) *ast.FuncDecl {
 	return nil
 }
 
+// bagOf returns the bag as a map. WLBag returns a sorted slice — that is the
+// scoring contract, and TestWLBagSorted pins it — but every assertion below
+// asks "what does this body carry", which a map states directly and a slice
+// only after a lookup. The conversion is the test's convenience, not a shape
+// the package uses.
 func bagOf(t *testing.T, src string) map[uint64]int {
 	t.Helper()
-	return WLBag(parseFunc(t, src))
+	return asMap(WLBag(parseFunc(t, src)))
+}
+
+func asMap(bag []LabelCount) map[uint64]int {
+	if bag == nil {
+		return nil
+	}
+	m := make(map[uint64]int, len(bag))
+	for _, lc := range bag {
+		m[lc.Label] = lc.Count
+	}
+	return m
+}
+
+// TestWLBagSorted pins what scoring depends on: the bag is ascending by label
+// with no label repeated, so a pair is one merge of two sorted runs and never
+// a sort inside the pair loop.
+func TestWLBagSorted(t *testing.T) {
+	bag := WLBag(parseFunc(t, srcSum))
+	if len(bag) < 2 {
+		t.Fatalf("bag has %d labels, too few to test ordering", len(bag))
+	}
+	for i := 1; i < len(bag); i++ {
+		if bag[i].Label <= bag[i-1].Label {
+			t.Fatalf("bag not strictly ascending at %d: %016x then %016x",
+				i, bag[i-1].Label, bag[i].Label)
+		}
+	}
+	for i, lc := range bag {
+		if lc.Count < 1 {
+			t.Errorf("entry %d has count %d, want >= 1", i, lc.Count)
+		}
+	}
 }
 
 // sameBag reports whether two bags carry the same labels with the same counts.
@@ -283,7 +321,7 @@ func TestWLBagLocalityOfInsertion(t *testing.T) {
 	for _, tc := range insertionCases {
 		t.Run(tc.name, func(t *testing.T) {
 			fd := parseFunc(t, tc.after)
-			after := WLBag(fd)
+			after := asMap(WLBag(fd))
 
 			diff := keyDiff(before, after)
 			if diff == 0 {
@@ -358,13 +396,22 @@ func insertionSite(t *testing.T, fd *ast.FuncDecl, find func(ast.Node) bool) (de
 	return depth, nodes
 }
 
-// TestLabelWeights pins the ln(N/df) arithmetic and its two conventions:
-// presence df, and a population of functions that have a body.
+// bag builds a sorted bag from label/count pairs, so the tests below can
+// state a population as literals.
+func bag(pairs ...LabelCount) []LabelCount {
+	out := append([]LabelCount(nil), pairs...)
+	slices.SortFunc(out, func(a, b LabelCount) int { return int(a.Label) - int(b.Label) })
+	return out
+}
+
+// TestLabelWeights pins the ln(N/df) arithmetic and its conventions: presence
+// df, a population of functions that have a body, and df 1 for a label the
+// corpus has never seen.
 func TestLabelWeights(t *testing.T) {
-	bags := []map[uint64]int{
-		{1: 3, 2: 1}, // a label repeated three times still has df 1
-		{1: 1, 3: 1},
-		{1: 1},
+	bags := [][]LabelCount{
+		bag(LabelCount{1, 3}, LabelCount{2, 1}), // repeated three times, df still 1
+		bag(LabelCount{1, 1}, LabelCount{3, 1}),
+		bag(LabelCount{1, 1}),
 		nil, // no body: not part of the population
 	}
 	w := LabelWeights(bags)
@@ -384,19 +431,32 @@ func TestLabelWeights(t *testing.T) {
 	if want := 1.0986122886681098; !closeEnough(w.Weight(2), want) {
 		t.Errorf("Weight(2) = %v, want ln(3/1) = %v", w.Weight(2), want)
 	}
-	if got := w.Weight(99); got != 0 {
-		t.Errorf("Weight of an unseen label = %v, want 0", got)
+	// An unseen label weighs ln(N) — df 1, the rarest thing this corpus can
+	// express. T2 answered 0 here on the reading that a label never seen is
+	// absence of evidence; scoring made that unsafe, because a weight of 0
+	// does not make a label neutral in a ratio, it makes it invisible. See
+	// LabelIDF.Weight.
+	if want := 1.0986122886681098; !closeEnough(w.Weight(99), want) {
+		t.Errorf("Weight of an unseen label = %v, want ln(3) = %v", w.Weight(99), want)
 	}
 	if got := w.DF(99); got != 0 {
-		t.Errorf("DF of an unseen label = %d, want 0", got)
+		t.Errorf("DF of an unseen label = %d, want 0 — df stays a count of what was seen", got)
 	}
 }
 
 // TestLabelWeightsOrderIndependent: the counts depend on the multiset of
 // bags, never on the order they arrive in or the order their keys iterate.
 func TestLabelWeightsOrderIndependent(t *testing.T) {
-	a := []map[uint64]int{{1: 1, 2: 1}, {2: 1, 3: 1}, {3: 1}}
-	b := []map[uint64]int{{3: 1}, {2: 1, 3: 1}, {2: 1, 1: 1}}
+	a := [][]LabelCount{
+		bag(LabelCount{1, 1}, LabelCount{2, 1}),
+		bag(LabelCount{2, 1}, LabelCount{3, 1}),
+		bag(LabelCount{3, 1}),
+	}
+	b := [][]LabelCount{
+		bag(LabelCount{3, 1}),
+		bag(LabelCount{2, 1}, LabelCount{3, 1}),
+		bag(LabelCount{2, 1}, LabelCount{1, 1}),
+	}
 	wa, wb := LabelWeights(a), LabelWeights(b)
 	for _, label := range []uint64{1, 2, 3} {
 		if wa.DF(label) != wb.DF(label) {
@@ -430,10 +490,10 @@ func TestLabelWeightsNil(t *testing.T) {
 // TestLabelWeightsOverRealBags ties the weights to actual bags: a label two
 // functions share weighs less than one only one of them carries.
 func TestLabelWeightsOverRealBags(t *testing.T) {
-	sum := bagOf(t, srcSum)
-	renamed := bagOf(t, srcSumRenamed)
-	serve := bagOf(t, srcServe)
-	w := LabelWeights([]map[uint64]int{sum, renamed, serve})
+	sum := WLBag(parseFunc(t, srcSum))
+	renamed := WLBag(parseFunc(t, srcSumRenamed))
+	serve := WLBag(parseFunc(t, srcServe))
+	w := LabelWeights([][]LabelCount{sum, renamed, serve})
 	if w.N() != 3 {
 		t.Fatalf("N = %d, want 3", w.N())
 	}
