@@ -40,7 +40,7 @@ sort), and `analyzer.SortByEvidence`).
 ## Pipeline
 
 The pipeline lives in `cmd/pipeline.go`, split in two: `index()` is the corpus-building prefix
-(walk → parse → filter → call graph → learn concepts → IC → mapper), `finishAnalyze()` is the reporting tail
+(walk → parse → filter → WL/cons corpus statistics → call graph → learn concepts → IC → mapper), `finishAnalyze()` is the reporting tail
 (culture, retrieval, comparison, annotation), and `analyze()` is exactly the two in sequence — the
 split is a pure refactoring, verified byte-identical on `--format json`. `runAnalyze` in
 `cmd/analyze.go` is the CLI wrapper that supplies flags and renders, and `cmd/hook.go` is the other
@@ -59,20 +59,21 @@ candidate inhabits — a ranking key only, displayed unblended, ties broken by c
 `--near` names the package a bare snippet is wrapped in, which is what makes its bare-name calls
 resolve (and locality light up); query's `--channel-k` defaults to 10, not 5, because a probe's
 retrieval costs one function's worth and an exact-clone family larger than K gets cut on an index
-tie-break. Stages 1-7 below are
-`analyze()`; stage 8 belongs to the caller, because ranking is a presentation choice and the two
+tie-break. Stages 1-8 below are
+`analyze()`; stage 9 belongs to the caller, because ranking is a presentation choice and the two
 callers make it differently. `analyze()` takes a progress writer rather than using `os.Stderr`
 directly: a hook must stay silent, since stderr from a SessionStart hook surfaces to the user as a
 broken-tool notice. Stages in execution order:
 
-1. **Walk & parse** — `filepath.WalkDir` + `shouldSkipDir`, then `parser.Parse` per `.go` file → `[]CodeUnit`. Unreadable files and parse errors are warned and skipped, never fatal. `fingerprint.Build` and `extractSignals` (the tagger's AST evidence) both run here, while the AST is still in hand.
-2. **Build call graph** — `concepter.BuildCallGraph(units)` → `concepter.Graph`, both directions over **qualified names** (`package.Name`, methods keeping their receiver: `comparator.*Comparator.Compare`). A resolver maps each raw callee string to at most one unit: import-qualified selectors through the file's recorded import bindings (aliases included), variable-receiver method calls only when the method name is unique corpus-wide, bare names to the same-package function. Ambiguity drops the edge; recursion is excluded; only repo-internal edges exist. It runs **before** concepts now, because resolved calls are one of the channels a concept is learned from — and still before concept docs, which need caller lists.
-3. **Learn concepts** — `lexicon.Build(units, cg, seeds, …)` fills `unit.Concepts`: corpus-derived concepts with graded membership (see *The learned lexicon*). `tagger.Tag` still runs, but only to produce `seeds` — which functions a concept search starts from, and nothing else. Member counts and summed confidence feed the corpus IC in the same loop, and the learned concepts become the taxonomy's leaves for this run via `ontology.WithConcepts`.
-4. **Generate + enrich concept docs** — `concepter.New()` makes bare docs; **`mapper.Map` does the real work**: attaches qualified callers, resolved internal callees, and the depth-2 call-graph neighborhood; derives per-corpus role thresholds from the resolved degree distribution and classifies; aggregates caller/callee patterns and packages from resolved edges. `culture.Build` then models the corpus's conceptual practice (see *Corpus culture*); its summary goes to stderr, and after the struct-min filter each surviving pair gets `Culture` notes for atypical realizations of its **shared** tags (positional attachment, like Evidence).
-5. **Candidate retrieval** — `retriever.Retrieve` runs three per-function top-K channels (structural shingle-IDF, concept IC, resolved-call IDF — see *Candidate retrieval* below), unions and dedupes them, and computes definitive per-pair evidence masses plus the exact `fingerprint.Breakdown` for every union pair. Retrieval stats go to stderr. `cmd` materializes the candidates into `analyzer.SimilarPair`s (with `Retrieval` set). `analyzer.FindSimilar` still exists as the simple library API but the pipeline no longer calls it.
-6. **Structural comparison** — a `comparator.Comparator` built over a corpus-weighted `ontology.Scorer` scores **every** candidate pair → `pair.Evidence`. Concept and role signals go through the ontology hierarchy, not string equality, and concept matching is weighted by information content computed from this run's tag counts — sharing a near-universal tag is weak evidence, sharing a rare one is strong.
-7. **Structural filter** — when `--struct-min > 0`, pairs below that overlap score are **dropped**. This is a selection stage, not just annotation.
-8. **Rank + report** — `analyzer.SortForReport` orders by corroborated evidence (`Total × OverlapScore × Score × TrophicSim²`, then code-shape, then `AIdx`/`BIdx`), applies the `--max-per-func` diversity cap greedily with backfill, and truncates to `--top`. `reporter.Print` to stdout always; `reporter.PrintMarkdown` to `--output` additionally. Both take a `reporter.Meta`; `--debug` adds per-pair retrieval provenance.
+1. **Walk & parse** — `filepath.WalkDir` + `parser.ShouldSkipDir`, then `parser.Parse` per `.go` file → `[]CodeUnit`. Unreadable files and parse errors are warned and skipped, never fatal. `canon.Canonicalize`, `fingerprint.Build`, `fingerprint.WLBag` over the canonical tree, and `extractSignals` (the seed rules' AST evidence) all run here, while the AST is still in hand.
+2. **Structural corpus statistics** — `fingerprint.LabelWeights` over every unit's WL bag (`Result.WL`, the `ln(N/df)` label surprisal that makes code shape corpus-weighted) and `fingerprint.ConsCorpus` over every canonical body (`Result.ConsStats`, the compression ratio). Both read each unit's own canonical AST and nothing else, which is why they come first: the population is settled and no concept vocabulary exists yet. Everything below is conceptual and needs the call graph.
+3. **Build call graph** — `concepter.BuildCallGraph(units)` → `concepter.Graph`, both directions over **qualified names** (`package.Name`, methods keeping their receiver: `comparator.*Comparator.Compare`). A resolver maps each raw callee string to at most one unit: import-qualified selectors through the file's recorded import bindings (aliases included), variable-receiver method calls only when the method name is unique corpus-wide, bare names to the same-package function. Ambiguity drops the edge; recursion is excluded; only repo-internal edges exist. It runs **before** concepts now, because resolved calls are one of the channels a concept is learned from — and still before concept docs, which need caller lists.
+4. **Learn concepts** — `lexicon.Build(units, cg, seeds, …)` fills `unit.Concepts`: corpus-derived concepts with graded membership (see *The learned lexicon*). `tagger.Tag` still runs, but only to produce `seeds` — which functions a concept search starts from, and nothing else. Member counts and summed confidence feed the corpus IC in the same loop, and the learned concepts become the taxonomy's leaves for this run via `ontology.WithConcepts`.
+5. **Generate + enrich concept docs** — `concepter.New()` makes bare docs; **`mapper.Map` does the real work**: attaches qualified callers, resolved internal callees, and the depth-2 call-graph neighborhood; derives per-corpus role thresholds from the resolved degree distribution and classifies; aggregates caller/callee concepts (as graded `[]parser.Concept`, each keeping the strongest confidence any neighbour asserted) and packages from resolved edges. `culture.Build` then models the corpus's conceptual practice (see *Corpus culture*); its summary goes to stderr, and after the struct-min filter each surviving pair gets `Culture` notes for atypical realizations of its **shared** tags (positional attachment, like Evidence).
+6. **Candidate retrieval** — `retriever.Retrieve` runs three per-function top-K channels (WL-label IDF, concept IC, resolved-call IDF — see *Candidate retrieval* below), unions and dedupes them, and computes definitive per-pair evidence masses plus the exact `fingerprint.Breakdown` for every union pair. Retrieval stats go to stderr. `cmd` materializes the candidates into `analyzer.SimilarPair`s (with `Retrieval` set). `analyzer.FindSimilar` still exists as the simple library API but the pipeline no longer calls it.
+7. **Structural comparison** — a `comparator.Comparator` built over a corpus-weighted `ontology.Scorer` scores **every** candidate pair → `pair.Evidence`. Concept and role signals go through the ontology hierarchy, not string equality, and concept matching is weighted by information content computed from this run's tag counts — sharing a near-universal tag is weak evidence, sharing a rare one is strong.
+8. **Structural filter** — when `--struct-min > 0`, pairs below that overlap score are **dropped**. This is a selection stage, not just annotation.
+9. **Rank + report** — `analyzer.SortForReport` orders by corroborated evidence (`Total × OverlapScore × Score × TrophicSim²`, then code-shape, then `AIdx`/`BIdx`), applies the `--max-per-func` diversity cap greedily with backfill, and truncates to `--top`. `reporter.Print` to stdout always; `--output` additionally writes markdown, or the dashboard when the path ends `.html`. Both take a `reporter.Meta`; `--debug` adds per-pair retrieval provenance.
 
 `docs[i]` describes `units[i]`, and `SimilarPair` carries `AIdx`/`BIdx` into that slice. Evidence
 attachment is a positional lookup, deliberately — an earlier version keyed it on
@@ -92,26 +93,32 @@ cmd/            CLI commands (Cobra).
   pipeline.go   index() + finishAnalyze(): the pipeline split into corpus-building prefix and reporting tail; filterByOverlap; snapshotOf
   query.go      doppel query: check a proposed function (a snippet on stdin) against the corpus, locality-weighted
   config.go     .doppel.json loading (AnalysisConfig), flag precedence, hookParams
-  hook.go       doppel hook session-start / stop: Claude Code hook entry points, baseline file I/O
+  hook.go       doppel hook session-start / user-prompt / pre-tool / stop: the four Claude Code
+                hook entry points, and baseline file I/O
   version.go    build identity, for deciding whether a baseline is still comparable
   ontology.go   doppel ontology: print the vocabulary, check its axioms
 internal/
   parser/       parser.go is a thin dispatcher (and owns ShouldSkipDir, the walk rule cmd and bench share); go_parser.go does the go/ast work; signals.go extracts the tagger's evidence channels → CodeUnit
+  canon/        Canonical AST shapes with a per-function rule log: canon.go + rules.go (the rule
+                set and canon.Version), alpha.go (rename), clone.go, key.go. Imported by parser only
   fingerprint/  AST token shingles + control-flow histogram + signature types; the code-similarity score
-                wl.go is the WL label bag; wlexplain.go names its shallow labels for reports
+                wl.go is the WL label bag; wlexplain.go names its shallow labels for reports;
+                cons.go hash-conses the canonical forest; wlcodec.go encodes bags for the snapshot
   ontology/     The formal vocabulary: entity kinds, typed relations, concept taxonomy, roles, axioms
   tagger/       The 14 seed rules: AST-signal matching → founding member sets for the lexicon
   lexicon/      Learns the corpus's own concepts: features.go (evidence channels), expand.go (seeded PMI expansion), emerge.go (clique clustering), name.go
   clique/       Deterministic maximal-clique enumeration and components, shared by family and lexicon
-  concepter/    ConceptDoc; callgraph.go (BuildCallGraph); role.go (ClassifyRole, role constants)
+  concepter/    ConceptDoc; callgraph.go (BuildCallGraph); role.go (ClassifyRole, role constants);
+                calltokens.go (the resolved-call token view retriever, culture and lexicon share)
   mapper/       Where enrichment actually happens: callers, role classification, aggregated concepts/packages
   retriever/    Multi-channel candidate retrieval: shape.go / concept.go / calls.go inverted indexes, retriever.go union + evidence
   culture/      Corpus-culture model: ecology.go (PMI), prototype.go (prototypes + typicality), habitat.go (fit), convention.go
-  analyzer/     SimilarPair + Retrieval types; FindSimilar (library API); SortByEvidence (final ranking); kind.go + stem.go (pair kinds); explain.go (rule-attributed pair sentences)
-  comparator/   Weighted structural overlap scoring (9 signals → 0.0–1.0 composite)
+  analyzer/     SimilarPair + Retrieval types; FindSimilar (library API); rank.go: SortForReport (the report's ranking) and SortByEvidence (the plain-Total library one); kind.go + stem.go (pair kinds); explain.go (rule-attributed pair sentences)
+  comparator/   Weighted structural overlap scoring (12 signals → 0.0–1.0 composite)
   family/       Near-duplicate families: components + edge completion + maximal cliques over the pair graph
   snapshot/     One analysis run as comparable plain data: schema + Build, and Diff over two of them
-  reporter/     Plain-text (stdout), Markdown (--output), JSON (--format json), and the two hook digests
+  reporter/     Plain-text (stdout), Markdown (--output), JSON (--format json), and the five hook digests
+                (impact.go: ConceptDigest, ImpactDigest, AgentDigest; scope.go: ScopeDigest, AdviceDigest)
                 overview.go + mermaid.go render the corpus model into the markdown report only
   dashboard/    The HTML dashboard (--output *.html): payload.go is the semantic payload,
                 render.go inlines it into assets/ (shell.html + app.js + app.css + vendor/)
@@ -164,8 +171,10 @@ A **third** reported quantity, `Breakdown.Containment`, is gated by no flag and 
 neither: `Σ w·min(a,b) / min(Σ w·a, Σ w·b)` over the same WL bags and corpus weights `Score`'s
 shape component reads. It answers how much of the *smaller* body's structure the larger one also
 has, where the shape score divides by the union — so an inlined helper reads low on shape and
-near 1.0 on containment. It is reported in text, markdown, HTML and JSON, and never enters
-ranking, filtering or `MergeWorthy`. See *Fingerprint scoring*.
+near 1.0 on containment. It is reported on all four surfaces — text (`containment:`), markdown,
+`--format json` (`Pair.Containment`), and the dashboard, where it sits in the pair's score row and
+as the sixth bar of the code-shape breakdown — and never enters ranking, filtering or
+`MergeWorthy`. See *Fingerprint scoring*.
 
 The report is **ranked by neither alone**: `analyzer.SortForReport` orders by **corroborated
 evidence** — `Retrieval.Total × Evidence.OverlapScore × Score × TrophicSim²`, with one further
@@ -189,7 +198,7 @@ label was deliberately renamed from `score:` to `code-shape:` so nobody reads 1.
 ## Development
 
 `Taskfile.yml` ([go-task](https://taskfile.dev)) is the documented entry point — the PR template
-and the pre-commit hook both assume it. Every task is a one-line wrapper, so raw `go` works too.
+and the pre-commit hook both assume it. Nearly every task is a one-line wrapper, so raw `go` works too.
 
 ```bash
 task setup    # git config core.hooksPath .githooks  — run this once after cloning
@@ -206,7 +215,16 @@ task corpora  # fetch the pinned public corpus ladder (network, a few hundred MB
 task bench    # per-stage pipeline benchmarks over whatever is fetched
 task golden   # score examples/labels/*.labels.json against the fetched corpora
 task examples # regenerate examples/<corpus>.md
+
+task dashboard     # analyze this repo to an HTML dashboard and open it
+task dashboard-dev # the same, reading assets off disk (DOPPEL_DASHBOARD_ASSETS)
+task snapshot      # analyze . --format json
+task baseline      # the T0 record: golden scorecard + example checksums -> examples/baseline.json
+task ablate        # zero each fingerprint blend component in turn and re-score the labels
 ```
+
+`task dashboard` is the one task that is not a single command — it renders and then opens the
+page.
 
 Running the tool against this repo:
 
@@ -247,13 +265,23 @@ doppel ontology --defs                                # print the vocabulary and
   (`how-it-works.md` → `How-it-works`, which GitHub titles "How it works"), so the directory must
   stay **flat**: wiki page names cannot nest, and the job fails loudly rather than silently
   collapsing `a/page.md` and `b/page.md` onto one page. It pushes only when something changed.
+- `.github/workflows/pages.yml` renders doppel's dashboard for doppel's own source
+  (`go run . analyze . -o _site/report.html`) and publishes it to GitHub Pages on every push to
+  `master`, with `.github/pages/index.html` as the landing page (`@@COMMIT@@`/`@@BUILT@@` are
+  substituted at build time). Deliberately **not** path-filtered: any change to the tool can change
+  the report. `_site/` is chosen because `parser.ShouldSkipDir` skips underscore-prefixed
+  directories, so the output cannot join the corpus of the run that writes it. Provenance is
+  stamped into the landing page only, never into the report — `ci.yml` diffs two `-o *.html` runs
+  and a timestamp inside one would fail it.
 - `.gitattributes` forces LF for Go/shell/markdown/config so the bash hook works under Git Bash on Windows.
 
 ## Key types
 
 - **CodeUnit** (`internal/parser/parser.go`) — one function/method from the AST: `Name`, `File`,
   `StartLine`, `Body`, `Signature`, `Package`, `Concepts`, `DocComment`, `Exported`, `ReceiverType`,
-  `Callees`, `Fingerprint`, `Generated`. Methods are named `"*Server.Start"` — the receiver keeps its
+  `Callees`, `Fingerprint`, `Generated`, `Signals` (the seed rules' AST evidence channels), and
+  `Canonical`/`CanonRules` (canon's rewritten tree and the log of what it rewrote — the WL bag is
+  built from the first, `analyzer.Explain` reads the second). Methods are named `"*Server.Start"` — the receiver keeps its
   star; `parser.MethodName` strips it back off. `Signature` is rendered text — `([]int) (int)`,
   types in order, names dropped, one entry per declared name — and is what the `sig:` line and the
   interface-implementation kind read; `Fingerprint.Types` (the sorted `in:`/`out:` type *set*) is
@@ -539,7 +567,7 @@ corpus-derived — the PMI ecology is the arena's physics.
   dominance so the smell is never masked by a big top mass) → **dominance** (1 survivor or top ≥
   0.6) → **coalition**. Survivor floor 0.05 (max mass ≥ 1/9 so someone always survives).
 - **Report**: `profile A: transaction 0.39  db_access 0.34 (coalition)` under the unit lines
-  (the flat `tags:` line stays); extinct candidates + rounds under `--debug`; stderr
+  (the flat `concepts:` line stays); extinct candidates + rounds under `--debug`; stderr
   `Ecosystems: N profiled (…)`. Profiles never rank.
 
 On real corpora the flagship behavior is visible: units tagged `validation, db_access, mapping`
@@ -593,7 +621,7 @@ because flattened tokens carry no depth: sequential ifs and nested ifs used to h
 token bags, identical flow histograms, and score 1.0. Depth's 0.05 was carved entirely out of
 Flow (0.25 → 0.20) — nesting is flow-adjacent, so flow pays for it. Rendered as `nesting:` in the
 breakdown line. A nesting change is a body change: `snapshot.Digest` hashes Depth (snapshot
-Schema 3).
+Schema 4).
 
 `SizeRatio` is reported in the `Breakdown` but **not** scored — Jaccard already penalizes size
 mismatch through the union, so damping again would double-count it.
@@ -626,6 +654,13 @@ all 18 cobra labels reach the comparator; at the shipped `18` one does not — a
 leaves is the false positive.** Merge recall is 6/6 either way and the merge mean is 4.5 either
 way. A gate measured only as "labelled pairs retrieved" would score the old value higher, which is
 why the golden benchmark asserts on the false-positive side as well.
+
+**It also interacts with corpus-derived floors, in one direction.** The shape null is drawn over
+the `--min-nodes`-eligible units, so raising the floor shrinks the null population — on conc (81
+functions) past the 1 000-pair minimum, which declines calibration there entirely. See
+*Calibration*. The flag is hidden on every command (`MarkHidden`, alongside `--channel-k` and
+`--max-per-func`) but still parses and still has its config key; `cmd.defaultMinNodes` is the one
+definition.
 
 ### Comparator weights
 
@@ -720,8 +755,21 @@ Stages, all deterministic counting:
 1. **Features.** Per unit, a channel-prefixed set from material the frontend already produces:
    `sel:` selectors (nested tail included, so `c.httpClient.Do` gives `httpClient.Do`), `imp:`
    import paths, `id:` identifier stems split on camel/underscore boundaries, `lit:` the leading
-   token of each string literal, `call:` resolved call tokens, `act:` the L2/L3/L4 pattern renders
-   from the fingerprint, `flow:` binarized control-flow labels plus the go/select/chan flags.
+   token of each string literal, `call:` resolved call tokens, `act:` the fingerprint's
+   Weisfeiler-Lehman labels at h=2 on statement kinds, `flow:` binarized control-flow labels plus
+   the go/select/chan flags.
+
+   The `act:` channel read the multi-level pattern multiset's L2/L3/L4 renders when it was
+   written; that multiset is gone, and WL h=2 is its closest analogue — the round at which a
+   label folds in a statement node's grandchildren is the statement *with its structure*, which is
+   what L2 carried. `actionKinds` (`lexicon/features.go`) is the one judgement in that file, and
+   it is about shape only: statements, calls and assignments, never what a construct is *for*. h=2
+   and not h≥2, because an h=3 label at a statement describes a region and its evidence is already
+   implied by the h=2 labels beneath it — indexing both would double-count one piece of structure
+   in a channel whose weights are lifts. A feature name is `depth-2 IF#<hex>`: the hash keys it,
+   the description keeps it minimally legible if it ever surfaces through `Concept.Definition`.
+   `act:` is not in `seedChannels` and not in `nameableChannels`, so it can neither found a
+   concept nor name one — it only ever adds vocabulary to a concept someone else's evidence found.
 2. **Information window.** Keep features with `df >= MinDF` (2 — one function can relate nothing)
    and `ln(N/df) >= MinIDF` (1.0 nat). The upper bound is derived, `cap = ⌊N·e^−MinIDF⌋`, for the
    reason `retriever.Options.MinIDF` documents: an absolute cap of 50 means 1.5 nats on cobra and 5
@@ -872,7 +920,7 @@ Two empty tag sets score `0.0`, while two `leaf` roles score `1.0`. The opposite
 deliberate — carrying no tags is not agreement, whereas two leaves are the same role — so the two
 Jaccard-shaped functions must not be merged into one helper.
 
-`ontology.Validate()` checks nine axioms and is exercised both by tests and by `doppel ontology`.
+`ontology.Validate()` checks eight of the nine axioms and is exercised both by tests and by `doppel ontology`.
 Axiom 8, the tagger/ontology correspondence, lives in `internal/tagger` instead: the check needs the
 rule table, and importing `tagger` from `ontology` would be a cycle.
 
@@ -1063,7 +1111,8 @@ plus a count — an explanation is a sentence, not a dump. Sides are not named: 
 symmetric.
 
 Where it renders: the text pair list (`explain:`), the markdown pair list (`**Explain:**`), the
-HTML pair cards, and `snapshot.Pair.Explain` — which is why the schema is **6**. `Diff` does not
+dashboard's *What the canonicalizer did* panel, and `snapshot.Pair.Explain` — which is part of why
+the schema bumped (to **6** on the line that introduced it, and **7** after the merge). `Diff` does not
 diff it, for the reason `Reasons` was dropped in schema 2. The hook digests deliberately do **not**
 carry it (they are bounded summaries), and neither do the census F-lines. Like culture, habitat,
 profile and kind notes, it annotates: no score, no ranking key and no filter reads it, and the
@@ -1073,7 +1122,9 @@ golden scorecard is byte-identical with it in place.
 
 The markdown report (`--output`) opens with a **What doppel sees** section: the concept vocabulary
 and which concepts are *absent*, a package duplication map, per-package habitat norms, the arena
-ecosystem split, and the retrieval channel mix. Four mermaid diagrams carry it.
+ecosystem split, the corpus metrics and the retrieval channel mix. Three mermaid diagrams carry it
+(concepts, package duplication, habitats); the metrics and the channel mix are prose and tables,
+and the fourth diagram in the document belongs to the families section.
 
 The point is that all of this was already computed and then discarded. `culture.Stats`,
 `retriever.Stats` and `family.Stats` went to stderr and died there; `Model.HabitatNorm`,
@@ -1175,7 +1226,7 @@ contains, from the two models that had no caller outside their own tests:
   stderr tally and nothing else. Those are the more interesting ones, so they sort first and carry
   a marker. The marker column is emitted only when something is marked.
 
-`practiceWeight` in `cmd/overview.go` duplicates the four prototype channel weights, which live
+`practiceWeight` in `cmd/overview.go` duplicates the five prototype channel weights, which live
 unexported in `culture`. Four integers were cheaper than widening that package's API — but the
 table has to track it.
 
@@ -1278,16 +1329,32 @@ never learns about `culture`, and `cmd` queries the model.
   always draws the same map, which is what lets the page itself stay byte-identical.
 - **Bodies are bounded and the bound is reported.** `parser.CodeUnit.Body` already holds full source
   text, but it is the only part of the payload that scales with corpus size rather than with the
-  number of findings. Bodies are admitted in descending edge rank until `maxBodyBytes` (4 MB) is
+  number of findings. Bodies are admitted in descending edge rank until `maxBodyBytes` (3 MB) is
   spent, so what a reader is most likely to open survives the bound; the count dropped goes to
   stderr and onto the page, and a function without one shows its `file:line` instead.
 - **The residual-difference view is a text diff, and says so.** Screen 3 was specified to highlight
-  the shared structural patterns inside both bodies. There is no data for that:
-  `analyzer.SharedChain.Render` is a motif string, and `fingerprint.extractPatterns` hashes patterns
-  during `Build` and keeps no mapping back to the tokens that produced them. The page lists the
-  chains beside the bodies (the actual evidence) and runs a line-level LCS diff over the two
-  sources, captioned as a textual comparison rather than the structural claim the score makes.
-  Highlighting would mean carrying source spans through the fingerprint's hot path.
+  the shared structural patterns inside both bodies. There is no data for that: a shared chain is a
+  Weisfeiler-Lehman label, which is a hash of a whole subtree, so `SharedChain.Render` can *name*
+  it (`depth-2 IF`, via `fingerprint.DescribeLabel`) but nothing maps it back to the tokens that
+  produced it. The page lists the chains beside the bodies (the actual evidence) and runs a
+  line-level LCS diff over the two sources, captioned as a textual comparison rather than the
+  structural claim the score makes. Highlighting would mean carrying source spans through the
+  fingerprint's hot path. What the page *can* say about the residual it now says in words, in the
+  **What the canonicalizer did** panel: `SimilarPair.Explain` is the pipeline's own sentence about
+  what had to be rewritten before the two bodies matched.
+- **What the merge added to the page.** Three quantities from the WL line reach it, all additive
+  and none of them scored: `Edge.Containment` (in the score row and as the sixth breakdown bar),
+  `Edge.Explain` (its own panel), and the two corpus metrics — compression ratio and the
+  nearest-neighbour median — as fact tiles. `Facts.Compression`/`NNScored`/`NNP50`/`NNP90` come
+  from `Result` directly rather than through `reporter.Overview`, because a run can be built with
+  no overview at all and the numbers exist either way. The breakdown's first component was renamed
+  `ast` → `wl`, which is a rename of the label to match what the number has become: a
+  corpus-weighted multiset Jaccard over WL bags, not a Jaccard over token 3-grams.
+- **The dashboard is not fed by `--format json`.** It has its own `dashboard.Payload` (`Schema` 1,
+  independent of `snapshot.Schema`), marshalled by Go and inlined into the page at render time.
+  That is worth knowing before assuming the snapshot and the page must agree: they share no type,
+  and a field added to one reaches the other only if somebody adds it there too. It also means the
+  snapshot's schema-7 additions could not have broken the page even by accident.
 - **`DOPPEL_DASHBOARD_ASSETS=<dir>`** reads the assets off disk instead of the embedded copy, so
   editing `app.js` and re-running a prebuilt binary is the whole cycle (`task dashboard-dev`).
   `TestDevAssetsMatchEmbedded` pins the two paths to the same bytes. Nothing ships depending on it.
@@ -1357,10 +1424,30 @@ be stated as a rate instead of a number. `--threshold 0.60` is loose on a corpus
 and strict on one of 8000; "admit 1% of random pairs" means the same thing on both. **This is the
 default** (`defaultCalibrateRate` = 0.01, in `cmd/config.go`): the three similarity floors are
 corpus-derived unless someone pins one, because a fixed floor is an operating point calibrated for
-somebody else's repo and no end user has a basis for moving it. Measured at
-rate 0.01: the calibrated code-shape threshold is **0.45 on moby, 0.53 on cobra, 0.85 on conc**
-(where random pool methods genuinely look alike) against the fixed 0.60, and
-struct-min lands between 0.29 and 0.51 against the fixed 0.40 merge gate.
+somebody else's repo and no end user has a basis for moving it.
+
+Measured at rate 0.01 **on the merged tree**, where the code-shape null is drawn against the
+corpus-weighted WL Jaccard rather than the old token-3-gram one: threshold **0.33 prometheus,
+0.35 hugo, 0.35 moby, 0.41 gin, 0.44 cobra, 0.45 chi**, with struct-min from 0.29 to 0.51. The
+whole ladder sits *lower* than the fixed 0.60 and lower than the same measurement on the
+pre-merge tool (which read 0.45 moby / 0.53 cobra), which is what a WL score distribution looks
+like: a WL bag weights every shared label by corpus surprisal, so two unrelated bodies agree on
+far less of what is being counted than two unrelated token bags did, and the 99th percentile of
+the null moves down with it. Nothing here says the operating point is *better*; it says the same
+question now has a different answer, and pinning the old numbers by hand would be answering the
+old one.
+
+**`--min-nodes` and calibration are separate knobs, and the merge made that visible.** Calibration
+derives a *score* floor from the null distribution; `--min-nodes` (18, raised from 12 for the WL
+shape channel) is an *eligibility* rule about which functions the channel indexes at all. Neither
+subsumes the other — a corpus of accessors has a null distribution made of accessors, so a rate
+would happily admit them — and the shape null is drawn over exactly the `--min-nodes`-eligible
+units, so raising the floor shrinks the null population. On **conc** (81 functions) that is now
+decisive: at 18 it yields 351 eligible shape null pairs against the 1 000 the calibration needs,
+so calibration is **declined** and conc runs at the fixed 0.60/0.0. At `--min-nodes 12` the same
+corpus calibrates to 0.85. That is the guard doing its job — eight samples above a 1% cut is not
+a calibration — and it is stated on stderr, not silent. Whether 18 is right for a corpus that
+small is a measurement question, not a merge question; the seam is here for it.
 
 Mechanics, all deterministic by construction: units are put in a canonical order (`package.name`,
 file, line) so walk order cannot matter; the seed is FNV-1a over those names; a 64-bit LCG draws
@@ -1484,7 +1571,7 @@ to rewrite on every turn:
   about pairs nobody edited. It also added `Containment`, which earns its bytes the way rule four
   requires: containment is reported on every pair in all four output formats now, and
   `--format json` is the machine-readable form of that same report, so the field has a reader
-  rather than being write-only. `Schema` 6 (shape line) is three
+  rather than being write-only. `Schema` 6 (shape line) is four
   changes shipped as one bump. The shape retrieval channel indexes WL labels instead of the pattern
   multiset, so a schema-5 baseline and a schema-6 run hold *different candidate sets* — pairs appear
   and vanish with neither body touched, which is exactly the movement `Attributable` exists to avoid
@@ -1546,7 +1633,7 @@ reason rather than returning a partial delta.
 
 **The hook contract**, in `cmd/hook.go`:
 
-- Both subcommands read the hook payload on stdin and write a hook response on stdout. **Neither ever
+- All four subcommands read the hook payload on stdin and write a hook response on stdout. **None ever
   exits non-zero or writes to stderr** — every failure path ends at `emitNothing`. A SessionStart
   hook's stderr surfaces to the user as a broken-tool notice, and blocking a session over a
   measurement would be indefensible.
@@ -1668,7 +1755,7 @@ shell and behaves identically on Windows and Unix, and which is also the only fo
   naming heuristic.
 - Tested: `ontology`, `fingerprint`, `analyzer`, `comparator`, `tagger`, `parser`,
   `concepter/role`, `retriever`, `culture`, `lexicon`, `reporter`, `snapshot`, `cmd` config
-  precedence and hook baseline handling. Untested and worth covering: `mapper`, `clique` (covered
+  precedence and hook baseline handling. Untested and worth covering: `clique`, `clique` (covered
   only through `family`'s tests).
 - `lexicon`'s `TestNoSeeds` is the language-portability claim as a test: the learner must produce
   usable concepts from a corpus with **no seed labels at all**, because that is what a frontend for
@@ -1815,8 +1902,8 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   declaration of that name. The lift is real — concurrency functions do unlock far more than the
   corpus does — but the label names one arbitrary declaration rather than the practice. Fixing it
   needs `go/types`; the practice section is now the most visible place this shows.
-- **The practice section is bounded by row count, not by importance.** Six concepts, eight
-  associations per direction, ten drifting functions — and on prometheus that is 8 of 371
+- **The practice section is bounded by row count, not by importance.** Six concepts, six
+  associations per direction, ten drifting functions — and on prometheus that is 6 of 371
   associations and 10 of 32 unusual realizations. Strongest-first is a good proxy and not the same
   thing as most-relevant: a weak association between two subsystems that should never touch may
   matter more than a strong one inside a package. The full lists remain reachable only through the
