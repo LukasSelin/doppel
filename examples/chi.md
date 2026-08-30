@@ -9,7 +9,7 @@ HTTP router; a narrow core with a middleware package beside it
 | Corpus | [chi](https://github.com/go-chi/chi) |
 | Pinned at | `v5.3.2` (`38939062c5df4d3e8814aad1a488983112627ced`) |
 | Project since | 2015 |
-| doppel | `2e3a4cc` |
+| doppel | `bc0615f` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -137,6 +137,12 @@ Three channels propose candidates independently — shared rare *structure*, sha
 Each function is also an arena where its candidate concepts compete for its evidence. 7 functions reached an equilibrium: **7** settled on a single concept, **0** on a coalition, **0** hold concepts this corpus says do not go together.
 
 _3 further pairs were held back so no single function fills the report._
+
+### Corpus metrics
+
+**Compression ratio:** `5.32`x — this corpus's canonical function bodies contain **11155 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **2097 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
+
+**Nearest-neighbour code-shape:** of **183 functions**, **131** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.41` / `1.00` / `1.00`, and 30% of them (39 of 131) already clear this run's threshold of `0.60`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 52 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 

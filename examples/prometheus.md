@@ -9,7 +9,7 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `2e3a4cc` |
+| doppel | `bc0615f` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -186,6 +186,12 @@ _78 further packages are modeled and not drawn._ Most uniform is `tracing` (norm
 Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **12934 candidate pairs** (shape 1950, concept 3669, call 8141), of which 57% arrived on call evidence alone and 27% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 2400 functions reached an equilibrium: **1707** settled on a single concept, **693** on a coalition, **0** hold concepts this corpus says do not go together.
+
+### Corpus metrics
+
+**Compression ratio:** `9.07`x — this corpus's canonical function bodies contain **468473 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **51658 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
+
+**Nearest-neighbour code-shape:** of **5469 functions**, **3318** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.54` / `1.00` / `1.00`, and 46% of them (1523 of 3318) already clear this run's threshold of `0.60`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 2151 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 

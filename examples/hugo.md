@@ -9,7 +9,7 @@ static site generator; a large monolith with heavy template and resource subsyst
 | Corpus | [hugo](https://github.com/gohugoio/hugo) |
 | Pinned at | `v0.165.0` (`76a5e1880ab46688155b02e99bab9be2a6134492`) |
 | Project since | 2013 |
-| doppel | `2e3a4cc` |
+| doppel | `bc0615f` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -184,6 +184,12 @@ _114 further packages are modeled and not drawn._ Most uniform is `partials` (no
 Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **12833 candidate pairs** (shape 1004, concept 4057, call 8265), of which 61% arrived on call evidence alone and 30% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 1997 functions reached an equilibrium: **1408** settled on a single concept, **589** on a coalition, **0** hold concepts this corpus says do not go together.
+
+### Corpus metrics
+
+**Compression ratio:** `7.22`x — this corpus's canonical function bodies contain **337951 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **46792 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
+
+**Nearest-neighbour code-shape:** of **5438 functions**, **3279** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.40` / `0.95` / `1.00`, and 29% of them (937 of 3279) already clear this run's threshold of `0.60`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 2159 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 

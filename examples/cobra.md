@@ -9,7 +9,7 @@ CLI framework; one dominant type with a long method set, plus shell-completion g
 | Corpus | [cobra](https://github.com/spf13/cobra) |
 | Pinned at | `v1.10.2` (`88b30ab89da2d0d0abb153818746c5a2d30eccec`) |
 | Project since | 2015 |
-| doppel | `2e3a4cc` |
+| doppel | `bc0615f` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -141,6 +141,12 @@ Most uniform is `doc` (norm `0.93`); most varied is `cobra` (norm `0.91`).
 Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **796 candidate pairs** (shape 59, concept 85, call 712), of which 83% arrived on call evidence alone and 7% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 125 functions reached an equilibrium: **125** settled on a single concept, **0** on a coalition, **0** hold concepts this corpus says do not go together.
+
+### Corpus metrics
+
+**Compression ratio:** `5.51`x — this corpus's canonical function bodies contain **14587 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **2649 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
+
+**Nearest-neighbour code-shape:** of **269 functions**, **213** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.49` / `1.00` / `1.00`, and 34% of them (73 of 213) already clear this run's threshold of `0.60`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 56 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
