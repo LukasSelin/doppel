@@ -17,6 +17,12 @@ coverage.html
 
 # Vendor directory (if used)
 vendor/
+# ...except the dashboard's, which is design-system and third-party assets the
+# page inlines, not Go modules. The Go rule above matches a directory named
+# "vendor" at any depth, so without this the README recording each asset's
+# source and licence is silently uncommittable — and broadsheet.css only
+# survives because it was moved as a tracked rename.
+!internal/dashboard/assets/vendor/
 
 # IDE
 .vscode/
