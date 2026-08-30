@@ -63,7 +63,7 @@ func sampleInputs() ([]parser.CodeUnit, []concepter.ConceptDoc, []analyzer.Simil
 
 func buildSample() Snapshot {
 	u, d, p, c := sampleInputs()
-	return Build(u, d, p, c, "", "test", Params{Threshold: 0.6, MinNodes: 12, TestsMode: "exclude"})
+	return Build(u, d, p, c, "", "test", Params{Threshold: 0.6, MinNodes: 12, TestsMode: "exclude"}, CorpusMetrics{})
 }
 
 // TestBuildIsDeterministic is the invariant the whole tool rests on: an
@@ -198,7 +198,7 @@ func TestPathsAreRelativeAndSlashed(t *testing.T) {
 	file := filepath.Join(root, "internal", "pkg", "a.go")
 	units := []parser.CodeUnit{unit("app", "F", file, 1, 20)}
 
-	s := Build(units, []concepter.ConceptDoc{{}}, nil, nil, root, "test", Params{})
+	s := Build(units, []concepter.ConceptDoc{{}}, nil, nil, root, "test", Params{}, CorpusMetrics{})
 
 	got := s.Units[0].File
 	if want := "internal/pkg/a.go"; got != want {
@@ -217,7 +217,7 @@ func TestPathsAreRelativeAndSlashed(t *testing.T) {
 func TestPathsOutsideRootStaySlashed(t *testing.T) {
 	units := []parser.CodeUnit{unit("app", "F", filepath.Join("elsewhere", "a.go"), 1, 20)}
 
-	s := Build(units, []concepter.ConceptDoc{{}}, nil, nil, "", "test", Params{})
+	s := Build(units, []concepter.ConceptDoc{{}}, nil, nil, "", "test", Params{}, CorpusMetrics{})
 
 	if got := s.Units[0].File; got != "elsewhere/a.go" {
 		t.Errorf("File = %q, want elsewhere/a.go", got)
@@ -264,7 +264,7 @@ func TestBuildFloorsMergeWorthyOnShape(t *testing.T) {
 	u, d, p, c := sampleInputs()
 	p[0].Score = comparator.MergeShapeFloor - 0.01
 
-	s := Build(u, d, p, c, "", "test", Params{Threshold: 0.6, MinNodes: 12, TestsMode: "exclude"})
+	s := Build(u, d, p, c, "", "test", Params{Threshold: 0.6, MinNodes: 12, TestsMode: "exclude"}, CorpusMetrics{})
 
 	if s.Pairs[0].MergeWorthy {
 		t.Errorf("pair at shape %.2f recorded merge-worthy on context alone", p[0].Score)

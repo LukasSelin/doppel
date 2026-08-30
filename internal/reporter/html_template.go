@@ -251,6 +251,27 @@ var htmlTemplate = template.Must(template.New("report").Funcs(template.FuncMap{
   </section>
 {{ end }}
 
+{{ if .Report.HasMetrics }}
+  <section style="display:flex; flex-direction:column; gap:20px">
+    <div style="max-width:36em">
+      <span class="kicker" style="color:var(--color-accent-700)">Corpus metrics</span>
+      <h2 style="font-size:38px; line-height:1.04; margin:10px 0 14px">How much of this repeats, by shape</h2>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:56px 72px; align-items:flex-start">
+      <div class="stat">
+        <div class="mono stat-n">{{ printf "%.2f" .Report.Metrics.Ratio }}x</div>
+        <span class="stat-l">compression ratio</span>
+        <span class="stat-s" style="max-width:26em; display:block">{{ comma .Report.Metrics.TotalNodes }} canonical AST nodes hash-cons (same node kind and every child, all the way down) to {{ comma .Report.Metrics.UniqueSubtrees }} distinct subtree shapes — nodes divided by shapes, always &ge; 1.0. Never feeds a score.</span>
+      </div>
+      <div class="stat">
+        <div class="mono stat-n">{{ printf "%.2f" .Report.Metrics.NNP50 }} / {{ printf "%.2f" .Report.Metrics.NNP90 }} / {{ printf "%.2f" .Report.Metrics.NNP99 }}</div>
+        <span class="stat-l">nearest-neighbour code-shape (p50 / p90 / p99)</span>
+        <span class="stat-s" style="max-width:30em; display:block">Of {{ comma .Report.Metrics.NNTotal }} functions, {{ comma .Report.Metrics.NNScored }} had a code-shape neighbour among the pairs retrieval actually scored — {{ printf "%.0f" .Report.Metrics.PctAtOrAboveThreshold }}% of those ({{ .Report.Metrics.NNAtOrAboveThreshold }} of {{ .Report.Metrics.NNScored }}) already clear this run's threshold. <strong>Not</strong> an exhaustive nearest-neighbour search — it is bounded by the same three retrieval channels the pair list is, so the remaining {{ comma .Report.Metrics.Unscored }} functions have no <em>scored</em> neighbour, not necessarily no similar one.</span>
+      </div>
+    </div>
+  </section>
+{{ end }}
+
   <section style="display:flex; flex-direction:column; gap:24px; max-width:1000px">
     <div class="rule-fine"></div>
     <div style="display:flex; flex-wrap:wrap; gap:48px">

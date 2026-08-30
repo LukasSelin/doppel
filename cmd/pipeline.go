@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"go/ast"
 	"io"
 	"io/fs"
 	"path/filepath"
+	"sort"
 
 	"github.com/LukasSelin/doppel/internal/analyzer"
 	"github.com/LukasSelin/doppel/internal/calibrate"
@@ -69,10 +71,45 @@ type Result struct {
 	// nil for an empty corpus. Nothing consumes it yet.
 	WL *fingerprint.LabelIDF
 
+	// ConsStats is the corpus-wide hash-cons of every canonical function
+	// body: total canonical AST nodes, and how many distinct subtree shapes
+	// (by structural hash) those nodes reduce to. TotalNodes/UniqueSubtrees
+	// is the compression ratio the markdown/HTML preamble and the JSON
+	// snapshot report — see fingerprint.ConsStats.Ratio. It never feeds any
+	// score: it is a corpus-health number, computed once alongside WL.
+	ConsStats fingerprint.ConsStats
+
 	// Retrieval is how the candidate set was found — which channels admitted
 	// how much. It rides on Result because the report explains its own pair
 	// list with it; before that it was computed, printed to stderr and dropped.
 	Retrieval retriever.Stats
+
+	// NN is the nearest-neighbour code-shape distribution: for each function,
+	// its best code-shape score among the pairs retrieval actually scored —
+	// the retrieval union, before any --struct-min filter, since that is the
+	// full set every union pair got an exact fingerprint.Breakdown for. It is
+	// deliberately NOT an exhaustive nearest-neighbour search (O(n^2) is not
+	// acceptable at corpus scale): a function retrieval never paired with
+	// anyone is excluded from the percentiles and counted separately. See
+	// nnDistribution.
+	NN NNStats
+}
+
+// NNStats is the corpus-wide nearest-neighbour code-shape summary — see
+// Result.NN for what population it is (and is not) drawn from.
+type NNStats struct {
+	Total  int // functions in the run
+	Scored int // of Total, how many appeared in at least one pair retrieval scored
+
+	// P50/P90/P99 are nearest-rank percentiles (calibrate.Quantile's
+	// convention: a rank, never an interpolation, so the reported value is a
+	// score some function's best neighbour actually had) over the Scored
+	// functions' best code-shape scores, ascending.
+	P50, P90, P99 float64
+
+	// AtOrAboveThreshold is, of the Scored functions, how many had a best
+	// score >= the run's effective threshold (post-config, post-calibrate).
+	AtOrAboveThreshold int
 }
 
 // analyze runs the pipeline over root and returns everything downstream stages
@@ -178,6 +215,16 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 		bags[i] = units[i].Fingerprint.WL
 	}
 	res.WL = fingerprint.LabelWeights(bags)
+
+	// Corpus-wide compression: hash-cons every canonical body's subtrees and
+	// keep the two totals the ratio needs. Computed alongside WL because it
+	// is the same kind of fact — a static property of the canonical AST
+	// forest over exactly this population — and never feeds any score.
+	canonical := make([]*ast.FuncDecl, len(units))
+	for i := range units {
+		canonical[i] = units[i].Canonical
+	}
+	res.ConsStats = fingerprint.ConsCorpus(canonical)
 
 	// Tag every unit, counting tag occurrences as we go: the counts become
 	// the corpus statistics that weight concept matching. A tag most units
@@ -304,10 +351,19 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 			pairs[i].Evidence = &ev
 		}
 
+		// Nearest-neighbour code-shape distribution, over exactly this set:
+		// the retrieval union with every pair's exact fingerprint.Breakdown
+		// already attached, before --struct-min can drop any of them. That
+		// filter is a selection stage for the *report*, not a reason to
+		// declare a function neighbourless.
+		res.NN = nnDistribution(pairs, len(units), p.Threshold)
+
 		if p.StructMin > 0 {
 			pairs = filterByOverlap(pairs, p.StructMin)
 			fmt.Fprintf(progress, "  %d pairs remain after struct-min=%.2f filter\n", len(pairs), p.StructMin)
 		}
+	} else {
+		res.NN = nnDistribution(nil, len(units), p.Threshold)
 	}
 
 	// Annotate surviving pairs with unusual concept realizations and habitat
@@ -356,6 +412,57 @@ func filterByOverlap(pairs []analyzer.SimilarPair, min float64) []analyzer.Simil
 	return out
 }
 
+// nnDistribution computes each function's best code-shape score among pairs,
+// which must be the retrieval union with Score already set on every entry
+// (true of both branches that call this: the full pre-struct-min set, and
+// nil when retrieval found nothing to compare).
+//
+// A function's best score is the maximum Score over every pair it appears in
+// as either side, tracked in a plain index-sized slice rather than a map: the
+// result is a pointwise maximum, so it cannot depend on the order pairs
+// arrive in, and no sort is needed to make that true. total is len(units) —
+// the population Scored is drawn from and NOT how many were scored, since a
+// function retrieval never paired with anyone contributes nothing here. That
+// is the recall bound every renderer of NNStats must repeat: this is the
+// distribution over what retrieval's three bounded channels actually found,
+// never an exhaustive O(n^2) nearest-neighbour search.
+func nnDistribution(pairs []analyzer.SimilarPair, total int, threshold float64) NNStats {
+	best := make([]float64, total)
+	has := make([]bool, total)
+	for _, p := range pairs {
+		for _, idx := range [2]int{p.AIdx, p.BIdx} {
+			if idx < 0 || idx >= total {
+				continue
+			}
+			if !has[idx] || p.Score > best[idx] {
+				best[idx], has[idx] = p.Score, true
+			}
+		}
+	}
+	scores := make([]float64, 0, total)
+	for i := 0; i < total; i++ {
+		if has[i] {
+			scores = append(scores, best[i])
+		}
+	}
+	sort.Float64s(scores)
+
+	atOrAbove := 0
+	for _, s := range scores {
+		if s >= threshold {
+			atOrAbove++
+		}
+	}
+	return NNStats{
+		Total:              total,
+		Scored:             len(scores),
+		P50:                calibrate.Quantile(scores, 0.50),
+		P90:                calibrate.Quantile(scores, 0.90),
+		P99:                calibrate.Quantile(scores, 0.99),
+		AtOrAboveThreshold: atOrAbove,
+	}
+}
+
 // snapshotOf converts a run into the comparable record of it.
 func snapshotOf(res Result, pairs []analyzer.SimilarPair) snapshot.Snapshot {
 	return snapshot.Build(res.Units, res.Docs, pairs, res.TagCounts, res.Root, buildVersion(),
@@ -369,5 +476,15 @@ func snapshotOf(res Result, pairs []analyzer.SimilarPair) snapshot.Snapshot {
 			TestsMode:  res.Params.TestsMode,
 			Generated:  res.Params.Generated,
 			Calibrate:  res.Params.Calibrate,
+		},
+		snapshot.CorpusMetrics{
+			TotalNodes:           res.ConsStats.TotalNodes,
+			UniqueSubtrees:       res.ConsStats.UniqueSubtrees,
+			NNTotal:              res.NN.Total,
+			NNScored:             res.NN.Scored,
+			NNP50:                res.NN.P50,
+			NNP90:                res.NN.P90,
+			NNP99:                res.NN.P99,
+			NNAtOrAboveThreshold: res.NN.AtOrAboveThreshold,
 		})
 }

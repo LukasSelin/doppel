@@ -37,6 +37,17 @@ func buildOverview(res Result, suppressed int) *reporter.Overview {
 		UnionPairs:       res.Retrieval.Union,
 		OnlyConceptPairs: res.Retrieval.OnlyConcept,
 		OnlyCallPairs:    res.Retrieval.OnlyCall,
+
+		Metrics: reporter.CorpusMetrics{
+			TotalNodes:           res.ConsStats.TotalNodes,
+			UniqueSubtrees:       res.ConsStats.UniqueSubtrees,
+			NNTotal:              res.NN.Total,
+			NNScored:             res.NN.Scored,
+			NNP50:                res.NN.P50,
+			NNP90:                res.NN.P90,
+			NNP99:                res.NN.P99,
+			NNAtOrAboveThreshold: res.NN.AtOrAboveThreshold,
+		},
 	}
 
 	pkgFuncs := map[string]int{}

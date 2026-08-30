@@ -793,6 +793,26 @@ Rules that hold it together:
   has 168 habitats); family diagrams cap at 8 members, because the picture must draw every edge to
   show the clique property and 55 members is 1485 edges.
 
+A **Corpus metrics** subsection carries two further numbers, in the markdown/HTML preamble and in
+`--format json` as `corpusMetrics` (not in `snapshot.Schema`'s Params or Pair/Unit types, so it
+never affects comparability): **compression ratio**, total canonical AST nodes divided by the
+count of distinct subtree shapes among them once `fingerprint.ConsCorpus` hash-conses every
+canonical body (`internal/fingerprint/cons.go`, mirroring `wl.go`'s FNV idiom but preserving child
+order — a hash-cons answers "is this literally the same subtree", not "the same shape", so `a - b`
+and `b - a` must not collapse the way WL's sorted-children recurrence lets them); and the
+**nearest-neighbour code-shape distribution**, each function's best code-shape score among the
+pairs retrieval already scored (the union, before any `--struct-min` filter — every one of those
+pairs already carries an exact `fingerprint.Breakdown`), reported as p50/p90/p99 (nearest-rank, no
+interpolation) and the fraction at or above the run's own threshold. Both are computed once in
+`cmd/pipeline.go` (`Result.ConsStats`, `Result.NN`) alongside the existing `WL` and `TagCounts`
+corpus statistics, for the same reason — a corpus statistic belongs where the population is
+settled — and neither feeds any score. The nearest-neighbour figure is deliberately **not** an
+exhaustive search: that is O(n²) fingerprint comparisons, the same cost `--min-nodes` and the
+retrieval channels already exist to avoid, so a function retrieval never paired with anyone is
+excluded from the percentiles and counted separately rather than assumed to have no similar code
+at all — every rendering of the number restates that caveat rather than letting the figure imply
+more than it measured.
+
 A second section, **Local practice**, describes how the corpus *writes* things rather than what it
 contains, from the two models that had no caller outside their own tests:
 

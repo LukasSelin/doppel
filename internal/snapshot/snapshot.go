@@ -87,6 +87,43 @@ type Snapshot struct {
 	Roles     []RoleCount `json:"roles"`    // sorted by role
 	Units     []Unit      `json:"units"`    // sorted by key
 	Pairs     []Pair      `json:"pairs"`    // sorted by score desc, then a, then b
+
+	// CorpusMetrics carries the two T10 corpus-health numbers: hash-cons
+	// compression of the canonical AST forest, and the nearest-neighbour
+	// code-shape distribution over the retrieval union. Additive to this
+	// schema version — see the type doc for what it does and does not claim.
+	CorpusMetrics CorpusMetrics `json:"corpusMetrics"`
+}
+
+// CorpusMetrics is the plain-data mirror of cmd's fingerprint.ConsStats and
+// NNStats — flattened scalars, no maps, so TestSchemaHasNoMaps holds without
+// special-casing this field.
+//
+// Neither number changes a pair, a score, or a ranking: both are read-only
+// summaries of the run, computed once and carried here so a consumer of
+// --format json sees exactly what the markdown/HTML preamble states in
+// prose.
+type CorpusMetrics struct {
+	// TotalNodes / UniqueSubtrees are corpus totals across every canonical
+	// function body, hash-consed by exact structural equality (same node
+	// kind, same children, recursively). TotalNodes / UniqueSubtrees is the
+	// compression ratio, always >= 1.0 for a non-empty corpus.
+	TotalNodes     int `json:"totalNodes"`
+	UniqueSubtrees int `json:"uniqueSubtrees"`
+
+	// NNTotal is every function in the run; NNScored is how many of them
+	// appeared in at least one pair the retrieval union actually scored — a
+	// recall-bounded population, NOT the result of an exhaustive
+	// nearest-neighbour search. NNP50/NNP90/NNP99 are nearest-rank
+	// percentiles (no interpolation) of the Scored functions' best
+	// code-shape score, and NNAtOrAboveThreshold is how many of them already
+	// clear the run's own (post-calibration) threshold.
+	NNTotal              int     `json:"nnTotal"`
+	NNScored             int     `json:"nnScored"`
+	NNP50                float64 `json:"nnP50"`
+	NNP90                float64 `json:"nnP90"`
+	NNP99                float64 `json:"nnP99"`
+	NNAtOrAboveThreshold int     `json:"nnAtOrAboveThreshold"`
 }
 
 // Params records the knobs a run used. Diff compares them because every doppel
@@ -171,20 +208,26 @@ type Pair struct {
 // it by name instead has already caused one silent-miss bug in this codebase.
 // Build converts to names once, here, at the boundary where positions stop
 // being meaningful.
+//
+// metrics is copied straight through: it is already the plain-data form
+// cmd computed alongside everything else in Result, and — unlike every other
+// argument here — carries no per-unit or per-pair identity for Build to
+// resolve.
 func Build(units []parser.CodeUnit, docs []concepter.ConceptDoc, pairs []analyzer.SimilarPair,
-	tagCounts map[ontology.TermID]int, root, version string, p Params) Snapshot {
+	tagCounts map[ontology.TermID]int, root, version string, p Params, metrics CorpusMetrics) Snapshot {
 
 	keys := unitKeys(units, root)
 
 	s := Snapshot{
-		Schema:    Schema,
-		Doppel:    version,
-		Ontology:  ontology.Version,
-		Params:    p,
-		Functions: len(units),
-		Concepts:  tagCountsOf(tagCounts),
-		Units:     make([]Unit, 0, len(units)),
-		Pairs:     make([]Pair, 0, len(pairs)),
+		Schema:        Schema,
+		Doppel:        version,
+		Ontology:      ontology.Version,
+		Params:        p,
+		Functions:     len(units),
+		Concepts:      tagCountsOf(tagCounts),
+		Units:         make([]Unit, 0, len(units)),
+		Pairs:         make([]Pair, 0, len(pairs)),
+		CorpusMetrics: metrics,
 	}
 
 	roleCounts := make(map[string]int)

@@ -62,6 +62,12 @@ type HTMLReport struct {
 	DriftMore      int
 	Families       []HTMLFamily
 	FamiliesMore   int
+
+	// Metrics carries the two T10 corpus-health numbers. HasMetrics gates the
+	// section: the zero CorpusMetrics of a report built with no Overview
+	// must render nothing, exactly as the markdown preamble does.
+	Metrics    CorpusMetrics
+	HasMetrics bool
 }
 
 // HTMLStrip is one family whose members all live in a single file, drawn as a

@@ -71,6 +71,8 @@ func buildHTMLReport(res Result, ov *reporter.Overview, fams []family.Family,
 	r.Habitats = htmlHabitats(ov)
 	r.Families, r.FamiliesMore = htmlFamilies(res, fams, famStats)
 	r.Strips = htmlStrips(res, fams, pairs)
+	r.Metrics = ov.Metrics
+	r.HasMetrics = ov.Metrics.TotalNodes > 0 || ov.Metrics.NNTotal > 0
 	return r
 }
 
