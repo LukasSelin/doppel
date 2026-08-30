@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>doppel — seven public corpora</title>
+<meta name="description" content="doppel's interactive report on seven pinned public Go projects, from moby down to conc.">
+<!-- The same stylesheet the reports inline, copied into the site by
+     .github/workflows/pages.yml. Never hand-edit the vendored original. -->
+<link rel="stylesheet" href="../broadsheet.css">
+<style>
+  /* Layout only, and deliberately the same vocabulary as the landing page:
+     the two are one document, and a second set of spacing decisions here
+     would be the drift this tool exists to measure. */
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: var(--space-6) var(--space-4) var(--space-8);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+  }
+  .kicker {
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-neutral-700);
+  }
+  .rule-heavy { height: 5px; background: var(--color-text); }
+  .rule-fine { height: 1px; background: var(--color-divider); }
+  .masthead { display: flex; flex-direction: column; gap: var(--space-3); }
+  .masthead-title { margin: var(--space-1) 0 0; font-size: 44px; line-height: 1; }
+  .lede { font-size: 19px; line-height: 1.5; margin: 0; }
+  p { line-height: 1.6; margin: 0; }
+  section { display: flex; flex-direction: column; gap: var(--space-3); }
+  h2 { margin: 0; font-size: 22px; }
+  a { color: var(--color-accent-700); }
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--space-3);
+  }
+  /* .card, .card-kicker, .card-title, .card-body and .card-meta are all
+     broadsheet's own — a card here is a div rather than the landing page's
+     anchor because it carries three destinations, and the design system's
+     flex column already spaces the rows. The one addition is figure
+     alignment, so the counts read down the column. */
+  .card-meta { font-variant-numeric: tabular-nums; }
+  footer { font-size: 13px; color: var(--color-neutral-700); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="masthead">
+    <div class="rule-heavy"></div>
+    <div>
+      <div class="kicker"><a href="../">doppel</a> · seven public corpora</div>
+      <h1 class="masthead-title">The ladder</h1>
+    </div>
+    <p class="lede">
+      The same interactive report, run over seven pinned public Go projects — ordered
+      old-and-complex to new-and-narrow, from a decade of container engine down to one library
+      written in a sitting.
+    </p>
+    <div class="rule-fine"></div>
+  </header>
+
+  <section>
+    <p>
+      Doppel's models are all corpus-relative: information content, df caps, role thresholds,
+      habitat temperature and the concept vocabulary itself are learned from the corpus being
+      analysed. So the interesting question is not whether it works but what it degrades into at
+      one end of that range and what it drowns in at the other. Both ends are below.
+    </p>
+    <p class="text-muted">
+      Every corpus is pinned to a release tag, so each pair a report names can be opened in that
+      exact tree and judged. The counts under each card are the production population —
+      <code>--tests exclude --generated exclude</code>, the defaults — and the
+      <strong>code-shape floor</strong> is not a setting but a measurement: what a random,
+      unrelated pair scores in that corpus at the default one percent rate.
+    </p>
+  </section>
+
+  <section>
+    <h2>The corpora</h2>
+    <div class="cards">
+@@CARDS@@
+    </div>
+  </section>
+
+  <footer>
+    <div class="rule-fine" style="margin-bottom: var(--space-3)"></div>
+    <!-- Substituted by .github/workflows/pages.yml, exactly as on the landing
+         page: a report carries no build identity, because an unchanged tree
+         must render byte-identical HTML. -->
+    Generated from
+    <a href="https://github.com/LukasSelin/doppel/commit/@@COMMIT@@"><code>@@COMMIT@@</code></a>
+    on @@BUILT@@. The Markdown counterparts, with the corpus overview and the family census, are
+    <a href="https://github.com/LukasSelin/doppel/blob/master/examples/README.md">in the repository</a>.
+  </footer>
+
+</div>
+</body>
+</html>

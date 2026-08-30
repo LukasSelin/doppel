@@ -100,3 +100,17 @@ tasks:
     desc: Zero each fingerprint blend component (WL/flow/depth/signature) in turn and score the labeled corpora — a measurement, not a gate
     cmds:
       - DOPPEL_BENCH_ABLATE=1 go test ./internal/bench/ -run TestAblateFingerprint -v -timeout 30m
+
+  pages:
+    desc: Build the published site into _site/, exactly as the Pages workflow does
+    vars:
+      OUT: '{{.OUT | default "_site"}}'
+    cmds:
+      # The provenance placeholders stay unsubstituted locally: the workflow
+      # fills them from the pushed commit, and inventing a value here would
+      # make a local build claim an identity it does not have.
+      - mkdir -p {{.OUT}}
+      - go run . analyze . -o {{.OUT}}/report.html
+      - DOPPEL_BENCH_PAGES={{.OUT}} go test ./internal/bench/ -run TestGeneratePagesSite -v -timeout 30m
+      - cp internal/dashboard/assets/vendor/broadsheet.css {{.OUT}}/
+      - cp .github/pages/index.html {{.OUT}}/index.html
