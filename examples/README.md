@@ -192,6 +192,34 @@ Two things worth reading off it:
   scales with *pairs*, and pair count grows more slowly than function count once
   the df caps engage.
 
+## The scoring baseline
+
+[`baseline.json`](baseline.json) is the number every scoring change has to
+beat: the golden scorecard for every committed labels file (mean rank per
+label class, the hard-assertion violation counts, `assertionsPassed`) plus a
+SHA-256 of every `examples/<corpus>.md` on disk. It is strictly
+deterministic — no wall clock, no map iteration order, sorted corpora and
+classes — so `task baseline` run twice on an unchanged tree produces
+byte-identical output. It does **not** regenerate `examples/*.md` itself;
+run `task examples` first if you want the checksums to reflect a fresh
+regeneration rather than whatever is currently on disk.
+
+[`baseline-timings.json`](baseline-timings.json) is the companion file for
+per-stage pipeline timings (`BenchmarkCorpus`, restricted to the four fast
+corpora — cobra, chi, conc, gin — so a routine `task baseline` stays on the
+order of a few seconds; `task bench` times the full ladder). It is
+**explicitly excluded** from the determinism guarantee above: timings vary
+with the machine and its load by design, which is exactly why they live in
+their own file instead of inside `baseline.json`.
+
+`task ablate` zeroes each of the fingerprint blend's four components (AST
+shingles, control flow, nesting depth, signature) one at a time — outright,
+**not** renormalized back up to a 1.0 sum, so the table shows what each
+component contributes standing alone rather than what happens once the other
+three compensate for its absence — and rescores every labeled corpus. It
+asserts nothing; it is a measurement, like `TestAblation` (the ontology
+relation-weight ablation) and `TestSweep`.
+
 ## Running it yourself
 
 ```bash
@@ -208,6 +236,14 @@ task golden
 
 ```bash
 task examples
+```
+
+```bash
+task baseline
+```
+
+```bash
+task ablate
 ```
 
 `task corpora` clones the pinned ladder (a few hundred megabytes) into
