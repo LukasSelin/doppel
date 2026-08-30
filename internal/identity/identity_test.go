@@ -34,7 +34,7 @@ func corpus(t *testing.T, files map[string]string) snapshot.Snapshot {
 		units = append(units, us...)
 	}
 	docs := make([]concepter.ConceptDoc, len(units))
-	return snapshot.Build(units, docs, nil, map[ontology.TermID]int{}, "", "test",
+	return snapshot.Build(units, docs, nil, map[ontology.TermID]int{}, nil, "", "test",
 		snapshot.Params{Threshold: 0.6, MinNodes: 12, TestsMode: "exclude"}, snapshot.CorpusMetrics{})
 }
 

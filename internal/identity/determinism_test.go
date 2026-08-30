@@ -57,7 +57,7 @@ func realCorpus(t *testing.T, root string) snapshot.Snapshot {
 		t.Fatalf("only %d functions found under %s; the determinism test needs a real corpus", len(units), root)
 	}
 	docs := make([]concepter.ConceptDoc, len(units))
-	return snapshot.Build(units, docs, nil, map[ontology.TermID]int{}, root, "test",
+	return snapshot.Build(units, docs, nil, map[ontology.TermID]int{}, nil, root, "test",
 		snapshot.Params{Threshold: 0.6, MinNodes: 12, TestsMode: "include"}, snapshot.CorpusMetrics{})
 }
 

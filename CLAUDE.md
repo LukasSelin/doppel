@@ -146,7 +146,6 @@ never import `parser` — it works on `*ast.FuncDecl` directly. `ontology` impor
 module and must stay that way: `tagger`, `concepter` and `comparator` all depend on it. `retriever`
 imports `parser`, `fingerprint`, `concepter`, `ontology` and must never import `analyzer` or
 `comparator` — `cmd` bridges retriever candidates into `analyzer.SimilarPair`. `culture` imports
-<<<<<<< HEAD
 `parser`, `concepter`, `fingerprint` only (not `ontology` directly — it is a count model over
 concept names) and nothing imports it except `cmd`, which bridges its findings into
 `analyzer.CultureNote`. `family` imports `parser`, `fingerprint`, `analyzer` and `clique`; `cmd`
@@ -156,14 +155,6 @@ and `cmd` bridges its concepts into an ontology term table. `clique` imports not
 imports **nothing from this module at all** — its payload is plain data and its renderer is
 `html/template` plus `embed` — which is what keeps the page's data contract from quietly acquiring
 pipeline types; `cmd` bridges a finished run into it, exactly as it does for `reporter.Overview`.
-=======
-`parser`, `concepter`, `fingerprint` only (not even `ontology` — it is a leaf-tag count model) and
-nothing imports it except `cmd`, which bridges its findings into `analyzer.CultureNote`. `family`
-imports `parser`, `fingerprint`, `analyzer` and nothing else; `cmd` and `reporter` import it.
-`identity` imports `snapshot` and `fingerprint` and nothing else from this module, and only
-`cmd` imports it — `snapshot` must never import `identity`, which is the direction that keeps
-the two diff mechanisms from blurring into each other.
->>>>>>> t7-clean
 
 ## Two scores, deliberately unblended — and a third quantity that ranks
 
@@ -2248,7 +2239,6 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   `sha512`) are excluded by design; lower-case markers inside a word (`Threshold`) are not markers.
   The 0.60 shape floor and the same/sibling-package locality bound the damage.
 
-<<<<<<< HEAD
 - **A learned vocabulary costs real time, and the cost is corpus-derived.** moby went from ~1.8s
   end to end to ~9.7s, prometheus from ~2.6s to ~5.5s. Almost none of that is the lexicon itself
   (~1s on moby); it is the stages downstream that now do proportionate work — `culture` models 394
@@ -2291,35 +2281,3 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   the top 20). One corpus is a direction, not a verdict, and the concept channel's recall changed by
   an order of magnitude — gin/chi labels are what would say whether the extra recall is worth the
   drift.
-=======
-- **`doppel diff`'s split rule cannot see a return.** A piece extracted into its own function gains
-  a `return` the original never had, and that return takes its whole WL label chain with it — so a
-  split whose extracted region *contains* a return reads well below the 0.8 containment floor and
-  falls back to `deleted` + `new`. The fixtures pin the clean case (a self-contained loop lifted
-  out, which reads 0.90–0.99) and cobra's real `defaultUsageFunc` split reads 0.97/0.99, but a
-  refactor that pulled out an error path is invisible to the class. Lowering the floor is not the
-  fix — the same slack admits unrelated bodies — and nothing short of matching against the
-  *residue* of the original, which needs a subtree diff rather than a bag, would do better.
-
-- **Identity's recall is bounded by the same top-K shape retrieval is.** `CandidateK` (8) and
-  `MaxLabelDF` (200) mean a pair with no shared informative label, or one crowded out of both
-  sides' budgets, is never scored — so it reads as a deletion plus an addition rather than as a
-  rename. Key equality and digest equality are unaffected (they are exact passes and run first),
-  so the bounded part is exactly the renamed-and-edited case. Raising `CandidateK` costs one exact
-  bag merge per extra candidate; there is no flag for it, on the same reasoning that keeps the
-  retriever's df caps off the CLI.
-
-- **A `moved` finding cannot distinguish a move from a coincidence.** Two functions in different
-  packages with identical digests are reported as one moved function, because a digest is the
-  strongest evidence available and nothing in a snapshot records provenance. On a corpus with
-  cross-package exact clones — which is precisely the corpus doppel is pointed at — deleting one
-  copy and adding an unrelated one elsewhere reads as a move. The digest-equality evidence on the
-  line is the tell, and it is the same limitation `interface implementations` has: the rule cannot
-  be wrong about what it observed, only about what caused it.
-
-- **Identity is corpus-relative once, through the IDF.** The weighted Jaccard weights each label by
-  `ln(N/df)` over the union of the two snapshots' bags, so adding unrelated functions to either
-  side moves every jaccard slightly and can push a marginal pair across `RenameFloor`. Digests and
-  keys do not move, so the exact classes (`unchanged`, and every `moved`/`renamed` decided on a
-  digest) are immune; only similarity-matched renames can flip. Same caveat as roles and typicality.
->>>>>>> t7-clean
