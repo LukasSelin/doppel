@@ -1,3 +1,27 @@
+// Package tagger holds the seed vocabulary: fourteen rules that propose a
+// starting member set for a concept, and decide nothing else.
+//
+// These rules used to be the answer. Every term in them — "httpClient",
+// "SELECT ", "gobreaker", "ToDTO" — is a guess about how some codebase writes
+// something, and the comments below are a record of what maintaining those
+// guesses cost: http.Do was dead weight for years because net/http has no such
+// function, %w matched only immediately before a closing quote, and mapping had
+// to surrender json.Marshal the day serialization arrived. The approach does
+// not scale — not to more concepts, not to a repository that calls its database
+// wrapper "store", and not at all to another language, where all of it would
+// have to be written again by hand.
+//
+// So the rules were demoted rather than deleted. internal/lexicon takes each
+// rule's matches as a *seed* — which functions to look at — and learns from the
+// corpus what those functions actually share, producing concepts named after
+// their own evidence with graded membership. A seed that grows nothing is a
+// finding: this corpus has no such practice. And the learner works with no
+// seeds at all, which is what makes another language's frontend a matter of
+// filling parser.TagSignals rather than rewriting this file.
+//
+// What a rule still buys is a head start on a concept a human has a word for,
+// so the table stays, and stays honest about the AST evidence it reads.
+
 package tagger
 
 import (
@@ -5,7 +29,7 @@ import (
 	"github.com/LukasSelin/doppel/internal/parser"
 )
 
-// patternRule maps a concept to the AST-level evidence that asserts it.
+// patternRule maps a concept to the AST-level evidence that seeds it.
 //
 // Each field is one evidence channel from parser.TagSignals, and the channels
 // deliberately have different matching semantics:
@@ -25,9 +49,9 @@ import (
 // quote. Its polyglot leftovers (axios, urllib, Promise.) are gone too — only
 // .go files are ever parsed.
 //
-// Rules still name ontology terms so the vocabulary and the tagger cannot
+// Rules still name ontology terms so the seed vocabulary and the tagger cannot
 // drift apart, and tagger_test enforces the reverse direction: every concrete
-// concept has exactly one rule.
+// concept in the authored taxonomy has exactly one rule.
 type patternRule struct {
 	concept   ontology.TermID
 	selectors []string
@@ -175,9 +199,13 @@ var patternRules = []patternRule{
 	},
 }
 
-// Tag returns the pattern labels detected in the unit's AST signals.
-// Tags are returned in a deterministic order matching the rule declaration
-// order; one matching channel is enough to apply a tag.
+// Tag returns the seed labels the unit's AST signals match.
+//
+// This is a proposal, not a verdict: internal/lexicon uses the union of what
+// each label matched as a founding member set and learns the concept from
+// there, so a rule firing does not put its name on a function or claim any
+// particular confidence. Labels are returned in rule declaration order; one
+// matching channel is enough.
 func Tag(u parser.CodeUnit) []string {
 	var tags []string
 	for _, rule := range patternRules {
@@ -219,4 +247,20 @@ func (r patternRule) signalCount() int {
 		n++
 	}
 	return n
+}
+
+// Concepts returns the seed vocabulary: every concept the rules can propose, in
+// declaration order.
+//
+// It exists because the rules no longer decide anything on their own. The
+// lexicon grows a concept from each seed's members, and a seed that grows
+// nothing is a fact worth reporting — "this corpus has no HTTP practice" is the
+// answer to a real question. Reporting it needs the full list of seeds, which
+// only this package has.
+func Concepts() []string {
+	out := make([]string, len(patternRules))
+	for i, r := range patternRules {
+		out[i] = string(r.concept)
+	}
+	return out
 }

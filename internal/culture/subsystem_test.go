@@ -36,14 +36,14 @@ func TestSubsystemKey(t *testing.T) {
 // or like pkgA's clones otherwise (so the alien is alien at both levels).
 func subsystemFixture(bSharesAlien bool) ([]parser.CodeUnit, []concepter.ConceptDoc) {
 	clone := func(nm, pkg string) (parser.CodeUnit, concepter.ConceptDoc) {
-		u := parser.CodeUnit{Name: nm, Package: pkg, File: "root/sub/" + pkg + "/" + nm + ".go", Patterns: []string{"db_access", "error_wrapping"}}
+		u := parser.CodeUnit{Name: nm, Package: pkg, File: "root/sub/" + pkg + "/" + nm + ".go", Concepts: parser.Certain("db_access", "error_wrapping")}
 		u.Fingerprint.Flow = flowOf(0, 6)
 		u.Callees = []string{"sql.Open"}
 		u.Signals = parser.TagSignals{PackageRefs: []parser.PackageRef{{Local: "sql", Path: "database/sql"}}}
 		return u, concepter.ConceptDoc{Role: "leaf"}
 	}
 	alienLike := func(nm, pkg string) (parser.CodeUnit, concepter.ConceptDoc) {
-		u := parser.CodeUnit{Name: nm, Package: pkg, File: "root/sub/" + pkg + "/" + nm + ".go", Patterns: []string{"concurrency"}}
+		u := parser.CodeUnit{Name: nm, Package: pkg, File: "root/sub/" + pkg + "/" + nm + ".go", Concepts: parser.Certain("concurrency")}
 		u.Fingerprint.Flow = flowOf(5, 8)
 		return u, concepter.ConceptDoc{Role: "orchestrator"}
 	}

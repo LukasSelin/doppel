@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
-	"strings"
 
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/parser"
@@ -40,8 +39,8 @@ func PrintQuery(w io.Writer, probe parser.CodeUnit, probeDoc concepter.ConceptDo
 		name = probe.Package + "." + name
 	}
 	fmt.Fprintf(w, "query: %s", name)
-	if len(probe.Patterns) > 0 {
-		fmt.Fprintf(w, " — tags: %s", strings.Join(probe.Patterns, ", "))
+	if list := conceptList(probe.Concepts); list != "" {
+		fmt.Fprintf(w, " — concepts: %s", list)
 	}
 	fmt.Fprintln(w)
 	if probeDoc.Role != "" {
@@ -75,10 +74,10 @@ func PrintQuery(w io.Writer, probe parser.CodeUnit, probeDoc concepter.ConceptDo
 		fmt.Fprintf(w, "\n#%d  %s  %s\n", i+1, mname, loc)
 		fmt.Fprintf(w, "    evidence: %.1f nats (shape %.1f, concept %.1f, call %.1f)  code-shape: %.2f  locality: %.2f\n",
 			c.Total, c.Shape, c.Concept, c.Call, c.Breakdown.Score, m.Locality)
-		if len(m.Unit.Patterns) > 0 || m.Doc.Role != "" {
+		if list := conceptList(m.Unit.Concepts); list != "" || m.Doc.Role != "" {
 			fmt.Fprint(w, "   ")
-			if len(m.Unit.Patterns) > 0 {
-				fmt.Fprintf(w, " tags: %s  ", strings.Join(m.Unit.Patterns, ", "))
+			if list != "" {
+				fmt.Fprintf(w, " concepts: %s  ", list)
 			}
 			if m.Doc.Role != "" {
 				fmt.Fprintf(w, " role: %s", m.Doc.Role)

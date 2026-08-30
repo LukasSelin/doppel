@@ -31,12 +31,25 @@ type Payload struct {
 	Target string `json:"target"` // the corpus's own directory name
 	Facts  Facts  `json:"facts"`
 
-	Packages []Package `json:"packages"` // by name
-	Units    []Unit    `json:"units"`    // Units[i].ID == i
-	Edges    []Edge    `json:"edges"`    // by rank desc, then A, then B
-	Bodies   []Body    `json:"bodies"`   // by unit ID; bounded, see Facts.BodiesOmitted
-	Families []Family  `json:"families"` // as family.Build ordered them
-	Concepts []string  `json:"concepts"` // the colour legend: concepts in use, sorted
+	Packages []Package    `json:"packages"` // by name
+	Units    []Unit       `json:"units"`    // Units[i].ID == i
+	Edges    []Edge       `json:"edges"`    // by rank desc, then A, then B
+	Bodies   []Body       `json:"bodies"`   // by unit ID; bounded, see Facts.BodiesOmitted
+	Families []Family     `json:"families"` // as family.Build ordered them
+	Concepts []ConceptRow `json:"concepts"` // the legend, most-carried first
+}
+
+// ConceptRow is one learned concept, with the two counts the legend needs.
+//
+// A learned vocabulary is not a fixed fourteen: its size is a property of the
+// corpus, so the page cannot assume a palette covers it. Ranking by Dominant
+// lets it colour the concepts that actually decide a territory and pool the
+// long tail, rather than cycling a palette until two unrelated concepts share
+// a hue.
+type ConceptRow struct {
+	ID       string `json:"id"`
+	Carried  int    `json:"carried"`  // units carrying it at any confidence
+	Dominant int    `json:"dominant"` // units it is the strongest concept for
 }
 
 // Facts is the run's own header: what was analysed, under what settings, and
@@ -100,20 +113,22 @@ type Package struct {
 
 // Unit is one function or method.
 type Unit struct {
-	ID      int      `json:"id"` // == its index in Payload.Units
-	Key     string   `json:"key"`
-	Name    string   `json:"name"`
-	Package string   `json:"package"`
-	File    string   `json:"file"` // relative to the analysis root, slash-separated
-	Line    int      `json:"line"`
-	Role    string   `json:"role"`
-	Tags    []string `json:"tags,omitempty"`
+	ID      int    `json:"id"` // == its index in Payload.Units
+	Key     string `json:"key"`
+	Name    string `json:"name"`
+	Package string `json:"package"`
+	File    string `json:"file"` // relative to the analysis root, slash-separated
+	Line    int    `json:"line"`
+	Role    string `json:"role"`
 
-	// Concept is the map's colour channel: the arena's dominant survivor when
-	// the unit settled on one, else its first tag, else empty. The arena is
-	// preferred because it is the corpus's own answer to "what is this function
-	// about" — a unit tagged validation, db_access and mapping from fixture
-	// strings equilibrates to the one concept that explains its evidence.
+	// Concepts are the unit's learned memberships, strongest first — the same
+	// order and the same graded fact the text report prints, uncapped here
+	// because the page can afford to show what a line cannot.
+	Concepts []UnitConcept `json:"concepts,omitempty"`
+
+	// Concept is the map's colour channel: the head of Concepts, so it is
+	// always one the unit actually carries. Denormalised rather than derived in
+	// the page because the map reads it per function per redraw.
 	Concept string `json:"concept,omitempty"`
 
 	FanIn  int `json:"fanIn"`  // resolved callers
@@ -158,6 +173,17 @@ type Edge struct {
 
 // BreakdownNames labels Edge.Breakdown, in its fixed order.
 var BreakdownNames = [5]string{"ast", "flow", "nesting", "sig", "size"}
+
+// UnitConcept is one graded concept membership.
+//
+// Confidence is carried, not rounded away to a boolean: a learned concept is
+// derived from this corpus's own vocabulary, so carrying it is a matter of
+// degree, and a reader deciding whether two functions really do the same work
+// needs to see whether both sides mean it.
+type UnitConcept struct {
+	ID         string  `json:"id"`
+	Confidence float64 `json:"confidence"`
+}
 
 // Chain is one shared structural pattern behind a pair — the evidence its
 // score actually rests on.

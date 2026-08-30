@@ -8,6 +8,47 @@ import (
 )
 
 // CodeUnit represents a single extracted function or method.
+// Concept is one learned concept membership: which concept, and how strongly
+// this unit belongs to it.
+//
+// Membership used to be a bare tag string, asserted by a hand-written rule the
+// moment any one of its channels matched. It is a confidence now because that
+// is what the evidence actually is — internal/lexicon derives both the concept
+// and the number from the corpus, so a unit carrying a concept's whole learned
+// vocabulary and one carrying the least of it that still counts are no longer
+// indistinguishable.
+//
+// Confidence is in (0,1] and saturating: 0.5 is a unit carrying the concept's
+// typical evidence for this corpus, not a probability.
+type Concept struct {
+	ID         string
+	Confidence float64
+}
+
+// ConceptIDs projects memberships back to bare IDs, ascending. It is the
+// boolean view of a graded fact, and every caller of it is a place that must
+// not see corpus-relative weights — the merge-signal gate above all.
+func ConceptIDs(cs []Concept) []string {
+	if len(cs) == 0 {
+		return nil
+	}
+	out := make([]string, len(cs))
+	for i, c := range cs {
+		out[i] = c.ID
+	}
+	return out
+}
+
+// ConfidenceOf returns the unit's confidence in one concept, or 0.
+func ConfidenceOf(cs []Concept, id string) float64 {
+	for _, c := range cs {
+		if c.ID == id {
+			return c.Confidence
+		}
+	}
+	return 0
+}
+
 type CodeUnit struct {
 	Name         string
 	File         string
@@ -15,7 +56,7 @@ type CodeUnit struct {
 	Body         string
 	Signature    string                  // parameter + return types, e.g. "(ctx context.Context) (User, error)"
 	Package      string                  // Go package name
-	Patterns     []string                // detected intent tags, e.g. ["retry", "http_call"]
+	Concepts     []Concept               // learned concept memberships with confidence, ascending by ID
 	DocComment   string                  // godoc comment above the declaration
 	Exported     bool                    // true if the function name is exported
 	ReceiverType string                  // e.g. "*Server"; empty for plain functions
@@ -69,4 +110,21 @@ func ShouldSkipDir(name string) bool {
 		return true
 	}
 	return false
+}
+
+// Certain builds memberships asserted without reservation — confidence 1.0.
+//
+// It exists for the callers that legitimately have bare IDs and no grading:
+// test fixtures pinning behavior that has nothing to do with confidence, and
+// any consumer handed a plain list. Production tagging never uses it; the
+// lexicon derives its confidences from the corpus.
+func Certain(ids ...string) []Concept {
+	if len(ids) == 0 {
+		return nil
+	}
+	out := make([]Concept, len(ids))
+	for i, id := range ids {
+		out[i] = Concept{ID: id, Confidence: 1}
+	}
+	return out
 }

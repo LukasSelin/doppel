@@ -7,6 +7,7 @@ import (
 
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/ontology"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 const (
@@ -131,16 +132,19 @@ type StructuralEvidence struct {
 // io_operation. The same goes for roles that share one of their two axes.
 //
 // The merge-signal gate deliberately does not follow the scorer: it reads a
-// taxonomy-only (Wu-Palmer) best match, recorded in PatternSignalBest. Under
-// corpus weighting, sibling and cousin similarities move with tag frequencies
-// elsewhere in the tree, and a pair's merge verdict must not flip
-// because unrelated code shifted the statistics. IC bends the score; the
-// signal count stays corpus-independent.
+// taxonomy-only (Wu-Palmer) best match over bare concept IDs, recorded in
+// PatternSignalBest. Under corpus weighting, sibling and cousin similarities
+// move with concept frequencies elsewhere in the tree, and a pair's merge
+// verdict must not flip because unrelated code shifted the statistics. The same
+// argument now covers membership confidence, which is corpus-relative twice
+// over — the concept's learned vocabulary and its evidence scale both move with
+// the corpus — so the gate sees membership as the boolean it once was. IC and
+// confidence bend the score; the signal count stays corpus-independent.
 func (c *Comparator) Compare(a, b concepter.ConceptDoc) StructuralEvidence {
 	ev := StructuralEvidence{
 		SharedCallees:  intersect(a.Callees, b.Callees),
 		SharedCallers:  intersect(a.Callers, b.Callers),
-		SharedPatterns: intersect(a.Patterns, b.Patterns),
+		SharedPatterns: intersect(parser.ConceptIDs(a.Concepts), parser.ConceptIDs(b.Concepts)),
 		SameRole:       a.Role == b.Role && a.Role != "",
 		RoleA:          a.Role,
 		RoleB:          b.Role,
@@ -171,13 +175,14 @@ func (c *Comparator) Compare(a, b concepter.ConceptDoc) StructuralEvidence {
 	ev.SharedNeighborhood = intersect(nbrA, nbrB)
 	ev.NeighborhoodOverlap = overlapRatio(nbrA, nbrB, ev.SharedNeighborhood)
 
-	ev.PatternRelatedness, ev.RelatedPatterns = c.scorer.SetRelatedness(a.Patterns, b.Patterns)
-	ev.CallerConceptRelatedness, ev.RelatedCallerConcepts = c.scorer.SetRelatedness(a.CallerPatterns, b.CallerPatterns)
-	ev.CalleeConceptRelatedness, ev.RelatedCalleeConcepts = c.scorer.SetRelatedness(a.CalleePatterns, b.CalleePatterns)
+	ev.PatternRelatedness, ev.RelatedPatterns = c.scorer.SetRelatednessW(concepter.Graded(a.Concepts), concepter.Graded(b.Concepts))
+	ev.CallerConceptRelatedness, ev.RelatedCallerConcepts = c.scorer.SetRelatednessW(concepter.Graded(a.CallerConcepts), concepter.Graded(b.CallerConcepts))
+	ev.CalleeConceptRelatedness, ev.RelatedCalleeConcepts = c.scorer.SetRelatednessW(concepter.Graded(a.CalleeConcepts), concepter.Graded(b.CalleeConcepts))
 
 	if c.scorer.Weighted() {
-		// Recompute the pattern matches taxonomy-only for the gate.
-		_, taxonomyMatches := c.onto.SetRelatedness(a.Patterns, b.Patterns)
+		// Recompute the pattern matches taxonomy-only, and unweighted, for the
+		// gate: membership is a bare ID here, not a confidence.
+		_, taxonomyMatches := c.onto.SetRelatedness(parser.ConceptIDs(a.Concepts), parser.ConceptIDs(b.Concepts))
 		ev.PatternSignalBest = ontology.BestMatch(taxonomyMatches)
 	} else {
 		// The unweighted matches already are taxonomy-only.

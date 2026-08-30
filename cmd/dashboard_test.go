@@ -13,10 +13,17 @@ import (
 	"github.com/LukasSelin/doppel/internal/parser"
 )
 
-func unit(pkg, name, file string, line int, body string, tags ...string) parser.CodeUnit {
+// unit builds a CodeUnit whose concept memberships descend in confidence in
+// the order given, so a test can assert the payload ranks them strongest-first
+// rather than in the ascending-ID order they are stored in.
+func unit(pkg, name, file string, line int, body string, concepts ...string) parser.CodeUnit {
+	var cs []parser.Concept
+	for i, id := range concepts {
+		cs = append(cs, parser.Concept{ID: id, Confidence: 0.9 - 0.1*float64(i)})
+	}
 	return parser.CodeUnit{
 		Name: name, Package: pkg, File: file, StartLine: line, Body: body,
-		Patterns: tags, Fingerprint: fingerprint.Fingerprint{Nodes: 20},
+		Concepts: cs, Fingerprint: fingerprint.Fingerprint{Nodes: 20},
 	}
 }
 
@@ -107,14 +114,53 @@ func TestBuildDashboardSortsPackagesAndConcepts(t *testing.T) {
 	if p.Packages[0].Norm != -1 {
 		t.Errorf("Norm = %v, want -1 for an unmodeled package", p.Packages[0].Norm)
 	}
-	want := []string{"db_access", "retry"}
+	// The legend ranks by how many functions a concept actually colours, not
+	// alphabetically: the vocabulary is learned, so the page can only palette
+	// its head and must pool the tail. Both lead one unit here — Zeta is
+	// retry's, Alpha is db_access's, since db_access is Alpha's stronger
+	// membership — so the tie falls to how many carry it, and retry has two.
+	want := []dashboard.ConceptRow{
+		{ID: "retry", Carried: 2, Dominant: 1},
+		{ID: "db_access", Carried: 1, Dominant: 1},
+	}
 	if len(p.Concepts) != len(want) {
-		t.Fatalf("Concepts = %v, want %v", p.Concepts, want)
+		t.Fatalf("Concepts = %+v, want %+v", p.Concepts, want)
 	}
 	for i := range want {
 		if p.Concepts[i] != want[i] {
-			t.Errorf("Concepts = %v, want %v", p.Concepts, want)
+			t.Errorf("Concepts[%d] = %+v, want %+v", i, p.Concepts[i], want[i])
 		}
+	}
+	// Dominant is a subset of Carried by construction — the colour is a unit's
+	// own strongest membership, never a concept the arena imported for it.
+	for _, c := range p.Concepts {
+		if c.Dominant > c.Carried {
+			t.Errorf("concept %q: Dominant %d > Carried %d", c.ID, c.Dominant, c.Carried)
+		}
+	}
+}
+
+// A unit's concepts reach the page strongest-first, not in the ascending-ID
+// order they are stored in: what carries the function should lead.
+func TestBuildDashboardRanksConcepts(t *testing.T) {
+	p := buildDashboard(sampleResult(), nil, nil, familyStatsZero(), nil, 0)
+	var alpha *dashboard.Unit
+	for i := range p.Units {
+		if p.Units[i].Name == "Alpha" {
+			alpha = &p.Units[i]
+		}
+	}
+	if alpha == nil {
+		t.Fatal("Alpha not in payload")
+	}
+	if len(alpha.Concepts) != 2 {
+		t.Fatalf("Concepts = %+v, want 2", alpha.Concepts)
+	}
+	if alpha.Concepts[0].ID != "db_access" || alpha.Concepts[1].ID != "retry" {
+		t.Errorf("not ranked by confidence: %+v", alpha.Concepts)
+	}
+	if alpha.Concept != "db_access" {
+		t.Errorf("Concept = %q, want the strongest membership db_access", alpha.Concept)
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/ontology"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 // weightedComparator builds a Comparator over a corpus where error_wrapping
@@ -27,9 +28,9 @@ func weightedComparator() *Comparator {
 
 func TestFreeCompareEqualsUniformInstance(t *testing.T) {
 	a := concepter.ConceptDoc{Name: "a", Package: "p", Role: "utility",
-		Patterns: []string{"db_access", "error_wrapping"}, Callees: []string{"x"}}
+		Concepts: parser.Certain("db_access", "error_wrapping"), Callees: []string{"x"}}
 	b := concepter.ConceptDoc{Name: "b", Package: "p", Role: "utility",
-		Patterns: []string{"caching", "error_wrapping"}, Callees: []string{"x"}}
+		Concepts: parser.Certain("caching", "error_wrapping"), Callees: []string{"x"}}
 	free := Compare(a, b)
 	inst := New(ontology.NewScorer(ontology.Default(), nil)).Compare(a, b)
 	if free.OverlapScore != inst.OverlapScore {
@@ -45,7 +46,7 @@ func TestFreeCompareEqualsUniformInstance(t *testing.T) {
 func TestWeightedCompareDiscountsUbiquitousSharedTags(t *testing.T) {
 	comp := weightedComparator()
 	doc := func(name string, tags ...string) concepter.ConceptDoc {
-		return concepter.ConceptDoc{Name: name, Package: "p", Role: "utility", Patterns: tags}
+		return concepter.ConceptDoc{Name: name, Package: "p", Role: "utility", Concepts: parser.Certain(tags...)}
 	}
 
 	ubiquitous := comp.Compare(doc("a", "error_wrapping", "mapping"), doc("b", "error_wrapping", "concurrency"))
@@ -71,7 +72,7 @@ func TestWeightedCompareDiscountsUbiquitousSharedTags(t *testing.T) {
 func TestGateIgnoresCorpusWeighting(t *testing.T) {
 	comp := weightedComparator()
 	doc := func(name, tag string) concepter.ConceptDoc {
-		return concepter.ConceptDoc{Name: name, Package: "p", Role: "utility", Patterns: []string{tag}}
+		return concepter.ConceptDoc{Name: name, Package: "p", Role: "utility", Concepts: parser.Certain(tag)}
 	}
 
 	ev := comp.Compare(doc("a", "http_call"), doc("b", "db_access"))
@@ -105,8 +106,8 @@ func TestGateIgnoresCorpusWeighting(t *testing.T) {
 func TestWeightedCompareEvidenceUsesLinScores(t *testing.T) {
 	comp := weightedComparator()
 	ev := comp.Compare(
-		concepter.ConceptDoc{Name: "a", Package: "p", Role: "leaf", Patterns: []string{"db_access"}},
-		concepter.ConceptDoc{Name: "b", Package: "p", Role: "leaf", Patterns: []string{"caching"}},
+		concepter.ConceptDoc{Name: "a", Package: "p", Role: "leaf", Concepts: parser.Certain("db_access")},
+		concepter.ConceptDoc{Name: "b", Package: "p", Role: "leaf", Concepts: parser.Certain("caching")},
 	)
 	if len(ev.RelatedPatterns) != 1 {
 		t.Fatalf("want one match, got %+v", ev.RelatedPatterns)
@@ -129,12 +130,12 @@ func TestWeightedCompareIsDeterministic(t *testing.T) {
 	comp := weightedComparator()
 	a := concepter.ConceptDoc{Name: "a", Package: "svc", Exported: true, Role: "passthrough",
 		Callees:        []string{"save", "log"},
-		Patterns:       []string{"db_access", "error_wrapping", "concurrency"},
-		CallerPatterns: []string{"http_call", "validation"}, CalleePatterns: []string{"transaction", "mapping"}}
+		Concepts:       parser.Certain("db_access", "error_wrapping", "concurrency"),
+		CallerConcepts: parser.Certain("http_call", "validation"), CalleeConcepts: parser.Certain("transaction", "mapping")}
 	b := concepter.ConceptDoc{Name: "b", Package: "svc", Exported: true, Role: "utility",
 		Callees:        []string{"save", "flush"},
-		Patterns:       []string{"caching", "error_wrapping", "retry"},
-		CallerPatterns: []string{"db_access", "validation"}, CalleePatterns: []string{"caching", "mapping"}}
+		Concepts:       parser.Certain("caching", "error_wrapping", "retry"),
+		CallerConcepts: parser.Certain("db_access", "validation"), CalleeConcepts: parser.Certain("caching", "mapping")}
 	first := comp.Compare(a, b)
 	want := strings.Join(first.Reasons, "\n")
 	for i := 0; i < 500; i++ {

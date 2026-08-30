@@ -20,7 +20,8 @@ func samplePayload() Payload {
 		},
 		Units: []Unit{
 			{ID: 0, Key: "alpha.First", Name: "First", Package: "alpha", File: "a.go", Line: 3,
-				Role: "leaf", Tags: []string{"retry"}, Concept: "retry", FanIn: 1, Nodes: 20, Fit: 0.9},
+				Role: "leaf", Concepts: []UnitConcept{{ID: "retry", Confidence: 0.8}},
+				Concept: "retry", FanIn: 1, Nodes: 20, Fit: 0.9},
 			{ID: 1, Key: "alpha.Second", Name: "Second", Package: "alpha", File: "a.go", Line: 30,
 				Role: "leaf", Concept: "retry", Nodes: 22, Fit: -1},
 		},
@@ -33,7 +34,7 @@ func samplePayload() Payload {
 			{Unit: 0, Text: "func First() {}"},
 			{Unit: 1, Text: "func Second() {}"},
 		},
-		Concepts: []string{"retry"},
+		Concepts: []ConceptRow{{ID: "retry", Carried: 1, Dominant: 2}},
 	}
 }
 

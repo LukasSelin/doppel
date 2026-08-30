@@ -56,22 +56,28 @@
     (edgesByUnit[e.b] || (edgesByUnit[e.b] = [])).push(i);
   });
 
-  var conceptCount = Object.create(null);
-  units.forEach(function (u) {
-    var c = u.concept || "";
-    conceptCount[c] = (conceptCount[c] || 0) + 1;
-  });
+  var conceptRows = DATA.concepts || [];
 
-  /* A fixed palette assigned in the payload's own concept order, so a concept
-     keeps its colour across runs of an unchanged tree. */
+  /* The vocabulary is learned, so its size is a property of the corpus rather
+     than a constant this page can plan for. Cycling the palette would give two
+     unrelated concepts the same hue and say nothing about it, so instead the
+     concepts that colour the most functions take the palette and the rest share
+     one neutral, counted honestly in the legend.
+     
+     Payload order is (dominant desc, carried desc, id asc), so a concept keeps
+     its colour across runs of an unchanged tree. */
   var PALETTE = [
     "#0088b0", "#d6006c", "#edbb00", "#1186ac", "#ff458e", "#006786",
     "#7d7979", "#38a6cf", "#aa0b56", "#62c5ee", "#790e3d", "#004961",
-    "#9b9797", "#0a303e"
+    "#0a303e"
   ];
+  var OTHER = "#bab6b6";
   var conceptColor = Object.create(null);
-  (DATA.concepts || []).forEach(function (c, i) { conceptColor[c] = PALETTE[i % PALETTE.length]; });
-  function colorOf(u) { return conceptColor[u.concept] || "#bab6b6"; }
+  conceptRows.forEach(function (row, i) {
+    if (i < PALETTE.length && row.dominant > 0) conceptColor[row.id] = PALETTE[i];
+  });
+  function colorFor(id) { return (id && conceptColor[id]) || OTHER; }
+  function colorOf(u) { return colorFor(u.concept); }
 
   /* ── Facts header ────────────────────────────────────────────────────── */
 
@@ -527,7 +533,7 @@
     model.regions.forEach(function (r, i) {
       var cell = cells[i];
       if (!cell.poly.length) return;
-      var tint = r.concept ? conceptColor[r.concept] : "#9b9797";
+      var tint = colorFor(r.concept);
       var poly = svg("polygon", {
         points: pointsOf(cell.poly),
         fill: tint,
@@ -764,19 +770,39 @@
   function renderLegend() {
     var host = $("legend");
     clear(host);
-    var rows = (DATA.concepts || []).slice();
-    rows.push("");
-    rows.forEach(function (c) {
-      var n = conceptCount[c] || 0;
-      if (!n) return;
-      var row = el("div", "legend-row");
-      var dot = el("span", "legend-dot");
-      dot.style.background = c ? conceptColor[c] : "#bab6b6";
-      row.appendChild(dot);
-      row.appendChild(el("span", null, c || "untagged"));
-      row.appendChild(el("span", "legend-n mono", comma(n)));
-      host.appendChild(row);
+    var pooled = 0, pooledConcepts = 0;
+    conceptRows.forEach(function (row) {
+      if (conceptColor[row.id]) {
+        var line = el("div", "legend-row");
+        var dot = el("span", "legend-dot");
+        dot.style.background = conceptColor[row.id];
+        line.appendChild(dot);
+        line.appendChild(el("span", "legend-id", row.id));
+        line.appendChild(el("span", "legend-n mono", comma(row.dominant)));
+        line.title = row.id + " — leads " + plural(row.dominant, "function") +
+          ", carried by " + comma(row.carried);
+        host.appendChild(line);
+      } else if (row.dominant > 0) {
+        pooled += row.dominant;
+        pooledConcepts++;
+      }
     });
+
+    var uncoloured = 0;
+    units.forEach(function (u) { if (!u.concept) uncoloured++; });
+    if (pooled || uncoloured) {
+      var other = el("div", "legend-row");
+      var d = el("span", "legend-dot");
+      d.style.background = OTHER;
+      other.appendChild(d);
+      other.appendChild(el("span", "legend-id",
+        pooledConcepts ? plural(pooledConcepts, "other concept") + " and unassigned" : "no concept"));
+      other.appendChild(el("span", "legend-n mono", comma(pooled + uncoloured)));
+      host.appendChild(other);
+    }
+    host.appendChild(el("p", "control-note",
+      plural(conceptRows.length, "concept") + " learned from this corpus — the vocabulary is " +
+      "derived from what the code does, not read off a fixed list."));
   }
 
   var redrawTimer = null;
@@ -863,11 +889,19 @@
       " · fan-in " + u.fanIn + " / fan-out " + u.fanOut + " · " + u.nodes + " nodes" +
       (u.fit >= 0 ? " · habitat fit " + fixed(u.fit) : "") + (u.misfit ? " (misfit)" : "");
     head.appendChild(meta);
-    if (u.tags && u.tags.length) {
+    if (u.concepts && u.concepts.length) {
       var tags = el("div", "tagset");
-      u.tags.forEach(function (t) {
-        var c = el("span", "chip" + (t === u.concept ? " on" : ""), t);
-        tags.appendChild(c);
+      u.concepts.forEach(function (c) {
+        var chip = el("span", "chip" + (c.id === u.concept ? " on" : ""));
+        chip.appendChild(el("span", "chip-id", c.id));
+        /* The confidence is shown because it is the finding: a learned concept
+           is carried by degree, so whether both sides of a pair really mean it
+           is exactly what a reader is judging. */
+        chip.appendChild(el("span", "chip-n mono", fixed(c.confidence)));
+        var sw = el("span", "chip-dot");
+        sw.style.background = colorFor(c.id);
+        chip.insertBefore(sw, chip.firstChild);
+        tags.appendChild(chip);
       });
       head.appendChild(tags);
     }

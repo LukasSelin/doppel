@@ -287,11 +287,7 @@ func mdTableRow(w io.Writer, label string, u parser.CodeUnit) {
 	if sig == "" {
 		sig = "—"
 	}
-	patterns := "—"
-	if len(u.Patterns) > 0 {
-		patterns = strings.Join(u.Patterns, ", ")
-	}
-	fmt.Fprintf(w, "| **%s** | %s | `%s` | `%s` | %s |\n", label, loc, mdEscape(name), mdEscape(sig), patterns)
+	fmt.Fprintf(w, "| **%s** | %s | `%s` | `%s` | %s |\n", label, loc, mdEscape(name), mdEscape(sig), conceptCell(u.Concepts))
 }
 
 // mdEscape escapes pipe characters that would break markdown tables.
@@ -309,7 +305,7 @@ func printUnit(w io.Writer, prefix string, u parser.CodeUnit) {
 	if u.Signature != "" {
 		fmt.Fprintf(w, "       sig: %s\n", u.Signature)
 	}
-	if len(u.Patterns) > 0 {
-		fmt.Fprintf(w, "      tags: %s\n", strings.Join(u.Patterns, ", "))
+	if list := conceptList(u.Concepts); list != "" {
+		fmt.Fprintf(w, "  concepts: %s\n", list)
 	}
 }

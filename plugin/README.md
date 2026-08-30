@@ -1,5 +1,12 @@
 # doppel — Claude Code plugin
 
+[doppel](https://github.com/LukasSelin/doppel) measures architectural erosion: the gap between the
+structure a project intends and the one it has, opened one locally reasonable edit at a time. An
+agent is where those edits now get made, and it has the same blind spot a human reviewer does — it
+sees the change, not the corpus. These hooks close it by putting the corpus in front of the model at
+each of the four moments it can still act on: before writing, when the target is named, at the last
+responsible moment, and after the fact.
+
 Four hooks around a Go repo, ordered by when they fire:
 
 - **At session start**, an inventory of the concepts the codebase contains — the session-stable

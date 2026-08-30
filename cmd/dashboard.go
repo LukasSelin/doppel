@@ -8,9 +8,9 @@ import (
 
 	"github.com/LukasSelin/doppel/internal/analyzer"
 	"github.com/LukasSelin/doppel/internal/concepter"
-	"github.com/LukasSelin/doppel/internal/culture"
 	"github.com/LukasSelin/doppel/internal/dashboard"
 	"github.com/LukasSelin/doppel/internal/family"
+	"github.com/LukasSelin/doppel/internal/parser"
 	"github.com/LukasSelin/doppel/internal/reporter"
 	"github.com/LukasSelin/doppel/internal/snapshot"
 )
@@ -130,7 +130,6 @@ func dashboardUnits(res Result) []dashboard.Unit {
 			Package: u.Package,
 			File:    snapshot.RelSlash(res.Root, u.File),
 			Line:    u.StartLine,
-			Tags:    u.Patterns,
 			Nodes:   u.Fingerprint.Nodes,
 			Fit:     -1,
 			Test:    isTestUnit(u),
@@ -142,7 +141,8 @@ func dashboardUnits(res Result) []dashboard.Unit {
 			d.FanIn = len(res.Graph.Callers[qn])
 			d.FanOut = len(res.Graph.Callees[qn])
 		}
-		d.Concept = dominantConcept(res.Culture, i, u.Patterns)
+		d.Concepts = dashboardUnitConcepts(u.Concepts)
+		d.Concept = dominantConcept(d.Concepts)
 		if res.Culture != nil {
 			if fit, ok := res.Culture.HabitatFit(i); ok {
 				d.Fit = round4(fit)
@@ -154,24 +154,51 @@ func dashboardUnits(res Result) []dashboard.Unit {
 	return out
 }
 
-// dominantConcept is the map's colour channel.
+// dashboardUnitConcepts ranks a unit's memberships strongest first.
 //
-// The arena's own answer is preferred over the tag list because it is the
-// corpus's: a unit tagged validation, db_access and mapping off fixture
-// strings equilibrates to the one concept its surrounding evidence supports,
-// and the others go extinct. Survivors are already sorted (mass desc, tag asc),
-// so the head is deterministic. Without a profile the first tag stands, and
-// without tags the unit is simply uncoloured.
-func dominantConcept(cult *culture.Model, idx int, tags []string) string {
-	if cult != nil {
-		if prof, ok := cult.ArenaProfile(idx); ok && len(prof.Survivors) > 0 {
-			return prof.Survivors[0].Tag
+// The same order the text report's concept line uses, and for the same reason:
+// the stored order is ascending by ID, which is right for a set and wrong for
+// a reader — what carries the unit should lead. Uncapped, unlike the report
+// line, because the page has room and the tail is one click away rather than a
+// wall of text.
+func dashboardUnitConcepts(cs []parser.Concept) []dashboard.UnitConcept {
+	if len(cs) == 0 {
+		return nil
+	}
+	ranked := append([]parser.Concept(nil), cs...)
+	sort.SliceStable(ranked, func(i, j int) bool {
+		if ranked[i].Confidence != ranked[j].Confidence {
+			return ranked[i].Confidence > ranked[j].Confidence
 		}
+		return ranked[i].ID < ranked[j].ID
+	})
+	out := make([]dashboard.UnitConcept, len(ranked))
+	for i, c := range ranked {
+		out[i] = dashboard.UnitConcept{ID: c.ID, Confidence: c.Confidence}
 	}
-	if len(tags) > 0 {
-		return tags[0]
+	return out
+}
+
+// dominantConcept is the map's colour channel: a unit's strongest membership.
+//
+// The arena's equilibrium was used here first, and is deliberately not used
+// now. Its job was suppressing the fixed tagger's false positives — a unit
+// tagged validation, db_access and mapping off fixture strings equilibrating to
+// the one concept its surrounding evidence supports. A learned lexicon already
+// does that job, with a confidence, at membership time. What the arena adds on
+// top is invasion: a concept can win a function through an association without
+// the function carrying it, which is a real finding and a bad colour. Measured
+// on this repo it painted 111 functions with a concept only 5 of them carry,
+// and a legend cannot honestly say "leads 111, carried by 5".
+//
+// So: the head of the ranked memberships, which keeps dominant a subset of
+// carried by construction. Ties on ID, since two equal confidences must not let
+// slice order decide a colour. A unit carrying nothing is simply uncoloured.
+func dominantConcept(cs []dashboard.UnitConcept) string {
+	if len(cs) == 0 {
+		return ""
 	}
-	return ""
+	return cs[0].ID
 }
 
 // dashboardPackages aggregates the territories the map draws.
@@ -206,20 +233,44 @@ func dashboardPackages(res Result, units []dashboard.Unit) []dashboard.Package {
 	return out
 }
 
-// dashboardConcepts is the legend: every concept in use, sorted, so a concept
-// keeps its colour across runs of an unchanged tree.
-func dashboardConcepts(units []dashboard.Unit) []string {
-	seen := map[string]bool{}
+// dashboardConcepts is the legend: every learned concept in use, ranked by how
+// many units it actually colours.
+//
+// Ranked rather than alphabetical because the vocabulary is learned and so its
+// size is a property of the corpus — no palette can be assumed to cover it, and
+// the page pools whatever falls off the end. Ties on ID, so an unchanged tree
+// assigns the same colour to the same concept every run.
+func dashboardConcepts(units []dashboard.Unit) []dashboard.ConceptRow {
+	carried, dominant := map[string]int{}, map[string]int{}
 	for _, u := range units {
+		for _, c := range u.Concepts {
+			carried[c.ID]++
+		}
 		if u.Concept != "" {
-			seen[u.Concept] = true
+			dominant[u.Concept]++
+			if _, ok := carried[u.Concept]; !ok {
+				carried[u.Concept] = 0
+			}
 		}
 	}
-	out := make([]string, 0, len(seen))
-	for c := range seen {
-		out = append(out, c)
+	ids := make([]string, 0, len(carried))
+	for id := range carried {
+		ids = append(ids, id)
 	}
-	sort.Strings(out)
+	sort.Strings(ids) // before the count comparison, so map order never decides
+	out := make([]dashboard.ConceptRow, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, dashboard.ConceptRow{ID: id, Carried: carried[id], Dominant: dominant[id]})
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].Dominant != out[j].Dominant {
+			return out[i].Dominant > out[j].Dominant
+		}
+		if out[i].Carried != out[j].Carried {
+			return out[i].Carried > out[j].Carried
+		}
+		return out[i].ID < out[j].ID
+	})
 	return out
 }
 
@@ -412,15 +463,17 @@ func largestFamily(fams []family.Family) int {
 }
 
 // dominantTag is the concept most of a family's members carry, or "" when they
-// share none. Ties break on the tag name so the column is stable.
+// share none. Membership is the graded fact's boolean view here deliberately:
+// the question is how many members share a concept, not how hard any one of
+// them means it. Ties break on the name so the column is stable.
 func dominantTag(res Result, f family.Family) string {
 	counts := map[string]int{}
 	for _, m := range f.Members {
 		if m < 0 || m >= len(res.Units) {
 			continue
 		}
-		for _, t := range res.Units[m].Patterns {
-			counts[t]++
+		for _, c := range res.Units[m].Concepts {
+			counts[c.ID]++
 		}
 	}
 	tags := make([]string, 0, len(counts))

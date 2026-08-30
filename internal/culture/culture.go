@@ -116,8 +116,16 @@ type conceptModel struct {
 // habitats, computed once per build.
 type unitFeatures struct {
 	tokens         [][]string // resolved call tokens
-	sortedPatterns [][]string // sorted unique tags
+	sortedPatterns [][]string // concept memberships, sorted unique
 	flowFeats      [][]string // binarized control-flow labels, sorted
+
+	// conf is the membership confidence behind sortedPatterns. Culture counts
+	// members — a prototype is "how the functions carrying this concept are
+	// written here", and half a member is not a way of writing anything — so
+	// everything in this package except the arena reads the boolean view. The
+	// arena is the exception because it weighs evidence rather than counting
+	// members, and a barely-carried concept is weaker evidence.
+	conf []map[string]float64
 }
 
 // Build computes the whole culture model in one pass. docs[i] describes
@@ -130,11 +138,16 @@ func Build(units []parser.CodeUnit, docs []concepter.ConceptDoc,
 		tokens:         make([][]string, len(units)),
 		sortedPatterns: make([][]string, len(units)),
 		flowFeats:      make([][]string, len(units)),
+		conf:           make([]map[string]float64, len(units)),
 	}
 	for i := range units {
 		uf.tokens[i] = concepter.CallTokens(units[i], g, internal)
-		uf.sortedPatterns[i] = sortedUniqueTags(units[i].Patterns)
+		uf.sortedPatterns[i] = sortedUniqueTags(parser.ConceptIDs(units[i].Concepts))
 		uf.flowFeats[i] = flowFeatures(units[i])
+		uf.conf[i] = make(map[string]float64, len(units[i].Concepts))
+		for _, c := range units[i].Concepts {
+			uf.conf[i][c.ID] = c.Confidence
+		}
 	}
 
 	m := &Model{

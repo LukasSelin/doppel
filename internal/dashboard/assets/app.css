@@ -135,7 +135,10 @@ input[type="range"] { accent-color: var(--color-accent); width: 100%; }
 .legend { display: flex; flex-direction: column; gap: 4px; }
 .legend-row { display: flex; align-items: center; gap: var(--space-2); font-size: 12px; }
 .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
-.legend-n { margin-left: auto; color: var(--color-neutral-600); font-variant-numeric: tabular-nums; }
+/* A learned concept id is a vocabulary join — "sql.Open+QueryRow" — so it is
+   long by construction and must not push the count off the row. */
+.legend-id { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.legend-n { margin-left: auto; color: var(--color-neutral-600); font-variant-numeric: tabular-nums; flex: none; }
 
 /* ── Map ──────────────────────────────────────────────────────────────── */
 
@@ -312,13 +315,19 @@ input[type="range"] { accent-color: var(--color-accent); width: 100%; }
 
 .tagset { display: flex; flex-wrap: wrap; gap: 4px; }
 .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 11px;
-  padding: 1px 6px;
+  padding: 1px 7px 1px 5px;
   border: 1px solid var(--color-divider);
   border-radius: var(--radius-lg);
   color: var(--color-neutral-800);
 }
+.chip-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.chip-n { color: var(--color-neutral-600); }
 .chip.on { background: var(--color-text); color: var(--color-bg); border-color: var(--color-text); }
+.chip.on .chip-n { color: var(--color-neutral-400); }
 
 .empty { color: var(--color-neutral-600); font-size: 13px; padding: var(--space-4) 0; }
 

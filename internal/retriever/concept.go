@@ -3,25 +3,31 @@ package retriever
 import (
 	"sort"
 
+	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/ontology"
 	"github.com/LukasSelin/doppel/internal/parser"
 )
 
-// conceptIndex is the concept channel: an inverted index over tagger tags and
-// their non-root taxonomy ancestors. Ancestor postings are what let a
-// db_access-only function meet a caching-only one — they share no leaf, but
-// both post under data_store_access. Expansion is for enumeration only; pair
-// evidence is always the raw shared information of the two leaf tag sets
-// (Σ IC(LCS) over the scorer's best matching), so a pairing that only meets
-// at a shallow ancestor earns only that ancestor's small IC. This channel has
+// conceptIndex is the concept channel: an inverted index over the units'
+// learned concepts and their non-root taxonomy ancestors. Ancestor postings are
+// what let two functions with no concept in common meet under a shared parent.
+// Expansion is for enumeration only; pair evidence is always the graded shared
+// information of the two membership sets (Σ min(conf)·IC(LCS) over the scorer's
+// best matching), so a pairing that only meets at a shallow ancestor earns only
+// that ancestor's small IC — and a pairing where either side barely carries the
+// concept earns only as much as that side claims.
+//
+// Postings are unweighted: a unit posts under a concept it is a member of at
+// all, so the df window keeps meaning "how many functions carry this", the
+// quantity the cap is stated in. Confidence bends the evidence, not the index. This channel has
 // no similarity floor and no size gate — admitting structurally dissimilar
 // pairs with informative shared meaning is its entire purpose.
 type conceptIndex struct {
 	scorer   *ontology.Scorer
-	patterns [][]string                // per unit: its leaf tags, as tagged
-	expanded [][]ontology.TermID       // per unit: tags + non-root ancestors, sorted unique
+	concepts [][]parser.Concept        // per unit: its memberships, as learned
+	expanded [][]ontology.TermID       // per unit: concepts + non-root ancestors, sorted unique
 	postings map[ontology.TermID][]int // expanded term → unit indices, ascending
-	mass     map[pairKey]float64       // memoized SharedInformation per pair
+	mass     map[pairKey]float64       // memoized shared information per pair
 }
 
 func buildConceptIndex(units []parser.CodeUnit, onto *ontology.Ontology,
@@ -29,19 +35,19 @@ func buildConceptIndex(units []parser.CodeUnit, onto *ontology.Ontology,
 
 	x := &conceptIndex{
 		scorer:   scorer,
-		patterns: make([][]string, len(units)),
+		concepts: make([][]parser.Concept, len(units)),
 		expanded: make([][]ontology.TermID, len(units)),
 		postings: make(map[ontology.TermID][]int),
 		mass:     make(map[pairKey]float64),
 	}
 	for i := range units {
-		x.patterns[i] = units[i].Patterns
-		if len(units[i].Patterns) == 0 {
+		x.concepts[i] = units[i].Concepts
+		if len(units[i].Concepts) == 0 {
 			continue
 		}
 		seen := make(map[ontology.TermID]bool)
-		for _, tag := range units[i].Patterns {
-			id := ontology.TermID(tag)
+		for _, c := range units[i].Concepts {
+			id := ontology.TermID(c.ID)
 			seen[id] = true
 			for _, anc := range onto.Ancestors(id) {
 				// The concept root carries zero IC and would post every
@@ -117,14 +123,16 @@ func (x *conceptIndex) admitFor(a int, opt Options) []pairKey {
 	return pairs
 }
 
-// sharedMass is the definitive concept evidence for a pair: the raw shared
-// information of the two leaf tag sets, memoized per unordered pair.
+// sharedMass is the definitive concept evidence for a pair: the shared
+// information of the two membership sets, each concept counted only as far as
+// the weaker side asserts it, memoized per unordered pair.
 func (x *conceptIndex) sharedMass(a, b int) float64 {
 	k := orderPair(a, b)
 	if m, ok := x.mass[k]; ok {
 		return m
 	}
-	m, _ := x.scorer.SharedInformation(x.patterns[k[0]], x.patterns[k[1]])
+	m, _ := x.scorer.SharedInformationW(
+		concepter.Graded(x.concepts[k[0]]), concepter.Graded(x.concepts[k[1]]))
 	x.mass[k] = m
 	return m
 }

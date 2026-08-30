@@ -11,7 +11,7 @@ import (
 // unit builds a minimal hand-constructed CodeUnit. Culture only reads
 // Patterns, Fingerprint.Flow, Package, and (via CallTokens) Callees/Signals.
 func unit(name, pkg string, tags ...string) parser.CodeUnit {
-	return parser.CodeUnit{Name: name, Package: pkg, Patterns: tags}
+	return parser.CodeUnit{Name: name, Package: pkg, Concepts: parser.Certain(tags...)}
 }
 
 // docsWithRole builds n concept docs all carrying the same role.

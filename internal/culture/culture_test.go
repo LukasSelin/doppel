@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 // Build twice on the same corpus: associations, typicalities, prototypes,
@@ -17,7 +19,7 @@ func TestBuildDeterministic(t *testing.T) {
 		out += fmt.Sprintf("%+v\n", m.Associations())
 		out += fmt.Sprintf("%+v\n", m.Stats())
 		for i := range units {
-			for _, tag := range units[i].Patterns {
+			for _, tag := range parser.ConceptIDs(units[i].Concepts) {
 				typ, ok := m.Typicality(i, tag)
 				out += fmt.Sprintf("%d/%s %v %v %+v\n", i, tag, typ, ok, m.ChannelTypicality(i, tag))
 			}
