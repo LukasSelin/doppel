@@ -1108,9 +1108,14 @@ Rules that hold it together:
   has 168 habitats); family diagrams cap at 8 members, because the picture must draw every edge to
   show the clique property and 55 members is 1485 edges.
 
-A **Corpus metrics** subsection carries two further numbers, in the markdown/HTML preamble and in
-`--format json` as `corpusMetrics` (not in `snapshot.Schema`'s Params or Pair/Unit types, so it
-never affects comparability): **compression ratio**, total canonical AST nodes divided by the
+A **Corpus metrics** subsection carries two further numbers, in the markdown preamble, in the
+dashboard's fact tiles, and in `--format json` as `corpusMetrics` (not in `snapshot.Schema`'s
+Params or Pair/Unit types, so it never affects comparability). **The plain-text report does not
+carry them, and that is the Overview rule rather than an oversight**: both numbers travel to
+`reporter` inside `Meta.Overview`, which is nil for the text report by construction, so a terminal
+report is byte-identical to one written before the section existed. Containment and `explain:` are
+per-pair and reach all four surfaces — text, markdown, JSON and the dashboard — because they ride
+on `SimilarPair`, not on the Overview. The two numbers are: **compression ratio**, total canonical AST nodes divided by the
 count of distinct subtree shapes among them once `fingerprint.ConsCorpus` hash-conses every
 canonical body (`internal/fingerprint/cons.go`, mirroring `wl.go`'s FNV idiom but preserving child
 order — a hash-cons answers "is this literally the same subtree", not "the same shape", so `a - b`
