@@ -1,8 +1,29 @@
 # Doppel
 
-Go CLI tool that detects structural similarities in a Go codebase to surface merge candidates — functions or methods that do similar enough work to warrant consolidation.
+Go CLI tool that measures **architectural erosion** in a Go codebase — the gap between the structure
+a project intends and the one it has — and surfaces it as merge candidates: functions or methods
+that do similar enough work to warrant consolidation.
 
 ## Goal
+
+**The target is erosion by locally reasonable edit.** Every duplicate this tool finds was defensible
+when it was written: the author needed a retry loop and writing one cost less than finding the
+existing one; a handler was forked for a second provider and the two aged apart. No rule was
+violated, so nothing in review or in a linter could have caught it — erosion is a property of the
+corpus, not of a diff, and that is the whole reason the pipeline reads every function at once rather
+than reading a change. Weigh proposals against it: a feature that only helps someone judge a single
+function in isolation is off-target, however good the signal.
+
+Perry & Wolf (1992) split this in two — *erosion* is violating the architecture, *drift* is
+insensitivity to it. Strictly, doppel is aimed at their drift; violations are what a linter is for.
+These docs use "erosion" as the umbrella term because that is how it is generally read, and reserve
+"drift" for the narrower per-function sense the culture and habitat notes carry.
+
+**What that rules out, by construction.** No declared architecture is read, so a layering violation
+is invisible. No git history, so authorship, age and churn are invisible. No config or deploy state,
+so configuration drift is a different tool's problem. The corpus is the only norm doppel has — which
+is exactly why every judgment it makes is corpus-relative (roles, typicality, habitat fit, IC), the
+caveat that recurs throughout this file.
 
 Spot duplication that text-based tools miss. Doppel fingerprints each function from its AST and
 cross-checks matches against call-graph context, so it finds pairs that share shape and role rather

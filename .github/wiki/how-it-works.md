@@ -1,5 +1,7 @@
 # How Doppel Works
 
+Doppel measures **architectural erosion** — the gap between the structure a project intends and the one it actually has, opened one locally reasonable edit at a time. Every stage below exists to make that gap visible in aggregate, because no single diff contains it: a second retry loop is a defensible change on its own, and only the whole corpus shows that it is the second. That is also why the pipeline is corpus-wide and corpus-relative throughout — the repo's own practice is the only norm doppel has, since it reads no declared architecture, no git history and no deploy state.
+
 Doppel is fully self-contained: it parses Go with `go/ast`, scores function pairs from static data, and prints a report. There is no model, no network call, and no cache anywhere in the pipeline, so a given tree always yields the same output.
 
 ## Pipeline

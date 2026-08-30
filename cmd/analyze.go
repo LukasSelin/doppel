@@ -43,7 +43,7 @@ const (
 
 var analyzeCmd = &cobra.Command{
 	Use:   "analyze <path>",
-	Short: "Analyze a codebase for structurally similar functions",
+	Short: "Report a codebase's erosion: duplicate work, diverged copies, functions out of place",
 	Args:  cobra.ExactArgs(1),
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		path := configFile

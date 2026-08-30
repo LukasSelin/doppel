@@ -1,10 +1,40 @@
 # doppel
 
-A CLI tool that detects structurally similar functions across a Go codebase. It helps identify duplicate logic and refactoring opportunities by fingerprinting each function from its AST and cross-checking matches against call-graph context — rather than by text matching.
+**doppel measures architectural erosion in a Go codebase — the widening gap between the structure a
+project intends and the one it actually has.**
+
+Nobody erodes an architecture deliberately. Someone needs a retry loop and writes one, because
+finding the existing one costs more than writing it. Someone forks a handler for a second provider,
+and a year later only one of the two carries the bug fix. Every such edit is defensible on its own
+and invisible in review, because review sees a diff and erosion is a property of the whole corpus.
+That gap is what doppel is pointed at, and it is why the tool reads every function in the repo at
+once rather than reading a change.
+
+Concretely: it fingerprints each function from its AST and cross-checks matches against call-graph
+context, so it finds pairs that share *shape and role* rather than string overlap — the kind
+text-based clone detection stops seeing once two copies have drifted apart. The output is a ranked
+list of merge candidates with the evidence behind each one.
 
 Everything runs locally and offline: no models, no network, no cache. The same source always produces the same report.
 
 For a detailed breakdown of the pipeline internals, see [How Doppel Works](.github/wiki/how-it-works.md).
+
+## What erodes, and what the report calls it
+
+| What happened to the code | What doppel reports |
+| --- | --- |
+| Two functions doing the same work, written independently | a ranked **pair**, with its shared structure and shared architectural context |
+| Several of them | a **family** — a maximal clique, so every member is similar to every other |
+| A copy that was forked and then diverged | the pair kind **`diverged copy`** |
+| A function that claims a concept but realizes it unlike any peer | a **culture note** — drift *within* a shared idea rather than duplication of it |
+| A function that no longer fits the package it lives in | a **habitat misfit**, excused when its wider subsystem still explains it |
+
+The scope is worth stating as plainly as the target: **doppel measures the code against the corpus's
+own practice, not against a declared architecture.** It has no model of what you intended, so it
+cannot flag a layering violation — that is a linter's job. It reads no history, no config and no org
+chart, so deployment drift (running state vs. declared state) and team drift are out of scope by
+construction. What it can do, without being told anything, is notice that this repo has two of
+something and that one of them is odd.
 
 ## Quick Start
 
