@@ -541,3 +541,162 @@ func TestCorpusFloorDropsUnfoundedConcepts(t *testing.T) {
 		t.Error("GrownSeeds is empty though the seeded concept survived")
 	}
 }
+
+// TestBackfillAdmitsTheOtherwiseEmpty pins the backfill's contract: a unit
+// clearing no floor gets its strongest concepts anyway, marked, at the
+// confidence it earned — and the mark is what keeps a membership the unit did
+// not earn away from the consumers that count rather than weight.
+func TestBackfillAdmitsTheOtherwiseEmpty(t *testing.T) {
+	src := weakCarrierCorpus()
+	base := testOptions()
+	control, units := build(t, src, nil, base)
+
+	// The weak carrier reaches the store practice through one of its two calls
+	// and spends the rest of itself elsewhere, so it touches the vocabulary and
+	// covers far too little of itself with it to clear any floor. A unit that
+	// touches nothing at all — the filler — has nothing to backfill from, which
+	// is why the fixture cannot just be storeCorpus and the first empty unit.
+	empty := -1
+	for i := range units {
+		if units[i].Name == "WeakReader" {
+			empty = i
+		}
+	}
+	if empty < 0 {
+		t.Fatal("fixture did not parse the weak carrier")
+	}
+	if got := control.Assignments()[empty]; len(got) != 0 {
+		t.Fatalf("the weak carrier already carries %v; the fixture is not measuring anything",
+			parser.ConceptIDs(got))
+	}
+
+	opt := base
+	opt.BackfillN = 1
+	filled, _ := build(t, src, nil, opt)
+
+	got := filled.Assignments()[empty]
+	if len(got) != 1 {
+		t.Fatalf("the weak carrier has %d memberships under BackfillN=1, want 1", len(got))
+	}
+	if !got[0].BelowFloor {
+		t.Error("a backfilled membership is not marked BelowFloor")
+	}
+	if got[0].Confidence <= 0 || got[0].Confidence > 1 {
+		t.Errorf("backfilled confidence %v is outside (0,1]", got[0].Confidence)
+	}
+
+	// The two projections must disagree: that disagreement is the mechanism.
+	if ids := parser.ConceptIDs(got); len(ids) != 0 {
+		t.Errorf("ConceptIDs = %v for a backfilled-only unit; want none", ids)
+	}
+	if g := concepter.Graded(got); len(g) != 1 {
+		t.Errorf("Graded = %v for a backfilled-only unit; want the membership kept", g)
+	}
+
+	// Nobody who already had a membership gains one, absent BackfillAlways.
+	for i := range units {
+		if len(control.Assignments()[i]) > 0 &&
+			len(filled.Assignments()[i]) != len(control.Assignments()[i]) {
+			t.Errorf("unit %d gained a membership though it already had one", i)
+		}
+	}
+}
+
+// weakCarrierCorpus is storeCorpus plus one function that reaches the store
+// practice through half its vocabulary and spends the rest of itself
+// elsewhere: it touches the concept and covers far too little of itself with
+// it to be a member. That is the shape the backfill exists for, and the shape
+// a fixture of pure carriers and pure strangers does not contain.
+func weakCarrierCorpus() string {
+	var b strings.Builder
+	b.WriteString(storeCorpus())
+	b.WriteString(`
+func WeakReader(ref string) string {
+	v, _ := store.Get(ref)
+	out := v
+	for i := 0; i < 6; i++ {
+		out = strings.TrimSpace(out)
+		out = strings.ToUpper(out)
+		out = strings.ReplaceAll(out, "a", "b")
+		if strings.Contains(out, "z") {
+			out = strings.TrimSuffix(out, "z")
+		}
+		switch {
+		case strings.HasPrefix(out, "q"):
+			out = strings.TrimPrefix(out, "q")
+		default:
+			out += strings.Repeat("x", i)
+		}
+	}
+	return out
+}
+`)
+	return b.String()
+}
+
+// TestBackfillVisibleSkipsTheMark is the other half of the switch: the same
+// memberships, emitted as ordinary, so the boolean consumers see them too.
+func TestBackfillVisibleSkipsTheMark(t *testing.T) {
+	opt := testOptions()
+	opt.BackfillN = 1
+	marked, _ := build(t, weakCarrierCorpus(), nil, opt)
+	opt.BackfillVisible = true
+	visible, _ := build(t, weakCarrierCorpus(), nil, opt)
+
+	sawVisible := false
+	for i, cs := range visible.Assignments() {
+		if len(cs) != len(marked.Assignments()[i]) {
+			t.Fatalf("unit %d has %d memberships visible and %d marked; want the same set",
+				i, len(cs), len(marked.Assignments()[i]))
+		}
+		for k, c := range cs {
+			m := marked.Assignments()[i][k]
+			if c.ID != m.ID || c.Confidence != m.Confidence {
+				t.Errorf("unit %d membership %d differs beyond the mark: %+v vs %+v", i, k, c, m)
+			}
+			if c.BelowFloor {
+				t.Errorf("unit %d membership %q is marked under BackfillVisible", i, c.ID)
+			}
+			if m.BelowFloor {
+				sawVisible = true
+			}
+		}
+	}
+	if !sawVisible {
+		t.Skip("fixture produced no backfilled membership; nothing to compare")
+	}
+}
+
+// TestBackfillNeverDisplaces pins the ordering guarantee: a backfilled
+// membership fills space a floor-cleared one did not want, and can never push
+// one out under MaxMemberships.
+func TestBackfillNeverDisplaces(t *testing.T) {
+	opt := testOptions()
+	opt.MaxMemberships = 1
+	control, _ := build(t, weakCarrierCorpus(), nil, opt)
+	opt.BackfillN = 1
+	opt.BackfillAlways = true
+	filled, _ := build(t, weakCarrierCorpus(), nil, opt)
+
+	for i, cs := range control.Assignments() {
+		for _, c := range cs {
+			if parser.ConfidenceOf(filled.Assignments()[i], c.ID) != c.Confidence {
+				t.Errorf("unit %d lost earned membership %q to the backfill", i, c.ID)
+			}
+		}
+	}
+}
+
+// TestBackfillOffByDefault is the seam's own pin: the shipped options produce
+// no marked membership at all, so every consumer sees exactly what it saw
+// before the backfill existed.
+func TestBackfillOffByDefault(t *testing.T) {
+	m, _ := build(t, storeCorpus(), nil, testOptions())
+	for i, cs := range m.Assignments() {
+		for _, c := range cs {
+			if c.BelowFloor {
+				t.Errorf("unit %d carries a BelowFloor membership %q at defaults", i, c.ID)
+			}
+		}
+	}
+}

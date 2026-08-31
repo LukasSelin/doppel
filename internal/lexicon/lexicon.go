@@ -125,6 +125,30 @@ type Options struct {
 	// RelMaxFraction is FloorRelMax's anchor.
 	RelMaxFraction float64
 
+	// BackfillN gives a unit its best N concepts whatever their floors say,
+	// at whatever confidence it earned. 0, the default, is off.
+	//
+	// The case for it: membership is a hard cut in a system whose every other
+	// quantity is graded, and a unit clearing no floor gets nothing at all —
+	// not because no concept describes it, but because none describes it
+	// *enough*. A low-confidence membership is cheap to a consumer that
+	// weights it; a missing one is invisible to every consumer there is.
+	//
+	// The case against it is which consumers those are. Five read a membership
+	// as a bare boolean — see parser.ConceptIDs, which lists them — and to
+	// those, a membership admitted because the unit had nothing else is not
+	// cheap at all. BackfillVisible is that question, as a knob.
+	BackfillN int
+
+	// BackfillAlways applies BackfillN to every unit rather than only to one
+	// that would otherwise carry no concept at all.
+	BackfillAlways bool
+
+	// BackfillVisible emits backfilled memberships unmarked, so the five
+	// boolean consumers see them as ordinary. Off, they are marked BelowFloor
+	// and only the consumers that weight a membership see them.
+	BackfillVisible bool
+
 	// MaxMemberships bounds how many concepts one unit may belong to, keeping
 	// its strongest by coverage. 0 is unbounded, which is not a working
 	// setting: coverage removes the size term from the membership bar and with
@@ -662,9 +686,77 @@ func assign(c *corpus, concepts []Concept, opt Options) [][]parser.Concept {
 			})
 			covers = append(covers, cov)
 		}
+		got, covers = backfill(got, covers, concepts, touched, cover, opt)
 		out[i] = topMemberships(got, covers, opt.MaxMemberships)
 	})
 	return out
+}
+
+// backfill tops a unit's memberships up to Options.BackfillN from the concepts
+// it touched but did not clear, strongest coverage first.
+//
+// It appends rather than competes: topMemberships ranks on coverage and a
+// backfilled membership is by construction below its concept's floor, so it can
+// only occupy space a floor-cleared membership did not want. The result is
+// re-sorted by ID, which is the order every consumer of Concepts expects.
+//
+// Ties on coverage go to the lower concept index, which is ID order — the same
+// rule topMemberships uses, so the two cannot disagree about which of two
+// equals is stronger.
+func backfill(got []parser.Concept, covers []float64, concepts []Concept,
+	touched []int, cover []float64, opt Options) ([]parser.Concept, []float64) {
+
+	if opt.BackfillN <= 0 {
+		return got, covers
+	}
+	if len(got) >= opt.BackfillN {
+		return got, covers
+	}
+	if len(got) > 0 && !opt.BackfillAlways {
+		return got, covers
+	}
+
+	// The below-floor candidates, strongest first. touched is ascending, so a
+	// stable sort leaves ties in ID order.
+	type cand struct {
+		j   int
+		cov float64
+	}
+	var below []cand
+	for k, j := range touched {
+		if cover[k] < concepts[j].Floor {
+			below = append(below, cand{j: j, cov: cover[k]})
+		}
+	}
+	if len(below) == 0 {
+		return got, covers
+	}
+	sort.SliceStable(below, func(a, b int) bool { return below[a].cov > below[b].cov })
+
+	want := opt.BackfillN - len(got)
+	if want > len(below) {
+		want = len(below)
+	}
+	for _, cd := range below[:want] {
+		got = append(got, parser.Concept{
+			ID:         concepts[cd.j].ID,
+			Confidence: cd.cov / (cd.cov + concepts[cd.j].Scale),
+			BelowFloor: !opt.BackfillVisible,
+		})
+		covers = append(covers, cd.cov)
+	}
+	// Back to ascending ID. The two slices are positional, so they sort as one.
+	idx := make([]int, len(got))
+	for i := range idx {
+		idx[i] = i
+	}
+	sort.SliceStable(idx, func(a, b int) bool { return got[idx[a]].ID < got[idx[b]].ID })
+	sortedGot := make([]parser.Concept, len(got))
+	sortedCovers := make([]float64, len(covers))
+	for i, j := range idx {
+		sortedGot[i], sortedCovers[i] = got[j], covers[j]
+	}
+	return sortedGot, sortedCovers
 }
 
 // topMemberships keeps a unit's k strongest memberships by coverage, the same

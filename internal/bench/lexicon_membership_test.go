@@ -69,6 +69,29 @@ func membershipVariants() []membershipVariant {
 			o.RelMaxFraction = 0.75
 			return o
 		}},
+		{"fill1 marked", func(o lexicon.Options) lexicon.Options { o.BackfillN = 1; return o }},
+		{"fill2 marked", func(o lexicon.Options) lexicon.Options { o.BackfillN = 2; return o }},
+		{"fill1 visible", func(o lexicon.Options) lexicon.Options {
+			o.BackfillN = 1
+			o.BackfillVisible = true
+			return o
+		}},
+		{"fill2 visible", func(o lexicon.Options) lexicon.Options {
+			o.BackfillN = 2
+			o.BackfillVisible = true
+			return o
+		}},
+		{"always2 marked", func(o lexicon.Options) lexicon.Options {
+			o.BackfillN = 2
+			o.BackfillAlways = true
+			return o
+		}},
+		{"always2 visible", func(o lexicon.Options) lexicon.Options {
+			o.BackfillN = 2
+			o.BackfillAlways = true
+			o.BackfillVisible = true
+			return o
+		}},
 	}
 }
 
@@ -187,8 +210,49 @@ func TestLexiconMembershipLabels(t *testing.T) {
 			units := append([]parser.CodeUnit(nil), lc.run.Units...)
 			run := AnalyzeLexicon(units, retriever.DefaultOptions(), v.opt(lexicon.DefaultOptions()))
 			sc := Score(run, lc.lf)
-			t.Logf("[%s] %-12s union %5d  %s  violations %d",
-				lc.name, v.name, run.Stats.Union, scLine(sc), violations(sc))
+			on, off := gateFlips(lc.run, run)
+			t.Logf("[%s] %-14s union %5d  concept %5d  %s  violations %d  gate +%d/-%d",
+				lc.name, v.name, run.Stats.Union, run.Stats.ConceptPairs, scLine(sc), violations(sc), on, off)
 		}
 	}
+}
+
+// gateFlips counts the pairs whose architectural merge verdict disagrees
+// between two runs of the same corpus, joined on the unit indices both carry.
+//
+// ContextMergeWorthy is deliberately corpus-independent — countSignals reads
+// bare concept IDs precisely so a pair's verdict cannot move because unrelated
+// code shifted a weight — so any flip here is a membership change reaching a
+// gate that was built not to see one. It is the damage metric for the
+// backfill: a membership a unit holds only because it had nothing else is a
+// poor reason to call two functions mergeable.
+//
+// Pairs present in one run and not the other are not flips and are not counted;
+// the candidate set moves for its own reasons.
+func gateFlips(control, variant *Run) (on, off int) {
+	type key struct{ a, b int }
+	was := make(map[key]bool, len(control.Pairs))
+	for i := range control.Pairs {
+		p := &control.Pairs[i]
+		if p.Evidence != nil {
+			was[key{p.AIdx, p.BIdx}] = p.Evidence.ContextMergeWorthy
+		}
+	}
+	for i := range variant.Pairs {
+		p := &variant.Pairs[i]
+		if p.Evidence == nil {
+			continue
+		}
+		before, ok := was[key{p.AIdx, p.BIdx}]
+		if !ok {
+			continue
+		}
+		switch {
+		case p.Evidence.ContextMergeWorthy && !before:
+			on++
+		case !p.Evidence.ContextMergeWorthy && before:
+			off++
+		}
+	}
+	return on, off
 }
