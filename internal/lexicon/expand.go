@@ -22,9 +22,13 @@ import (
 // report's practice section already learned. The weight is lift × idf, so a
 // feature must be both distinctive *to the concept* and rare *in the corpus*.
 //
-// It returns the vocabulary, the median founding coverage (the half-point the
-// reported confidence saturates around) and the membership floor at
-// Options.FloorQuantile — see assign for why those are two numbers.
+// It returns the vocabulary and the median founding coverage — the half-point
+// the reported confidence saturates around. It does *not* return the membership
+// floor any more: a bar drawn from the founding set is a bar drawn by the units
+// that already carry the concept, so floors derives it from the corpus once
+// every concept exists. Options.FloorQuantile still reaches here under
+// FloorRule FloorFounding, which is the control the change was measured
+// against.
 func fit(c *corpus, members []int, opt Options) ([]Feature, float64, float64) {
 	if len(members) == 0 {
 		return nil, 0, 0
@@ -113,10 +117,10 @@ func positiveFloor(q float64, sorted []float64) float64 {
 // what may *seed* an emergent cluster. Vocabularies are free to overlap: fit
 // always searches the whole surviving feature set.
 func expandSeeds(c *corpus, seeds [][]string, claimed map[string]bool,
-	stats *Stats, opt Options) []Concept {
+	stats *Stats, opt Options) ([]Concept, [][]int) {
 
 	if len(seeds) == 0 {
-		return nil
+		return nil, nil
 	}
 	members := make(map[string][]int)
 	for i := 0; i < c.n && i < len(seeds); i++ {
@@ -126,6 +130,7 @@ func expandSeeds(c *corpus, seeds [][]string, claimed map[string]bool,
 	}
 
 	var out []Concept
+	var founders [][]int
 	for _, tag := range sortedKeys(members) {
 		features, scale, floor := fit(c, members[tag], opt)
 		if len(features) == 0 {
@@ -136,7 +141,8 @@ func expandSeeds(c *corpus, seeds [][]string, claimed map[string]bool,
 			claimed[f.Name] = true
 		}
 		out = append(out, Concept{Seed: tag, Features: features, Scale: scale, Floor: floor})
+		founders = append(founders, members[tag])
 		stats.Seeded++
 	}
-	return out
+	return out, founders
 }
