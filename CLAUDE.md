@@ -1333,7 +1333,14 @@ Rules that hold it together:
   only channel mermaid offers for one.
 - **Every diagram is bounded and says so.** Package diagrams cap at `maxOverviewNodes` (12 — moby
   has 168 habitats); family diagrams cap at 8 members, because the picture must draw every edge to
-  show the clique property and 55 members is 1485 edges.
+  show the clique property and 55 members is 1485 edges. The **concept taxonomy is the one bounded
+  per branch** rather than globally (`maxTaxonomyLeaves` 3, `reporter.BoundTaxonomy`), because it
+  is a tree: a learned vocabulary hangs hundreds of leaves off eight authored parents, and a global
+  top-N lands wherever the largest concepts happen to sit and leaves whole branches bare — the one
+  thing this picture exists to show. Three is roughly the density the authored seed taxonomy had,
+  so a bounded run reads like that map and is still entirely derived from the corpus. It went
+  unbounded for a while and moby's diagram was **527 nodes**, which no mermaid renderer makes a
+  picture of.
 
 A **Corpus metrics** subsection carries two further numbers, in the markdown preamble, in the
 dashboard's fact tiles, and in `--format json` as `corpusMetrics` (not in `snapshot.Schema`'s

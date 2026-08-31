@@ -1,6 +1,7 @@
 package reporter
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -210,5 +211,51 @@ func TestHabitatTailJoinsCleanly(t *testing.T) {
 	}
 	if strings.Contains(out, "0 functions are alien") {
 		t.Errorf("an empty misfit clause was rendered:\n%s", out)
+	}
+}
+
+// The taxonomy diagram is a tree, so it is bounded per branch rather than
+// globally: a learned vocabulary hangs hundreds of leaves off eight authored
+// parents, and a global top-N would draw one crowded branch and seven bare
+// ones. moby learns 519 concepts, which unbounded is a 527-node picture.
+func TestBoundTaxonomyKeepsTheLargestLeafPerBranch(t *testing.T) {
+	nodes := []TaxonomyNode{
+		{ID: "concept", Abstract: true},
+		{ID: "io_operation", Parent: "concept", Abstract: true},
+		{ID: "data_transformation", Parent: "concept", Abstract: true},
+	}
+	for i := 0; i < maxTaxonomyLeaves+4; i++ {
+		nodes = append(nodes, TaxonomyNode{ID: fmt.Sprintf("io%d", i), Parent: "io_operation", Count: i})
+	}
+	nodes = append(nodes, TaxonomyNode{ID: "lonely", Parent: "data_transformation", Count: 1})
+
+	got, more := BoundTaxonomy(nodes)
+	if more != 4 {
+		t.Errorf("dropped %d leaves, want 4", more)
+	}
+	if len(got) != 3+maxTaxonomyLeaves+1 {
+		t.Fatalf("kept %d nodes, want %d", len(got), 3+maxTaxonomyLeaves+1)
+	}
+	// Every abstract node survives, and the thin branch keeps its one leaf:
+	// the interior is the map, and a branch drawn empty says something false.
+	var kept []string
+	for _, n := range got {
+		kept = append(kept, n.ID)
+	}
+	want := []string{"concept", "io_operation", "data_transformation", "io4", "io5", "io6", "lonely"}
+	if strings.Join(kept, ",") != strings.Join(want, ",") {
+		t.Errorf("kept %v, want %v", kept, want)
+	}
+}
+
+// What is dropped is counted in the prose, the rule every other diagram in
+// this package follows.
+func TestTaxonomyDiagramReportsWhatItLeftOut(t *testing.T) {
+	ov := sampleOverview()
+	ov.TaxonomyMore = 507
+	var b strings.Builder
+	PrintMarkdownOverview(&b, ov)
+	if out := b.String(); !strings.Contains(out, "**507 further concepts**") {
+		t.Errorf("bounded diagram does not say what it dropped:\n%s", out)
 	}
 }

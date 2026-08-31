@@ -59,6 +59,10 @@ func buildOverview(res Result, suppressed int) *reporter.Overview {
 	ov.Packages = len(pkgFuncs)
 
 	ov.Concepts, ov.Absent, ov.Taxonomy = conceptRows(res)
+	// Bounded here rather than in conceptRows for the same reason the habitat
+	// and link diagrams are: how many nodes fit in a picture is a rendering
+	// decision, and reporter owns the number.
+	ov.Taxonomy, ov.TaxonomyMore = reporter.BoundTaxonomy(ov.Taxonomy)
 	ov.Roles = roleRows(res)
 	overviewCulture(ov, res, pkgFuncs)
 	overviewDuplication(ov, res)

@@ -33,7 +33,8 @@ type Overview struct {
 	Absent   []string // seed concepts this corpus grew no practice for
 	Roles    []RoleRow
 
-	Taxonomy []TaxonomyNode // the concept tree, parents before children
+	Taxonomy     []TaxonomyNode // the concept tree, parents before children
+	TaxonomyMore int            // learned concepts beyond the per-branch bound
 
 	Habitats     []HabitatRow // packages with a habitat model, norm asc (worst first)
 	HabitatsMore int          // habitats beyond the rendered bound
@@ -398,6 +399,11 @@ func overviewConcepts(w io.Writer, ov *Overview) {
 			fmt.Fprintf(w, "    class %s hot\n", strings.Join(hot, ","))
 		}
 		fmt.Fprintf(w, "```\n\n")
+		if ov.TaxonomyMore > 0 {
+			fmt.Fprintf(w, "The diagram draws the %d largest concepts on each branch; "+
+				"**%d further concepts** are left out of the picture and listed in the table below.\n\n",
+				maxTaxonomyLeaves, ov.TaxonomyMore)
+		}
 	}
 
 	if len(ov.Absent) > 0 {
@@ -605,4 +611,60 @@ func SortLinks(links []PackageLink) ([]PackageLink, int) {
 		return links[:maxOverviewNodes], len(links) - maxOverviewNodes
 	}
 	return links, 0
+}
+
+// maxTaxonomyLeaves bounds how many learned concepts the taxonomy diagram
+// draws under each abstract branch.
+//
+// It is a per-branch bound where every other diagram here takes a global one,
+// because this diagram is a tree and the others are flat. A global top-N over
+// a learned vocabulary lands wherever the largest concepts happen to hang and
+// leaves whole branches bare, which is the one thing this picture exists to
+// show. Three is roughly the density the authored seed taxonomy had — one to
+// three leaves per branch — so a bounded run reads like that map and is still
+// entirely derived from this corpus.
+const maxTaxonomyLeaves = 3
+
+// BoundTaxonomy keeps every abstract node and the largest maxTaxonomyLeaves
+// concrete concepts under each of them, returning how many leaves were left
+// out. Order is preserved, so the result is still parents-first.
+//
+// Unbounded, this was the one diagram in the package that ignored the rule the
+// others follow: moby learns 519 concepts, and 527 nodes is not a picture.
+// What is dropped is counted in the prose and listed in full by the concept
+// table below the diagram.
+func BoundTaxonomy(nodes []TaxonomyNode) ([]TaxonomyNode, int) {
+	byParent := map[string][]TaxonomyNode{}
+	for _, n := range nodes {
+		if n.Abstract {
+			continue
+		}
+		byParent[n.Parent] = append(byParent[n.Parent], n)
+	}
+	keep := make(map[string]bool)
+	dropped := 0
+	for _, leaves := range byParent {
+		// Count first, then ID: the same "largest, ties by name" rule
+		// topByCount applies, and no map order survives it.
+		sort.SliceStable(leaves, func(i, j int) bool {
+			if leaves[i].Count != leaves[j].Count {
+				return leaves[i].Count > leaves[j].Count
+			}
+			return leaves[i].ID < leaves[j].ID
+		})
+		if len(leaves) > maxTaxonomyLeaves {
+			dropped += len(leaves) - maxTaxonomyLeaves
+			leaves = leaves[:maxTaxonomyLeaves]
+		}
+		for _, n := range leaves {
+			keep[n.ID] = true
+		}
+	}
+	out := make([]TaxonomyNode, 0, len(nodes))
+	for _, n := range nodes {
+		if n.Abstract || keep[n.ID] {
+			out = append(out, n)
+		}
+	}
+	return out, dropped
 }
