@@ -101,6 +101,19 @@ tasks:
     cmds:
       - DOPPEL_BENCH_ABLATE=1 go test ./internal/bench/ -run TestAblateFingerprint -v -timeout 30m
 
+  timeline:
+    desc: "Analyse the last N git revisions of a repo and render one steppable timeline (REPO=. N=20 OUT=timeline.html)"
+    vars:
+      REPO: '{{.REPO | default "."}}'
+      N: '{{.N | default "20"}}'
+      OUT: '{{.OUT | default "/tmp/doppel-timeline.html"}}'
+    cmds:
+      # The git walk lives in the script, never in the tool: doppel reads no
+      # git history by construction, and every claim it makes rests on that.
+      - ./scripts/timeline.sh -r {{.REPO}} -n {{.N}} -o {{.OUT}}
+      - cmd: open {{.OUT}}
+        platforms: [darwin]
+
   pages:
     desc: Build the published site into _site/, exactly as the Pages workflow does
     vars:

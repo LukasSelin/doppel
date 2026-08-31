@@ -1,0 +1,220 @@
+/* Timeline styles.
+ *
+ * Loaded after app.css, which the timeline page reuses wholesale for the
+ * masthead, facts, controls and colophon. Only what a series needs and a single
+ * run does not lives here: the stepper, the class ribbon, the change and pair
+ * lists, and the track grid.
+ *
+ * Same rule as app.css — every colour, space and radius is a Broadsheet token.
+ * The eight class colours are the one place that bends it, and they bend it the
+ * way the dashboard's own classDef note allows: they encode a measured value,
+ * and hue is the only channel available for one. */
+
+/* -- stepper ---------------------------------------------------------- */
+
+.stepper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+}
+
+.stepper-row { display: flex; align-items: center; gap: var(--space-2); }
+
+.step-nav {
+  flex: none;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-neutral-100);
+  color: var(--color-text);
+  border: 1px solid var(--color-neutral-400);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.step-nav:hover:not(:disabled) { border-color: var(--color-accent); color: var(--color-accent); }
+.step-nav:disabled { opacity: 0.35; cursor: default; }
+
+.step-strip {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.step-chip {
+  flex: none;
+  font: inherit;
+  font-size: 11px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  padding: var(--space-1) var(--space-2);
+  background: transparent;
+  color: var(--color-neutral-700);
+  border: 1px solid var(--color-neutral-300);
+  border-radius: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.step-chip:hover { color: var(--color-text); border-color: var(--color-neutral-500); }
+
+.step-chip[aria-selected="true"] {
+  background: var(--color-text);
+  border-color: var(--color-text);
+  color: var(--color-bg);
+}
+
+/* A chip whose transition changed nothing reads quieter than one that did. */
+.step-chip.quiet { color: var(--color-neutral-500); }
+.step-chip.quiet[aria-selected="true"] { color: var(--color-bg); }
+
+/* -- layout ----------------------------------------------------------- */
+
+.tl-layout {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.tl-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .tl-layout { grid-template-columns: 1fr; }
+}
+
+/* -- the class ribbon ------------------------------------------------- */
+
+.class-counts { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+
+.class-chip {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  font-size: 12px;
+  padding: 3px var(--space-2);
+  border-radius: 2px;
+  border: 1px solid var(--color-neutral-300);
+  background: var(--color-neutral-100);
+}
+
+.class-chip.zero { opacity: 0.4; }
+.class-chip .n { font-variant-numeric: tabular-nums; font-weight: 600; }
+.class-chip .l { font-size: 11px; color: var(--color-neutral-700); }
+
+.class-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; align-self: center; }
+
+
+/* -- change and pair lists -------------------------------------------- */
+
+.change-list, .pair-list { list-style: none; margin: 0; padding: 0; }
+
+.change-list li, .pair-list li {
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-divider);
+  font-size: 13px;
+  min-width: 0;
+}
+
+.change-row { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
+
+.change-class {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+  flex: none;
+}
+
+.change-keys { word-break: break-all; }
+.change-arrow { color: var(--color-neutral-500); }
+
+.change-meta, .pair-meta {
+  display: block;
+  font-size: 11px;
+  color: var(--color-neutral-600);
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+  word-break: break-word;
+}
+
+.pair-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+
+@media (max-width: 700px) {
+  .pair-cols { grid-template-columns: 1fr; }
+}
+
+.pair-list .churn { opacity: 0.62; }
+
+.badge {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 1px 4px;
+  border-radius: 2px;
+  border: 1px solid var(--color-accent-2-600);
+  color: var(--color-accent-2-700);
+  flex: none;
+}
+
+.empty-note { font-size: 12px; color: var(--color-neutral-600); padding: var(--space-2) 0; }
+
+/* -- tracks ----------------------------------------------------------- */
+
+.track-head { font-size: 12px; color: var(--color-neutral-700); }
+
+.track-list { list-style: none; margin: 0; padding: 0; }
+
+.track-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.track-name { font-size: 12px; word-break: break-all; }
+.track-fate { font-size: 11px; color: var(--color-neutral-600); }
+
+.track-cells { display: flex; gap: 2px; flex: none; }
+
+.track-cell {
+  width: 12px;
+  height: 16px;
+  border-radius: 1px;
+  background: var(--color-neutral-200);
+}
+
+/* A step the track did not exist at is a gap, not a state. */
+.track-cell.absent { background: transparent; border: 1px dashed var(--color-neutral-300); }
+.track-cell.at { outline: 2px solid var(--color-text); outline-offset: 1px; }
+
+/* The eight identity classes, worn by a ribbon chip, a legend dot and a track
+ * cell alike. Each is written against all three hosts rather than as a bare
+ * class: .track-cell sets its own background for the absent case, and a bare
+ * .c-edited would tie with it on specificity and lose on source order — which
+ * is exactly how the first version of this file silently painted every track
+ * cell the same grey.
+ *
+ * The assignment itself: structural relocations — the findings a
+ * key-equality diff cannot produce at all — take the two accents; edits and
+ * population changes take neutrals; unchanged is the quietest thing on the
+ * page. */
+.class-dot.c-split, .legend-dot.c-split, .track-cell.c-split { background: var(--color-accent-2-600); }
+.class-dot.c-merged, .legend-dot.c-merged, .track-cell.c-merged { background: var(--color-accent-2-400); }
+.class-dot.c-moved, .legend-dot.c-moved, .track-cell.c-moved { background: var(--color-accent-700); }
+.class-dot.c-renamed, .legend-dot.c-renamed, .track-cell.c-renamed { background: var(--color-accent-400); }
+.class-dot.c-edited, .legend-dot.c-edited, .track-cell.c-edited { background: var(--color-process-yellow); }
+.class-dot.c-new, .legend-dot.c-new, .track-cell.c-new { background: var(--color-neutral-800); }
+.class-dot.c-deleted, .legend-dot.c-deleted, .track-cell.c-deleted { background: var(--color-neutral-500); }
+.class-dot.c-unchanged, .legend-dot.c-unchanged, .track-cell.c-unchanged { background: var(--color-neutral-300); }

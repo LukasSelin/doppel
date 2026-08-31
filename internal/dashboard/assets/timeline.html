@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>doppel timeline — {{ .Target }}</title>
+  <style>{{ .CSS }}</style>
+</head>
+
+<body>
+  <div class="page">
+
+    <header class="masthead">
+      <div class="rule-heavy"></div>
+      <div class="masthead-row">
+        <div>
+          <div class="kicker">doppel · timeline</div>
+          <h1 class="masthead-title">{{ .Target }}</h1>
+        </div>
+        <nav class="tabs" id="tabs" role="tablist">
+          <button class="tab" data-screen="steps" role="tab">Steps</button>
+          <button class="tab" data-screen="tracks" role="tab">Tracks</button>
+        </nav>
+      </div>
+      <div class="facts" id="facts"></div>
+      <div class="rule-fine"></div>
+    </header>
+
+    <div class="stepper">
+      <div class="stepper-row">
+        <button class="step-nav" id="step-prev" type="button" aria-label="Previous revision">&larr;</button>
+        <div class="step-strip" id="step-strip" role="tablist" aria-label="Revisions"></div>
+        <button class="step-nav" id="step-next" type="button" aria-label="Next revision">&rarr;</button>
+      </div>
+      <input type="range" id="step-range" min="0" max="0" step="1" value="0" aria-label="Revision">
+      <div class="control-note" id="step-hint">
+        Use <span class="mono">&larr;</span> and <span class="mono">&rarr;</span> to step through revisions.
+      </div>
+    </div>
+
+    <section class="screen" id="screen-steps">
+      <div class="tl-layout">
+        <aside class="controls" id="step-controls">
+          <div class="control">
+            <div class="control-label">Reading this screen</div>
+            <p class="control-note">
+              Each step is one revision, analysed on its own. The panel on the
+              right is the <em>transition into</em> the selected revision: what
+              happened to every function, and which near-duplicate pairs those
+              changes created or dissolved.
+            </p>
+            <p class="control-note">
+              <strong>Every step was measured at one pinned operating point.</strong>
+              Doppel's thresholds are normally derived from the corpus, and a
+              series that recalibrated per revision would compare answers to
+              different questions. This one did not — the operating point is in
+              the colophon.
+            </p>
+            <p class="control-note">
+              <strong>Still, most numbers here are corpus-relative.</strong> The
+              learned concept vocabulary, roles, habitat fit and the
+              nearest-neighbour percentiles are all properties of each revision's
+              own corpus. Read the per-step figures as a measurement of that
+              revision, not as one measurement over time.
+            </p>
+          </div>
+          <div class="control">
+            <div class="control-label">This revision</div>
+            <div id="step-facts"></div>
+          </div>
+          <div class="control">
+            <div class="control-label">Filter changes</div>
+            <select id="class-filter"><option value="">every class</option></select>
+            <div class="control-note" id="change-count"></div>
+          </div>
+          <div class="control" id="notes-panel"></div>
+        </aside>
+
+        <div class="tl-main">
+          <div id="step-head" class="nb-head"></div>
+          <div class="control-label">What happened to each function</div>
+          <div id="class-counts" class="class-counts"></div>
+          <ol class="change-list" id="change-list"></ol>
+          <div class="pair-cols">
+            <div>
+              <div class="control-label">Pairs created</div>
+              <ol class="pair-list" id="created-list"></ol>
+            </div>
+            <div>
+              <div class="control-label">Pairs dissolved</div>
+              <ol class="pair-list" id="dissolved-list"></ol>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-tracks" hidden>
+      <div class="tl-layout">
+        <aside class="controls">
+          <div class="control">
+            <div class="control-label">Reading this screen</div>
+            <p class="control-note">
+              A <em>track</em> is one function followed across the whole series.
+              It is joined only through one-to-one matches, so at every boundary
+              it crosses the matcher matched exactly one function to exactly one
+              other — a rename or a move continues the same line.
+            </p>
+            <p class="control-note">
+              <strong>A split or a merge ends a track.</strong> There is no
+              evidence saying which of several parts inherits the lifeline, so
+              nothing here pretends one did; the ending is labelled instead.
+            </p>
+            <p class="control-note" id="tracks-bound"></p>
+          </div>
+          <div class="control">
+            <label class="control-label" for="track-search">Function</label>
+            <input type="search" id="track-search" placeholder="filter by name or package" autocomplete="off">
+          </div>
+          <div class="control">
+            <div class="control-label">Legend</div>
+            <div class="legend" id="track-legend"></div>
+          </div>
+        </aside>
+        <div class="tl-main">
+          <div class="track-head" id="track-head"></div>
+          <ol class="track-list" id="track-list"></ol>
+        </div>
+      </div>
+    </section>
+
+    <footer class="colophon" id="colophon"></footer>
+  </div>
+
+  <script type="application/json" id="doppel-data">{{ .Data }}</script>
+  <script>{{ .Script }}</script>
+</body>
+
+</html>
