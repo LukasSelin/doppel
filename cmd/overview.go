@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"math"
+	"slices"
 	"sort"
 
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/culture"
+	"github.com/LukasSelin/doppel/internal/lexicon"
 	"github.com/LukasSelin/doppel/internal/ontology"
 	"github.com/LukasSelin/doppel/internal/parser"
 	"github.com/LukasSelin/doppel/internal/reporter"
@@ -63,6 +65,7 @@ func buildOverview(res Result, suppressed int) *reporter.Overview {
 	// and link diagrams are: how many nodes fit in a picture is a rendering
 	// decision, and reporter owns the number.
 	ov.Taxonomy, ov.TaxonomyMore = reporter.BoundTaxonomy(ov.Taxonomy)
+	ov.SeedMap = seedMap(res)
 	ov.Roles = roleRows(res)
 	overviewCulture(ov, res, pkgFuncs)
 	overviewDuplication(ov, res)
@@ -100,8 +103,8 @@ func conceptRows(res Result) ([]reporter.TagRow, []string, []reporter.TaxonomyNo
 		}
 		if count == 0 {
 			// Unreachable for a learned vocabulary — a concept exists because
-			// functions carry it — and kept as the guard that says so. The
-			// absent list comes from the seeds instead; see below.
+			// functions carry it — and kept as the guard that says so. Absence
+			// is a question only the seeds can answer, and seedMap draws it.
 			continue
 		}
 		row := reporter.TagRow{Tag: string(term.ID), Count: count}
@@ -121,6 +124,99 @@ func conceptRows(res Result) ([]reporter.TagRow, []string, []reporter.TaxonomyNo
 	})
 	sort.Strings(absent)
 	return rows, absent, tree
+}
+
+// seedMap is the authored seed taxonomy with this run's yield on every leaf:
+// the map the report opened with before the vocabulary became corpus-derived,
+// restored and now measured rather than asserted.
+//
+// It walks ontology.Default() and not res.Onto, deliberately. The run's
+// ontology carries the learned concepts as its concrete leaves — hundreds of
+// them, which is a wall rather than a picture — where the authored tree is the
+// same 8 abstract nodes and 14 seed leaves on every corpus. That fixedness is
+// the whole value: it is the one concept diagram two runs, or two
+// repositories, can be held beside each other.
+//
+// Declaration order from the ontology, so the tree is emitted parents-first
+// without a recursive walk and without any map deciding the order — the same
+// rule conceptRows follows.
+func seedMap(res Result) []reporter.TaxonomyNode {
+	// No lexicon means nothing grew, and every leaf reads absent. That is the
+	// truthful picture for such a run rather than a missing diagram.
+	var grown map[string]int
+	if res.Lexicon != nil {
+		grown = seedYield(res.Lexicon.Concepts(), res.Lexicon.Assignments())
+	}
+	var tree []reporter.TaxonomyNode
+	for _, term := range ontology.Default().TermsOfKind(ontology.KindConcept) {
+		tree = append(tree, reporter.TaxonomyNode{
+			ID:       string(term.ID),
+			Parent:   string(term.Parent),
+			Abstract: term.Abstract,
+			// Zero for an abstract node, which never renders a count, and for
+			// a seed that grew nothing — which is exactly the `absent` the
+			// diagram colours and the same set Result.UnusedSeeds holds. A
+			// concept exists only because founders carry it, so "grew a
+			// concept" and "has at least one member" are one condition, and
+			// the red leaves cannot disagree with the sentence below them.
+			Count: grown[string(term.ID)],
+		})
+	}
+	return tree
+}
+
+// seedYield counts, per seed, how many distinct functions carry at least one
+// concept that seed grew.
+//
+// Distinct functions rather than a sum of lexicon.Concept.Members: several
+// concepts can grow from one seed and one function can be a member of more
+// than one of them, so summing would report more http_call functions than the
+// corpus has.
+//
+// Two rules the count depends on:
+//
+//   - A BelowFloor membership does not count. It is a backfilled membership the
+//     unit did not earn, and every other boolean reader of a membership skips
+//     it — that is what parser.ConceptIDs exists for. BackfillN is 0 by
+//     default, so this is a no-op today and would be a silent overcount the
+//     day it is not.
+//   - Concept.Seed, never Concept.Anchor. An emergent concept's anchor decides
+//     where it hangs in the taxonomy, not where it came from; counting anchored
+//     concepts here would credit a seed with a practice it did not find.
+//
+// It takes the two slices rather than a Result so the counting rule can be
+// tested on its own: a lexicon.Model is only constructible by lexicon.Build,
+// and a corpus large enough to grow two concepts from one seed is not a unit
+// test.
+func seedYield(concepts []lexicon.Concept, assign [][]parser.Concept) map[string]int {
+	seedOf := make(map[string]string)
+	for _, c := range concepts {
+		if c.Seed != "" {
+			seedOf[c.ID] = c.Seed
+		}
+	}
+	counts := make(map[string]int)
+	for _, memberships := range assign {
+		// A function counts once per seed however many of that seed's concepts
+		// it carries, so the seeds are collected before anything is counted.
+		var seen []string
+		for _, m := range memberships {
+			if m.BelowFloor {
+				continue
+			}
+			s, ok := seedOf[m.ID]
+			if !ok {
+				continue
+			}
+			if !slices.Contains(seen, s) {
+				seen = append(seen, s)
+			}
+		}
+		for _, s := range seen {
+			counts[s]++
+		}
+	}
+	return counts
 }
 
 func roleRows(res Result) []reporter.RoleRow {

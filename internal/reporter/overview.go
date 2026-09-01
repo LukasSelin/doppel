@@ -33,7 +33,13 @@ type Overview struct {
 	Absent   []string // seed concepts this corpus grew no practice for
 	Roles    []RoleRow
 
-	Taxonomy     []TaxonomyNode // the concept tree, parents before children
+	// SeedMap is the authored seed taxonomy — a fixed 22 nodes on every corpus
+	// — with each leaf carrying how many of this run's functions reached a
+	// concept that seed grew. It needs no bound: it is the same tree every
+	// time, which is exactly what makes it comparable between runs.
+	SeedMap []TaxonomyNode
+
+	Taxonomy     []TaxonomyNode // the learned concept tree, parents before children
 	TaxonomyMore int            // learned concepts beyond the per-branch bound
 
 	Habitats     []HabitatRow // packages with a habitat model, norm asc (worst first)
@@ -352,53 +358,27 @@ func corpusSentence(ov *Overview) string {
 // where the list of present tags only narrows a search. It is the same fact the
 // session-start hook digest leads with.
 func overviewConcepts(w io.Writer, ov *Overview) {
-	if len(ov.Taxonomy) == 0 && len(ov.Concepts) == 0 {
+	if len(ov.SeedMap) == 0 && len(ov.Taxonomy) == 0 && len(ov.Concepts) == 0 {
 		return
 	}
 	fmt.Fprintf(w, "### Concepts\n\n")
-	fmt.Fprintf(w, "These concepts were **learned from this corpus**, not read off a fixed list: "+
-		"each one is a group of functions that share a way of being written, named after the "+
-		"evidence that identified it. They hang from an authored interior, so two functions "+
-		"under the same *branch* score partial credit rather than nothing. "+
-		"Counts below are members; membership is graded, and a function can carry several.\n\n")
+	fmt.Fprintf(w, "Two pictures of the same vocabulary. The first is what doppel **searched with**: "+
+		"an authored tree of fourteen seed practices, each leaf showing how many functions here "+
+		"ended up in a concept that seed grew. It is the same shape on every corpus, which is what "+
+		"makes it the one concept picture two runs can be compared on. The second is what this "+
+		"corpus **turned out to have**: concepts learned from the code itself, named after the "+
+		"evidence that identified them, hung from that same interior — so two functions under one "+
+		"*branch* score partial credit rather than nothing. "+
+		"Counts are members; membership is graded, and a function can carry several.\n\n")
+
+	if len(ov.SeedMap) > 0 {
+		fmt.Fprintf(w, "**What doppel looked for, and how much of it grew here.**\n\n")
+		taxonomyDiagram(w, ov.SeedMap, "s")
+	}
 
 	if len(ov.Taxonomy) > 0 {
-		fmt.Fprintf(w, "```mermaid\nflowchart LR\n")
-		idOf := make(map[string]string, len(ov.Taxonomy))
-		for i, n := range ov.Taxonomy {
-			idOf[n.ID] = mermaidID("c", i)
-		}
-		for _, n := range ov.Taxonomy {
-			id := idOf[n.ID]
-			switch {
-			case n.Abstract:
-				fmt.Fprintf(w, "    %s([\"%s\"])\n", id, mermaidLabel(n.ID))
-			case n.Count == 0:
-				fmt.Fprintf(w, "    %s[\"%s<br/>absent\"]\n", id, mermaidLabel(n.ID))
-			default:
-				fmt.Fprintf(w, "    %s[\"%s<br/>%d\"]\n", id, mermaidLabel(n.ID), n.Count)
-			}
-		}
-		for i, n := range ov.Taxonomy {
-			if n.Parent == "" {
-				continue
-			}
-			if pid, ok := idOf[n.Parent]; ok {
-				fmt.Fprintf(w, "    %s --> %s\n", pid, mermaidID("c", i))
-			}
-		}
-		// Absent leaves are the finding, so they get the one colour here.
-		var hot []string
-		for i, n := range ov.Taxonomy {
-			if !n.Abstract && n.Count == 0 {
-				hot = append(hot, mermaidID("c", i))
-			}
-		}
-		if len(hot) > 0 {
-			fmt.Fprint(w, mermaidClassDefs)
-			fmt.Fprintf(w, "    class %s hot\n", strings.Join(hot, ","))
-		}
-		fmt.Fprintf(w, "```\n\n")
+		fmt.Fprintf(w, "**What it learned instead.**\n\n")
+		taxonomyDiagram(w, ov.Taxonomy, "c")
 		if ov.TaxonomyMore > 0 {
 			fmt.Fprintf(w, "The diagram draws the %d largest concepts on each branch; "+
 				"**%d further concepts** are left out of the picture and listed in the table below.\n\n",
@@ -425,6 +405,56 @@ func overviewConcepts(w io.Writer, ov *Overview) {
 			"function carrying the tag does it the same way, and a low number means the tag covers "+
 			"several unrelated habits. A concept with fewer than five members is not modeled.\n\n")
 	}
+}
+
+// taxonomyDiagram draws one concept tree as a mermaid flowchart.
+//
+// Both diagrams in the Concepts section render identically — stadium for an
+// abstract node, `absent` in red for a leaf nothing reached, name and count
+// otherwise — so there is one routine and not two. A hand-copied second copy
+// is precisely the defect this tool exists to find in other people's code.
+//
+// prefix keys the node ids. The two diagrams are separate fenced blocks and so
+// could reuse one prefix without colliding, but a report where `c4` means two
+// different concepts a paragraph apart is unreadable for whoever has to check
+// it against the corpus.
+func taxonomyDiagram(w io.Writer, nodes []TaxonomyNode, prefix string) {
+	fmt.Fprintf(w, "```mermaid\nflowchart LR\n")
+	idOf := make(map[string]string, len(nodes))
+	for i, n := range nodes {
+		idOf[n.ID] = mermaidID(prefix, i)
+	}
+	for _, n := range nodes {
+		id := idOf[n.ID]
+		switch {
+		case n.Abstract:
+			fmt.Fprintf(w, "    %s([\"%s\"])\n", id, mermaidLabel(n.ID))
+		case n.Count == 0:
+			fmt.Fprintf(w, "    %s[\"%s<br/>absent\"]\n", id, mermaidLabel(n.ID))
+		default:
+			fmt.Fprintf(w, "    %s[\"%s<br/>%d\"]\n", id, mermaidLabel(n.ID), n.Count)
+		}
+	}
+	for i, n := range nodes {
+		if n.Parent == "" {
+			continue
+		}
+		if pid, ok := idOf[n.Parent]; ok {
+			fmt.Fprintf(w, "    %s --> %s\n", pid, mermaidID(prefix, i))
+		}
+	}
+	// Absent leaves are the finding, so they get the one colour here.
+	var hot []string
+	for i, n := range nodes {
+		if !n.Abstract && n.Count == 0 {
+			hot = append(hot, mermaidID(prefix, i))
+		}
+	}
+	if len(hot) > 0 {
+		fmt.Fprint(w, mermaidClassDefs)
+		fmt.Fprintf(w, "    class %s hot\n", strings.Join(hot, ","))
+	}
+	fmt.Fprintf(w, "```\n\n")
 }
 
 func conventionWord(v float64) string {

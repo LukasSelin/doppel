@@ -1298,9 +1298,9 @@ golden scorecard is byte-identical with it in place.
 
 The markdown report (`--output`) opens with a **What doppel sees** section: the concept vocabulary
 and which concepts are *absent*, a package duplication map, per-package habitat norms, the arena
-ecosystem split, the corpus metrics and the retrieval channel mix. Three mermaid diagrams carry it
-(concepts, package duplication, habitats); the metrics and the channel mix are prose and tables,
-and the fourth diagram in the document belongs to the families section.
+ecosystem split, the corpus metrics and the retrieval channel mix. Four mermaid diagrams carry it
+(the seed map, the learned concepts, package duplication, habitats); the metrics and the channel
+mix are prose and tables, and the fifth diagram in the document belongs to the families section.
 
 The point is that all of this was already computed and then discarded. `culture.Stats`,
 `retriever.Stats` and `family.Stats` went to stderr and died there; `Model.HabitatNorm`,
@@ -1331,16 +1331,33 @@ Rules that hold it together:
 - **Diagrams departing from the wiki's unstyled house style is deliberate**, and only on `classDef`.
   A hand-authored diagram explains a mechanism; these encode a measured value, and colour is the
   only channel mermaid offers for one.
+- **The Concepts section carries two pictures of one vocabulary, and the split is the point.**
+  The **seed map** (`cmd.seedMap`) draws `ontology.Default()` — the authored 8 abstract nodes and
+  14 seed leaves — with each leaf carrying how many distinct functions reached a concept that seed
+  grew (`cmd.seedYield`, counting functions and not memberships, skipping `BelowFloor`, keyed on
+  `lexicon.Concept.Seed` and never `Anchor`). It is the same 22 nodes on every corpus, which is
+  exactly its value: it is the one concept diagram two runs, or two repositories, can be held
+  beside each other, and the only surface that still answers "does this codebase already do X"
+  pictorially. The **learned map** draws the run's own vocabulary, which has no fixed size at all.
+  `reporter.taxonomyDiagram` renders both — one routine, a node-id prefix apart (`s` and `c`), so
+  the abstract/absent/count rendering cannot fork.
+
+  A red leaf on the seed map and a name in the **No practice here for** sentence are two
+  renderings of one fact. They coincide only because a concept always has founders and therefore
+  at least one member, so "no function reached a concept this seed grew" and "this seed grew no
+  concept" are the same condition; `TestSeedMapAbsenceRestsOnConceptsHavingMembers` pins that
+  assumption rather than leaving it a coincidence.
 - **Every diagram is bounded and says so.** Package diagrams cap at `maxOverviewNodes` (12 — moby
   has 168 habitats); family diagrams cap at 8 members, because the picture must draw every edge to
-  show the clique property and 55 members is 1485 edges. The **concept taxonomy is the one bounded
-  per branch** rather than globally (`maxTaxonomyLeaves` 3, `reporter.BoundTaxonomy`), because it
-  is a tree: a learned vocabulary hangs hundreds of leaves off eight authored parents, and a global
-  top-N lands wherever the largest concepts happen to sit and leaves whole branches bare — the one
-  thing this picture exists to show. Three is roughly the density the authored seed taxonomy had,
-  so a bounded run reads like that map and is still entirely derived from the corpus. It went
-  unbounded for a while and moby's diagram was **527 nodes**, which no mermaid renderer makes a
-  picture of.
+  show the clique property and 55 members is 1485 edges. The seed map needs no bound — it is a
+  fixed 22 nodes — but the **learned concept tree is bounded per branch** rather than globally
+  (`maxTaxonomyLeaves` 3, `reporter.BoundTaxonomy`), because it is a tree: a learned vocabulary
+  hangs hundreds of leaves off eight authored parents, and a global top-N lands wherever the
+  largest concepts happen to sit and leaves whole branches bare — the one thing this picture exists
+  to show. Three is roughly the density the authored seed taxonomy had, so the two diagrams read at
+  the same density. The learned tree went unbounded for a while and moby's was **527 nodes**, which
+  no mermaid renderer makes a picture of; that is what displaced the seed map, which had simply
+  been overwritten by the learned leaves when `lexicon` landed rather than removed by a decision.
 
 A **Corpus metrics** subsection carries two further numbers, in the markdown preamble, in the
 dashboard's fact tiles, and in `--format json` as `corpusMetrics` (not in `snapshot.Schema`'s

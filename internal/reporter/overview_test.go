@@ -20,6 +20,12 @@ func sampleOverview() *Overview {
 			{Tag: "mapping", Count: 3},
 		},
 		Absent: []string{"db_access", "http_call"},
+		SeedMap: []TaxonomyNode{
+			{ID: "concept", Abstract: true},
+			{ID: "io_operation", Parent: "concept", Abstract: true},
+			{ID: "http_call", Parent: "io_operation"},
+			{ID: "file_io", Parent: "io_operation", Count: 12},
+		},
 		Taxonomy: []TaxonomyNode{
 			{ID: "concept", Abstract: true},
 			{ID: "io_operation", Parent: "concept", Abstract: true},
@@ -64,8 +70,8 @@ func TestPrintMarkdownOverview(t *testing.T) {
 	if !strings.Contains(out, "Most uniform is `bench`") {
 		t.Errorf("habitat superlatives missing:\n%s", out)
 	}
-	if n := strings.Count(out, "```mermaid"); n != 3 {
-		t.Errorf("got %d diagrams, want 3 (concepts, duplication, habitats):\n%s", n, out)
+	if n := strings.Count(out, "```mermaid"); n != 4 {
+		t.Errorf("got %d diagrams, want 4 (seed map, learned concepts, duplication, habitats):\n%s", n, out)
 	}
 }
 
@@ -257,5 +263,34 @@ func TestTaxonomyDiagramReportsWhatItLeftOut(t *testing.T) {
 	PrintMarkdownOverview(&b, ov)
 	if out := b.String(); !strings.Contains(out, "**507 further concepts**") {
 		t.Errorf("bounded diagram does not say what it dropped:\n%s", out)
+	}
+}
+
+// The section carries two concept diagrams and they must be told apart. Ids
+// are per-block so they could collide harmlessly, but a report where c4 names
+// one concept in the first picture and another in the second cannot be checked
+// against the corpus by whoever has to check it.
+func TestConceptDiagramsUseDistinctNodeIDs(t *testing.T) {
+	var b strings.Builder
+	PrintMarkdownOverview(&b, sampleOverview())
+	out := b.String()
+	for _, want := range []string{`s0(["concept"])`, `s3["file_io<br/>12"]`, `c0(["concept"])`} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %s — the two concept diagrams share a prefix:\n%s", want, out)
+		}
+	}
+}
+
+// The seed map is the picture the report opened with before the vocabulary
+// became corpus-derived: the authored tree, absent leaves in red.
+func TestSeedMapDrawsAbsentSeedsInRed(t *testing.T) {
+	var b strings.Builder
+	PrintMarkdownOverview(&b, sampleOverview())
+	out := b.String()
+	if !strings.Contains(out, `s2["http_call<br/>absent"]`) {
+		t.Errorf("a seed that grew nothing is not marked absent:\n%s", out)
+	}
+	if !strings.Contains(out, "class s2 hot") {
+		t.Errorf("an absent seed is not coloured:\n%s", out)
 	}
 }
