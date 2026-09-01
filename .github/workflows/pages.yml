@@ -47,10 +47,10 @@ jobs:
       - name: Point the corpus cache outside the working tree
         run: echo "DOPPEL_CORPORA=$RUNNER_TEMP/doppel-corpora" >> "$GITHUB_ENV"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
 
@@ -59,7 +59,7 @@ jobs:
       # pinned commits, and caches are shared across workflows on a branch.
       # Whichever runs first on a new manifest pays the clone and saves it.
       - name: Restore the pinned corpora
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ runner.temp }}/doppel-corpora
           key: doppel-corpora-${{ hashFiles('internal/bench/corpora.go') }}
@@ -109,7 +109,7 @@ jobs:
       # master, and duplicating it would double the runner cost of a push for
       # no extra signal. A tree that does not build fails `go run` above and
       # nothing is deployed.
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
 
   deploy:
     needs: build
@@ -120,4 +120,4 @@ jobs:
 
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

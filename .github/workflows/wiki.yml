@@ -29,14 +29,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # checkout rather than a hand-rolled `git clone` with the token in the
       # URL: it passes credentials via http.extraheader and tears them down
       # afterwards, so the token never lands in .git/config or a log line.
       # persist-credentials stays at its default so the push below authenticates.
       - name: Check out the wiki
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: ${{ github.repository }}.wiki
           path: wiki

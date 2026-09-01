@@ -50,12 +50,12 @@ jobs:
 
       # The push event checks out a detached sha; this job pushes back, so it
       # needs the branch.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: master
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
 
@@ -65,7 +65,7 @@ jobs:
       # two manifests, and Fetch would then fail on a commit mismatch rather
       # than repair it.
       - name: Restore the pinned corpora
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ runner.temp }}/doppel-corpora
           key: doppel-corpora-${{ hashFiles('internal/bench/corpora.go') }}
