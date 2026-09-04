@@ -225,6 +225,26 @@ callees do related work (1.00): [error_wrapping, mapping]
 A near match nudges the score but only counts as a *merge signal* once it reaches 0.5, so a pair of
 distant cousins cannot be flagged merge-worthy on that evidence alone.
 
+The concept signal is also reported from every angle it can be read from, because one number can
+hide what it was computed from. Every pair carries a `concept views` line:
+
+```
+concept views: shape 0.00  corpus 0.00  feature 0.62  a-in-b 0.91  b-in-a 0.34  (taxonomy misses shared vocabulary)
+  shared vocabulary: sel:store.Get, call:Decode, id:key
+```
+
+*Shape* is what the taxonomy asserts, the same answer in every repository. *Corpus* is the same
+tree read through this corpus's concept frequencies — the number the overlap score actually uses.
+*Feature* ignores the tree entirely and asks how much of what the two sides' learned concepts are
+*made of* is the same; `a-in-b` and `b-in-a` are its direction, how much of one side's vocabulary
+the other side's concepts also carry. The views are kept separate for the same reason code-shape
+and overlap are: their disagreement is a finding. Two emergent concepts the taxonomy hangs from
+its root score 0.00 on the tree however much vocabulary they share, and the feature view is the
+one that sees it; two seeded siblings score 0.67 on the tree however little they have in common,
+and the feature view is the one that says so. A gap of 0.5 or more between shape and feature is
+flagged, and the clause says which way it runs. Nothing here changes a score — the report's
+overview counts how often the two disagreed across the whole run.
+
 Run `doppel ontology --defs` to print the seed vocabulary with definitions and check it against its
 own consistency rules. Those rules are also enforced by the test suite, which is what stops the seed
 rules and the taxonomy from drifting apart. The concept leaves it prints are seeds, not what any run

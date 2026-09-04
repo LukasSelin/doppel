@@ -111,7 +111,9 @@ internal/
   fingerprint/  Token shingles + control-flow histogram + signature types over the neutral IR; the code-similarity score
                 wl.go is the WL label bag; wlexplain.go names its shallow labels for reports;
                 cons.go hash-conses the canonical forest; wlcodec.go encodes bags for the snapshot
-  ontology/     The formal vocabulary: entity kinds, typed relations, concept taxonomy, roles, axioms
+  ontology/     The formal vocabulary: entity kinds, typed relations, concept taxonomy, roles, axioms;
+                vocabulary.go is the corpus-derived side table of what each learned concept is made of,
+                and the feature view of concept relatedness that reads it
   tagger/       The 14 seed rules: AST-signal matching → founding member sets for the lexicon
   lexicon/      Learns the corpus's own concepts: features.go (evidence channels), expand.go (seeded PMI expansion), emerge.go (clique clustering), name.go
   clique/       Deterministic maximal-clique enumeration and components, shared by family and lexicon
@@ -121,7 +123,8 @@ internal/
   retriever/    Multi-channel candidate retrieval: shape.go / concept.go / calls.go inverted indexes, retriever.go union + evidence
   culture/      Corpus-culture model: ecology.go (PMI), prototype.go (prototypes + typicality), habitat.go (fit), convention.go
   analyzer/     SimilarPair + Retrieval types; FindSimilar (library API); rank.go: SortForReport (the report's ranking) and SortByEvidence (the plain-Total library one); kind.go + stem.go (pair kinds); explain.go (rule-attributed pair sentences)
-  comparator/   Weighted structural overlap scoring (12 signals → 0.0–1.0 composite)
+  comparator/   Weighted structural overlap scoring (12 signals → 0.0–1.0 composite); options.go is the
+                exhibits blend — how the concept views combine into that one slot
   family/       Near-duplicate families: components + edge completion + maximal cliques over the pair graph
   snapshot/     One analysis run as comparable plain data: schema + Build, and Diff over two of them
   identity/     Matches two snapshots' functions to each other by WL bag and classifies each into one of eight classes; render.go is the text + JSON report
@@ -187,6 +190,12 @@ Each pair carries two independent similarity numbers, gated by two independent f
 Do not merge these into one number. High code score + low overlap is a *different finding* (lookalike
 bodies in unrelated subsystems) from high on both (a real merge candidate), and collapsing them
 destroys that distinction.
+
+The same rule holds one level down, inside `OverlapScore`'s concept half: the **concept views**
+(`Evidence.Views` — shape, corpus, feature, and the two containments that give the feature view
+a direction) are reported unblended on every surface, and the one number the composite's
+`exhibits` slot reads from them is a ranking input chosen by measurement — the corpus view, as
+of the measurement recorded under *Concept views* — never a substitute for the five.
 
 A **third** reported quantity, `Breakdown.Containment`, is gated by no flag and blended into
 neither: `Σ w·min(a,b) / min(Σ w·a, Σ w·b)` over the same WL bags and corpus weights `Score`'s
@@ -738,7 +747,7 @@ axiom 7 asserts it — and the composite is clamped to `1.0`.
 | Signal | Relation | Weight | Graded |
 | --- | --- | --- | --- |
 | shared callees (raw, incl. stdlib) | `calls` | 0.210 | no |
-| shared concepts | `exhibits` | 0.180 | **yes** |
+| shared concepts (the corpus view — see *Concept views*) | `exhibits` | 0.180 | **yes** |
 | shared callers (resolved, qualified) | `called_by` | 0.120 | no |
 | same role | `has_role` | 0.135 | **yes** |
 | same package | `declared_in` | 0.090 | no |
@@ -778,6 +787,109 @@ exact match average to `0.33`, so a pair that counts today would stop counting a
 Floor effect worth knowing: `SameVisibility` is true when both are unexported *or* both exported, and
 the receiver signal scores `1.0` when both are plain functions. Any two plain unexported functions
 therefore start with a free `0.09`.
+
+### Concept views
+
+The `exhibits` slot used to be one float, and one float can hide the thing it was computed from.
+`StructuralEvidence.Views` (`comparator.ConceptViews`) is the concept signal read from every
+angle it can be read from, and every angle is reported on every surface — text (`concept views:`
+plus a `shared vocabulary:` line), markdown, `--format json` (`viewShape` … `viewsDisagree`) and
+the dashboard's own panel — while the composite still reads exactly one number from them:
+
+| view | question | source |
+| --- | --- | --- |
+| shape | what the taxonomy asserts, frequency-free | `Ontology.SetRelatedness` (Wu-Palmer over `parser.ConceptIDs`) — computed in both scorer branches from the boolean projection, so a backfilled membership never reaches it |
+| corpus | what this corpus's frequencies say | `Scorer.SetRelatednessW` (IC-Lin, confidence-weighted) — `PatternRelatedness`, unchanged |
+| feature | what the two sides' concepts are *made of*, no tree in between | `Scorer.FeatureRelatednessW` over `ontology.Vocabulary` |
+| a-in-b, b-in-a | the feature view's direction: how much of one side's vocabulary the other's concepts carry | the same merge join, `Σmin/ΣA` and `Σmin/ΣB` |
+
+**The feature view exists because both set matchers drop zero pairings.** `Scorer.matchShared`
+skips a pairing whose `IC(LCS)` is 0 and `Ontology.SetRelatedness` skips one whose Wu-Palmer is 0,
+and `IC(root) == 0` exactly — so two emergent concepts hanging from the concept root (a real
+case: `anchorEmergent` leaves `Anchor == ""` when no seed shares vocabulary, and `derivedParent`
+then hangs the leaf on `ConConcept`) are not matched at zero, they are invisible. The feature view
+therefore does no matching at all. Each side's concepts are merged into one **profile**,
+`P(f) = max over its concepts c of conf_c · w(c,f)` — max, not sum, because overlapping concept
+vocabularies are the norm (`MaxOverlap` collapses only near-duplicates) and a sum would count one
+feature twice — and the two profiles are joined once: `Σmin/Σmax` is the view, `Σmin/ΣA` and
+`Σmin/ΣB` its direction, and the top `FeatureTopN` (3) shared features by min weight are its
+evidence, selected by insertion the way retrieval's shared labels are. Confidence scales a
+concept's whole vocabulary, so an identical concept asserted at 0.9 and 0.5 reads 0.56 on both the
+corpus and the feature view: the two agree on what a weaker claim is worth and differ only in what
+they count. `TestFeatureViewSeesRootHungConcepts` pins the whole point — corpus 0, shape 0,
+feature well above 0.5 on two root-hung concepts made of the same things.
+
+**The vocabulary travels as a side table, like IC.** `lexicon.Concept.Features` never left its
+package: `derivedConcepts` passes ID, seed, anchor and a prose definition, `ontology.Term` has no
+payload slot, and `lexicon` may not import `ontology`. `cmd.vocabularyOf` (mirrored in
+`internal/bench`, and the two must move together like `derivedConcepts`) builds an
+`ontology.Vocabulary` — feature names interned once, each concept a slice of (id, weight) sorted by
+id, so a comparison is a merge join over integers — and `Scorer.WithVocabulary` attaches it.
+`NewScorer` is unchanged: retrieval builds its own scorer and has no use for the table, because
+the concept channel is information mass and stays so. **The profile is built by a pairwise
+sorted merge over the pre-sorted per-concept lists into scratch buffers on the table**
+(single-threaded by construction), never by sorting per pair — and that was measured the hard
+way. A learned vocabulary has no natural size: moby's median concept carries 44 features and
+its largest 2 479, and the largest is carried by hundreds of functions, so the first version,
+which sorted both sides' merged vocabularies on every comparison, took the comparison stage
+from 0.8s to 11.8s over 38 942 pairs and the whole moby run from 10.3s to 28.0s. With the
+merge, the unbounded view costs 12.1s on moby — the whole feature is under two seconds on the
+largest rung. `MaxVocabularyFeatures` (4 096) is a guard above anything the ladder produces,
+not a tuning, and `Vocabulary.Truncated` rides on the stderr `Concept views:` line when it
+bites: a tight cap was measured and not taken, because it barely moves the clock (11.1s at
+128) and removes most of the finding the view exists for — moby's 400 pairs the taxonomy
+scores 0 whose concepts are made of the same things become 230 at 512, 88 at 256 and 24 at
+128, since what two large concepts share is largely their tails, every feature of which still
+cleared the lexicon's information window. A scorer without a table reports the view
+as **absent** (`HasFeature` false), never as zero: every renderer omits the lines, the snapshot
+and the dashboard write `-1` for the three feature-side numbers (the `dashboard.Unit.Fit`
+precedent), and the free `comparator.Compare` is byte-identical to what it was.
+`lexicon.Opaque` marks the structural channel's hash-named features (`act:depth-2 IF#…`): they
+score like any other feature and yield their place in the shared-vocabulary evidence to a
+legible one — the same rule that keeps them from naming a concept.
+
+**Disagreement is a finding, and the renderer says which way.** `ViewsDisagree` is
+`|feature − shape| >= ViewDisagreeSpread` (0.5, equal to `relatedEnough` — one sibling-level
+relatedness, the smallest gap that could change how the gate reads a pairing). Shape against
+feature only: the corpus view is the taxonomy read through frequencies and sits between the two
+by construction, so a max−min spread would dilute the question "does the tree agree with the
+vocabularies". Feature above shape renders `taxonomy misses shared vocabulary`; shape above
+feature renders `taxonomy asserts kinship the vocabularies lack`. `Result.Views` counts both over
+the compared union and the markdown overview's channel-mix paragraph states them; measured on
+the ladder (`TestViewsLadder`, `DOPPEL_BENCH_VIEWS=1`) the flag fires on 7.8% of moby's 38 942
+compared pairs, 6.3% of prometheus's, 7.2% of hugo's, 3.3% of gin's, 3.0% of cobra's and 0% of
+chi's and conc's — and the taxonomy-only direction dominates everywhere (moby 2 652 against 390,
+cobra 41 against 1), because two seeds' children read 0.67 as siblings while sharing little
+vocabulary. That is the inert-interior finding, surfaced per pair. The vocabulary-only direction
+is rare but real: moby's 390 are pairs the tree scores 0.00 whose concepts are made of the same
+things. The shape×feature quartile grid the ladder prints is what would move the constant; at
+0.5 the flagged pairs are a minority on every rung and the flag says nothing on the two rungs
+too small to have an interior.
+
+**The blend was measured and the corpus view kept.** `comparator.Options{Exhibits: ViewBlend}`
+(`NewWith`; `New` is `NewWith(scorer, DefaultOptions())`) is the seam: `BlendWeighted` over the
+available views (feature only when measured — an unmeasured view is not a zero, and the weights
+renormalise over what was), `BlendGeometric`, `BlendMax`; the zero value is the corpus view.
+`ev.Exhibits` records what the slot actually read, so `SignalVector` reproduces `OverlapScore`
+under every blend and `TestSelfWeight` still means what it meant. `TestViewsBlend` scores every
+candidate — the (shape, corpus, feature) simplex in 0.1 steps, the geometric mean, the max —
+against the cobra labels through `Run.RescoreWith(lc.run.Onto, opt)`. **Every one is
+admissible and none is distinguishable from the corpus view**: merge 5.3 (6/6, all in the top
+50) under all 68, refactor 12.8 against 12.9, false-positive 50.5 against 51.0, no violations
+anywhere, and the largest movement in the whole table is one pair by one rank
+(`GetActiveHelpConfig ↔ getEnvConfig`, 52 → 53, or `validateRequiredFlagGroups ↔
+validateOneRequiredFlagGroups`, 31 → 32). The selection rule — zero violations, merge mean not
+worse, false-positive mean not lower, then best refactor mean, ties to the least departure from
+the incumbent — picks the corpus view, and the half-point false-positive gain some feature-heavy
+blends show is one pair moving one rank, which by this file's own standard is noise. So
+`DefaultOptions()` is the corpus view and `Schema` 10 is a shape bump only. What would change
+that is a second labeled corpus: the harness, the seam and the sweep variants (`Exhibits blend`
+in `TestSweep`) are all in place, and adopting a blend is a one-line change whose measurement
+already exists.
+
+Direction never ranks, like containment. The view is language-neutral by construction — it
+reads the lexicon's features, which every frontend produces — so a `lexfront` language gets it
+on the same terms as Go.
 
 ### Roles
 
@@ -1322,7 +1434,10 @@ Rules that hold it together:
   `Suppressed`, `LargeBuckets`, `SurvivingLabels` and parse warnings do not. Both surfaces keep
   their lines — stderr is unchanged, because the hook and the examples wrapper read it.
 - **`retriever.Stats` now rides on `Result`.** It was created, printed and dropped; the report
-  explains its own pair list with it.
+  explains its own pair list with it. `Result.Views` rides beside it for the same reason: how
+  often the concept views disagreed across the compared pairs, and in which direction, is the
+  per-report form of the "inert interior" finding, and it renders as one sentence in the
+  channel-mix paragraph (`Overview.ViewsCompared` and friends) and one stderr line.
 - **Escaping is not `mdEscape`.** That helper turns `|` into `\|`, and `|` is mermaid's edge-label
   delimiter. `mermaidLabel` emits HTML entities (`#quot;`, `#35;`) because a quoted mermaid label
   has no escape character, and `mermaidID` is positional rather than a mangled name — `a.b` and
@@ -1532,7 +1647,14 @@ never learns about `culture`, and `cmd` queries the model.
   no overview at all and the numbers exist either way. The breakdown's first component was renamed
   `ast` → `wl`, which is a rename of the label to match what the number has become: a
   corpus-weighted multiset Jaccard over WL bags, not a Jaccard over token 3-grams.
-- **The dashboard is not fed by `--format json`.** It has its own `dashboard.Payload` (`Schema` 1,
+- **The concept views have their own panel.** `Edge.Views` is the five numbers in `ViewNames`
+  order (shape, corpus, feature, a-in-b, b-in-a; the feature-side three are `-1` when unmeasured,
+  and the panel is omitted then), `Edge.ViewsDisagree` is the comparator's flag, and
+  `Edge.SharedVocab` names the strongest features both sides' concepts carry. The panel draws
+  them as bars from the same bar-row idiom the code-shape components use, says in a note which
+  way a disagreement runs, and blends nothing — `Overlap` is still one number, and the page does
+  not recompute how its concept half was read. Payload `Schema` went 1 → 2 for it.
+- **The dashboard is not fed by `--format json`.** It has its own `dashboard.Payload` (`Schema` 2,
   independent of `snapshot.Schema`), marshalled by Go and inlined into the page at render time.
   That is worth knowing before assuming the snapshot and the page must agree: they share no type,
   and a field added to one reaches the other only if somebody adds it there too. It also means the
@@ -1943,6 +2065,17 @@ to rewrite on every turn:
   tree — and verified byte-identical over all seven pinned corpora, so a schema-7 `Unit.WL` and a
   schema-8 one over the same Go body are the same bag. 8 exists because `Params` gained
   `Languages`, which a schema-7 baseline cannot supply and this run must not invent.
+
+  **`Schema` 10 is a shape bump.** `Pair` gained the concept views — `viewShape`,
+  `viewCorpus`, `viewFeature`, `viewAInB`, `viewBInA`, `viewsDisagree` — which are annotations in
+  the sense `Containment` and `Explain` are (reported, rounded to two decimals like `Concept.Conf`,
+  never diffed; `TestDiffIgnoresViews` pins it) and are every one of them corpus-relative, since the
+  vocabulary they read is learned per run, so a schema-9 baseline cannot supply them. The three
+  feature-side numbers are `-1` when the run measured no feature view (nil evidence, or a scorer
+  with no vocabulary table): an unmeasured view is not a zero, and the `dashboard.Unit.Fit`
+  precedent already used the same sentinel. Nothing a schema-9 snapshot stores changed meaning:
+  the composite's `exhibits` slot still reads the corpus view (see *Concept views* for the
+  measurement that kept it there), so `overlap` and `mergeWorthy` are the numbers they were.
 
   `Schema` 5 (shape line) was the same kind of bump as 3, one step further: `Pair.Score` changed metric (token shingles → corpus-weighted WL
   Jaccard) *and* became corpus-relative, so a schema-4 baseline and a schema-5 run would disagree
@@ -2540,6 +2673,14 @@ functions for exactly this reason, and the first version of them did not and fai
     rejects**: it reads refactor 13.7 → 12.2 (better) against fp 47.0 → 42.0 (worse), and two of
     the three hard assertions are on the false-positive side, so it trades the corroborated
     quantity for the uncorroborated one in the same direction the ablation shows WL is carrying.
+  - `TestViewsLadder` and `TestViewsBlend` (guard `DOPPEL_BENCH_VIEWS=1`) are the concept-views
+    measurement: the first prints, for every fetched rung, how often the shape and feature views
+    disagree, in which direction, and the shape×feature quartile grid that judges
+    `ViewDisagreeSpread`; the second scores every candidate for the `exhibits` slot — the
+    weighted simplex in 0.1 steps, the geometric mean, the max — against the labels through
+    `Run.RescoreWith`, and logs which one the stated selection rule picks. Both assert nothing;
+    see *Concept views* for the measured result. They rescore against `lc.run.Onto`, never
+    `ontology.Default()` — see *Rough edges* for why that matters to the older harnesses.
   - `TestSweep` (guard `DOPPEL_BENCH_SWEEP=1`) is the sensitivity sweep: each hand-set constant
     varied one at a time (±50% or the natural alternatives), only the stages it reaches re-run,
     and the labeled rankings reported with a verdict — `inert` (no label moved), `moves`,
@@ -2875,6 +3016,25 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   objective, greedy matching genuinely is not optimal in general. The scores it produces are
   therefore a defensible lower bound on the weighted objective, not the objective's maximum. It
   feeds ranking, never a gate.
+- **`Rescore(ontology.WithWeights(…))` scores under the seed vocabulary, and
+  `Rescore(ontology.Default())` is not a restore.** `WithWeights` rebuilds over `Default()`, whose
+  concept table is the fourteen seed leaves, so every relation-weight variant in `TestSweep`,
+  `TestAblateFingerprint`'s reweighting and `TestSelfWeight` has been scoring pairs under a taxonomy
+  that knows none of the learned concepts — an exact shared concept still self-matches (the
+  unknown-term guard in `pairContribution`), but every sibling or cousin pairing reads 0 and the
+  shape view reads 0, which is a different experiment from the one the tables in this file
+  describe. `TestRescoreRoundTrip` did not catch it because its three-function fixture learns no
+  concept. The views harness rescores
+  against `lc.run.Onto` and restores with `RescoreWith(lc.run.Onto, DefaultOptions())` for
+  exactly this reason; the older three are unfixed, and their relation-weight rows should be
+  re-read as measured with the concept signal off until they are.
+- **The taxonomy-only disagreement dominates the flag, and that is the finding, not a
+  miscalibration.** On every rung with an interior, `taxonomy asserts kinship the vocabularies
+  lack` outnumbers the other direction by an order of magnitude (moby 2 652 to 390): two seeded
+  concepts under one parent read 0.67 on shape while their vocabularies overlap by almost nothing.
+  The flag is doing what it says. The vocabulary-only direction — root-hung concepts made of the
+  same things — is the rarer and more actionable one, and the pair line names it; a report that
+  wanted to *rank* it would need a blend the labels cannot yet justify (see *Concept views*).
 - **The golden benchmark moved slightly the wrong way and was accepted.** On cobra, the only
   labeled corpus: merge mean rank 5.2 → 5.5, refactor 16.1 → 16.8, false-positive 40.0 → 39.0. All
   three hard assertions stay green (6/6 merges retrieved and in the top 50, no false positive in

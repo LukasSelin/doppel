@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/LukasSelin/doppel/internal/analyzer"
+	"github.com/LukasSelin/doppel/internal/comparator"
 	"github.com/LukasSelin/doppel/internal/fingerprint"
 	"github.com/LukasSelin/doppel/internal/ontology"
 	"github.com/LukasSelin/doppel/internal/retriever"
@@ -102,6 +103,21 @@ func sweepVariants() []sweepVariant {
 			}})
 		}
 	}
+
+	// The exhibits blend: rescored against the run's own learned vocabulary,
+	// never ontology.Default(), and restored to production afterwards.
+	blend := func(variant string, opt comparator.Options) {
+		vs = append(vs, sweepVariant{"Exhibits blend", variant, func(lc *labeledCorpus) Scorecard {
+			lc.run.RescoreWith(lc.run.Onto, opt)
+			sc := Score(lc.run, lc.lf)
+			lc.run.RescoreWith(lc.run.Onto, comparator.DefaultOptions())
+			return sc
+		}})
+	}
+	blend("corpus", comparator.Options{})
+	blend("equal", comparator.Options{Exhibits: comparator.ViewBlend{Shape: 1, Corpus: 1, Feature: 1}})
+	blend("geom", comparator.Options{Exhibits: comparator.ViewBlend{Mode: comparator.BlendGeometric}})
+	blend("max", comparator.Options{Exhibits: comparator.ViewBlend{Mode: comparator.BlendMax}})
 
 	rank := func(constant, variant string, ro analyzer.RankOptions) {
 		vs = append(vs, sweepVariant{constant, variant, func(lc *labeledCorpus) Scorecard { return ScoreWith(lc.run, lc.lf, ro) }})

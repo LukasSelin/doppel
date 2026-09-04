@@ -9,7 +9,7 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `a5c4552` |
+| doppel | `c4861da` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -34,6 +34,7 @@ Retrieval: shape 8068, concept 17036, call 8171 -> 29105 unique pairs
   concept-only 50.7%  call-only 18.8%  suppressed-shape functions: 12  large identity buckets: 0  surviving labels: 30355
   123 cross test/prod pairs dropped
 Running structural comparison on 28982 pairs...
+  Concept views: 1736 of 28982 compared pairs disagree with the taxonomy (177 vocabulary the tree misses, 1559 kinship the vocabularies lack)
   13079 pairs remain after struct-min=0.34 filter
 Families: 914 over 637 components, 2024 functions in a family, 7944 edges completed
   2 component(s) skipped as too large or too dense: sizes [231 699]
@@ -1320,6 +1321,8 @@ _85 further packages are modeled and not drawn._ Most uniform is `graphite` (nor
 
 Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **29105 candidate pairs** (shape 8068, concept 17036, call 8171), of which 19% arrived on call evidence alone and 51% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
+The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **1736 of 28982** pairs the taxonomy and the vocabularies differ by at least 0.50: 177 where the vocabularies agree and the tree cannot see it, 1559 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
+
 Each function is also an arena where its candidate concepts compete for its evidence. 5273 functions reached an equilibrium: **2739** settled on a single concept, **2495** on a coalition, **0** hold concepts this corpus says do not go together.
 
 ### Corpus metrics
@@ -1895,6 +1898,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `48.64` — `depth-1 KV` ×10
 - `38.84` — `depth-3 ASSIGN` ×6
 
+**Concept views:** shape `1.00`, corpus `0.96`, feature `0.96`, a-in-b `1.00`, b-in-a `0.96`
+
+**Shared vocabulary:** `call:kubernetes.*clientAdapter.CoreV1`, `call:kubernetes.convertToService`, `call:scrape.isSeriesPartOfFamily`
+
 **Structural overlap:** `0.93` (merge-worthy)
 
 - share 20 callees: [AddEventHandler, Error, RoleService.String, convertToService, e.enqueue, e.enqueueNamespace, e.enqueueNode, eps.GetStore, eventCount.WithLabelValues, l.Error, namespacedName, nodeName, pod.GetStore, promslog.NewNopLogger, serviceUpdate, svc.GetStore, svcAddCount.Inc, svcDeleteCount.Inc, svcUpdateCount.Inc, workqueue.NewTypedWithConfig]
@@ -1939,6 +1946,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `12.14` — `depth-2 IF` ×2
 - `11.93` — `depth-3 IF` ×2
 
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
+
+**Shared vocabulary:** `call:notifier.*alertmanagerSet.cleanSendLoops`, `call:record.ToMetricType`, `call:scrape.*scrapeLoop.setScrapeFailureLogger`
+
 **Structural overlap:** `0.92` (merge-worthy)
 
 - share 15 callees: [Load, acc.collectOOORecords, append, handleAppendableError, len, make, onChunkCreated, series.Lock, series.Unlock, series.cleanupAppendIDsBelow, series.insert, series.sampleState, updateNativeHistogramMetricsOnAppend, updateStaleSeriesMetricOnAppend, value.IsStaleNaN]
@@ -1982,6 +1993,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `61.13` — `depth-1 BIN` ×11
 - `61.13` — `depth-1 BIN` ×11
 
+**Concept views:** shape `0.25`, corpus `0.08`, feature `0.28`, a-in-b `0.70`, b-in-a `0.32`
+
+**Shared vocabulary:** `id:variant`, `lit:md`, `id:section`
+
 **Structural overlap:** `0.48` (merge-worthy)
 
 - share 23 callees: [Math.ceil, Math.max, Math.min, copy, criteria, currentPageGroups.map, e.stopPropagation, filter, humanizeDurationRelative, items.map, j.toString, now, rem, searchFilter.trim, setActivePage, setSearchFilter, setShowEmptyGroups, shownGroups.slice, useEffect, useMemo, useQueryParam, useSettings, withDefault]
@@ -2019,6 +2034,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `30.29` — `depth-3 IF` ×4
 - `27.52` — `depth-2 IF` ×4
 - `26.62` — `depth-3 BLOCK` ×4
+
+**Concept views:** shape `0.00`, corpus `0.00`, feature `0.00`, a-in-b `0.00`, b-in-a `0.00`
 
 **Structural overlap:** `0.56` (merge-worthy)
 
@@ -2059,6 +2076,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `55.67` — `depth-3 CALL` ×9
 - `55.67` — `depth-2 CALL` ×9
 - `39.94` — `depth-2 RANGE` ×6
+
+**Concept views:** shape `1.00`, corpus `0.97`, feature `0.96`, a-in-b `1.00`, b-in-a `0.97`
+
+**Shared vocabulary:** `call:github.com/gogo/protobuf/proto.NewBuffer`, `call:kubernetes.convertToService`, `call:tsdb.*CircularExemplarStorage.AddExemplar`
 
 **Structural overlap:** `0.69` (merge-worthy)
 
@@ -2101,6 +2122,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `21.50` — `depth-3 CALL` ×4
 - `21.50` — `depth-3 SEL` ×4
 
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
+
+**Shared vocabulary:** `call:remote.*QueueManager.sendWriteRequestWithBackoff`, `id:limiter`, `sel:m.desiredNumShards`
+
 **Structural overlap:** `1.00` (merge-worthy)
 
 - share 13 callees: [Inc, Info, Lock, Unlock, Warn, WithLabelValues, enqueue, incr, isSampleOld, model.Duration, time.Duration, time.Now, time.Sleep]
@@ -2141,6 +2166,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `30.29` — `depth-3 ASSIGN` ×4
 - `30.29` — `depth-2 ASSIGN` ×4
 
+**Concept views:** shape `0.00`, corpus `0.00`, feature `0.00`, a-in-b `0.00`, b-in-a `0.00`
+
 **Structural overlap:** `0.69` (merge-worthy)
 
 - share 7 callees: [addInsert, advanceA, advanceB, ai.Next, append, bi.Next, newBucketIterator]
@@ -2178,6 +2205,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `14.31` — `depth-1 ASSIGN` ×3
 - `13.76` — `depth-3 UNARY` ×2
 - `13.76` — `depth-3 BIN` ×2
+
+**Concept views:** shape `0.00`, corpus `0.00`, feature `0.00`, a-in-b `0.00`, b-in-a `0.00`
 
 **Structural overlap:** `0.77` (merge-worthy)
 
@@ -2221,6 +2250,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `32.59` — `depth-2 BIN` ×6
 - `14.80` — `depth-2 IF` ×3
 
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
+
+**Shared vocabulary:** `call:kubernetes.*clientAdapter.CoreV1`, `call:kubernetes.convertToService`, `call:scrape.isSeriesPartOfFamily`
+
 **Structural overlap:** `0.79` (merge-worthy)
 
 - share 18 callees: [Error, append, aws.NewCredentialsCache, aws.String, awsConfig.LoadDefaultConfig, awsConfig.WithCredentialsProvider, awsConfig.WithHTTPClient, awsConfig.WithRegion, awsConfig.WithSharedConfigProfile, cancel, config.NewClientFromConfig, context.WithTimeout, credentials.NewStaticCredentialsProvider, fmt.Errorf, loadRegion, string, sts.NewFromConfig, stscreds.NewAssumeRoleProvider]
@@ -2263,6 +2296,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `32.59` — `depth-3 BIN` ×6
 - `32.59` — `depth-2 BIN` ×6
 - `14.80` — `depth-2 IF` ×3
+
+**Concept views:** shape `1.00`, corpus `0.99`, feature `0.99`, a-in-b `1.00`, b-in-a `0.99`
+
+**Shared vocabulary:** `call:kubernetes.*clientAdapter.CoreV1`, `call:kubernetes.convertToService`, `call:scrape.isSeriesPartOfFamily`
 
 **Structural overlap:** `0.78` (merge-worthy)
 

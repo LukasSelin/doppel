@@ -30,6 +30,8 @@ func samplePayload() Payload {
 			Channels: []string{"shape"}, Containment: 0.95, Explain: "canonical after one rewrite",
 			Breakdown: [6]float64{0.8, 0.9, 1, 1, 0.9, 0.95},
 			Chains:    []Chain{{Depth: 2, Energy: 4.5, Render: "depth-2 IF"}},
+			Views:     [5]float64{0.67, 0.41, 0.12, 0.9, 0.3}, ViewsDisagree: true,
+			SharedVocab: []string{"sel:sql.Open"},
 		}},
 		Bodies: []Body{
 			{Unit: 0, Text: "func First() {}"},

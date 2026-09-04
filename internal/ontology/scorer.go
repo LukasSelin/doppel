@@ -11,8 +11,9 @@ import "sort"
 // and information-weighted set matching, where a ubiquitous tag contributes
 // little and a rare one a lot.
 type Scorer struct {
-	o  *Ontology
-	ic *IC
+	o     *Ontology
+	ic    *IC
+	vocab *Vocabulary // nil: the feature view is not measured
 }
 
 // NewScorer pairs an ontology with an optional IC table. A nil ic yields the
@@ -27,6 +28,19 @@ func (s *Scorer) Weighted() bool { return s.ic != nil }
 // default, which is what lets the bench harness score pairs under overridden
 // weights (WithWeights) without touching production state.
 func (s *Scorer) Ontology() *Ontology { return s.o }
+
+// WithVocabulary returns a copy of the scorer carrying the learned concept
+// vocabularies, which is what FeatureRelatednessW reads. NewScorer is left as
+// it is because retrieval builds its own scorer and has no use for the table:
+// the concept channel is information mass, and stays so.
+func (s *Scorer) WithVocabulary(v *Vocabulary) *Scorer {
+	cp := *s
+	cp.vocab = v
+	return &cp
+}
+
+// Vocabulary returns the table WithVocabulary attached, or nil.
+func (s *Scorer) Vocabulary() *Vocabulary { return s.vocab }
 
 // Relatedness scores two terms. Without IC: Wu-Palmer. With IC: Lin similarity,
 // 2·IC(LCS) / (IC(a) + IC(b)) — how much of the two terms' combined information

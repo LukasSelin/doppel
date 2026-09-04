@@ -9,7 +9,7 @@ container engine; a decade of accretion across daemon, API, and plugin layers
 | Corpus | [moby](https://github.com/moby/moby) |
 | Pinned at | `v28.5.2` (`89c5e8fd66634b6128fc4c0e6f1236e2540e46e0`) |
 | Project since | 2013 |
-| doppel | `a5c4552` |
+| doppel | `c4861da` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -34,6 +34,7 @@ Retrieval: shape 9451, concept 23375, call 12470 -> 40225 unique pairs
   concept-only 51.4%  call-only 22.4%  suppressed-shape functions: 11  large identity buckets: 2  surviving labels: 34380
   22 cross test/prod pairs dropped
 Running structural comparison on 40203 pairs...
+  Concept views: 3054 of 40203 compared pairs disagree with the taxonomy (400 vocabulary the tree misses, 2654 kinship the vocabularies lack)
   18461 pairs remain after struct-min=0.31 filter
 Families: 784 over 850 components, 2236 functions in a family, 5827 edges completed
   3 component(s) skipped as too large or too dense: sizes [144 226 841]
@@ -1702,6 +1703,8 @@ _155 further packages are modeled and not drawn._ Most uniform is `checker` (nor
 
 Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **40225 candidate pairs** (shape 9451, concept 23375, call 12470), of which 22% arrived on call evidence alone and 51% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
+The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **3054 of 40203** pairs the taxonomy and the vocabularies differ by at least 0.50: 400 where the vocabularies agree and the tree cannot see it, 2654 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
+
 Each function is also an arena where its candidate concepts compete for its evidence. 7325 functions reached an equilibrium: **4541** settled on a single concept, **2781** on a coalition, **0** hold concepts this corpus says do not go together.
 
 ### Corpus metrics
@@ -2397,6 +2400,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `25.66` — `depth-2 ASSIGN` ×4
 - `24.51` — `depth-3 BIN` ×4
 
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
+
+**Shared vocabulary:** `call:loggertest.makeTestMessages`, `call:loggertest.readAll`, `call:overlayutils.NeedsUserXAttr`
+
 **Structural overlap:** `0.79` (merge-worthy)
 
 - share 19 callees: [DecodeString, Error, String, WithFields, caller.Name, context.TODO, diagnostic.CommandSucceed, diagnostic.DebugHTTPForm, diagnostic.FailCommand, diagnostic.HTTPReply, diagnostic.ParseHTTPFormOptions, diagnostic.WrongCommand, fmt.Sprintf, len, log.G, logger.Error, logger.Info, logger.WithError, r.ParseForm]
@@ -2433,6 +2440,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `28.01` — `depth-3 CALL` ×4
 - `28.01` — `depth-3 EXPRSTMT` ×4
 - `28.01` — `depth-2 CALL` ×4
+
+**Concept views:** shape `0.00`, corpus `0.00`, feature `0.00`, a-in-b `0.00`, b-in-a `0.00`
 
 **Structural overlap:** `0.63` (merge-worthy)
 
@@ -2476,6 +2485,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `21.42` — `depth-3 BIN` ×4
 - `20.47` — `depth-3 IF` ×4
 
+**Concept views:** shape `1.00`, corpus `0.96`, feature `0.97`, a-in-b `1.00`, b-in-a `0.97`
+
+**Shared vocabulary:** `sel:jinfo.AddStaticRoute`, `call:netutils.GenerateIfaceName`, `sel:endpoint.srcName`
+
 **Structural overlap:** `0.68` (merge-worthy)
 
 - share 26 callees: [Debugf, Start, String, attribute.String, d.getNetwork, d.storeUpdate, fmt.Errorf, iNames.SetNames, jinfo.DisableGatewayService, jinfo.InterfaceName, jinfo.SetGateway, jinfo.SetGatewayIPv6, len, log.G, n.endpoint, n.getSubnetforIPv4, n.getSubnetforIPv6, net.ParseCIDR, netlabel.GetIfname, netutils.GenerateIfaceName, ns.NlHandle, otel.Tracer, span.End, trace.WithAttributes, v4gw.String, v6gw.String]
@@ -2518,6 +2531,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `15.84` — `depth-3 CALL` ×2
 - `15.84` — `depth-2 CALL` ×2
 
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
+
+**Shared vocabulary:** `sel:d.deleteNetwork`, `lit:ipv4`, `lit:0.0.0.0/0`
+
 **Structural overlap:** `0.69` (merge-worthy)
 
 - share 16 callees: [Debugf, LinkByName, LinkDel, Warnf, WithError, context.TODO, d.deleteNetwork, d.network, d.storeDelete, delDummyLink, delVlanLink, fmt.Errorf, getDummyName, log.G, ns.NlHandle, parentExists]
@@ -2557,6 +2574,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `18.14` — `depth-1 EXPRSTMT` ×3
 - `17.34` — `depth-0 CALL` ×3
 - `11.81` — `depth-3 CALL` ×2
+
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
+
+**Shared vocabulary:** `call:loggertest.makeTestMessages`, `call:loggertest.readAll`, `call:overlayutils.NeedsUserXAttr`
 
 **Structural overlap:** `0.79` (merge-worthy)
 
@@ -2601,6 +2622,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `21.68` — `depth-3 RETURN` ×3
 - `21.68` — `depth-3 CALL` ×3
 
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
+
+**Shared vocabulary:** `call:metadata.*v2MetadataService.diffIDKey`, `call:metadata.*v2MetadataService.diffIDNamespace`, `call:plugins.*Client.callWithRetry`
+
 **Structural overlap:** `0.72` (merge-worthy)
 
 - share 5 callees: [fmt.Errorf, json.Unmarshal, net.ParseMAC, types.InternalErrorf, types.ParseCIDR]
@@ -2640,6 +2665,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `13.07` — `depth-3 CALL` ×2
 - `13.07` — `depth-2 CALL` ×2
 - `13.07` — `depth-1 CALL` ×2
+
+**Concept views:** shape `1.00`, corpus `0.98`, feature `0.98`, a-in-b `1.00`, b-in-a `0.98`
+
+**Shared vocabulary:** `call:bridge.*bridgeNetwork.releasePorts`, `call:client.*Client.negotiateAPIVersionPing`, `call:container.*controller.matchevent`
 
 **Structural overlap:** `0.93` (merge-worthy)
 
@@ -2684,6 +2713,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `16.18` — `depth-2 SEL` ×3
 - `16.18` — `depth-1 SEL` ×3
 
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
+
+**Shared vocabulary:** `sel:parentLink.Attrs`, `sel:netlink.Bridge`, `sel:nlh.LinkAdd`
+
 **Structural overlap:** `0.76` (merge-worthy)
 
 - share 11 callees: [Debugf, LinkAdd, LinkByName, LinkSetUp, context.TODO, fmt.Errorf, log.G, ns.NlHandle, parentLink.Attrs, parseVlan, strings.Contains]
@@ -2725,6 +2758,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `30.24` — `depth-2 CALL` ×5
 - `29.52` — `depth-1 CALL` ×5
 
+**Concept views:** shape `1.00`, corpus `0.96`, feature `0.96`, a-in-b `1.00`, b-in-a `0.96`
+
+**Shared vocabulary:** `id:dsr`, `call:net.CIDRMask`, `sel:net.CIDRMask`
+
 **Structural overlap:** `0.76` (merge-worthy)
 
 - share 24 callees: [Address, Debugf, Errorf, context.TODO, ep.ID, ep.Iface, ep.Name, errors.Is, findIfaceDstName, gwEP.Iface, i.Close, ipvs.New, len, log.G, n.ID, n.Name, n.findLBEndpointSandbox, net.CIDRMask, programIngress, sb.ContainerID, sb.ID, sb.Key, sb.configureFWMark, sb.getGatewayEndpoint]
@@ -2765,6 +2802,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `19.25` — `depth-3 ASSIGN` ×3
 - `19.25` — `depth-2 ASSIGN` ×3
 - `18.38` — `depth-3 BIN` ×3
+
+**Concept views:** shape `1.00`, corpus `0.98`, feature `0.98`, a-in-b `0.98`, b-in-a `1.00`
+
+**Shared vocabulary:** `call:loggertest.makeTestMessages`, `call:loggertest.readAll`, `call:overlayutils.NeedsUserXAttr`
 
 **Structural overlap:** `0.74` (merge-worthy)
 

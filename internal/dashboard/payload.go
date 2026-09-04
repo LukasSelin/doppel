@@ -13,7 +13,7 @@ package dashboard
 // It exists for the page, not for comparability: a stale asset bundle reading a
 // newer payload should say so rather than render half a screen. Nothing diffs
 // two payloads, and nothing should — that is snapshot.Schema's job.
-const Schema = 1
+const Schema = 2
 
 // Payload is one analysis run, as the page receives it.
 //
@@ -202,10 +202,26 @@ type Edge struct {
 
 	Chains  []Chain  `json:"chains,omitempty"`
 	Reasons []string `json:"reasons,omitempty"`
+
+	// Views is the concept signal read five ways, in ViewNames order: what
+	// the taxonomy asserts, what the corpus frequencies say, what the two
+	// sides' learned vocabularies share, and the two containments that give
+	// the vocabulary view a direction. Reported beside Overlap and never
+	// blended into it on this page; the three feature-side entries are -1
+	// when the run measured no feature view. ViewsDisagree is the
+	// comparator's flag that the taxonomy and the vocabularies differ, and
+	// SharedVocab names the strongest features both sides' concepts carry —
+	// the vocabulary view's evidence.
+	Views         [5]float64 `json:"views"`
+	ViewsDisagree bool       `json:"viewsDisagree"`
+	SharedVocab   []string   `json:"sharedVocab,omitempty"`
 }
 
 // BreakdownNames labels Edge.Breakdown, in its fixed order.
 var BreakdownNames = [6]string{"wl", "flow", "nesting", "sig", "size", "containment"}
+
+// ViewNames labels Edge.Views, in its fixed order.
+var ViewNames = [5]string{"shape", "corpus", "feature", "a-in-b", "b-in-a"}
 
 // UnitConcept is one graded concept membership.
 //

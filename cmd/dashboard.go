@@ -298,9 +298,19 @@ func dashboardEdges(res Result) []dashboard.Edge {
 				round4(pair.Breakdown.Containment),
 			},
 		}
+		e.Views = [5]float64{0, 0, -1, -1, -1}
 		if pair.Evidence != nil {
 			e.Overlap = round4(pair.Evidence.OverlapScore)
 			e.Reasons = pair.Evidence.Reasons
+			v := pair.Evidence.Views
+			e.Views[0], e.Views[1] = round4(v.Shape), round4(v.Corpus)
+			if v.HasFeature {
+				e.Views[2], e.Views[3], e.Views[4] = round4(v.Feature), round4(v.AInB), round4(v.BInA)
+				e.ViewsDisagree = v.Disagree
+				for _, f := range v.SharedVocabulary {
+					e.SharedVocab = append(e.SharedVocab, f.Name)
+				}
+			}
 		}
 		if pair.Retrieval != nil {
 			e.Total = round4(pair.Retrieval.Total)

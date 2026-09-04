@@ -2,6 +2,7 @@ package comparator
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 
@@ -54,14 +55,62 @@ var onto = ontology.Default()
 type Comparator struct {
 	scorer *ontology.Scorer
 	onto   *ontology.Ontology // the scorer's vocabulary; carries the relation weights
+	opt    Options
 }
 
-// New creates a Comparator over the given scorer. The relation weights come
-// from the scorer's own vocabulary, so a scorer built over a reweighted
-// ontology (ontology.WithWeights — the bench harness's ablation seam) scores
-// with those weights while the default path is unchanged.
+// New creates a Comparator over the given scorer under DefaultOptions. The
+// relation weights come from the scorer's own vocabulary, so a scorer built
+// over a reweighted ontology (ontology.WithWeights — the bench harness's
+// ablation seam) scores with those weights while the default path is
+// unchanged.
 func New(scorer *ontology.Scorer) *Comparator {
-	return &Comparator{scorer: scorer, onto: scorer.Ontology()}
+	return NewWith(scorer, DefaultOptions())
+}
+
+// NewWith is New under explicit Options — the seam the bench harness measures
+// the exhibits blend through.
+func NewWith(scorer *ontology.Scorer, opt Options) *Comparator {
+	return &Comparator{scorer: scorer, onto: scorer.Ontology(), opt: opt}
+}
+
+// ViewDisagreeSpread is the gap between the shape view and the feature view
+// at which a pair is flagged: the taxonomy and the learned vocabularies
+// disagree about whether these two functions do related work. It equals
+// relatedEnough — one sibling-level relatedness, the smallest disagreement
+// that could change how the merge gate reads a pairing. Both directions are
+// findings: feature above shape is the taxonomy missing shared vocabulary
+// (two concepts hanging from the root that are made of the same things),
+// shape above feature is the taxonomy asserting a kinship the vocabularies
+// do not show (two seeds' children that write nothing alike).
+const ViewDisagreeSpread = 0.5
+
+// ConceptViews is the concept signal seen from every angle it can be seen
+// from. The three symmetric views answer different questions and are kept
+// separate for the same reason code-shape and overlap are: their
+// disagreement is itself a finding, and a blend would hide it.
+//
+//   - Shape is what the taxonomy asserts, frequency-free: Wu-Palmer set
+//     relatedness over bare concept IDs. The same answer for every corpus.
+//   - Corpus is what this corpus's frequencies say: the IC-Lin,
+//     confidence-weighted set relatedness that PatternRelatedness carries.
+//   - Feature bypasses the tree entirely: weighted Jaccard over the two
+//     sides' learned concept vocabularies. It is the view that survives two
+//     concepts hanging from the concept root, where the other two read 0.
+//
+// AInB and BInA are the feature view's direction — how much of one side's
+// vocabulary the other side's concepts also carry — and never enter a score;
+// they say which of two related functions is the general case.
+type ConceptViews struct {
+	Shape, Corpus, Feature float64
+	AInB, BInA             float64
+	SharedVocabulary       []ontology.WeightedFeature // the strongest shared features, the feature view's evidence
+
+	// HasFeature is false when the scorer carried no vocabulary table, in
+	// which case Feature, AInB, BInA and Disagree are not claims and a
+	// renderer omits them.
+	HasFeature bool
+	// Disagree is |Feature − Shape| >= ViewDisagreeSpread.
+	Disagree bool
 }
 
 // defaultComparator is corpus-independent: plain Wu-Palmer matching, the
@@ -109,6 +158,15 @@ type StructuralEvidence struct {
 	RelatedCalleeConcepts    []ontology.Match
 	SharedNeighborhood       []string // depth-2 call-graph names both sit near
 	NeighborhoodOverlap      float64  // ratio behind the shares_neighborhood signal
+
+	// Views is the concept signal from every angle; PatternRelatedness above
+	// is its Corpus view. Exhibits is what the exhibits slot of OverlapScore
+	// actually read — the Options blend of the views, which under the
+	// incumbent blend is PatternRelatedness exactly. TaxonomyPatterns are the
+	// Wu-Palmer pairings behind Views.Shape, kept so the report can name them.
+	Views            ConceptViews
+	Exhibits         float64
+	TaxonomyPatterns []ontology.Match
 
 	OverlapScore float64 // 0.0–1.0 weighted composite
 
@@ -179,15 +237,28 @@ func (c *Comparator) Compare(a, b concepter.ConceptDoc) StructuralEvidence {
 	ev.CallerConceptRelatedness, ev.RelatedCallerConcepts = c.scorer.SetRelatednessW(concepter.Graded(a.CallerConcepts), concepter.Graded(b.CallerConcepts))
 	ev.CalleeConceptRelatedness, ev.RelatedCalleeConcepts = c.scorer.SetRelatednessW(concepter.Graded(a.CalleeConcepts), concepter.Graded(b.CalleeConcepts))
 
+	// The shape view: taxonomy-only, unweighted, over bare IDs — computed in
+	// both branches from the boolean projection, because a backfilled
+	// membership must not reach it any more than it reaches the gate.
+	ev.Views.Shape, ev.TaxonomyPatterns = c.onto.SetRelatedness(parser.ConceptIDs(a.Concepts), parser.ConceptIDs(b.Concepts))
+	ev.Views.Corpus = ev.PatternRelatedness
 	if c.scorer.Weighted() {
-		// Recompute the pattern matches taxonomy-only, and unweighted, for the
-		// gate: membership is a bare ID here, not a confidence.
-		_, taxonomyMatches := c.onto.SetRelatedness(parser.ConceptIDs(a.Concepts), parser.ConceptIDs(b.Concepts))
-		ev.PatternSignalBest = ontology.BestMatch(taxonomyMatches)
+		// The gate reads the taxonomy-only matches: membership is a bare ID
+		// here, not a confidence.
+		ev.PatternSignalBest = ontology.BestMatch(ev.TaxonomyPatterns)
 	} else {
 		// The unweighted matches already are taxonomy-only.
 		ev.PatternSignalBest = ontology.BestMatch(ev.RelatedPatterns)
 	}
+	// The feature view: what the two sides' concepts are made of, with no
+	// tree in between. Absent, not zero, when the scorer has no vocabulary.
+	if f, ok := c.scorer.FeatureRelatednessW(concepter.Graded(a.Concepts), concepter.Graded(b.Concepts)); ok {
+		ev.Views.Feature, ev.Views.AInB, ev.Views.BInA = f.Score, f.AInB, f.BInA
+		ev.Views.SharedVocabulary = f.Shared
+		ev.Views.HasFeature = true
+		ev.Views.Disagree = math.Abs(f.Score-ev.Views.Shape) >= ViewDisagreeSpread
+	}
+	ev.Exhibits = c.opt.Exhibits.Apply(ev.Views)
 
 	// One explicit ordered expression, deliberately. Summing over a map of
 	// weights would let iteration order change the low bits of a float sum,
@@ -195,7 +266,7 @@ func (c *Comparator) Compare(a, b concepter.ConceptDoc) StructuralEvidence {
 	// --struct-min cutoff and make the report vary between runs.
 	ev.OverlapScore = 0 +
 		c.onto.Weight(ontology.RelCalls)*overlapRatio(a.Callees, b.Callees, ev.SharedCallees) +
-		c.onto.Weight(ontology.RelExhibits)*ev.PatternRelatedness +
+		c.onto.Weight(ontology.RelExhibits)*ev.Exhibits +
 		c.onto.Weight(ontology.RelCalledBy)*overlapRatio(a.Callers, b.Callers, ev.SharedCallers) +
 		c.onto.Weight(ontology.RelSharesNeighborhood)*ev.NeighborhoodOverlap +
 		c.onto.Weight(ontology.RelHasRole)*ev.RoleRelatedness +

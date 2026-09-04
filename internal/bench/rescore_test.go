@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/LukasSelin/doppel/internal/comparator"
 	"github.com/LukasSelin/doppel/internal/fingerprint"
 	"github.com/LukasSelin/doppel/internal/ontology"
 	"github.com/LukasSelin/doppel/internal/retriever"
@@ -139,5 +140,36 @@ func TestReretrieveRoundTrip(t *testing.T) {
 		if p.Score != original[i].score || p.Retrieval.Total != original[i].total {
 			t.Fatalf("pair %d not restored: %v/%v vs %v/%v", i, p.Score, p.Retrieval.Total, original[i].score, original[i].total)
 		}
+	}
+}
+
+// RescoreWith under the production options is Rescore: the blend seam must
+// leave the baseline bit-identical, or a measurement would be a difference
+// from something other than what the tool ships.
+func TestRescoreWithDefaultIsRescore(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "corpus.go"), []byte(rescoreFixture), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	units, err := Load(dir, PopInclude)
+	if err != nil {
+		t.Fatal(err)
+	}
+	run := Analyze(units, retriever.DefaultOptions())
+	if len(run.Pairs) == 0 {
+		t.Fatal("fixture produced no pairs")
+	}
+	original := make([]float64, len(run.Pairs))
+	for i, p := range run.Pairs {
+		original[i] = p.Evidence.OverlapScore
+	}
+	run.RescoreWith(run.Onto, comparator.DefaultOptions())
+	for i, p := range run.Pairs {
+		if p.Evidence.OverlapScore != original[i] {
+			t.Fatalf("pair %d: overlap %v under RescoreWith(DefaultOptions), want %v exactly", i, p.Evidence.OverlapScore, original[i])
+		}
+	}
+	if run.Comp == nil || run.Vocab == nil {
+		t.Fatal("RescoreWith dropped the comparator or the vocabulary")
 	}
 }

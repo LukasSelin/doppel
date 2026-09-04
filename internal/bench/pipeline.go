@@ -100,6 +100,7 @@ type Run struct {
 	Lexicon   *lexicon.Model
 	Onto      *ontology.Ontology
 	IC        *ontology.IC
+	Vocab     *ontology.Vocabulary // the learned concept vocabularies, the feature view's substrate
 	Comp      *comparator.Comparator
 	Graph     *concepter.Graph
 	Docs      []concepter.ConceptDoc
@@ -167,7 +168,23 @@ func (r *Run) StageTag() {
 			ontology.DerivedConceptTerms(ontology.Default(), derivedConcepts(r.Lexicon)))
 	}
 	r.IC = ontology.NewCorpusICMass(r.Onto, mass)
-	r.Comp = comparator.New(ontology.NewScorer(r.Onto, r.IC))
+	r.Vocab = vocabularyOf(r.Lexicon)
+	r.Comp = comparator.New(ontology.NewScorer(r.Onto, r.IC).WithVocabulary(r.Vocab))
+}
+
+// vocabularyOf carries each learned concept's feature vocabulary into the
+// ontology's side table, the same way cmd does.
+func vocabularyOf(lex *lexicon.Model) *ontology.Vocabulary {
+	concepts := lex.Concepts()
+	entries := make([]ontology.VocabularyEntry, len(concepts))
+	for i, c := range concepts {
+		feats := make([]ontology.WeightedFeature, len(c.Features))
+		for j, f := range c.Features {
+			feats[j] = ontology.WeightedFeature{Name: f.Name, Weight: f.Weight, Opaque: lexicon.Opaque(f.Name)}
+		}
+		entries[i] = ontology.VocabularyEntry{ID: ontology.TermID(c.ID), Features: feats}
+	}
+	return ontology.NewVocabulary(entries)
 }
 
 // derivedConcepts translates the learned lexicon into taxonomy placements, the
@@ -275,8 +292,15 @@ func analyze(r *Run, opt retriever.Options) *Run {
 // only reader is Compare's composite sum. This is what makes a 12-way ablation
 // cost twelve compare passes instead of twelve pipelines.
 func (r *Run) Rescore(onto *ontology.Ontology) {
+	r.RescoreWith(onto, comparator.DefaultOptions())
+}
+
+// RescoreWith is Rescore under explicit comparator options — the seam the
+// exhibits-blend measurement scores through. The vocabulary table rides along:
+// the feature view depends on the lexicon alone, and a rescore changes neither.
+func (r *Run) RescoreWith(onto *ontology.Ontology, opt comparator.Options) {
 	r.Onto = onto
-	r.Comp = comparator.New(ontology.NewScorer(onto, r.IC))
+	r.Comp = comparator.NewWith(ontology.NewScorer(onto, r.IC).WithVocabulary(r.Vocab), opt)
 	r.StageCompare()
 }
 

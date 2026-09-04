@@ -9,7 +9,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `a5c4552` |
+| doppel | `c4861da` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -33,6 +33,7 @@ Found 497 functions. Retrieving candidates...
 Retrieval: shape 187, concept 1637, call 609 -> 2116 unique pairs
   concept-only 64.9%  call-only 17.4%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1934
 Running structural comparison on 2116 pairs...
+  Concept views: 70 of 2116 compared pairs disagree with the taxonomy (4 vocabulary the tree misses, 66 kinship the vocabularies lack)
   570 pairs remain after struct-min=0.49 filter
 Families: 35 over 58 components, 169 functions in a family, 211 edges completed
 ```
@@ -242,6 +243,8 @@ Most uniform is `binding` (norm `0.92`); most varied is `json` (norm `0.63`). 15
 ### How these candidates were found
 
 Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **2116 candidate pairs** (shape 187, concept 1637, call 609), of which 17% arrived on call evidence alone and 65% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+
+The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **70 of 2116** pairs the taxonomy and the vocabularies differ by at least 0.50: 4 where the vocabularies agree and the tree cannot see it, 66 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 443 functions reached an equilibrium: **351** settled on a single concept, **74** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -469,6 +472,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `4.78` — `depth-3 ASSIGN`
 - `4.78` — `depth-3 CALL`
 
+**Concept views:** shape `0.33`, corpus `0.40`, feature `0.28`, a-in-b `0.28`, b-in-a `1.00`
+
+**Shared vocabulary:** `id:found`, `call:gin.*Context.Header`, `call:gin.*Context.Set`
+
 **Structural overlap:** `0.70` (merge-worthy)
 
 - share 7 callees: [c.AbortWithStatus, c.Header, c.Set, c.requestHeader, pairs.searchCredential, processAccounts, strconv.Quote]
@@ -509,6 +516,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `5.67` — `depth-1 EXPRSTMT` ×2
 - `5.67` — `depth-0 CALL` ×2
 - `4.78` — `depth-3 ASSIGN`
+
+**Concept views:** shape `1.00`, corpus `0.95`, feature `0.96`, a-in-b `1.00`, b-in-a `0.96`
+
+**Shared vocabulary:** `id:and`, `id:listener`, `id:listen`
 
 **Structural overlap:** `0.69` (merge-worthy)
 
@@ -551,6 +562,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `5.67` — `depth-0 CALL` ×2
 - `4.78` — `depth-3 UNARY`
 
+**Concept views:** shape `1.00`, corpus `0.93`, feature `0.94`, a-in-b `1.00`, b-in-a `0.94`
+
+**Shared vocabulary:** `id:and`, `id:listener`, `id:listen`
+
 **Structural overlap:** `0.72` (merge-worthy)
 
 - share 5 callees: [debugPrint, debugPrintError, engine.Handler, engine.isUnsafeTrustedProxies, server.Serve]
@@ -591,6 +606,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `5.67` — `depth-1 EXPRSTMT` ×2
 - `5.67` — `depth-0 CALL` ×2
 - `3.87` — `depth-3 CALL`
+
+**Concept views:** shape `1.00`, corpus `0.99`, feature `0.98`, a-in-b `1.00`, b-in-a `0.98`
+
+**Shared vocabulary:** `id:and`, `id:listener`, `id:listen`
 
 **Structural overlap:** `0.76` (merge-worthy)
 
@@ -633,6 +652,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `5.98` — `depth-2 KV` ×2
 - `5.82` — `depth-1 KV` ×2
 
+**Concept views:** shape `1.00`, corpus `0.98`, feature `0.98`, a-in-b `0.98`, b-in-a `1.00`
+
+**Shared vocabulary:** `call:binding.mapForm`, `call:gin.*Engine.SetHTMLTemplate`, `id:lazyinit`
+
 **Structural overlap:** `0.77` (merge-worthy)
 
 - share 6 callees: [Delims, Funcs, IsDebugging, engine.SetHTMLTemplate, template.Must, template.New]
@@ -674,6 +697,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `4.78` — `depth-3 EXPRSTMT`
 - `4.78` — `depth-3 RANGE`
 
+**Concept views:** shape `1.00`, corpus `0.99`, feature `0.99`, a-in-b `0.99`, b-in-a `1.00`
+
+**Shared vocabulary:** `call:gin.*RouterGroup.calculateAbsolutePath`, `sel:group.calculateAbsolutePath`, `id:calculate`
+
 **Structural overlap:** `0.81` (merge-worthy)
 
 - share 2 callees: [group.handle, group.returnObj]
@@ -714,6 +741,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `4.38` — `depth-3 ASSIGN`
 - `4.38` — `depth-3 BLOCK`
 - `4.38` — `depth-3 CALL`
+
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
+
+**Shared vocabulary:** `call:binding.mapForm`, `call:gin.*Engine.SetHTMLTemplate`, `id:lazyinit`
 
 **Structural overlap:** `0.71` (merge-worthy)
 
@@ -757,6 +788,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Culture:** B realizes `binding+nil` atypically (typicality 0.17, concept median 0.38, convention 0.56)
 
+**Concept views:** shape `1.00`, corpus `0.99`, feature `0.99`, a-in-b `1.00`, b-in-a `0.99`
+
+**Shared vocabulary:** `call:binding.mapForm`, `call:gin.*Engine.SetHTMLTemplate`, `id:lazyinit`
+
 **Structural overlap:** `0.71` (merge-worthy)
 
 - share 2 callees: [decoder.Decode, validate]
@@ -799,6 +834,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Culture:** A realizes `binding+nil` atypically (typicality 0.17, concept median 0.38, convention 0.56)
 
+**Concept views:** shape `1.00`, corpus `0.99`, feature `0.99`, a-in-b `0.99`, b-in-a `1.00`
+
+**Shared vocabulary:** `call:binding.mapForm`, `call:gin.*Engine.SetHTMLTemplate`, `id:lazyinit`
+
 **Structural overlap:** `0.71` (merge-worthy)
 
 - share 2 callees: [decoder.Decode, validate]
@@ -840,6 +879,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `4.78` — `depth-3 BLOCK`
 - `4.78` — `depth-3 CALL`
 - `4.78` — `depth-3 ASSIGN`
+
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
+
+**Shared vocabulary:** `call:bytesconv.StringToBytes`, `sel:API.Marshal`, `sel:bytesconv.StringToBytes`
 
 **Structural overlap:** `0.71` (merge-worthy)
 

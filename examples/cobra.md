@@ -9,7 +9,7 @@ CLI framework; one dominant type with a long method set, plus shell-completion g
 | Corpus | [cobra](https://github.com/spf13/cobra) |
 | Pinned at | `v1.10.2` (`88b30ab89da2d0d0abb153818746c5a2d30eccec`) |
 | Project since | 2015 |
-| doppel | `a5c4552` |
+| doppel | `c4861da` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -33,6 +33,7 @@ Found 269 functions. Retrieving candidates...
 Retrieval: shape 135, concept 811, call 712 -> 1401 unique pairs
   concept-only 44.0%  call-only 37.8%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1705
 Running structural comparison on 1401 pairs...
+  Concept views: 42 of 1401 compared pairs disagree with the taxonomy (1 vocabulary the tree misses, 41 kinship the vocabularies lack)
   239 pairs remain after struct-min=0.53 filter
 Families: 19 over 43 components, 57 functions in a family, 9 edges completed
 ```
@@ -178,6 +179,8 @@ Most uniform is `cobra` (norm `0.93`); most varied is `doc` (norm `0.93`).
 ### How these candidates were found
 
 Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **1401 candidate pairs** (shape 135, concept 811, call 712), of which 38% arrived on call evidence alone and 44% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+
+The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **42 of 1401** pairs the taxonomy and the vocabularies differ by at least 0.50: 1 where the vocabularies agree and the tree cannot see it, 41 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 235 functions reached an equilibrium: **171** settled on a single concept, **62** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -400,6 +403,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `22.71` — `depth-0 CALL` ×8
 - `18.84` — `depth-0 BIN` ×10
 
+**Concept views:** shape `0.83`, corpus `0.76`, feature `0.97`, a-in-b `0.98`, b-in-a `0.99`
+
+**Shared vocabulary:** `lit:2-Jan-2006`, `sel:c.DisableAutoGenTag`, `sel:child.IsAdditionalHelpTopicCommand`
+
 **Structural overlap:** `0.80` (merge-worthy)
 
 - share 25 callees: [Format, buf.WriteString, buf.WriteTo, byName, child.IsAdditionalHelpTopicCommand, child.IsAvailableCommand, child.Name, cmd.CommandPath, cmd.Commands, cmd.HasParent, cmd.InitDefaultHelpCmd, cmd.InitDefaultHelpFlag, cmd.Parent, cmd.Runnable, cmd.UseLine, cmd.VisitParents, fmt.Fprintf, hasSeeAlso, len, linkHandler, new, parent.CommandPath, sort.Sort, strings.ReplaceAll, time.Now]
@@ -444,6 +451,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `6.70` — `depth-1 EXPRSTMT` ×2
 - `6.70` — `depth-0 CALL` ×2
 
+**Concept views:** shape `1.00`, corpus `0.98`, feature `0.99`, a-in-b `1.00`, b-in-a `0.99`
+
+**Shared vocabulary:** `lit:Failed`, `sel:f.Annotations`, `id:names`
+
 **Structural overlap:** `0.80` (merge-worthy)
 
 - share 8 callees: [Lookup, SetAnnotation, append, c.Flags, c.mergePersistentFlags, fmt.Sprintf, panic, strings.Join]
@@ -484,6 +495,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `7.06` — `depth-2 BLOCK` ×2
 - `6.70` — `depth-1 EXPRSTMT` ×2
 - `6.70` — `depth-0 CALL` ×2
+
+**Concept views:** shape `1.00`, corpus `0.97`, feature `0.98`, a-in-b `0.98`, b-in-a `1.00`
+
+**Shared vocabulary:** `lit:Failed`, `sel:f.Annotations`, `id:names`
 
 **Structural overlap:** `0.80` (merge-worthy)
 
@@ -526,6 +541,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `6.70` — `depth-1 EXPRSTMT` ×2
 - `6.70` — `depth-0 CALL` ×2
 
+**Concept views:** shape `1.00`, corpus `0.96`, feature `0.97`, a-in-b `0.97`, b-in-a `1.00`
+
+**Shared vocabulary:** `lit:Failed`, `sel:f.Annotations`, `id:names`
+
 **Structural overlap:** `0.80` (merge-worthy)
 
 - share 8 callees: [Lookup, SetAnnotation, append, c.Flags, c.mergePersistentFlags, fmt.Sprintf, panic, strings.Join]
@@ -566,6 +585,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `13.40` — `depth-3 CALL` ×4
 - `13.40` — `depth-3 EXPRSTMT` ×4
 - `13.40` — `depth-2 EXPRSTMT` ×4
+
+**Concept views:** shape `1.00`, corpus `0.95`, feature `0.95`, a-in-b `1.00`, b-in-a `0.95`
+
+**Shared vocabulary:** `sel:flags.HasAvailableFlags`, `sel:cmd.InheritedFlags`, `sel:cmd.NonInheritedFlags`
 
 **Structural overlap:** `0.86` (merge-worthy)
 
@@ -610,6 +633,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `6.46` — `depth-3 BIN` ×4
 - `6.46` — `depth-2 BIN` ×4
 
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
+
+**Shared vocabulary:** `call:io.WriteString`, `id:prepender`, `sel:io.WriteString`
+
 **Structural overlap:** `0.78` (merge-worthy)
 
 - share 10 callees: [c.IsAdditionalHelpTopicCommand, c.IsAvailableCommand, cmd.CommandPath, cmd.Commands, f.Close, filePrepender, filepath.Join, io.WriteString, os.Create, strings.ReplaceAll]
@@ -651,6 +678,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `13.40` — `depth-0 CASE` ×4
 - `11.78` — `depth-0 SLICE` ×4
 - `11.27` — `depth-3 CALL` ×3
+
+**Concept views:** shape `1.00`, corpus `0.98`, feature `0.98`, a-in-b `0.98`, b-in-a `1.00`
+
+**Shared vocabulary:** `call:cobra.CompletionWithDesc`, `call:cobra.hasNoOptDefVal`, `call:cobra.shortHasNoOptDefVal`
 
 **Structural overlap:** `0.88` (merge-worthy)
 
@@ -694,6 +725,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `6.46` — `depth-3 BIN` ×4
 - `6.46` — `depth-2 BIN` ×4
 
+**Concept views:** shape `1.00`, corpus `0.99`, feature `0.99`, a-in-b `0.99`, b-in-a `1.00`
+
+**Shared vocabulary:** `call:io.WriteString`, `id:prepender`, `sel:io.WriteString`
+
 **Structural overlap:** `0.79` (merge-worthy)
 
 - share 10 callees: [c.IsAdditionalHelpTopicCommand, c.IsAvailableCommand, cmd.CommandPath, cmd.Commands, f.Close, filePrepender, filepath.Join, io.WriteString, os.Create, strings.ReplaceAll]
@@ -736,6 +771,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `6.46` — `depth-3 BIN` ×4
 - `6.46` — `depth-2 BIN` ×4
 
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
+
+**Shared vocabulary:** `call:io.WriteString`, `id:prepender`, `sel:io.WriteString`
+
 **Structural overlap:** `0.79` (merge-worthy)
 
 - share 10 callees: [c.IsAdditionalHelpTopicCommand, c.IsAvailableCommand, cmd.CommandPath, cmd.Commands, f.Close, filePrepender, filepath.Join, io.WriteString, os.Create, strings.ReplaceAll]
@@ -777,6 +816,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `7.93` — `depth-3 SEL` ×5
 - `7.93` — `depth-2 SEL` ×5
 - `7.93` — `depth-1 SEL` ×5
+
+**Concept views:** shape `1.00`, corpus `0.99`, feature `0.99`, a-in-b `0.99`, b-in-a `1.00`
+
+**Shared vocabulary:** `id:normalize`, `sel:f.Name`, `call:github.com/spf13/pflag.NewFlagSet`
 
 **Structural overlap:** `0.79` (merge-worthy)
 

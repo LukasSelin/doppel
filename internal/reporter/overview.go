@@ -56,6 +56,14 @@ type Overview struct {
 	CallPairs, UnionPairs           int
 	OnlyConceptPairs, OnlyCallPairs int
 
+	// The concept views' agreement over the compared pairs: how often the
+	// taxonomy and the learned vocabularies disagreed by at least ViewsSpread
+	// about whether two functions do related work, and in which direction.
+	// ViewsCompared 0 renders nothing.
+	ViewsCompared, ViewsDisagree        int
+	ViewsFeatureOnly, ViewsTaxonomyOnly int
+	ViewsSpread                         float64
+
 	Links     []PackageLink // merge-worthy duplication between packages
 	LinksMore int
 	SelfDup   map[string]int // package -> merge-worthy pairs wholly inside it
@@ -562,6 +570,15 @@ func overviewRetrieval(w io.Writer, ov *Overview) {
 			"never compared, however alike it looks.\n\n",
 			ov.UnionPairs, ov.ShapePairs, ov.ConceptPairs, ov.CallPairs,
 			pct(ov.OnlyCallPairs), pct(ov.OnlyConceptPairs))
+	}
+	if ov.ViewsCompared > 0 {
+		fmt.Fprintf(w, "The concept signal on each compared pair is read three ways — what the taxonomy "+
+			"asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies "+
+			"share with no tree in between. On **%d of %d** pairs the taxonomy and the vocabularies "+
+			"differ by at least %.2f: %d where the vocabularies agree and the tree cannot see it, %d "+
+			"where the tree asserts a kinship the vocabularies lack. Each such pair carries a "+
+			"`concept views` line saying which.\n\n",
+			ov.ViewsDisagree, ov.ViewsCompared, ov.ViewsSpread, ov.ViewsFeatureOnly, ov.ViewsTaxonomyOnly)
 	}
 	if ov.ArenaProfiled > 0 {
 		fmt.Fprintf(w, "Each function is also an arena where its candidate concepts compete for its evidence. "+
