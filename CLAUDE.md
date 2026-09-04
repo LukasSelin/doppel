@@ -321,6 +321,21 @@ doppel ontology --defs                                # print the vocabulary and
   It runs on **push to `master` only, never on a pull request**, so a branch is never gated on
   its examples being current — but master's own copy self-heals within one push either way,
   which is why regenerating in the same change that moves ranking is still the rule.
+  **The bot commit depends on two repo settings the tree cannot show**: `master`'s ruleset
+  requires changes to go through a pull request, and the push is allowed only because
+  `Deploy keys` is a bypass actor on that ruleset and the job checks out with a write-enabled
+  deploy key (`secrets.EXAMPLES_DEPLOY_KEY`) instead of `GITHUB_TOKEN`, which is not a bypass
+  actor and cannot be made one here. A `GH013: Repository rule violations found` failure on the
+  *Commit and push* step means one of those two is gone, not that the job is broken. Routing the
+  commit through a PR instead is the wrong repair: a `GITHUB_TOKEN`-authored PR triggers no
+  workflows, so a ruleset that also requires status checks would leave it unmergeable, and it
+  costs a PR per ranking change for generated output that gates nothing.
+
+  The deploy key costs one property the `GITHUB_TOKEN` push had: **a deploy-key push does
+  trigger workflows**. `examples.yml` still cannot loop into itself, because the bot commit
+  touches `examples/*.md` only and its `paths:` filter matches Go sources — but `ci.yml` and
+  `pages.yml` are unfiltered on `master` and now run once per regeneration. Keep that `paths:`
+  filter narrow: widening it to include `examples/**` would turn the loop guard off.
 - `.github/workflows/pages.yml` renders doppel's dashboard for doppel's own source
   (`go run . analyze . -o _site/report.html`) and publishes it to GitHub Pages on every push to
   `master`, with `.github/pages/index.html` as the landing page (`@@COMMIT@@`/`@@BUILT@@` are
