@@ -281,13 +281,13 @@ func wlOverlap(a, b []LabelCount, idf *LabelIDF) (jaccard, containment float64) 
 	for i < len(a) || j < len(b) {
 		switch {
 		case j == len(b) || (i < len(a) && a[i].Label < b[j].Label):
-			massA += weightOf(idf, a[i].Label) * float64(a[i].Count)
+			massA += WeightOf(idf, a[i].Label) * float64(a[i].Count)
 			i++
 		case i == len(a) || b[j].Label < a[i].Label:
-			massB += weightOf(idf, b[j].Label) * float64(b[j].Count)
+			massB += WeightOf(idf, b[j].Label) * float64(b[j].Count)
 			j++
 		default:
-			w := weightOf(idf, a[i].Label)
+			w := WeightOf(idf, a[i].Label)
 			ca, cb := a[i].Count, b[j].Count
 			massA += w * float64(ca)
 			massB += w * float64(cb)
@@ -305,10 +305,13 @@ func wlOverlap(a, b []LabelCount, idf *LabelIDF) (jaccard, containment float64) 
 	return jaccard, containment
 }
 
-// weightOf is the uniform-fallback rule in one place: no corpus means every
+// WeightOf is the uniform-fallback rule in one place: no corpus means every
 // label is worth the same, so the weighted Jaccard degenerates to the plain
 // multiset one rather than to zero.
-func weightOf(idf *LabelIDF, label uint64) float64 {
+//
+// Exported so a view that prints a bag label by label reads the same weight
+// the score did, rather than restating the fallback and drifting from it.
+func WeightOf(idf *LabelIDF, label uint64) float64 {
 	if idf == nil || idf.N() == 0 {
 		return 1
 	}

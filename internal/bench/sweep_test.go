@@ -92,13 +92,16 @@ func sweepVariants() []sweepVariant {
 		for _, f := range []float64{0.5, 2} {
 			f := f
 			vs = append(vs, sweepVariant{fmt.Sprintf("rel.%s %.4g", rel, w), fmt.Sprintf("x%g", f), func(lc *labeledCorpus) Scorecard {
-				onto, err := ontology.WithWeights(map[ontology.TermID]float64{rel: math.Min(w*f, 1)})
+				// Reweight the run's own vocabulary: its concept leaves are
+				// learned, and Default() does not have them. w is the same
+				// number under either — WithConcepts carries weights over.
+				onto, err := ontology.WithWeightsOver(lc.onto, map[ontology.TermID]float64{rel: math.Min(w*f, 1)})
 				if err != nil {
 					panic(err)
 				}
 				lc.run.Rescore(onto)
 				sc := Score(lc.run, lc.lf)
-				lc.run.Rescore(ontology.Default())
+				lc.run.Rescore(lc.onto)
 				return sc
 			}})
 		}

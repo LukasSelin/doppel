@@ -83,7 +83,7 @@ func TestSelfWeight(t *testing.T) {
 			name string
 			w    map[ontology.TermID]float64
 		}{{"fisher", fisher}, {"entropy", entropy}} {
-			onto, err := ontology.WithWeights(variant.w)
+			onto, err := ontology.WithWeightsOver(lc.onto, variant.w)
 			if err != nil {
 				t.Logf("[%s] %s: %v", lc.name, variant.name, err)
 				continue
@@ -96,7 +96,7 @@ func TestSelfWeight(t *testing.T) {
 				t.Logf("[%s]          moved: %s", lc.name, strings.Join(moved, "; "))
 			}
 		}
-		run.Rescore(ontology.Default())
+		run.Rescore(lc.onto)
 	}
 }
 

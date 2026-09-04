@@ -28,10 +28,10 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
 
@@ -119,7 +119,7 @@ jobs:
 
       - name: Upload the self-report
         if: matrix.os == 'ubuntu-latest' && github.event_name == 'push'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: doppel-report-${{ github.sha }}
           path: ${{ runner.temp }}/doppel-report/report.html

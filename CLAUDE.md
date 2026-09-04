@@ -88,6 +88,7 @@ cmd/            CLI commands (Cobra).
   root.go       rootCmd, Execute()
   analyze.go    Pipeline orchestrator; analyze's own flags (each command registers its own in init)
   families.go   doppel families: the census view, plus analyze's family stage
+  fingerprint.go doppel fingerprint: one function's fingerprint, or two functions' label merge, for verifying the score by hand
   overview.go   Queries the corpus model (culture, ontology, call graph) into reporter.Overview
   dashboard.go  Assembles dashboard.Payload — the semantic model the HTML page draws
   pipeline.go   index() + finishAnalyze(): the pipeline split into corpus-building prefix and reporting tail; filterByOverlap; snapshotOf
@@ -132,6 +133,8 @@ internal/
                 series.go chains N snapshots: N-1 consecutive deltas plus one Track per function lifeline
   reporter/     Plain-text (stdout), Markdown (--output), JSON (--format json), and the five hook digests
                 (impact.go: ConceptDigest, ImpactDigest, AgentDigest; scope.go: ScopeDigest, AdviceDigest)
+                fingerprint.go is the fingerprint view: the whole weighted bag of one function, or the
+                shared / only-A / only-B partition of two, whose masses reproduce the WL Jaccard exactly
                 overview.go + mermaid.go render the corpus model into the markdown report only
   dashboard/    The two HTML pages: payload.go + assets/(shell.html, app.js, app.css) is the
                 single-run dashboard (--output *.html); timeline.go + assets/(timeline.html,
@@ -694,6 +697,21 @@ Schema 4).
 
 `SizeRatio` is reported in the `Breakdown` but **not** scored — Jaccard already penalizes size
 mismatch through the union, so damping again would double-count it.
+
+**`doppel fingerprint` is how a score is checked by hand.** `doppel fingerprint <path> <fn>` prints
+what `Similarity` reads for one function — the flow and nesting histograms, the type set, the canon
+rules that fired, and the whole WL bag as `mass / weight / count / df / depth-h KIND` rows under
+this corpus's `ln(N/df)`. `doppel fingerprint <path> <a> <b>` prints the pair: every component with
+its blend weight beside it so the composite is a visible sum, and the bag merge as three partitions
+— shared, only in A, only in B — whose masses are the Jaccard (`shared / union`) and the containment
+(`shared / min(A, B)`). `reporter.PrintFingerprintPair` reuses `fingerprint.WeightOf`,
+`fingerprint.WLOverlap`, `fingerprint.DescribeLabel` and `analyzer.CanonWord` rather than restating
+any of them, and `TestFingerprintPairMergeReproducesTheScore` pins that the partition sums equal
+`WLOverlap`'s two ratios on every pair of its fixture. It runs `index()` like `query` does, so the
+weights are exactly a report's; a name is `package.Name` or `package.*Receiver.Method`, a bare name
+resolves across packages and across methods and refuses when ambiguous. The command exists because
+every other surface shows a fingerprint only through a pair that retrieval already admitted — a
+pair that was *not* retrieved could not be inspected at all.
 
 Three mechanisms do the heavy lifting, and all are load-bearing. Two are canonicalization rules
 shared by the token stream and the WL labels: identifiers collapse to `ID` (so renamed clones
@@ -1410,9 +1428,9 @@ golden scorecard is byte-identical with it in place.
 
 The markdown report (`--output`) opens with a **What doppel sees** section: the concept vocabulary
 and which concepts are *absent*, a package duplication map, per-package habitat norms, the arena
-ecosystem split, the corpus metrics and the retrieval channel mix. Three mermaid diagrams carry it
-(concepts, package duplication, habitats); the metrics and the channel mix are prose and tables,
-and the fourth diagram in the document belongs to the families section.
+ecosystem split, the corpus metrics and the retrieval channel mix. Four mermaid diagrams carry it
+(the seed map, the learned concepts, package duplication, habitats); the metrics and the channel
+mix are prose and tables, and the fifth diagram in the document belongs to the families section.
 
 The point is that all of this was already computed and then discarded. `culture.Stats`,
 `retriever.Stats` and `family.Stats` went to stderr and died there; `Model.HabitatNorm`,
@@ -1446,9 +1464,33 @@ Rules that hold it together:
 - **Diagrams departing from the wiki's unstyled house style is deliberate**, and only on `classDef`.
   A hand-authored diagram explains a mechanism; these encode a measured value, and colour is the
   only channel mermaid offers for one.
+- **The Concepts section carries two pictures of one vocabulary, and the split is the point.**
+  The **seed map** (`cmd.seedMap`) draws `ontology.Default()` — the authored 8 abstract nodes and
+  14 seed leaves — with each leaf carrying how many distinct functions reached a concept that seed
+  grew (`cmd.seedYield`, counting functions and not memberships, skipping `BelowFloor`, keyed on
+  `lexicon.Concept.Seed` and never `Anchor`). It is the same 22 nodes on every corpus, which is
+  exactly its value: it is the one concept diagram two runs, or two repositories, can be held
+  beside each other, and the only surface that still answers "does this codebase already do X"
+  pictorially. The **learned map** draws the run's own vocabulary, which has no fixed size at all.
+  `reporter.taxonomyDiagram` renders both — one routine, a node-id prefix apart (`s` and `c`), so
+  the abstract/absent/count rendering cannot fork.
+
+  A red leaf on the seed map and a name in the **No practice here for** sentence are two
+  renderings of one fact. They coincide only because a concept always has founders and therefore
+  at least one member, so "no function reached a concept this seed grew" and "this seed grew no
+  concept" are the same condition; `TestSeedMapAbsenceRestsOnConceptsHavingMembers` pins that
+  assumption rather than leaving it a coincidence.
 - **Every diagram is bounded and says so.** Package diagrams cap at `maxOverviewNodes` (12 — moby
   has 168 habitats); family diagrams cap at 8 members, because the picture must draw every edge to
-  show the clique property and 55 members is 1485 edges.
+  show the clique property and 55 members is 1485 edges. The seed map needs no bound — it is a
+  fixed 22 nodes — but the **learned concept tree is bounded per branch** rather than globally
+  (`maxTaxonomyLeaves` 3, `reporter.BoundTaxonomy`), because it is a tree: a learned vocabulary
+  hangs hundreds of leaves off eight authored parents, and a global top-N lands wherever the
+  largest concepts happen to sit and leaves whole branches bare — the one thing this picture exists
+  to show. Three is roughly the density the authored seed taxonomy had, so the two diagrams read at
+  the same density. The learned tree went unbounded for a while and moby's was **527 nodes**, which
+  no mermaid renderer makes a picture of; that is what displaced the seed map, which had simply
+  been overwritten by the learned leaves when `lexicon` landed rather than removed by a decision.
 
 A **Corpus metrics** subsection carries two further numbers, in the markdown preamble, in the
 dashboard's fact tiles, and in `--format json` as `corpusMetrics` (not in `snapshot.Schema`'s
@@ -2614,19 +2656,44 @@ functions for exactly this reason, and the first version of them did not and fai
     same four-term sum in the same order, bit-identical), `retriever.Options.Weights` (zero value
     = defaults; cmd never sets it), `analyzer.RankOptions{TrophicPower, TestCallDiscount}` /
     `SortForReportWith` (power 2 uses `t*t`, not `math.Pow`, so the default key is byte-identical),
-    and `ontology.WithWeights`. Options and arguments, never package globals.
+    and `ontology.WithWeightsOver(base, overrides)`. Options and arguments, never package globals.
+
+    The last one is reweighted **over the run's own vocabulary**, and that is a rule with a history.
+    `ontology.WithWeights(overrides)` is the same seam over `Default()` — the fourteen-leaf *seed*
+    concept table — and for a while every bench variant used it: `Rescore(WithWeights(…))`, then
+    `Rescore(Default())` to restore. But a run reasons over `WithConcepts(Default(), …)`, whose
+    concept leaves are the learned IDs, and `Ontology.LCA` fails for any ID it has not heard of —
+    so under the seed vocabulary every non-exact concept pairing (`sql.Open+QueryRow` against a
+    sibling under `data_store_access`) silently dropped, the `rel.*` rows measured "weight change
+    plus taxonomy collapse", and the restore left the run under the seed vocabulary so every
+    variant scored after it was measured against a baseline taken under the derived one. The
+    seam now takes the base explicitly; bench snapshots `run.Onto` into `labeledCorpus.onto`,
+    reweights that, and restores that. `TestRescoreKeepsDerivedTaxonomy` is the regression: a
+    synthetic corpus that grows three learned concepts under production lexicon settings, and a
+    retrieved pair whose only concept evidence is a shared ancestor — reweighting the derived
+    vocabulary keeps the match and `PatternRelatedness` bit for bit, the seed vocabulary loses it.
+    On cobra the correction moved a tenth here and there (three ablation rows by 0.1–0.5, one
+    rank variant), because its labeled pairs mostly share concepts exactly; the point is that the
+    number measured was not the one the row named.
   - `TestSelfWeight` (guard `DOPPEL_BENCH_SELFWEIGHT=1`) is the label-free weighting experiment:
     `comparator.SignalVector` (the twelve graded signals in `ScoredRelations` order; pinned to
     reproduce `OverlapScore` exactly) over the candidate set versus a null sample
     (`calibrate.SamplePairs`, cross test/prod dropped), Fisher ratio per signal normalized to
-    weights, an entropy variant for contrast, each scored via `Rescore(WithWeights)`. **Measured
-    on cobra and not adopted:** Fisher loads 0.37 on `shares_neighborhood` and 0.29 on `calls`
-    and cuts `exhibits` to 0.05, and the labels get worse (merge 5.5 / refactor 20.0 against
-    5.2 / 16.1; entropy 5.3 / 19.6). The contrast is confounded: what separates *retrieved* pairs
-    from random pairs is largely call-graph adjacency, which retrieval selected for — the
-    experiment measures what retrieval wants, not what a reviewer judges. Label-free weighting
-    from this corpus alone cannot replace the hand-set table; the harness that could is the
-    labeled fitter, once more corpora are labeled.
+    weights, an entropy variant for contrast, each scored via
+    `Rescore(WithWeightsOver(run.Onto, …))`. **Measured on cobra and not adopted:** Fisher loads
+    0.40 on `exhibits`, 0.18 on `shares_neighborhood`, 0.15 on `calls` and 0.14 on
+    `calls_into_concept`, and cuts `called_by` to 0.01 and `declared_in` to 0.01; the labels
+    split rather than agree — merge 4.8 / refactor 13.7 / fp 60.5 against the default 5.3 /
+    12.8 / 50.5 (entropy 4.8 / 15.3 / 53.0), so the merge and false-positive means improve while
+    the refactor mean worsens. The contrast is confounded: what separates *retrieved* pairs from
+    random pairs is what retrieval selected for — shared concepts and call-graph adjacency, and
+    the concept channel retrieves on exactly the quantity `exhibits` scores — so the experiment
+    measures what retrieval wants, not what a reviewer judges. (An earlier reading of this table,
+    Fisher on `shares_neighborhood` and `calls` with every label mean worse, was taken before
+    membership became coverage-based and under the seed-vocabulary seam described above; the
+    weight vectors do not depend on that seam, the rescored means do.) Label-free weighting from
+    this corpus alone cannot replace the hand-set table; the harness that could is the labeled
+    fitter, once more corpora are labeled.
   - `TestMinIDF` and `TestMinIDFLadder` (guard `DOPPEL_BENCH_MINIDF=1`) measure the information
     floor against the absolute df caps: derived caps, union size, suppressed functions and
     surviving labels per floor on every fetched corpus, plus the labeled rankings where labels
@@ -2688,17 +2755,20 @@ functions for exactly this reason, and the first version of them did not and fai
     that moved. It asserts nothing, and it is what first priced the `--min-nodes` default: the WL
     retrieval change tripped `AssertZeroFPInTop20`, the sweep priced the three constants that
     could clear it, and 12 → 18 was adopted on that evidence (`TestMinNodesLadder` later narrowed
-    it to 16, the lowest value holding the same pin). **Measured on cobra (18 labels):**
-    the merge pairs never move under any variant; every sensitivity is in the
-    refactor/false-positive tail. Inert in both directions: `MaxConceptDF`, `fp.Depth`. Inert in
-    one: `ChannelK`→8, `Threshold`→0.30, `MaxCallDF`→100, `calls_into_concept`×0.5,
-    `shares_neighborhood`×0.5, `calls_into_package`×0.5, `called_from_concept`×2;
-    `TestCallDiscount` (no test pairs under `exclude`). Load-bearing: `MinNodes` in either
-    direction (it changes which pairs retrieval sees at all — this is the knob, so it should be).
-    Largest movers: `fp.AST`, `MaxLabelDF`, `calls`, `exhibits`, `TrophicPower`. Not swept: `ChainTopN`
-    (explanation only), `struct-min`/`family-min` (no bench analogue / census only),
-    `ForkShapeFloor` (annotation). One corpus is a direction, not a verdict; the gin/chi labels
-    are what would make it one.
+    it to 16, the lowest value holding the same pin). **Measured on cobra (18 labels), with the
+    `rel.*` rows reweighting the run's own learned vocabulary:** no variant loses a merge pair
+    (6/6 retrieved and in the top 50 on every row) and the merge mean stays within 0.5 of its
+    baseline 5.3; nearly every sensitivity is in the refactor/false-positive tail. Inert in both
+    directions: `MaxConceptDF`. Inert in one: `ChannelK`→8, `Threshold`→0.30, `MaxCallDF`→100,
+    `bound_to`×0.5; `TestCallDiscount` (no test pairs under `exclude`). Load-bearing:
+    `MinNodes`→12 — the one violation in the table, the `Less` false positive re-entering the top
+    20 (it changes which pairs retrieval sees at all — this is the knob, so it should be);
+    `MinNodes`→24 merely moves. Largest movers: `MaxLabelDF` (→25 merge 5.7 / fp 46.0, →100 fp
+    54.5), `TrophicPower` (→1 merge 5.8, →3 refactor 15.1), `fp.AST`, and among the relations
+    `exhibits`, `has_role` and `called_by` (fp 48.5–53.5, merge 5.0–5.5 either way); every other
+    `rel.*` row moves a label or two by a rank. Not swept: `ChainTopN` (explanation only),
+    `struct-min`/`family-min` (no bench analogue / census only), `ForkShapeFloor` (annotation).
+    One corpus is a direction, not a verdict; the gin/chi labels are what would make it one.
   - `TestGenerateExamples` (guard `DOPPEL_BENCH_EXAMPLES=1`) regenerates `examples/<name>.md` by
     running the **built binary** with `cmd.Dir` set to the corpus — not the library — so the
     committed reports are what the documented command actually prints, culture/habitat/arena

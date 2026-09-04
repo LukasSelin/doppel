@@ -91,7 +91,7 @@ func firedUnion(as, bs []string) []string {
 	var out []string
 	for _, r := range canon.Rules() {
 		if fired[string(r.ID)] {
-			out = append(out, canonFriendly(r.ID))
+			out = append(out, CanonWord(string(r.ID)))
 			delete(fired, string(r.ID))
 		}
 	}
@@ -105,15 +105,23 @@ func firedUnion(as, bs []string) []string {
 	return append(out, rest...)
 }
 
-// canonFriendly is the word a report uses for a canonicalization rule.
+// CanonWord is the word a report uses for a canonicalization rule.
 //
 // The rule IDs are the vocabulary canon publishes and are stable API there;
 // these are the reader-facing half, and they say what the normalization did
 // to the *reader's* code rather than what the rewrite was called. An ID with
 // no entry renders as itself, so a rule added to canon appears in explanations
 // immediately, under its own name, rather than vanishing from them.
-func canonFriendly(id canon.RuleID) string {
-	switch id {
+//
+// Exported for the fingerprint view, which names the rules that fired on one
+// body; one table, so a rule cannot be called one thing in an explain
+// sentence and another in the view. It takes the plain string
+// parser.CodeUnit.CanonRules carries rather than a canon.RuleID, because the
+// view lives in reporter and reporter must not import canon — that package
+// is go/ast-typed and reaches the rest of the tool only through gofront and
+// this one.
+func CanonWord(id string) string {
+	switch canon.RuleID(id) {
 	case canon.RuleAlphaRename:
 		return "rename"
 	case canon.RuleUnwrapBlock:
