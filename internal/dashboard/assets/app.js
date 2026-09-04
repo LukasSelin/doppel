@@ -493,6 +493,9 @@
       empty.hidden = false;
       empty.textContent = "Nothing to draw.";
       clear(host);
+      // The key describes what was drawn, so with nothing drawn it must go
+      // too — a stale legend would be a count of the previous view.
+      clear($("border-legend"));
       return;
     }
     empty.hidden = true;
@@ -516,8 +519,10 @@
     host.appendChild(view);
 
     drawTerritories(gFill, gLabel, model, fit.cells);
-    drawBorders(gBorder, model, fit.cells);
-    if (showArcs.checked) drawArcs(gArc, model, fit.cells);
+    var tally = drawBorders(gBorder, model, fit.cells);
+    var apart = nonAdjacentLinks(model, fit.cells);
+    if (showArcs.checked) drawArcs(gArc, model, fit.cells, apart);
+    renderBorderLegend(tally, apart);
 
     attachPanZoom(host, view);
     renderSelection();
@@ -575,6 +580,7 @@
   function drawBorders(gBorder, model, cells) {
     var maxMass = 0;
     model.links.forEach(function (l) { if (l.mass > maxMass) maxMass = l.mass; });
+    var tally = { plain: 0, hot: 0, merge: 0, maxMass: maxMass, minMass: 0 };
 
     model.regions.forEach(function (r, i) {
       var cell = cells[i];
@@ -587,6 +593,12 @@
 
         var l = model.linkMap[i + ":" + j];
         var hot = l && l.mass > 0;
+        if (!hot) tally.plain++;
+        else {
+          tally.hot++;
+          if (l.merge) tally.merge++;
+          if (!tally.minMass || l.mass < tally.minMass) tally.minMass = l.mass;
+        }
         var line = svg("line", {
           x1: p[0].toFixed(2), y1: p[1].toFixed(2), x2: q[0].toFixed(2), y2: q[1].toFixed(2),
           class: hot ? (l.merge ? "border hot merge" : "border hot") : "border",
@@ -602,26 +614,34 @@
         gBorder.appendChild(line);
       }
     });
+    return tally;
   }
 
   /* Related regions the packing could not seat next to each other.
    *
    * A planar map cannot realise every adjacency a corpus asks for, so these
    * are the relationships that would otherwise silently disappear into the
-   * layout. Drawn as arcs, and counted in the selection panel, so the map is
-   * never quietly lossy. */
-  function drawArcs(gArc, model, cells) {
+   * layout. Drawn as arcs, and counted in the selection panel and the border
+   * legend, so the map is never quietly lossy.
+   *
+   * Finding them is split from drawing them so the legend can say how many
+   * exist even while the arc layer is switched off — an unrealised adjacency
+   * the reader is never told about is exactly the lossiness this prevents. */
+  function nonAdjacentLinks(model, cells) {
     var adjacent = Object.create(null);
     model.regions.forEach(function (r, i) {
       cells[i].tags.forEach(function (j) {
         if (j >= 0) adjacent[Math.min(i, j) + ":" + Math.max(i, j)] = true;
       });
     });
+    return model.links.filter(function (l) { return !adjacent[l.a + ":" + l.b]; });
+  }
+
+  function drawArcs(gArc, model, cells, apart) {
     var maxMass = 0;
     model.links.forEach(function (l) { if (l.mass > maxMass) maxMass = l.mass; });
 
-    model.links.forEach(function (l) {
-      if (adjacent[l.a + ":" + l.b]) return;
+    apart.forEach(function (l) {
       var ca = centroid(cells[l.a].poly), cb = centroid(cells[l.b].poly);
       var mx = (ca[0] + cb[0]) / 2, my = (ca[1] + cb[1]) / 2;
       var dx = cb[0] - ca[0], dy = cb[1] - ca[1];
@@ -730,6 +750,75 @@
     });
     host.appendChild(ol);
     if (l.edges.length > 10) host.appendChild(el("p", "control-note", (l.edges.length - 10) + " more not listed."));
+  }
+
+  /* The border key.
+   *
+   * The map's central claim is that a border's *existence* is geometry and only
+   * its paint is evidence, and prose alone was not carrying it: every reading
+   * of the map turns on telling a hairline from a painted border, and the page
+   * offered no sample of either. The swatches are real SVG carrying the map's
+   * own classes and widths, so a stroke here cannot drift from the stroke it
+   * describes — the same reason `Edge.Rank` is computed in Go rather than
+   * restated in JavaScript.
+   *
+   * One deliberate departure: the plain hairline is drawn heavier here, and at
+   * full opacity, than the map draws it. A hairline is faint by design — that
+   * is the whole point of it — but a key entry the reader cannot see is not a
+   * key, and this row is what tells them the faint lines on the map mean
+   * nothing. The row says so in words rather than letting the sample pass as
+   * literal; every other swatch is exact.
+   *
+   * Counts come from what the current view actually drew, so the key is also
+   * the answer to "is anything painted at all" on a map where nothing is. */
+  function renderBorderLegend(tally, apart) {
+    var host = $("border-legend");
+    clear(host);
+
+    function row(cls, widths, dashed, title, note) {
+      var line = el("div", "legend-row legend-border-row");
+      var sw = svg("svg", { class: "swatch", viewBox: "0 0 44 14",
+        width: "44", height: "14", "aria-hidden": "true" });
+      var step = 44 / widths.length;
+      widths.forEach(function (w, i) {
+        var seg = svg("line", {
+          x1: (i * step).toFixed(1), y1: "7", x2: ((i + 1) * step).toFixed(1), y2: "7",
+          class: cls, "stroke-width": w.toFixed(2)
+        });
+        if (dashed) seg.setAttribute("stroke-dasharray", "5 4");
+        sw.appendChild(seg);
+      });
+      line.appendChild(sw);
+      var text = el("span", "legend-border-text");
+      text.appendChild(el("span", "legend-id", title));
+      text.appendChild(el("span", "legend-border-note", note));
+      line.appendChild(text);
+      host.appendChild(line);
+    }
+
+    row("border", [1.6, 1.6, 1.6], false,
+      plural(tally.plain, "plain border"),
+      "regions that merely adjoin — the packing put them there, and no pair " +
+      "crosses; the map draws these lighter and thinner than this sample");
+    row("border hot", [2, 3.6, 5.6], false,
+      plural(tally.hot, "painted border"),
+      tally.hot
+        ? "duplication crosses here; width grows with evidence, up to " +
+          fixed(tally.maxMass, 0) + " nats"
+        : "none in this view — no pair crosses a shared border");
+    row("border hot merge", [2.6, 4.2, 5.6], false,
+      tally.merge + " of those merge-worthy",
+      "a second colour: at least one crossing pair clears the merge gate");
+    row("arc", [1.6, 3.2, 3.2], true,
+      plural(apart.length, "non-neighbour link"),
+      apart.length
+        ? (showArcs.checked
+            ? "related, but the packing could not seat them together — drawn as a dashed arc"
+            : "related, but not adjacent — tick “show non-neighbour links” to draw them")
+        : "every related pair of regions was seated adjacent");
+
+    host.appendChild(el("p", "control-note",
+      "Click any painted border or arc for the pairs that cross it."));
   }
 
   function renderLegend() {
