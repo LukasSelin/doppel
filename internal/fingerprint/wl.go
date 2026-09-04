@@ -19,6 +19,11 @@ import (
 // carry maximal ln(N/df) and pair with nothing.
 const wlRounds = 3
 
+// WLRounds is wlRounds for a caller outside the package: LabelChains hands
+// back one label per round, and a consumer sizing a table or reading
+// Labels[h] needs the bound under the same name the bag was built with.
+const WLRounds = wlRounds
+
 // LabelCount is one Weisfeiler–Lehman label, how many times a body carries
 // it, and the two facts that let it be named to a reader. A bag is a slice of
 // these sorted ascending by Label, with no label repeated.
@@ -256,6 +261,14 @@ type labelAcc struct {
 // slices no matter how deep it nests.
 func WLBag(fn *syntax.Func) []LabelCount {
 	return wlBagOf(fn.Shape())
+}
+
+// WLBagOf is WLBag over an already-chosen tree, for a caller holding only
+// the canonical body — the debug view that re-derives a function's tree from
+// source and needs to prove the re-derivation carries the bag the corpus
+// holds before it maps a label onto it. Same walk, same result.
+func WLBagOf(root *syntax.Node) []LabelCount {
+	return wlBagOf(root)
 }
 
 // wlBagOf is WLBag over an already-chosen tree, so a caller holding only the

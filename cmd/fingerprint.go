@@ -2,10 +2,15 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/LukasSelin/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/fingerprint"
+	"github.com/LukasSelin/doppel/internal/gofront"
 	"github.com/LukasSelin/doppel/internal/parser"
 	"github.com/LukasSelin/doppel/internal/reporter"
 	"github.com/spf13/cobra"
@@ -13,6 +18,7 @@ import (
 
 var (
 	fpLabels    int
+	fpLabel     []string
 	fpTests     string
 	fpGenerated string
 	fpLanguages []string
@@ -30,12 +36,19 @@ component of the code-shape score with its blend weight, and the shared,
 only-A and only-B label partitions whose masses are the Jaccard and the
 containment. The totals on the page add up to the numbers the report prints.
 
+--label takes a hash from a bag row and shows the node(s) that produced it:
+the canonical subtree as Go text, and the exact extent the label hashed as
+an outline truncated at the label's round. The code shown is the canonical
+form — identifiers renamed, rules applied — because that is the tree the bag
+was built over; the canonical tree keeps no source positions to map back to.
+
 A function is named as package.Name, as a bare Name, or as *Receiver.Method
 (the star is part of the name). An ambiguous name lists its matches and
 stops. The corpus is read exactly as analyze reads it — the same population
 filters, so the label weights are the ones a report would use.`,
 	Example: `  doppel fingerprint . retriever.Retrieve
-  doppel fingerprint . mapper.sortedKeys retriever.sortedKeys --labels 0`,
+  doppel fingerprint . mapper.sortedKeys lexicon.sortedKeys --labels 0
+  doppel fingerprint . mapper.sortedKeys lexicon.sortedKeys --label 80e9c3fe3ce5ff64`,
 	Args:         cobra.RangeArgs(2, 3),
 	SilenceUsage: true,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -60,6 +73,7 @@ filters, so the label weights are the ones a report would use.`,
 
 func init() {
 	fingerprintCmd.Flags().IntVar(&fpLabels, "labels", 20, "Bag rows to print per section, heaviest first (0 = all)")
+	fingerprintCmd.Flags().StringSliceVar(&fpLabel, "label", nil, "Show the subtree behind a label from a bag row (hex, with or without #; repeatable)")
 	fingerprintCmd.Flags().StringSliceVar(&fpLanguages, "languages", nil, "Languages to read, comma-separated (default: every language doppel has a frontend for)")
 	fingerprintCmd.Flags().StringVar(&fpTests, "tests", "exclude", "Test-function population: include, exclude, or only")
 	fingerprintCmd.Flags().StringVar(&fpGenerated, "generated", "exclude", "Generated-file population: include, exclude, or only")
@@ -85,21 +99,100 @@ func runFingerprint(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	labels, err := parseLabelFlags(fpLabel)
+	if err != nil {
+		return err
+	}
 	a, err := findUnit(res.Units, args[1])
 	if err != nil {
 		return err
 	}
+	out := cmd.OutOrStdout()
 	meta := reporter.FingerprintMeta{CorpusFuncs: res.WL.N(), LabelTop: fpLabels}
 	if len(args) == 2 {
-		reporter.PrintFingerprint(cmd.OutOrStdout(), res.Units[a], res.WL, meta)
+		reporter.PrintFingerprint(out, res.Units[a], res.WL, meta)
+		if len(labels) == 0 {
+			return nil
+		}
+		src, err := labelSourceFor(res.Units[a])
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(out)
+		reporter.PrintLabelOccurrences(out, res.Units[a], src, labels, res.WL, meta)
 		return nil
 	}
 	b, err := findUnit(res.Units, args[2])
 	if err != nil {
 		return err
 	}
-	reporter.PrintFingerprintPair(cmd.OutOrStdout(), res.Units[a], res.Units[b], res.WL, meta)
+	reporter.PrintFingerprintPair(out, res.Units[a], res.Units[b], res.WL, meta)
+	if len(labels) == 0 {
+		return nil
+	}
+	srcA, err := labelSourceFor(res.Units[a])
+	if err != nil {
+		return err
+	}
+	srcB, err := labelSourceFor(res.Units[b])
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(out)
+	reporter.PrintLabelOccurrencesPair(out, res.Units[a], res.Units[b], srcA, srcB, labels, res.WL, meta)
 	return nil
+}
+
+// parseLabelFlags reads --label values: hex, with or without the # the view
+// prints, deduplicated in the order given so the output follows the command
+// line.
+func parseLabelFlags(in []string) ([]uint64, error) {
+	var out []uint64
+	for _, raw := range in {
+		s := strings.TrimPrefix(strings.TrimSpace(raw), "#")
+		v, err := strconv.ParseUint(s, 16, 64)
+		if err != nil {
+			return nil, fmt.Errorf("--label %q: not a label hash (the view prints them as #hex)", raw)
+		}
+		if !slices.Contains(out, v) {
+			out = append(out, v)
+		}
+	}
+	return out, nil
+}
+
+// labelSourceFor is what a label lookup on this unit reads.
+//
+// For Go, the frontend re-derives the canonical tree from the file and
+// renders every node, and the re-derivation is checked against the bag the
+// corpus holds before anything is mapped onto it: LabelCount is comparable,
+// so slices.Equal compares label, count, round and kind alike, and a
+// mismatch means the file changed since it was indexed or canonicalization
+// is nondeterministic — the second is a bug, and either way the lookup would
+// name nodes that are not in the bag. Any other language has no renderer
+// and no re-parse: the unit's own canonical tree is the source, and the
+// outline is the whole claim.
+func labelSourceFor(u parser.CodeUnit) (reporter.LabelSource, error) {
+	if u.Fingerprint.Nodes == 0 {
+		return reporter.LabelSource{}, nil
+	}
+	if u.Lang != gofront.Lang {
+		return reporter.LabelSource{Tree: u.Canonical}, nil
+	}
+	name := concepter.QualifiedName(u)
+	src, err := os.ReadFile(u.File)
+	if err != nil {
+		return reporter.LabelSource{}, fmt.Errorf("--label: cannot re-derive %s: %w", name, err)
+	}
+	tree, renders, err := gofront.CanonicalRenders(u.File, src, u.StartLine, parser.MethodName(u))
+	if err != nil {
+		return reporter.LabelSource{}, fmt.Errorf("--label: cannot re-derive %s: %w", name, err)
+	}
+	if !slices.Equal(fingerprint.WLBagOf(tree), u.Fingerprint.WL) {
+		return reporter.LabelSource{}, fmt.Errorf("--label: cannot re-derive %s from %s:%d: the re-derived canonical tree carries a different label bag than the corpus holds — the file changed since it was indexed, or canonicalization is nondeterministic, which is a bug",
+			name, u.File, u.StartLine)
+	}
+	return reporter.LabelSource{Tree: tree, Renders: renders}, nil
 }
 
 // findUnit resolves a name to one corpus index. A qualified name
