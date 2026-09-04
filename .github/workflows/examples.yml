@@ -50,9 +50,16 @@ jobs:
 
       # The push event checks out a detached sha; this job pushes back, so it
       # needs the branch.
+      #
+      # It checks out over SSH with a write-enabled deploy key rather than the
+      # default GITHUB_TOKEN, and that is the whole reason the push at the end
+      # of this job is allowed: master's ruleset requires a pull request, and
+      # `Deploy keys` is on its bypass list. GITHUB_TOKEN is not, so a default
+      # checkout fails the push with GH013 after the analysis has already run.
       - uses: actions/checkout@v5
         with:
           ref: master
+          ssh-key: ${{ secrets.EXAMPLES_DEPLOY_KEY }}
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -101,8 +108,20 @@ jobs:
           # A human push can land while the analysis runs; the concurrency
           # group only serializes this workflow against itself.
           git pull --rebase --autostash origin master
-          # A push authenticated with GITHUB_TOKEN does not trigger workflows,
-          # so this cannot loop back into itself, and the examples commit does
-          # not re-run ci.yml. That is intended: examples/ is generated output
-          # and gates nothing.
+          # This push goes straight to master, which the branch ruleset
+          # otherwise forbids ("Changes must be made through a pull request").
+          # It works only because `Deploy keys` is a bypass actor on that
+          # ruleset and this job checked out with one -- a repo setting,
+          # invisible from the tree, and the first thing to check if this step
+          # starts failing with GH013. The bypass is deliberate: examples/ is
+          # generated output that gates nothing, and routing it through a PR
+          # would cost a PR per ranking change while a GITHUB_TOKEN-authored
+          # PR triggers no checks to merge on.
+          #
+          # Unlike a GITHUB_TOKEN push, a deploy-key push DOES trigger
+          # workflows. This job still cannot loop into itself -- the bot
+          # commit touches examples/*.md only, which the `paths:` filter above
+          # does not match -- but ci.yml and pages.yml have no such filter and
+          # do run once on it. That is the price of the bypass, and it is
+          # cheap: both are fast, and neither gates anything on examples/.
           git push origin HEAD:master
