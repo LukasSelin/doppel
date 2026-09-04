@@ -139,6 +139,10 @@ doppel query --near billing . < draft.go
 # Census: every group of 3+ mutually similar functions, not just pairs
 doppel families .
 
+# Show what the score reads for one function, or the label merge two of them score on
+doppel fingerprint . mapper.sortedKeys
+doppel fingerprint . mapper.sortedKeys lexicon.sortedKeys
+
 # What happened to each function between two runs — renames and moves included
 doppel analyze . --format json > before.json
 doppel analyze . --format json > after.json
@@ -167,6 +171,38 @@ from elsewhere. `--near` names the package the function will live in: a bare sni
 it, and its bare-name calls resolve to that package's functions, which is what locality is built
 from. Include the snippet's imports — calls into imported packages only count as evidence when the
 import that binds them is present.
+
+### Checking a score by hand
+
+`doppel fingerprint` shows the raw material behind a code-shape number. For one function it prints
+the control-flow and nesting histograms, the type set, the canonicalization rules that fired, and
+the Weisfeiler-Lehman label bag weighted by this corpus, heaviest label first. For two functions it
+prints every component of the score with its blend weight, and the bag merge as three partitions —
+shared, only in A, only in B — whose masses are the Jaccard and the containment:
+
+```
+  code-shape: 0.6277
+    wl       0.5951 × 0.60 = 0.3571
+    flow     0.8660 × 0.20 = 0.1732
+    nesting  0.9487 × 0.05 = 0.0474
+    sig      0.3333 × 0.15 = 0.0500
+  containment: 0.8562 — most of the smaller body's shape is inside the larger
+
+  label merge (weights ln(N/df), N = 950 bodies)
+    mass A 131.3  mass B 101.4  shared 86.8  union 145.9
+    jaccard = shared / union = 0.5951
+    containment = shared / min(A, B) = 0.8562
+
+  shared: 56 labels, 86.8 nats
+        mass  weight    A    B    df  label
+        3.39    3.39    1    1    32  depth-3 RANGE  #80e9c3fe3ce5ff64
+        ...
+```
+
+The totals on the page add up to the numbers the report prints, which is the point: a score you
+disagree with can be traced to the labels that produced it. Names are `package.Name` or
+`package.*Receiver.Method`; a bare name works when it is unique. `--labels N` bounds the rows per
+section (`0` for all).
 
 ### Two scores per pair
 

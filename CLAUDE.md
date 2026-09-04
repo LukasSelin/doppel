@@ -88,6 +88,7 @@ cmd/            CLI commands (Cobra).
   root.go       rootCmd, Execute()
   analyze.go    Pipeline orchestrator; analyze's own flags (each command registers its own in init)
   families.go   doppel families: the census view, plus analyze's family stage
+  fingerprint.go doppel fingerprint: one function's fingerprint, or two functions' label merge, for verifying the score by hand
   overview.go   Queries the corpus model (culture, ontology, call graph) into reporter.Overview
   dashboard.go  Assembles dashboard.Payload — the semantic model the HTML page draws
   pipeline.go   index() + finishAnalyze(): the pipeline split into corpus-building prefix and reporting tail; filterByOverlap; snapshotOf
@@ -129,6 +130,8 @@ internal/
                 series.go chains N snapshots: N-1 consecutive deltas plus one Track per function lifeline
   reporter/     Plain-text (stdout), Markdown (--output), JSON (--format json), and the five hook digests
                 (impact.go: ConceptDigest, ImpactDigest, AgentDigest; scope.go: ScopeDigest, AdviceDigest)
+                fingerprint.go is the fingerprint view: the whole weighted bag of one function, or the
+                shared / only-A / only-B partition of two, whose masses reproduce the WL Jaccard exactly
                 overview.go + mermaid.go render the corpus model into the markdown report only
   dashboard/    The two HTML pages: payload.go + assets/(shell.html, app.js, app.css) is the
                 single-run dashboard (--output *.html); timeline.go + assets/(timeline.html,
@@ -685,6 +688,21 @@ Schema 4).
 
 `SizeRatio` is reported in the `Breakdown` but **not** scored — Jaccard already penalizes size
 mismatch through the union, so damping again would double-count it.
+
+**`doppel fingerprint` is how a score is checked by hand.** `doppel fingerprint <path> <fn>` prints
+what `Similarity` reads for one function — the flow and nesting histograms, the type set, the canon
+rules that fired, and the whole WL bag as `mass / weight / count / df / depth-h KIND` rows under
+this corpus's `ln(N/df)`. `doppel fingerprint <path> <a> <b>` prints the pair: every component with
+its blend weight beside it so the composite is a visible sum, and the bag merge as three partitions
+— shared, only in A, only in B — whose masses are the Jaccard (`shared / union`) and the containment
+(`shared / min(A, B)`). `reporter.PrintFingerprintPair` reuses `fingerprint.WeightOf`,
+`fingerprint.WLOverlap`, `fingerprint.DescribeLabel` and `analyzer.CanonWord` rather than restating
+any of them, and `TestFingerprintPairMergeReproducesTheScore` pins that the partition sums equal
+`WLOverlap`'s two ratios on every pair of its fixture. It runs `index()` like `query` does, so the
+weights are exactly a report's; a name is `package.Name` or `package.*Receiver.Method`, a bare name
+resolves across packages and across methods and refuses when ambiguous. The command exists because
+every other surface shows a fingerprint only through a pair that retrieval already admitted — a
+pair that was *not* retrieved could not be inspected at all.
 
 Three mechanisms do the heavy lifting, and all are load-bearing. Two are canonicalization rules
 shared by the token stream and the WL labels: identifiers collapse to `ID` (so renamed clones
