@@ -9,7 +9,7 @@ structured concurrency library; generics-heavy, one idea, written recently and a
 | Corpus | [conc](https://github.com/sourcegraph/conc) |
 | Pinned at | `v0.3.0` (`7b8c8f2875cb861bb61844c9bcaa1aed070adbd4`) |
 | Project since | 2023 |
-| doppel | `c4861da` |
+| doppel | `b0bd876` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -50,7 +50,62 @@ Families: 1 over 6 components, 5 functions in a family
 
 ### Concepts
 
-These concepts were **learned from this corpus**, not read off a fixed list: each one is a group of functions that share a way of being written, named after the evidence that identified it. They hang from an authored interior, so two functions under the same *branch* score partial credit rather than nothing. Counts below are members; membership is graded, and a function can carry several.
+Two pictures of the same vocabulary. The first is what doppel **searched with**: an authored tree of fourteen seed practices, each leaf showing how many functions here ended up in a concept that seed grew. It is the same shape on every corpus, which is what makes it the one concept picture two runs can be compared on. The second is what this corpus **turned out to have**: concepts learned from the code itself, named after the evidence that identified them, hung from that same interior — so two functions under one *branch* score partial credit rather than nothing. Counts are members; membership is graded, and a function can carry several.
+
+**What doppel looked for, and how much of it grew here.**
+
+```mermaid
+flowchart LR
+    s0(["concept"])
+    s1(["io_operation"])
+    s2(["remote_io"])
+    s3["http_call<br/>absent"]
+    s4["grpc_call<br/>absent"]
+    s5(["data_store_access"])
+    s6["db_access<br/>absent"]
+    s7["caching<br/>absent"]
+    s8["transaction<br/>absent"]
+    s9["file_io<br/>absent"]
+    s10["logging<br/>absent"]
+    s11(["data_transformation"])
+    s12["mapping<br/>absent"]
+    s13["validation<br/>absent"]
+    s14["serialization<br/>absent"]
+    s15(["control_flow"])
+    s16["concurrency<br/>12"]
+    s17(["fault_tolerance"])
+    s18["retry<br/>absent"]
+    s19["circuit_breaker<br/>absent"]
+    s20(["error_handling"])
+    s21["error_wrapping<br/>absent"]
+    s0 --> s1
+    s1 --> s2
+    s2 --> s3
+    s2 --> s4
+    s1 --> s5
+    s5 --> s6
+    s5 --> s7
+    s5 --> s8
+    s1 --> s9
+    s1 --> s10
+    s0 --> s11
+    s11 --> s12
+    s11 --> s13
+    s11 --> s14
+    s0 --> s15
+    s15 --> s16
+    s15 --> s17
+    s17 --> s18
+    s17 --> s19
+    s0 --> s20
+    s20 --> s21
+    classDef good fill:#d7ecd9,color:#1b3d20
+    classDef warn fill:#fbeecb,color:#4a3a12
+    classDef hot fill:#f7d6d6,color:#4a1c1c
+    class s3,s4,s6,s7,s8,s9,s10,s12,s13,s14,s18,s19,s21 hot
+```
+
+**What it learned instead.**
 
 ```mermaid
 flowchart LR

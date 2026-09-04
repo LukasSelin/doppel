@@ -9,7 +9,7 @@ container engine; a decade of accretion across daemon, API, and plugin layers
 | Corpus | [moby](https://github.com/moby/moby) |
 | Pinned at | `v28.5.2` (`89c5e8fd66634b6128fc4c0e6f1236e2540e46e0`) |
 | Project since | 2013 |
-| doppel | `c4861da` |
+| doppel | `b0bd876` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -52,7 +52,62 @@ Families: 784 over 850 components, 2236 functions in a family, 5827 edges comple
 
 ### Concepts
 
-These concepts were **learned from this corpus**, not read off a fixed list: each one is a group of functions that share a way of being written, named after the evidence that identified it. They hang from an authored interior, so two functions under the same *branch* score partial credit rather than nothing. Counts below are members; membership is graded, and a function can carry several.
+Two pictures of the same vocabulary. The first is what doppel **searched with**: an authored tree of fourteen seed practices, each leaf showing how many functions here ended up in a concept that seed grew. It is the same shape on every corpus, which is what makes it the one concept picture two runs can be compared on. The second is what this corpus **turned out to have**: concepts learned from the code itself, named after the evidence that identified them, hung from that same interior — so two functions under one *branch* score partial credit rather than nothing. Counts are members; membership is graded, and a function can carry several.
+
+**What doppel looked for, and how much of it grew here.**
+
+```mermaid
+flowchart LR
+    s0(["concept"])
+    s1(["io_operation"])
+    s2(["remote_io"])
+    s3["http_call<br/>27"]
+    s4["grpc_call<br/>absent"]
+    s5(["data_store_access"])
+    s6["db_access<br/>25"]
+    s7["caching<br/>251"]
+    s8["transaction<br/>189"]
+    s9["file_io<br/>407"]
+    s10["logging<br/>238"]
+    s11(["data_transformation"])
+    s12["mapping<br/>218"]
+    s13["validation<br/>437"]
+    s14["serialization<br/>309"]
+    s15(["control_flow"])
+    s16["concurrency<br/>688"]
+    s17(["fault_tolerance"])
+    s18["retry<br/>85"]
+    s19["circuit_breaker<br/>absent"]
+    s20(["error_handling"])
+    s21["error_wrapping<br/>636"]
+    s0 --> s1
+    s1 --> s2
+    s2 --> s3
+    s2 --> s4
+    s1 --> s5
+    s5 --> s6
+    s5 --> s7
+    s5 --> s8
+    s1 --> s9
+    s1 --> s10
+    s0 --> s11
+    s11 --> s12
+    s11 --> s13
+    s11 --> s14
+    s0 --> s15
+    s15 --> s16
+    s15 --> s17
+    s17 --> s18
+    s17 --> s19
+    s0 --> s20
+    s20 --> s21
+    classDef good fill:#d7ecd9,color:#1b3d20
+    classDef warn fill:#fbeecb,color:#4a3a12
+    classDef hot fill:#f7d6d6,color:#4a1c1c
+    class s4,s19 hot
+```
+
+**What it learned instead.**
 
 ```mermaid
 flowchart LR
@@ -64,525 +119,27 @@ flowchart LR
     c5(["control_flow"])
     c6(["fault_tolerance"])
     c7(["error_handling"])
-    c8["Annotations.Labels+Driver.Name<br/>1"]
-    c9["BindOptions.ReadOnlyNonRecu…+BindOptions.CreateMountpoint<br/>27"]
-    c10["BindOptions.ReadOnlyNonRecu…+BindOptions.NonRecursive<br/>7"]
-    c11["BridgeConfig.Iface+conf.BridgeConfig<br/>9"]
-    c12["C.__u32+C.int<br/>636"]
-    c13["C.__u64+errno.Error<br/>9"]
-    c14["Config.Domainname+Config.Hostname<br/>13"]
-    c15["Config.ExposedPorts+nat.Port<br/>51"]
-    c16["Config.Hostname+container.Config<br/>61"]
-    c17["Config.Hostname+ctr.Config<br/>27"]
-    c18["Config.Image+Config.Labels<br/>41"]
-    c19["Config.Image+container.Name<br/>123"]
-    c20["Config.Linux+Config.Mounts<br/>19"]
-    c21["Config.NetworkDisabled+ctr.Config<br/>13"]
-    c22["Config.OpenStdin+Config.StdinOnce<br/>688"]
-    c23["Created.Format+storage.DriverData<br/>27"]
-    c24["Created.Unix+Config.Labels<br/>12"]
-    c25["Driver.Name+Driver.Options<br/>3"]
-    c26["Err.Error+e.Err<br/>11"]
-    c27["EventsService.Log+daemon.EventsService<br/>4"]
-    c28["File.GID+File.UID<br/>4"]
-    c29["Gateway.IP+Pool.String<br/>75"]
-    c30["GwModeIPv4.isolated+config.GwModeIPv4<br/>16"]
-    c31["GwModeIPv6.isolated+config.GwModeIPv6<br/>23"]
-    c32["Healthcheck.Retries+c.callWithRetry<br/>85"]
-    c33["HostConfig.RestartPolicy+RestartPolicy.Name<br/>35"]
-    c34["HostInfoFunctions.WithValues+metrics.HostInfoFunctions<br/>17"]
-    c35["IP.Equal+sctp<br/>3"]
-    c36["IPAM.Config+network.IPAM<br/>10"]
-    c37["IPAMConfig.IPv4Address+IPAMConfig.IPv6Address<br/>35"]
-    c38["IPNet.String+nlwrap.AddrList<br/>10"]
-    c39["IPNet.String+nlwrap.AddrList+addr.IPNet<br/>22"]
-    c40["Isolation.IsValid+PluginObj.PluginReference<br/>437"]
-    c41["LittleEndian.Uint64+tx.onRollback<br/>189"]
-    c42["Logger.SetOutput+L.Logger<br/>7"]
-    c43["Meta.UpdatedAt+Version.Index<br/>8"]
-    c44["NetworkSettings.Ports+NetworkSettings.SandboxID<br/>118"]
-    c45["PLogMetaData.ID+PLogMetaData.Ordinal<br/>5"]
-    c46["Platform.Variant+Platform.OSVersion<br/>20"]
-    c47["Privileges.AppArmor+Privileges.CredentialSpec<br/>21"]
-    c48["Privileges.AppArmor+Privileges.CredentialSpec+Privileges.NoNewPrivileges<br/>7"]
-    c49["Process.Args+s.Root<br/>44"]
-    c50["Reference.String+p.platform<br/>24"]
-    c51["Runtimes.Default+cfg.Runtimes<br/>14"]
-    c52["Spec.BindOptions+m.Propagation<br/>33"]
-    c53["Spec.BindOptions+mp.Spec<br/>54"]
-    c54["Spec.GetContainer+task.Spec<br/>17"]
-    c55["Spec.GetNetwork+ic.Range<br/>5"]
-    c56["Spec.GetNetwork+ic.Range+network.IPAM<br/>19"]
-    c57["State.Health+c.State<br/>8"]
-    c58["Status.Err+task.Status<br/>22"]
-    c59["Store.validateName+bytes.TrimSpace<br/>407"]
-    c60["Subnet.Addr+k.AddressSpace<br/>12"]
-    c61["Task.GetContainer+enginemount.Mount<br/>218"]
-    c62["Task.Runtime+c.callWithRetry<br/>309"]
-    c63["Timestamp.UnixNano+msg.Timestamp<br/>9"]
-    c64["TmpfsOptions.Mode+TmpfsOptions.SizeBytes<br/>9"]
-    c65["TmpfsOptions.Mode+TmpfsOptions.SizeBytes+m.ReadOnly<br/>69"]
-    c66["a.call+api<br/>18"]
-    c67["a.eMount+a.scopePath<br/>10"]
-    c68["a.plugin+logdriver<br/>35"]
-    c69["aSpace.allocated+netiputil.PrefixCompare<br/>5"]
-    c70["addr.Mask+d.advertiseAddress<br/>12"]
-    c71["addr.Unmap+netip.AddrFromSlice<br/>16"]
-    c72["addr.Unmap+netip.AddrFromSlice+fmt.Errorf<br/>16"]
-    c73["archive.ToArchiveOpt+archive<br/>4"]
-    c74["archive.toArchiveOpt+tarheader<br/>6"]
-    c75["archiver.Untar+archiver.IDMapping<br/>28"]
-    c76["ast+parser<br/>8"]
-    c77["b.HostPort+b.HostIP<br/>5"]
-    c78["b.HostPort+b.Port<br/>12"]
-    c79["b.HostPort+b.Port+a.IP<br/>11"]
-    c80["b.Port+b.HostPort<br/>4"]
-    c81["b.Stdout+b.options<br/>35"]
-    c82["b.allowedBuildArgs+sort<br/>5"]
-    c83["b.bytes+l.logStreamName<br/>25"]
-    c84["b.lastRead+b.pos<br/>5"]
-    c85["b.options+state.imageID<br/>31"]
-    c86["backend.GetNetworks+backend.NetworkListConfig<br/>20"]
-    c87["backend.GetNetworks+backend.NetworkListConfig+cluster.GetNetworks<br/>8"]
-    c88["baggage.ContextWithBaggage+otelutil.MustNewBaggage<br/>8"]
-    c89["binding.HostIP+HostConfig.PortBindings<br/>12"]
-    c90["bnd.HostIP+bnd.IP<br/>58"]
-    c91["bnd.HostIP+bnd.IP+defHostIP.To4<br/>9"]
-    c92["broadcaster.Write+nDB.broadcaster<br/>19"]
-    c93["bufio.NewReader+bufio<br/>13"]
-    c94["builder.Stderr+c.ShellDependantCmdLine<br/>20"]
-    c95["builder.Stderr+c.ShellDependantCmdLine+c.String<br/>46"]
-    c96["builder.commit+d.state<br/>11"]
-    c97["c.IPVersion+iptable.Raw<br/>11"]
-    c98["c.IsRunning+daemon.config<br/>37"]
-    c99["c.LeasesService+lm.Delete<br/>21"]
-    c100["c.MountLabel+idtools.Identity<br/>32"]
-    c101["c.Name+log.Fields<br/>63"]
-    c102["c.NetworkList+network.ListOptions<br/>5"]
-    c103["c.SandboxByID+sbs.dbExists<br/>6"]
-    c104["c.WalkNetworks+libnetwork.*Controller.Walk…<br/>37"]
-    c105["c.cache+client.PruneInfo<br/>251"]
-    c106["c.getAgent+context.TODO<br/>23"]
-    c107["c.newNS+unix.Gettid<br/>17"]
-    c108["c.stdin+c.stdinPipe<br/>12"]
-    c109["c8dimages.IsLayerType+desc.MediaType<br/>24"]
-    c110["c8dimages.MediaTypeDockerSc…+ocispec.MediaTypeImageLayer…<br/>20"]
-    c111["canonical.Digest+reference.WithDigest<br/>33"]
-    c112["cerrdefs.IsAlreadyExists+errors.Wrap<br/>35"]
-    c113["cerrdefs.IsInvalidArgument+daemon.GetContainer<br/>4"]
-    c114["cfg.AuthorizationPlugins+cfg.Experimental<br/>36"]
-    c115["cfg.Root+filepath.Join<br/>61"]
-    c116["cfg.TLS+log.SetLevel<br/>20"]
-    c117["cgroups.Mode+cgroups.Unified<br/>44"]
-    c118["child.Name+linkIndex.children<br/>26"]
-    c119["cleanups+idtools<br/>20"]
-    c120["cli.sendRequest+client.*Client.sendRequest<br/>5"]
-    c121["client.SnapshotService+i.client<br/>10"]
-    c122["client.TaskList+inspect.State<br/>15"]
-    c123["cmd.Command+icmd.Cmd<br/>14"]
-    c124["compression.DecompressStream+log.G<br/>34"]
-    c125["config.Backend+c.config<br/>127"]
-    c126["config.Config4+config.Config6<br/>12"]
-    c127["config.HnsID+d.name<br/>86"]
-    c128["config.HnsID+d.name+d.getNetwork<br/>50"]
-    c129["config.IpvlanFlag+config.IpvlanMode<br/>12"]
-    c130["config.MacvlanMode+config.CreatedSlaveLink<br/>8"]
-    c131["config.MetaHeaders+config.AuthConfig<br/>3"]
-    c132["config.MetaHeaders+config.AuthConfig+p.repoName<br/>80"]
-    c133["config.Mirrors+registry.IndexInfo<br/>12"]
-    c134["config.ProgressOutput+config.ReferenceStore<br/>44"]
-    c135["config.ProgressOutput+p.repoName<br/>64"]
-    c136["config.RegistryService+endpoint.URL<br/>14"]
-    c137["config.Routed+config.Unprotected<br/>6"]
-    c138["config.Tail+config.Follow<br/>27"]
-    c139["config.getOriginResolvConfP…+rc.WriteFile<br/>4"]
-    c140["config.processIPAM+d.createNetwork<br/>71"]
-    c141["connection.sysObj+sysObj.Call<br/>15"]
-    c142["container.DetachAndUnmount+daemon.isOnlineFSOperationP…<br/>25"]
-    c143["container.GetResourcePath+stat.IsDir<br/>21"]
-    c144["container.GetRootResourcePa…+container.*Container.GetRoo…<br/>27"]
-    c145["container.NetworkMode+network<br/>6"]
-    c146["container.RestartManager+container.*Container.Restar…<br/>105"]
-    c147["container.StreamConfig+container.Config<br/>107"]
-    c148["container.StreamConfig+jsonfilelog<br/>8"]
-    c149["container.name+c.container<br/>16"]
-    c150["container.spec+c.spec<br/>37"]
-    c151["containerdlabels.LabelDistr…+source.registryRef<br/>36"]
-    c152["containerimage+exptypes<br/>8"]
-    c153["containers.First+c.ImageID<br/>19"]
-    c154["containers.List+daemon.containers<br/>16"]
-    c155["containersReplica.ReserveNa…+cerrdefs.IsConflict<br/>44"]
-    c156["containersReplica.ReserveNa…+cerrdefs.IsConflict+daemon.containersReplica<br/>10"]
-    c157["containertypes.Isolation+defaultIsolation.IsHyperV<br/>17"]
-    c158["ctr.ID+errors.New<br/>62"]
-    c159["ctr.IsPaused+ctr.IsRestarting<br/>44"]
-    c160["ctr.MountLabel+ctr.ImageID<br/>12"]
-    c161["ctr.MountLabel+ctr.ImageID+ctr.ImagePlatform<br/>8"]
-    c162["ctr.MountLabel+ctr.ImagePlatform<br/>14"]
-    c163["ctr.RWLayer+daemon.LogContainerEvent<br/>33"]
-    c164["ctr.terminateInvoked+diagnostic.TableObj<br/>238"]
-    c165["d.Sock+time.Second<br/>57"]
-    c166["d.call+api<br/>23"]
-    c167["d.create+opts.StorageOpt<br/>10"]
-    c168["d.deleteNetwork+Pool.String<br/>9"]
-    c169["d.getNetworks+nw.config<br/>4"]
-    c170["d.keys+addr.Mask<br/>17"]
-    c171["d.options+fmt.Errorf<br/>22"]
-    c172["d.secMap+k.tag<br/>55"]
-    c173["daemon+v3<br/>14"]
-    c174["daemon.PluginStore+daemon.netController<br/>2"]
-    c175["daemon.RawSysInfo+daemon.*Daemon.RawSysInfo<br/>14"]
-    c176["daemon.UsingSystemd+initlayer<br/>53"]
-    c177["daemon.UsingSystemd+remote<br/>71"]
-    c178["daemon.clusterProvider+fmt.Errorf<br/>39"]
-    c179["daemon.containerdClient+daemon.imageService<br/>158"]
-    c180["daemon.execCommands+term<br/>9"]
-    c181["daemon.logClusterEvent+Annotations.Name<br/>10"]
-    c182["daemon.logClusterEvent+task.Networks<br/>21"]
-    c183["daemon.runAsHyperVContainer+daemon.*Daemon.runAsHyperVC…<br/>13"]
-    c184["daemon.runAsHyperVContainer+errors.Wrap<br/>35"]
-    c185["daemon.setupLinkedContainers+Config.User<br/>44"]
-    c186["daemonCfg.Rootless+specs.Linux<br/>28"]
-    c187["daemonCfg.Rootless+specs.Linux+HostConfig.Privileged<br/>30"]
-    c188["db.store+store.Txn<br/>25"]
-    c189["dc.con+dc.wg<br/>4"]
-    c190["defaultipam.DriverName+defaultipam<br/>3"]
-    c191["directory.Size+d.getDiffPath<br/>55"]
-    c192["discoverapi.Discover+driverapi.Driver<br/>42"]
-    c193["discoverapi.Discover+driverapi.Driver+drvRegistry.WalkDrivers<br/>46"]
-    c194["discoverapi.NodeDiscoveryDa…+discoverapi.NodeDiscovery<br/>8"]
-    c195["distribution.Config+i.registryService<br/>97"]
-    c196["distribution.Config+i.registryService+streamformatter.NewJSONProg…<br/>20"]
-    c197["dns.TypeAAAA+dns.A<br/>17"]
-    c198["dns.TypeAAAA+dns.TypePTR<br/>19"]
-    c199["dockerversion.DockerUserAge…+http.Header<br/>14"]
-    c200["driverapi.NetworkPluginEndp…+ipamapi.PluginEndpointType<br/>17"]
-    c201["driverapi.NetworkPluginEndp…+ipamapi.PluginEndpointType+daemon.netController<br/>40"]
-    c202["drvregistry.*IPAMs.Register…+ipamapi<br/>14"]
-    c203["e.backend+e.dependencies<br/>16"]
-    c204["e.byID+e.mu<br/>4"]
-    c205["e.protectedElements+t.Helper<br/>5"]
-    c206["ec.User+Container.ID<br/>17"]
-    c207["ef.fuzzyMatchName+events.*Filter.fuzzyMatchNa…<br/>7"]
-    c208["endpoint.srcName+netutils.GenerateIfaceName<br/>5"]
-    c209["ep.Delete+context.WithoutCancel<br/>4"]
-    c210["ep.Delete+context.WithoutCancel+fmt.Errorf<br/>17"]
-    c211["ep.Type+ep.nid<br/>31"]
-    c212["ep.endpointInGWNetwork+sb.Endpoints<br/>22"]
-    c213["ep.getDNSNames+ep.svcID<br/>70"]
-    c214["ep.getSandbox+ep.ID<br/>5"]
-    c215["epConfig.IPAMConfig+containertypes.NetworkMode<br/>37"]
-    c216["epi.dstName+epi.routes<br/>9"]
-    c217["epi.dstName+epi.routes+epi.v4PoolID<br/>11"]
-    c218["errcode.ErrorCodeDenied+f.err<br/>34"]
-    c219["errdefs.Forbidden+errdefs.InvalidParameter<br/>204"]
-    c220["errdefs.InvalidParameter+remotecontext.withDockerfil…<br/>8"]
-    c221["errdefs.Unknown+errdefs.System<br/>28"]
-    c222["errhttp+versions<br/>9"]
-    c223["errors.Errorf+fluent<br/>41"]
-    c224["errors.New+filepath.Join<br/>6"]
-    c225["ev.Actor+filter.ExactMatch<br/>8"]
-    c226["eventsService.Log+i.eventsService<br/>19"]
-    c227["eventtypes.Message+pubsub<br/>6"]
-    c228["expvar+pprof<br/>8"]
-    c229["filepath.Join+shimopts<br/>11"]
-    c230["filepath.ToSlash+query.Set<br/>56"]
-    c231["fmt.Fprint+aec<br/>8"]
-    c232["fmt.Fprint+os.Exit<br/>25"]
-    c233["fmt.Fprintln+fmt.Fprintf<br/>34"]
-    c234["fmt.Println+filepath<br/>4"]
-    c235["format+unicode<br/>6"]
-    c236["fs.GetMetadata+fs.SetMetadata<br/>17"]
-    c237["fstype.GetFSMagic+overlayutils<br/>46"]
-    c238["globalLock.RLock+globalLock.RUnlock<br/>36"]
-    c239["gogotypes.DurationFromProto+types.DurationFromProto<br/>33"]
-    c240["gogotypes.DurationProto+fmt.Errorf<br/>13"]
-    c241["graphdriver.Register+fstype<br/>5"]
-    c242["h.Created+h.CreatedBy<br/>31"]
-    c243["h.cursor+h.b<br/>8"]
-    c244["h.fromsvc+h.tosvc<br/>13"]
-    c245["h.head+h.unselected<br/>13"]
-    c246["hcsshim.DeactivateLayer+hcsshim.UnprepareLayer<br/>20"]
-    c247["hcsshim.GetLayerMountPath+d.getLayerChain<br/>21"]
-    c248["hostURL.Host+hostURL.Scheme<br/>27"]
-    c249["http.ProxyFromEnvironment+net.Dialer<br/>22"]
-    c250["http.Request+sha512<br/>11"]
-    c251["http.StatusConflict+http.StatusNotImplemented<br/>50"]
-    c252["http.StatusNoContent+io.Writer<br/>15"]
-    c253["http.StatusNoContent+w.WriteHeader<br/>9"]
-    c254["httpstatus.FromError+r.Method<br/>35"]
-    c255["httputils.ArchiveFormValues+v.Path<br/>6"]
-    c256["httputils.BoolValue+ir.backend<br/>27"]
-    c257["httputils.BoolValueOrDefault+types.MediaTypeMultiplexedS…<br/>61"]
-    c258["i.Address+i.AddressIPv6<br/>15"]
-    c259["i.AddressSpace+i.AuxAddresses<br/>5"]
-    c260["i.StorageDriver+client.LeasesService<br/>36"]
-    c261["i.StorageDriver+client.LeasesService+client.SnapshotService<br/>15"]
-    c262["i.logImageEvent+events.ActionUnTag<br/>23"]
-    c263["i.nlh+i.Link<br/>8"]
-    c264["i.walkPresentChildren+c8dimages.IsIndexType<br/>75"]
-    c265["i.walkPresentChildren+c8dimages.IsIndexType+c8dimages.IsManifestType<br/>23"]
-    c266["iPort.Protocol+iPort.PublishedPort<br/>23"]
-    c267["identity.NewID+identity<br/>10"]
-    c268["iface.provider+iface.err<br/>15"]
-    c269["imageStore.Children+referenceStore.References<br/>3"]
-    c270["imagetypes.Summary+Config.Labels<br/>54"]
-    c271["img.Author+img.OSFeatures<br/>19"]
-    c272["img.Platform+fmt.Errorf<br/>52"]
-    c273["img.RawJSON+img.OS<br/>146"]
-    c274["img.RawJSON+img.OS+path.Join<br/>39"]
-    c275["imgID.Digest+referenceStore.References<br/>16"]
-    c276["info.ContainerImageName+info.ContainerImageID<br/>9"]
-    c277["info.cg2Controllers+info.Warnings<br/>13"]
-    c278["info.cgMounts+info.Warnings<br/>6"]
-    c279["io.NopCloser+bytes<br/>12"]
-    c280["ip.To4+net<br/>4"]
-    c281["ipam.ReleaseAddress+context.TODO<br/>18"]
-    c282["ipam.RequestAddress+ipamapi.ErrNoAvailableIPs<br/>46"]
-    c283["ipamapi.PluginEndpointType+driverapi.NetworkPluginEndp…<br/>32"]
-    c284["ipamapi.PluginEndpointType+driverapi.NetworkPluginEndp…+context.TODO<br/>40"]
-    c285["ipamutils.NetworkToSplit.Ov…+ipbits<br/>11"]
-    c286["ipbits.Add+bitmap.*Bitmap.Bits<br/>10"]
-    c287["iptable.Exists+iptable.RawCombinedOutput<br/>19"]
-    c288["iptables.Nat+iptables.Rule<br/>15"]
-    c289["jinfo.AddStaticRoute+iNames.SetNames<br/>9"]
-    c290["l.is+l.lss<br/>28"]
-    c291["l.is+l.lss+is.Get<br/>44"]
-    c292["label.Relabel+container.MountLabel<br/>37"]
-    c293["layerStore.Get+rootFS.ChainID<br/>14"]
-    c294["layerStore.GetRWLayer+layerStore.ReleaseRWLayer<br/>4"]
-    c295["lcs.authConfig+challenge<br/>11"]
-    c296["ld.desc+desc.Digest<br/>41"]
-    c297["ld.digest+ocischema<br/>6"]
-    c298["libnetwork.ErrNoSuchNetwork+libnetwork.Network<br/>21"]
-    c299["libnetwork.Network+daemon.FindNetwork<br/>31"]
-    c300["libnetwork.Network+nw.ID<br/>26"]
-    c301["libnetwork.Network+nw.ID+nw.Name<br/>28"]
-    c302["libnetwork.NetworkOptionIpam+libnetwork.IpamConf<br/>16"]
-    c303["libnetwork.NetworkOptionIpam+libnetwork.IpamConf+netlabel.EnableIPv4<br/>34"]
-    c304["libnetwork.NetworkOptionIpam+libnetwork.IpamConf+netlabel.EnableIPv6<br/>51"]
-    c305["link.Attrs+n.nlHandle<br/>18"]
-    c306["list+pools<br/>14"]
-    c307["listener.Close+proxy.listener<br/>27"]
-    c308["log.FatalLevel+log.PanicLevel<br/>6"]
-    c309["loggerutils.DefaultTemplate+info.ExtraAttributes<br/>18"]
-    c310["m.Options+s.Root<br/>60"]
-    c311["m.RW+m.Propagation<br/>29"]
-    c312["manifestlist.DeserializedMa…+schema1.SignedManifest<br/>24"]
-    c313["md.NDotsFrom+md.NSOverride<br/>17"]
-    c314["metrics.ContainerActions+ContainerActions.WithValues<br/>38"]
-    c315["mfst.Layers+schema1<br/>5"]
-    c316["mountinfo.GetMounts+mountinfo<br/>6"]
-    c317["mountinfo.Mounted+mountinfo<br/>7"]
-    c318["mounttypes.TypeBind+m.Spec<br/>15"]
-    c319["mounttypes.TypeImage+m.Spec<br/>12"]
-    c320["n.EndpointByName+libnetwork.*Network.Endpoin…<br/>3"]
-    c321["n.InvokeFunc+osSbox.InvokeFunc<br/>15"]
-    c322["n.IsBridge+n.IsDefault<br/>13"]
-    c323["n.Meta+s.Meta<br/>13"]
-    c324["n.Options+n.Driver<br/>4"]
-    c325["n.Scope+scope.Global<br/>55"]
-    c326["n.addrSpace+n.skipGwAllocIPv4<br/>99"]
-    c327["n.hasSpecialDriver+n.ipamType<br/>95"]
-    c328["n.path+netns.GetFromPath<br/>32"]
-    c329["n.secure+context.TODO<br/>30"]
-    c330["n.skipGwAllocIPv4+n.skipGwAllocIPv6<br/>54"]
-    c331["n.skipGwAllocIPv4+n.skipGwAllocIPv6+n.inDelete<br/>101"]
-    c332["nDB.RLock+nDB.RUnlock<br/>10"]
-    c333["nDB.networkNodes+v2<br/>12"]
-    c334["na.networks+n.ID<br/>14"]
-    c335["na.services+s.Meta<br/>5"]
-    c336["na.services+vip.Addr<br/>14"]
-    c337["na.tasks+t.Networks<br/>29"]
-    c338["nat.Port+fmt.Sprintf<br/>86"]
-    c339["nat.PortBinding+nat.PortMap<br/>87"]
-    c340["ncfg.ContainerIfacePrefix+ncfg.DefaultBindingIP<br/>5"]
-    c341["ncfg.ContainerIfacePrefix+ncfg.DefaultBindingIP+ncfg.DefaultBridge<br/>15"]
-    c342["ncfg.Type+ncfg.ID<br/>29"]
-    c343["net.CIDRMask+sb.getGatewayEndpoint<br/>23"]
-    c344["net.Conn+net<br/>12"]
-    c345["net.HardwareAddr+fmt.Errorf<br/>10"]
-    c346["net.IPAddr+sctp.SCTPAddr<br/>13"]
-    c347["net.SplitHostPort+net.ParseIP<br/>14"]
-    c348["netController.Networks+daemon.netController<br/>7"]
-    c349["netip.AddrFromSlice+portmapper.*PortMapper.Unmap<br/>10"]
-    c350["netip.PrefixFrom+netip.Prefix<br/>21"]
-    c351["netlabel.ExposedPorts+netlabel.PortMap<br/>15"]
-    c352["netlabel.ExposedPorts+netlabel.PortMap+types.TransportPort<br/>15"]
-    c353["netlabel.ExposedPorts+types.TransportPort<br/>32"]
-    c354["netlabel.Internal+netlabel.EnableIPv6<br/>46"]
-    c355["netlabel.Internal+netlabel.EnableIPv6+netlabel.EnableIPv4<br/>70"]
-    c356["netlabel.MacAddress+options<br/>82"]
-    c357["netlink.SCOPE_UNIVERSE+nlHandle.RouteAdd<br/>13"]
-    c358["netlink.XFRM_MODE_TRANSPORT+netlink.XFRM_PROTO_ESP<br/>13"]
-    c359["network.NetworkHost+network.NetworkNone<br/>13"]
-    c360["network.config+d.link<br/>44"]
-    c361["network.config+d.link+config.EnableICC<br/>32"]
-    c362["networktypes.EndpointSettin…+network.EndpointSettings<br/>39"]
-    c363["nftables.Enabled+fmt.Errorf<br/>19"]
-    c364["nl.manager+nl.ns<br/>12"]
-    c365["nlHandle.LinkByName+n.nlHandle<br/>23"]
-    c366["nlh.AddrAdd+netlink.FAMILY_V4<br/>62"]
-    c367["nlh.AddrAdd+netlink.FAMILY_V4+netlink.FAMILY_V6<br/>61"]
-    c368["nlh.LinkAdd+netlink.Bridge<br/>14"]
-    c369["nlh.LinkAdd+parentLink.Attrs<br/>23"]
-    c370["nlwrap.NewHandleAt+syscall.NETLINK_ROUTE<br/>12"]
-    c371["nr.config+c.nr<br/>23"]
-    c372["nw.IPAM+Driver.Options<br/>16"]
-    c373["o.cfg+initlayer<br/>9"]
-    c374["oci.DefaultSpec+oci<br/>33"]
-    c375["ocispec.AnnotationRefName+ref.Name<br/>56"]
-    c376["ocispec.History+ocispec.RootFS<br/>27"]
-    c377["ocispec.ImageConfig+ocispec.MediaTypeImageConfig<br/>7"]
-    c378["once.Do+unix<br/>13"]
-    c379["options+containers<br/>16"]
-    c380["options.Details+options.ShowStderr<br/>4"]
-    c381["options.Signal+options.Timeout<br/>39"]
-    c382["options.quota+quota.Size<br/>139"]
-    c383["options.size+driver.options<br/>86"]
-    c384["opts.WithGetDriver+vol.Driver<br/>22"]
-    c385["opts.validator+opts.values<br/>21"]
-    c386["ordinal.Load+r.maxOrdinal<br/>15"]
-    c387["os.Hostname+opts<br/>3"]
-    c388["os.IsPathSeparator+unsafe<br/>10"]
-    c389["os.NewFile+sctp<br/>15"]
-    c390["os.Setenv+os.Getenv<br/>70"]
-    c391["osl.createNetworkNamespace+osl.createNamespaceFile<br/>7"]
-    c392["otelhttp.NewTransport+http.Transport<br/>14"]
-    c393["out.WriteProgress+remotes.MakeRefKey<br/>13"]
-    c394["overlayutils.VXLANUDPPort+ns.NlHandle<br/>11"]
-    c395["p.DefaultCopyMode+VolumeOptions.NoCopy<br/>16"]
-    c396["p.GetTypes+v2.*Plugin.GetTypes<br/>13"]
-    c397["p.HostPortEnd+p.HostIP<br/>3"]
-    c398["p.HostPortEnd+p.HostIP+p.HostPort<br/>31"]
-    c399["p.Manifest+tlsconfig<br/>26"]
-    c400["p.OSVersion+p.Variant<br/>7"]
-    c401["p.Values+csv<br/>5"]
-    c402["p.parseMountSpec+lazyregexp<br/>19"]
-    c403["p.platform+p.desc<br/>24"]
-    c404["p.s+labels<br/>7"]
-    c405["parentLink.Attrs+netlink.Bridge<br/>21"]
-    c406["parentLink.Attrs+netlink.LinkAttrs<br/>15"]
-    c407["path.IsAbs+path.Join<br/>19"]
-    c408["path.Split+fmt.Errorf<br/>13"]
-    c409["pd.layer+layer.DiffID<br/>93"]
-    c410["platforms.Normalize+platforms<br/>6"]
-    c411["platforms.Parse+ocispec.Platform<br/>139"]
-    c412["plugin+plugingetter<br/>5"]
-    c413["plugingetter.CompatPlugin+plugins<br/>14"]
-    c414["plugingetter.Release+plugins<br/>27"]
-    c415["plugins.ErrNotFound+plugins.Get<br/>21"]
-    c416["plugins.Handle+plugins.Client<br/>25"]
-    c417["pool.Addr+pool.Bits<br/>13"]
-    c418["portConfig.Name+Endpoint.Ports<br/>47"]
-    c419["portallocator.Get+portallocator<br/>10"]
-    c420["pp.Call+plugins.WithRequestTimeout<br/>9"]
-    c421["r.FormValue+output.Flushed<br/>15"]
-    c422["r.FormValue+pr.backend<br/>39"]
-    c423["r.RegisterDriver+scope.Global<br/>13"]
-    c424["r.RegisterDriver+scope.Local<br/>7"]
-    c425["r.cancelPull+r.checkClosed<br/>11"]
-    c426["r.initRoutes+router<br/>8"]
-    c427["r.l+l.Name<br/>7"]
-    c428["r.re+lazyregexp.*Regexp.re<br/>8"]
-    c429["rand.Read+rand<br/>4"]
-    c430["ref.Name+options.Platform<br/>44"]
-    c431["ref.Name+tagged.Tag<br/>22"]
-    c432["reference.IsNameOnly+reference.WithTag<br/>15"]
-    c433["reference.ParseNamed+reference.Digested<br/>17"]
-    c434["reference.Path+reference.Domain<br/>45"]
-    c435["registry.DecodeAuthConfig+registry.AuthHeader<br/>21"]
-    c436["req.AddressSpace+req.Pool<br/>5"]
-    c437["resolvconf.Parse+bytes.NewBuffer<br/>12"]
-    c438["resources.BlkioDeviceReadBps+resources.BlkioDeviceReadIO…<br/>5"]
-    c439["resp.Status+http.NewRequestWithContext<br/>27"]
-    c440["rm.hijacked+rm.rw<br/>10"]
-    c441["rootless.RunningWithRootles…+log.G<br/>19"]
-    c442["router.NewDeleteRoute+router.NewGetRoute<br/>26"]
-    c443["router.NewRoute+httputils<br/>5"]
-    c444["rp.Name+n.IsHost<br/>33"]
-    c445["runConfig.Cmd+container.Config<br/>9"]
-    c446["runConfig.Cmd+container.Config+build<br/>24"]
-    c447["runtime.GOARCH+types<br/>8"]
-    c448["runtime.SetFinalizer+j.j<br/>9"]
-    c449["s.FinishedAt+s.Pid<br/>11"]
-    c450["s.Meta+s.Endpoint<br/>10"]
-    c451["s.backend+httputils.VersionFromContext<br/>27"]
-    c452["s.config+s.mu<br/>13"]
-    c453["sa.InheritHandle+sa.Length<br/>5"]
-    c454["sb.Labels+sb.getEndpointInGWNetwork<br/>21"]
-    c455["sb.containerID+sb.Endpoints<br/>30"]
-    c456["sb.controller+sb.containerID<br/>19"]
-    c457["sb.controller+sb.containerID+sb.Endpoints<br/>31"]
-    c458["sb.makeHostsRecs+config.hostsPath<br/>13"]
-    c459["scanner.Err+scanner.Text<br/>10"]
-    c460["scope.Global+r.RegisterDriver<br/>64"]
-    c461["sctp.ListenSCTP+net.ListenTCP<br/>16"]
-    c462["sctp.ListenSCTP+net.ListenTCP+net.ListenUDP<br/>13"]
-    c463["server.Serve+http.NewServeMux<br/>7"]
-    c464["sha256.New+sha256<br/>10"]
-    c465["signal.ParseSignal+errdefs.InvalidParameter<br/>19"]
-    c466["slices.Clone+slices<br/>7"]
-    c467["slices.DeleteFunc+nlwrap<br/>8"]
-    c468["sliceutil.Dedup+sliceutil<br/>6"]
-    c469["sort.Strings+instructions<br/>28"]
-    c470["source.registryRef+reference.Path<br/>23"]
-    c471["span.AddEvent+span.SetAttributes<br/>49"]
-    c472["span.RecordError+codes.Error<br/>7"]
-    c473["srslog+loggerutils<br/>20"]
-    c474["st.Completed+progress.NewFromContext<br/>22"]
-    c475["stats+bufio<br/>19"]
-    c476["store.DeleteObject+store.PutObjectAtomic<br/>8"]
-    c477["store.PutObjectAtomic+datastore.Key<br/>8"]
-    c478["strconv.FormatBool+strconv.Itoa<br/>18"]
-    c479["strconv.FormatInt+strconv.Itoa<br/>130"]
-    c480["strconv.ParseInt+fmt.Errorf<br/>14"]
-    c481["strings.Count+fmt.Errorf<br/>4"]
-    c482["strings.SplitN+fmt.Errorf<br/>10"]
-    c483["subnet.GatewayAddress+hcsshim.HNSNetworkRequest<br/>39"]
-    c484["subnetIP.Mask+ip.IP<br/>18"]
-    c485["swarmtypes.ServiceSpec+spec.TaskTemplate<br/>20"]
-    c486["sysinfo.New+os.Getenv<br/>31"]
-    c487["system.Runtime+system<br/>35"]
-    c488["t.Chains+t.Family<br/>22"]
-    c489["t.Method+t.NumMethod<br/>11"]
-    c490["t.Proto+t.Port<br/>8"]
-    c491["t.Task+remote.wrapError<br/>14"]
-    c492["table.Family+table.Name<br/>10"]
-    c493["task.ID+c.task<br/>5"]
-    c494["task.Networks+Network.Spec<br/>41"]
-    c495["testEnv.DaemonInfo+DaemonInfo.OSType<br/>19"]
-    c496["testutil.RunCommand+icmd.Success<br/>4"]
-    c497["time.RFC3339+time.Now<br/>40"]
-    c498["tlsconfig.Client+tlsconfig.Options<br/>12"]
-    c499["tracing.Attribute+span.SetAttributes<br/>25"]
-    c500["ts.h+ts.tHash<br/>15"]
-    c501["txn.First+containers.First<br/>38"]
-    c502["txn.Get+iter.Next<br/>6"]
-    c503["txn.OnCommit+conf.IsValueSet<br/>15"]
-    c504["typ.Prefix+typ.Capability<br/>67"]
-    c505["types+network<br/>12"]
-    c506["types.GetIPNetCopy+net.IPNet<br/>8"]
-    c507["types.MediaTypeMultiplexedS…+types.MediaTypeRawStream<br/>74"]
-    c508["types.MediaTypeMultiplexedS…+types.MediaTypeRawStream+httputils.DecodePlatform<br/>62"]
-    c509["types.NotImplementedErrorf+bitmap<br/>55"]
-    c510["types.NotImplementedErrorf+bitmap+overlayutils<br/>59"]
-    c511["unix.Close+unix<br/>6"]
-    c512["unix.EINTR+errors.Is<br/>8"]
-    c513["unix.Kill+errors.Is<br/>4"]
-    c514["v.Components+types.ComponentVersion<br/>12"]
-    c515["v.backend+v.cluster<br/>3"]
-    c516["v.s+v.v<br/>6"]
-    c517["v.value+v.deleting<br/>14"]
-    c518["v2.*Plugin.GetRefCount+daemon.*Daemon.LogPluginEve…<br/>24"]
-    c519["version+useragent<br/>5"]
-    c520["versions.compare+strconv<br/>4"]
-    c521["volumeopts.WithCreateRefere…+volumes.Create<br/>37"]
-    c522["w.Opt+mod<br/>13"]
-    c523["windows.UTF16PtrFromString+windows<br/>10"]
-    c524["ws.WriteFile+fm.ws<br/>6"]
-    c525["ws.WriteFile+fm.ws+resolvconf.*ResolvConf.Writ…<br/>7"]
-    c526["y.hi+y.lo<br/>7"]
+    c8["C.__u32+C.int<br/>636"]
+    c9["Config.OpenStdin+Config.StdinOnce<br/>688"]
+    c10["Healthcheck.Retries+c.callWithRetry<br/>85"]
+    c11["Isolation.IsValid+PluginObj.PluginReference<br/>437"]
+    c12["LittleEndian.Uint64+tx.onRollback<br/>189"]
+    c13["Store.validateName+bytes.TrimSpace<br/>407"]
+    c14["Task.GetContainer+enginemount.Mount<br/>218"]
+    c15["Task.Runtime+c.callWithRetry<br/>309"]
+    c16["c.cache+client.PruneInfo<br/>251"]
+    c17["config.MetaHeaders+config.AuthConfig+p.repoName<br/>80"]
+    c18["config.processIPAM+d.createNetwork<br/>71"]
+    c19["ctr.terminateInvoked+diagnostic.TableObj<br/>238"]
+    c20["d.Sock+time.Second<br/>57"]
+    c21["daemon.containerdClient+daemon.imageService<br/>158"]
+    c22["errdefs.Forbidden+errdefs.InvalidParameter<br/>204"]
+    c23["http.StatusConflict+http.StatusNotImplemented<br/>50"]
+    c24["img.RawJSON+img.OS<br/>146"]
+    c25["n.hasSpecialDriver+n.ipamType<br/>95"]
+    c26["nat.Port+fmt.Sprintf<br/>86"]
+    c27["options.quota+quota.Size<br/>139"]
+    c28["pd.layer+layer.DiffID<br/>93"]
     c0 --> c1
     c1 --> c2
     c1 --> c3
@@ -590,526 +147,30 @@ flowchart LR
     c0 --> c5
     c5 --> c6
     c0 --> c7
-    c4 --> c8
-    c4 --> c9
-    c4 --> c10
-    c3 --> c11
-    c7 --> c12
-    c7 --> c13
-    c7 --> c14
-    c7 --> c15
-    c1 --> c16
-    c7 --> c17
-    c1 --> c18
+    c7 --> c8
+    c5 --> c9
+    c6 --> c10
+    c4 --> c11
+    c3 --> c12
+    c1 --> c13
+    c4 --> c14
+    c4 --> c15
+    c3 --> c16
+    c6 --> c17
+    c5 --> c18
     c1 --> c19
-    c7 --> c20
+    c2 --> c20
     c7 --> c21
-    c5 --> c22
-    c3 --> c23
+    c7 --> c22
+    c2 --> c23
     c3 --> c24
-    c4 --> c25
-    c3 --> c26
-    c4 --> c27
-    c4 --> c28
-    c4 --> c29
-    c5 --> c30
-    c5 --> c31
-    c6 --> c32
-    c6 --> c33
-    c1 --> c34
-    c4 --> c35
-    c4 --> c36
-    c5 --> c37
-    c6 --> c38
-    c7 --> c39
-    c4 --> c40
-    c3 --> c41
-    c1 --> c42
-    c4 --> c43
-    c7 --> c44
-    c1 --> c45
-    c7 --> c46
-    c4 --> c47
-    c4 --> c48
-    c7 --> c49
-    c3 --> c50
-    c7 --> c51
-    c4 --> c52
-    c7 --> c53
-    c4 --> c54
-    c4 --> c55
-    c4 --> c56
-    c5 --> c57
-    c4 --> c58
-    c1 --> c59
-    c4 --> c60
-    c4 --> c61
-    c4 --> c62
-    c1 --> c63
-    c4 --> c64
-    c4 --> c65
-    c2 --> c66
-    c1 --> c67
-    c7 --> c68
-    c5 --> c69
-    c4 --> c70
-    c4 --> c71
-    c4 --> c72
-    c1 --> c73
-    c1 --> c74
-    c1 --> c75
-    c4 --> c76
-    c7 --> c77
-    c7 --> c78
-    c7 --> c79
-    c7 --> c80
-    c3 --> c81
-    c4 --> c82
-    c1 --> c83
-    c1 --> c84
-    c3 --> c85
-    c2 --> c86
-    c2 --> c87
-    c7 --> c88
-    c4 --> c89
-    c7 --> c90
-    c7 --> c91
-    c5 --> c92
-    c1 --> c93
-    c3 --> c94
-    c3 --> c95
-    c3 --> c96
-    c7 --> c97
-    c1 --> c98
-    c7 --> c99
-    c7 --> c100
-    c1 --> c101
-    c2 --> c102
-    c5 --> c103
-    c5 --> c104
-    c3 --> c105
-    c5 --> c106
-    c1 --> c107
-    c1 --> c108
-    c7 --> c109
-    c7 --> c110
-    c7 --> c111
-    c3 --> c112
-    c7 --> c113
-    c7 --> c114
-    c1 --> c115
-    c7 --> c116
-    c1 --> c117
-    c7 --> c118
-    c4 --> c119
-    c2 --> c120
-    c7 --> c121
-    c4 --> c122
-    c4 --> c123
-    c1 --> c124
-    c4 --> c125
-    c7 --> c126
-    c4 --> c127
-    c4 --> c128
-    c4 --> c129
-    c4 --> c130
-    c6 --> c131
-    c6 --> c132
-    c4 --> c133
-    c6 --> c134
-    c6 --> c135
-    c2 --> c136
-    c7 --> c137
-    c1 --> c138
-    c1 --> c139
-    c5 --> c140
-    c6 --> c141
-    c5 --> c142
-    c1 --> c143
-    c1 --> c144
-    c7 --> c145
-    c1 --> c146
-    c1 --> c147
-    c1 --> c148
-    c4 --> c149
-    c4 --> c150
-    c7 --> c151
-    c3 --> c152
-    c7 --> c153
-    c7 --> c154
-    c7 --> c155
-    c7 --> c156
-    c1 --> c157
-    c1 --> c158
-    c7 --> c159
-    c7 --> c160
-    c1 --> c161
-    c7 --> c162
-    c7 --> c163
-    c1 --> c164
-    c2 --> c165
-    c4 --> c166
-    c1 --> c167
-    c4 --> c168
-    c6 --> c169
-    c4 --> c170
-    c1 --> c171
-    c5 --> c172
-    c5 --> c173
-    c7 --> c174
-    c4 --> c175
-    c7 --> c176
-    c7 --> c177
-    c2 --> c178
-    c7 --> c179
-    c1 --> c180
-    c4 --> c181
-    c4 --> c182
-    c1 --> c183
-    c7 --> c184
-    c1 --> c185
-    c7 --> c186
-    c7 --> c187
-    c3 --> c188
-    c1 --> c189
-    c4 --> c190
-    c1 --> c191
-    c5 --> c192
-    c5 --> c193
-    c2 --> c194
-    c7 --> c195
-    c7 --> c196
-    c3 --> c197
-    c3 --> c198
-    c2 --> c199
-    c7 --> c200
-    c7 --> c201
-    c3 --> c202
-    c4 --> c203
-    c4 --> c204
-    c4 --> c205
-    c1 --> c206
-    c1 --> c207
-    c4 --> c208
-    c5 --> c209
-    c5 --> c210
-    c4 --> c211
-    c5 --> c212
-    c5 --> c213
-    c5 --> c214
-    c7 --> c215
-    c4 --> c216
-    c4 --> c217
-    c6 --> c218
-    c7 --> c219
-    c1 --> c220
-    c7 --> c221
-    c2 --> c222
-    c1 --> c223
-    c1 --> c224
-    c4 --> c225
-    c7 --> c226
-    c5 --> c227
-    c2 --> c228
-    c7 --> c229
-    c4 --> c230
-    c1 --> c231
-    c1 --> c232
-    c1 --> c233
-    c1 --> c234
-    c2 --> c235
-    c5 --> c236
-    c1 --> c237
-    c3 --> c238
-    c4 --> c239
-    c4 --> c240
-    c1 --> c241
-    c7 --> c242
-    c4 --> c243
-    c1 --> c244
-    c7 --> c245
-    c1 --> c246
-    c1 --> c247
-    c2 --> c248
-    c2 --> c249
-    c2 --> c250
-    c2 --> c251
-    c7 --> c252
-    c2 --> c253
-    c2 --> c254
-    c1 --> c255
-    c7 --> c256
-    c7 --> c257
-    c7 --> c258
-    c4 --> c259
-    c7 --> c260
-    c7 --> c261
-    c7 --> c262
-    c6 --> c263
-    c7 --> c264
-    c7 --> c265
-    c7 --> c266
-    c3 --> c267
-    c3 --> c268
-    c3 --> c269
-    c3 --> c270
-    c3 --> c271
-    c7 --> c272
-    c3 --> c273
-    c3 --> c274
-    c7 --> c275
-    c1 --> c276
-    c1 --> c277
-    c1 --> c278
-    c4 --> c279
-    c7 --> c280
-    c7 --> c281
-    c7 --> c282
-    c7 --> c283
-    c7 --> c284
-    c4 --> c285
-    c4 --> c286
-    c7 --> c287
-    c7 --> c288
-    c4 --> c289
-    c7 --> c290
-    c7 --> c291
-    c1 --> c292
-    c4 --> c293
-    c3 --> c294
-    c2 --> c295
-    c3 --> c296
-    c6 --> c297
-    c7 --> c298
-    c7 --> c299
-    c7 --> c300
-    c4 --> c301
-    c7 --> c302
-    c7 --> c303
-    c7 --> c304
-    c6 --> c305
-    c1 --> c306
-    c1 --> c307
-    c1 --> c308
-    c7 --> c309
-    c7 --> c310
-    c7 --> c311
-    c7 --> c312
-    c4 --> c313
-    c7 --> c314
-    c6 --> c315
-    c1 --> c316
-    c1 --> c317
-    c7 --> c318
-    c7 --> c319
-    c2 --> c320
-    c5 --> c321
-    c7 --> c322
-    c4 --> c323
-    c3 --> c324
-    c5 --> c325
-    c4 --> c326
-    c5 --> c327
-    c7 --> c328
-    c5 --> c329
-    c4 --> c330
-    c4 --> c331
-    c5 --> c332
-    c5 --> c333
-    c7 --> c334
-    c4 --> c335
-    c7 --> c336
-    c4 --> c337
-    c2 --> c338
-    c4 --> c339
-    c4 --> c340
-    c4 --> c341
-    c4 --> c342
-    c5 --> c343
-    c6 --> c344
-    c4 --> c345
-    c7 --> c346
-    c4 --> c347
-    c5 --> c348
-    c7 --> c349
-    c4 --> c350
-    c4 --> c351
-    c4 --> c352
-    c4 --> c353
-    c4 --> c354
-    c5 --> c355
-    c4 --> c356
-    c6 --> c357
-    c6 --> c358
-    c2 --> c359
-    c5 --> c360
-    c5 --> c361
-    c5 --> c362
-    c7 --> c363
-    c3 --> c364
-    c6 --> c365
-    c7 --> c366
-    c7 --> c367
-    c6 --> c368
-    c6 --> c369
-    c6 --> c370
-    c4 --> c371
-    c4 --> c372
-    c7 --> c373
-    c1 --> c374
-    c7 --> c375
-    c7 --> c376
-    c4 --> c377
-    c1 --> c378
-    c1 --> c379
-    c4 --> c380
-    c4 --> c381
-    c1 --> c382
-    c7 --> c383
-    c1 --> c384
-    c1 --> c385
-    c5 --> c386
-    c2 --> c387
-    c7 --> c388
-    c7 --> c389
-    c7 --> c390
-    c1 --> c391
-    c2 --> c392
-    c7 --> c393
-    c6 --> c394
-    c4 --> c395
-    c7 --> c396
-    c7 --> c397
-    c7 --> c398
-    c2 --> c399
-    c4 --> c400
-    c4 --> c401
-    c4 --> c402
-    c3 --> c403
-    c3 --> c404
-    c6 --> c405
-    c6 --> c406
-    c1 --> c407
-    c7 --> c408
-    c6 --> c409
-    c7 --> c410
-    c7 --> c411
-    c4 --> c412
-    c7 --> c413
-    c7 --> c414
-    c7 --> c415
-    c6 --> c416
-    c7 --> c417
-    c4 --> c418
-    c7 --> c419
-    c4 --> c420
-    c7 --> c421
-    c7 --> c422
-    c3 --> c423
-    c3 --> c424
-    c7 --> c425
-    c1 --> c426
-    c6 --> c427
-    c5 --> c428
-    c1 --> c429
-    c4 --> c430
-    c7 --> c431
-    c7 --> c432
-    c7 --> c433
-    c7 --> c434
-    c7 --> c435
-    c4 --> c436
-    c4 --> c437
-    c1 --> c438
-    c2 --> c439
-    c2 --> c440
-    c7 --> c441
-    c3 --> c442
-    c2 --> c443
-    c4 --> c444
-    c3 --> c445
-    c3 --> c446
-    c1 --> c447
-    c7 --> c448
-    c5 --> c449
-    c4 --> c450
-    c4 --> c451
-    c4 --> c452
-    c1 --> c453
-    c5 --> c454
-    c5 --> c455
-    c5 --> c456
-    c5 --> c457
-    c7 --> c458
-    c1 --> c459
-    c5 --> c460
-    c6 --> c461
-    c7 --> c462
-    c1 --> c463
-    c1 --> c464
-    c7 --> c465
-    c7 --> c466
-    c6 --> c467
-    c5 --> c468
-    c4 --> c469
-    c7 --> c470
-    c7 --> c471
-    c7 --> c472
-    c1 --> c473
-    c3 --> c474
-    c1 --> c475
-    c5 --> c476
-    c3 --> c477
-    c1 --> c478
-    c7 --> c479
-    c7 --> c480
-    c7 --> c481
-    c7 --> c482
-    c4 --> c483
-    c4 --> c484
-    c4 --> c485
-    c1 --> c486
-    c7 --> c487
-    c1 --> c488
-    c4 --> c489
-    c2 --> c490
-    c1 --> c491
-    c1 --> c492
-    c4 --> c493
-    c4 --> c494
-    c4 --> c495
-    c4 --> c496
-    c1 --> c497
-    c2 --> c498
-    c7 --> c499
-    c1 --> c500
-    c7 --> c501
-    c3 --> c502
-    c3 --> c503
-    c7 --> c504
-    c5 --> c505
-    c4 --> c506
-    c4 --> c507
-    c4 --> c508
-    c7 --> c509
-    c7 --> c510
-    c6 --> c511
-    c6 --> c512
-    c1 --> c513
-    c7 --> c514
-    c2 --> c515
-    c3 --> c516
-    c5 --> c517
-    c7 --> c518
-    c2 --> c519
-    c4 --> c520
-    c7 --> c521
-    c3 --> c522
-    c1 --> c523
-    c1 --> c524
-    c1 --> c525
-    c1 --> c526
+    c5 --> c25
+    c2 --> c26
+    c1 --> c27
+    c6 --> c28
 ```
+
+The diagram draws the 3 largest concepts on each branch; **498 further concepts** are left out of the picture and listed in the table below.
 
 **No practice here for** `circuit_breaker`, `grpc_call`. Concepts are learned from this corpus, so one can never be absent — it exists because functions carry it. These are the *seeds* the search started from that grew nothing: a direct answer to "does this codebase already do X".
 

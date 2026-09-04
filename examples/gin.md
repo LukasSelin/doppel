@@ -9,7 +9,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `c4861da` |
+| doppel | `b0bd876` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -50,7 +50,62 @@ Families: 35 over 58 components, 169 functions in a family, 211 edges completed
 
 ### Concepts
 
-These concepts were **learned from this corpus**, not read off a fixed list: each one is a group of functions that share a way of being written, named after the evidence that identified it. They hang from an authored interior, so two functions under the same *branch* score partial credit rather than nothing. Counts below are members; membership is graded, and a function can carry several.
+Two pictures of the same vocabulary. The first is what doppel **searched with**: an authored tree of fourteen seed practices, each leaf showing how many functions here ended up in a concept that seed grew. It is the same shape on every corpus, which is what makes it the one concept picture two runs can be compared on. The second is what this corpus **turned out to have**: concepts learned from the code itself, named after the evidence that identified them, hung from that same interior — so two functions under one *branch* score partial credit rather than nothing. Counts are members; membership is graded, and a function can carry several.
+
+**What doppel looked for, and how much of it grew here.**
+
+```mermaid
+flowchart LR
+    s0(["concept"])
+    s1(["io_operation"])
+    s2(["remote_io"])
+    s3["http_call<br/>absent"]
+    s4["grpc_call<br/>absent"]
+    s5(["data_store_access"])
+    s6["db_access<br/>absent"]
+    s7["caching<br/>39"]
+    s8["transaction<br/>absent"]
+    s9["file_io<br/>11"]
+    s10["logging<br/>3"]
+    s11(["data_transformation"])
+    s12["mapping<br/>absent"]
+    s13["validation<br/>22"]
+    s14["serialization<br/>33"]
+    s15(["control_flow"])
+    s16["concurrency<br/>150"]
+    s17(["fault_tolerance"])
+    s18["retry<br/>absent"]
+    s19["circuit_breaker<br/>absent"]
+    s20(["error_handling"])
+    s21["error_wrapping<br/>absent"]
+    s0 --> s1
+    s1 --> s2
+    s2 --> s3
+    s2 --> s4
+    s1 --> s5
+    s5 --> s6
+    s5 --> s7
+    s5 --> s8
+    s1 --> s9
+    s1 --> s10
+    s0 --> s11
+    s11 --> s12
+    s11 --> s13
+    s11 --> s14
+    s0 --> s15
+    s15 --> s16
+    s15 --> s17
+    s17 --> s18
+    s17 --> s19
+    s0 --> s20
+    s20 --> s21
+    classDef good fill:#d7ecd9,color:#1b3d20
+    classDef warn fill:#fbeecb,color:#4a3a12
+    classDef hot fill:#f7d6d6,color:#4a1c1c
+    class s3,s4,s6,s8,s12,s18,s19,s21 hot
+```
+
+**What it learned instead.**
 
 ```mermaid
 flowchart LR
@@ -62,52 +117,16 @@ flowchart LR
     c5(["control_flow"])
     c6(["fault_tolerance"])
     c7(["error_handling"])
-    c8["API.Marshal+bytesconv.StringToBytes<br/>24"]
-    c9["Request.URL+req.URL<br/>22"]
-    c10["URL.Path+c.Writer<br/>11"]
-    c11["binding+nil<br/>150"]
-    c12["bytes.NewReader+bytes<br/>4"]
-    c13["bytesconv.BytesToString+bytesconv<br/>4"]
-    c14["bytesconv.StringToBytes+json.API<br/>8"]
-    c15["c.Abort+gin.*Context.Abort<br/>4"]
-    c16["c.MustBindWith+gin.*Context.MustBindWith<br/>7"]
-    c17["c.Next+c.Request<br/>9"]
-    c18["c.ShouldBindBodyWith+gin.*Context.ShouldBindBody…<br/>4"]
-    c19["c.ShouldBindWith+gin.*Context.ShouldBindWith<br/>7"]
-    c20["c.formCache+c.queryCache<br/>39"]
-    c21["c.hasRequestContext+Request.Context<br/>5"]
-    c22["c.requestHeader+gin.*Context.requestHeader<br/>53"]
-    c23["cmp+httputil<br/>8"]
-    c24["delims.Left+delims.Right<br/>22"]
-    c25["delims.Left+delims.Right+engine.SetHTMLTemplate<br/>43"]
-    c26["engine.MaxMultipartMemory+c.engine<br/>82"]
-    c27["field.Tag+Tag.Get<br/>8"]
-    c28["flag+atomic<br/>5"]
-    c29["fmt.Fprintf+runtime<br/>4"]
-    c30["gin+template<br/>19"]
-    c31["gin.*Context.Header+gin.*Context.Set<br/>8"]
-    c32["gin.IsDebugging+gin.debugPrint<br/>7"]
-    c33["gin.debugPrint+atomic<br/>7"]
-    c34["group.calculateAbsolutePath+group.engine<br/>22"]
-    c35["http.Server+engine.Handler<br/>5"]
-    c36["io.ReadAll+req.Body<br/>11"]
-    c37["json.Marshal+json.MarshalIndent<br/>33"]
-    c38["log<br/>3"]
-    c39["n.nType+n.priority<br/>13"]
-    c40["reflect.Array+reflect.Slice<br/>4"]
-    c41["reflect.Map+reflect.New<br/>10"]
-    c42["reflect.New+reflect.Array<br/>12"]
-    c43["reflect.New+value.Type<br/>2"]
-    c44["render.writeContentType+bytes<br/>8"]
-    c45["strings.Split+reflect<br/>5"]
-    c46["strings.TrimSpace+bytesconv<br/>4"]
-    c47["subtle+base64<br/>5"]
-    c48["tree.method+tree.root<br/>11"]
-    c49["value.Addr+field.Tag<br/>18"]
-    c50["value.Set+value.Type<br/>20"]
-    c51["w.WriteHeaderNow+w.ResponseWriter<br/>9"]
-    c52["writermem.WriteHeaderNow+c.writermem<br/>28"]
-    c53["xml+runtime<br/>12"]
+    c8["URL.Path+c.Writer<br/>11"]
+    c9["binding+nil<br/>150"]
+    c10["c.formCache+c.queryCache<br/>39"]
+    c11["c.requestHeader+gin.*Context.requestHeader<br/>53"]
+    c12["delims.Left+delims.Right+engine.SetHTMLTemplate<br/>43"]
+    c13["engine.MaxMultipartMemory+c.engine<br/>82"]
+    c14["group.calculateAbsolutePath+group.engine<br/>22"]
+    c15["json.Marshal+json.MarshalIndent<br/>33"]
+    c16["n.nType+n.priority<br/>13"]
+    c17["xml+runtime<br/>12"]
     c0 --> c1
     c1 --> c2
     c1 --> c3
@@ -115,53 +134,19 @@ flowchart LR
     c0 --> c5
     c5 --> c6
     c0 --> c7
-    c4 --> c8
-    c4 --> c9
-    c1 --> c10
-    c5 --> c11
+    c1 --> c8
+    c5 --> c9
+    c3 --> c10
+    c3 --> c11
     c4 --> c12
-    c1 --> c13
-    c4 --> c14
-    c3 --> c15
-    c3 --> c16
-    c1 --> c17
-    c3 --> c18
-    c3 --> c19
-    c3 --> c20
-    c3 --> c21
-    c3 --> c22
-    c4 --> c23
-    c4 --> c24
-    c4 --> c25
-    c4 --> c26
-    c4 --> c27
-    c3 --> c28
-    c1 --> c29
-    c4 --> c30
-    c4 --> c31
-    c4 --> c32
-    c4 --> c33
-    c1 --> c34
-    c1 --> c35
-    c1 --> c36
-    c4 --> c37
-    c1 --> c38
-    c1 --> c39
-    c4 --> c40
-    c4 --> c41
-    c4 --> c42
-    c4 --> c43
-    c4 --> c44
-    c1 --> c45
-    c4 --> c46
-    c4 --> c47
-    c4 --> c48
-    c4 --> c49
-    c4 --> c50
-    c4 --> c51
-    c4 --> c52
-    c3 --> c53
+    c4 --> c13
+    c1 --> c14
+    c4 --> c15
+    c1 --> c16
+    c3 --> c17
 ```
+
+The diagram draws the 3 largest concepts on each branch; **36 further concepts** are left out of the picture and listed in the table below.
 
 **No practice here for** `circuit_breaker`, `db_access`, `error_wrapping`, `grpc_call`, `http_call`, `mapping`, `retry`, `transaction`. Concepts are learned from this corpus, so one can never be absent — it exists because functions carry it. These are the *seeds* the search started from that grew nothing: a direct answer to "does this codebase already do X".
 
