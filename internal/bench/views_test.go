@@ -25,9 +25,9 @@ import (
 //
 //	DOPPEL_BENCH_VIEWS=1 go test ./internal/bench/ -v -run 'TestViews'
 //
-// Both assert nothing. A candidate blend is rescored against lc.run.Onto —
-// the run's own learned vocabulary — never against ontology.Default(), whose
-// concept table is the seed vocabulary and knows none of the learned leaves.
+// Both assert nothing. A candidate blend is rescored against lc.onto — the
+// run's own learned vocabulary, snapshotted before any Rescore — and restored
+// to it under production options, the rule every bench variant follows.
 
 func TestViewsLadder(t *testing.T) {
 	if os.Getenv("DOPPEL_BENCH_VIEWS") != "1" {
@@ -174,7 +174,7 @@ func TestViewsBlend(t *testing.T) {
 	for i := range corpora {
 		lc := &corpora[i]
 		base := Score(lc.run, lc.lf)
-		lc.run.RescoreWith(lc.run.Onto, comparator.Options{})
+		lc.run.RescoreWith(lc.onto, comparator.Options{})
 		corpusOnly := Score(lc.run, lc.lf)
 		if scLine(corpusOnly) != scLine(base) {
 			t.Logf("[%s] NOTE: DefaultOptions is no longer the corpus-only corner; production %s, corpus-only %s",
@@ -189,7 +189,7 @@ func TestViewsBlend(t *testing.T) {
 		}
 		var chosen *outcome
 		for _, v := range blendVariants() {
-			lc.run.RescoreWith(lc.run.Onto, v.opt)
+			lc.run.RescoreWith(lc.onto, v.opt)
 			sc := Score(lc.run, lc.lf)
 			moved, presence, _ := movement(base, sc)
 			vd := verdict(base, sc, presence, len(moved))
@@ -210,7 +210,7 @@ func TestViewsBlend(t *testing.T) {
 				chosen = &o
 			}
 		}
-		lc.run.RescoreWith(lc.run.Onto, comparator.DefaultOptions())
+		lc.run.RescoreWith(lc.onto, comparator.DefaultOptions())
 		if chosen == nil {
 			t.Logf("[%s] no admissible blend: nothing beats the corpus view on this corpus's labels", lc.name)
 			continue

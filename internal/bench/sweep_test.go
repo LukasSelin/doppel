@@ -111,9 +111,9 @@ func sweepVariants() []sweepVariant {
 	// never ontology.Default(), and restored to production afterwards.
 	blend := func(variant string, opt comparator.Options) {
 		vs = append(vs, sweepVariant{"Exhibits blend", variant, func(lc *labeledCorpus) Scorecard {
-			lc.run.RescoreWith(lc.run.Onto, opt)
+			lc.run.RescoreWith(lc.onto, opt)
 			sc := Score(lc.run, lc.lf)
-			lc.run.RescoreWith(lc.run.Onto, comparator.DefaultOptions())
+			lc.run.RescoreWith(lc.onto, comparator.DefaultOptions())
 			return sc
 		}})
 	}

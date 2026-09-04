@@ -891,7 +891,7 @@ renormalise over what was), `BlendGeometric`, `BlendMax`; the zero value is the 
 `ev.Exhibits` records what the slot actually read, so `SignalVector` reproduces `OverlapScore`
 under every blend and `TestSelfWeight` still means what it meant. `TestViewsBlend` scores every
 candidate — the (shape, corpus, feature) simplex in 0.1 steps, the geometric mean, the max —
-against the cobra labels through `Run.RescoreWith(lc.run.Onto, opt)`. **Every one is
+against the cobra labels through `Run.RescoreWith(lc.onto, opt)`. **Every one is
 admissible and none is distinguishable from the corpus view**: merge 5.3 (6/6, all in the top
 50) under all 68, refactor 12.8 against 12.9, false-positive 50.5 against 51.0, no violations
 anywhere, and the largest movement in the whole table is one pair by one rank
@@ -2746,8 +2746,8 @@ functions for exactly this reason, and the first version of them did not and fai
     `ViewDisagreeSpread`; the second scores every candidate for the `exhibits` slot — the
     weighted simplex in 0.1 steps, the geometric mean, the max — against the labels through
     `Run.RescoreWith`, and logs which one the stated selection rule picks. Both assert nothing;
-    see *Concept views* for the measured result. They rescore against `lc.run.Onto`, never
-    `ontology.Default()` — see *Rough edges* for why that matters to the older harnesses.
+    see *Concept views* for the measured result. Like every bench variant they reweight and
+    restore `lc.onto`, the run's own learned vocabulary, never `ontology.Default()`.
   - `TestSweep` (guard `DOPPEL_BENCH_SWEEP=1`) is the sensitivity sweep: each hand-set constant
     varied one at a time (±50% or the natural alternatives), only the stages it reaches re-run,
     and the labeled rankings reported with a verdict — `inert` (no label moved), `moves`,
@@ -3086,18 +3086,6 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   objective, greedy matching genuinely is not optimal in general. The scores it produces are
   therefore a defensible lower bound on the weighted objective, not the objective's maximum. It
   feeds ranking, never a gate.
-- **`Rescore(ontology.WithWeights(…))` scores under the seed vocabulary, and
-  `Rescore(ontology.Default())` is not a restore.** `WithWeights` rebuilds over `Default()`, whose
-  concept table is the fourteen seed leaves, so every relation-weight variant in `TestSweep`,
-  `TestAblateFingerprint`'s reweighting and `TestSelfWeight` has been scoring pairs under a taxonomy
-  that knows none of the learned concepts — an exact shared concept still self-matches (the
-  unknown-term guard in `pairContribution`), but every sibling or cousin pairing reads 0 and the
-  shape view reads 0, which is a different experiment from the one the tables in this file
-  describe. `TestRescoreRoundTrip` did not catch it because its three-function fixture learns no
-  concept. The views harness rescores
-  against `lc.run.Onto` and restores with `RescoreWith(lc.run.Onto, DefaultOptions())` for
-  exactly this reason; the older three are unfixed, and their relation-weight rows should be
-  re-read as measured with the concept signal off until they are.
 - **The taxonomy-only disagreement dominates the flag, and that is the finding, not a
   miscalibration.** On every rung with an interior, `taxonomy asserts kinship the vocabularies
   lack` outnumbers the other direction by an order of magnitude (moby 2 652 to 390): two seeded
