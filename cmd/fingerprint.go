@@ -1,0 +1,139 @@
+package cmd
+
+import (
+	"fmt"
+	"sort"
+	"strings"
+
+	"github.com/LukasSelin/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/reporter"
+	"github.com/spf13/cobra"
+)
+
+var (
+	fpLabels    int
+	fpTests     string
+	fpGenerated string
+	fpLanguages []string
+	fpConfig    string
+)
+
+var fingerprintCmd = &cobra.Command{
+	Use:   "fingerprint <path> <function> [<function>]",
+	Short: "Show one function's fingerprint, or the merge two fingerprints score on",
+	Long: `Prints what the similarity score reads for one function — its
+Weisfeiler-Lehman label bag weighted by this corpus, its control-flow and
+nesting histograms, its type set, and the canonicalization rules that fired
+on it — or, given two functions, the full merge between their bags: every
+component of the code-shape score with its blend weight, and the shared,
+only-A and only-B label partitions whose masses are the Jaccard and the
+containment. The totals on the page add up to the numbers the report prints.
+
+A function is named as package.Name, as a bare Name, or as *Receiver.Method
+(the star is part of the name). An ambiguous name lists its matches and
+stops. The corpus is read exactly as analyze reads it — the same population
+filters, so the label weights are the ones a report would use.`,
+	Example: `  doppel fingerprint . retriever.Retrieve
+  doppel fingerprint . mapper.sortedKeys retriever.sortedKeys --labels 0`,
+	Args:         cobra.RangeArgs(2, 3),
+	SilenceUsage: true,
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		path := fpConfig
+		if path == "" {
+			path = ".doppel.json"
+		}
+		cfg, err := loadConfig(path)
+		if err != nil {
+			return err
+		}
+		if cfg != nil {
+			applyConfig(cmd, cfg)
+		}
+		if err := validateMode("tests", fpTests); err != nil {
+			return err
+		}
+		return validateMode("generated", fpGenerated)
+	},
+	RunE: runFingerprint,
+}
+
+func init() {
+	fingerprintCmd.Flags().IntVar(&fpLabels, "labels", 20, "Bag rows to print per section, heaviest first (0 = all)")
+	fingerprintCmd.Flags().StringSliceVar(&fpLanguages, "languages", nil, "Languages to read, comma-separated (default: every language doppel has a frontend for)")
+	fingerprintCmd.Flags().StringVar(&fpTests, "tests", "exclude", "Test-function population: include, exclude, or only")
+	fingerprintCmd.Flags().StringVar(&fpGenerated, "generated", "exclude", "Generated-file population: include, exclude, or only")
+	fingerprintCmd.Flags().StringVar(&fpConfig, "config", "", "Path to JSON config file (default: .doppel.json if present)")
+	rootCmd.AddCommand(fingerprintCmd)
+}
+
+func runFingerprint(cmd *cobra.Command, args []string) error {
+	p := Params{
+		Threshold: defaultThreshold,
+		MinNodes:  defaultMinNodes,
+		ChannelK:  5,
+		TestsMode: fpTests,
+		Languages: fpLanguages,
+		Generated: fpGenerated,
+	}
+	res, err := index(args[0], p, cmd.ErrOrStderr(), nil)
+	if err != nil {
+		return err
+	}
+	if len(res.Units) == 0 {
+		fmt.Fprintln(cmd.OutOrStdout(), "No functions found in the corpus.")
+		return nil
+	}
+
+	a, err := findUnit(res.Units, args[1])
+	if err != nil {
+		return err
+	}
+	meta := reporter.FingerprintMeta{CorpusFuncs: res.WL.N(), LabelTop: fpLabels}
+	if len(args) == 2 {
+		reporter.PrintFingerprint(cmd.OutOrStdout(), res.Units[a], res.WL, meta)
+		return nil
+	}
+	b, err := findUnit(res.Units, args[2])
+	if err != nil {
+		return err
+	}
+	reporter.PrintFingerprintPair(cmd.OutOrStdout(), res.Units[a], res.Units[b], res.WL, meta)
+	return nil
+}
+
+// findUnit resolves a name to one corpus index. A qualified name
+// (package.Name, or package.*Receiver.Method) must match exactly; a bare
+// name matches a function of that name in any package, or a method of that
+// name on any receiver — both, in one candidate set, so "Get" naming a
+// function in one package and a method in another is reported as ambiguous
+// rather than resolved to whichever the walk met first. Zero matches is an
+// error; more than one is an error that lists them, sorted, so the caller
+// can pick a qualified form.
+//
+// Matching by name rather than by file:line is deliberate: the name is what
+// every report prints, so the way into this view is the string a reader
+// already has in front of them.
+func findUnit(units []parser.CodeUnit, name string) (int, error) {
+	var hits []int
+	for i := range units {
+		if concepter.QualifiedName(units[i]) == name {
+			return i, nil
+		}
+		if units[i].Name == name || parser.MethodName(units[i]) == name {
+			hits = append(hits, i)
+		}
+	}
+	switch len(hits) {
+	case 1:
+		return hits[0], nil
+	case 0:
+		return 0, fmt.Errorf("no function named %q in the corpus (names are package.Name, or *Receiver.Method with the star)", name)
+	}
+	names := make([]string, 0, len(hits))
+	for _, i := range hits {
+		names = append(names, concepter.QualifiedName(units[i]))
+	}
+	sort.Strings(names)
+	return 0, fmt.Errorf("%q is ambiguous; use one of: %s", name, strings.Join(names, ", "))
+}
