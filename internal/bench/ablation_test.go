@@ -20,11 +20,20 @@ type labeledCorpus struct {
 	name string
 	run  *Run
 	lf   LabelsFile
+	// onto is the vocabulary the run was analyzed under — the per-corpus one
+	// whose concept leaves are learned — captured before any Rescore replaces
+	// run.Onto. Every weight variant reweights this (ontology.WithWeightsOver)
+	// and restores it afterwards.
+	onto *ontology.Ontology
 }
 
 // loadLabeledCorpora analyzes each available labeled corpus once. The Runs are
-// meant to be Rescored repeatedly; callers must Rescore back to the default
-// vocabulary if they care (each sweep iteration re-runs compare anyway).
+// meant to be Rescored repeatedly, under one rule: a variant reweights lc.onto,
+// never ontology.Default(), and Rescores back to lc.onto when it is done. The
+// default vocabulary does not contain the run's learned concepts, so scoring
+// under it collapses every non-exact concept match as well as changing the
+// weight — and leaving the run there would put every later variant against a
+// baseline scorecard measured under a different taxonomy.
 func loadLabeledCorpora(t *testing.T) []labeledCorpus {
 	t.Helper()
 	var out []labeledCorpus
@@ -38,7 +47,8 @@ func loadLabeledCorpora(t *testing.T) []labeledCorpus {
 			t.Fatalf("%s: corpus yielded no functions", name)
 		}
 		t.Logf("%s: %d functions, %d labels", name, len(units), len(lf.Labels))
-		out = append(out, labeledCorpus{name: name, run: Analyze(units, retriever.DefaultOptions()), lf: lf})
+		run := Analyze(units, retriever.DefaultOptions())
+		out = append(out, labeledCorpus{name: name, run: run, lf: lf, onto: run.Onto})
 	}
 
 	entries, err := filepath.Glob(filepath.Join(repoRoot(t), "examples", "labels", "*.labels.json"))
@@ -126,7 +136,7 @@ func TestAblation(t *testing.T) {
 		t.Logf("[%s] baseline          %s", lc.name, scLine(base))
 
 		for _, rel := range rels {
-			onto, err := ontology.WithWeights(map[ontology.TermID]float64{rel: 0})
+			onto, err := ontology.WithWeightsOver(lc.onto, map[ontology.TermID]float64{rel: 0})
 			if err != nil {
 				t.Fatalf("ablate %s: %v", rel, err)
 			}
@@ -160,7 +170,7 @@ func TestAblation(t *testing.T) {
 			t.Logf("[%s] -%-22s %s  (%d/%d labels moved, %s)",
 				lc.name, rel, scLine(sc), moved, len(sc.Results), shiftDesc)
 		}
-		lc.run.Rescore(ontology.Default())
+		lc.run.Rescore(lc.onto)
 	}
 }
 
@@ -209,12 +219,14 @@ func TestFitWeights(t *testing.T) {
 		for i, rel := range rels {
 			overrides[rel] = w[i] / sum
 		}
-		onto, err := ontology.WithWeights(overrides)
-		if err != nil {
-			t.Fatalf("fit weights: %v", err)
-		}
 		var obj float64
 		for _, lc := range corpora {
+			// Per corpus, because each run's vocabulary is its own: the
+			// weights are shared, the taxonomy they are applied to is not.
+			onto, err := ontology.WithWeightsOver(lc.onto, overrides)
+			if err != nil {
+				t.Fatalf("fit weights: %v", err)
+			}
 			lc.run.Rescore(onto)
 			sc := Score(lc.run, lc.lf)
 			if sc.Present["merge"] > 0 {
@@ -280,20 +292,20 @@ func TestFitWeights(t *testing.T) {
 		t.Logf("  %-22s %.4f  (default %.4f)", rel, best[i]/sum, defaults[i])
 	}
 
-	// Leave every Run rescored at the defaults and log the final per-corpus
-	// scorecards under both vectors for the report.
+	// Leave every Run rescored under its own vocabulary and log the final
+	// per-corpus scorecards under both vectors for the report.
 	overrides := make(map[ontology.TermID]float64, len(rels))
 	for i, rel := range rels {
 		overrides[rel] = best[i] / sum
 	}
-	fitted, err := ontology.WithWeights(overrides)
-	if err != nil {
-		t.Fatal(err)
-	}
 	for _, lc := range corpora {
+		fitted, err := ontology.WithWeightsOver(lc.onto, overrides)
+		if err != nil {
+			t.Fatal(err)
+		}
 		lc.run.Rescore(fitted)
 		t.Logf("[%s] fitted   %s", lc.name, scLine(Score(lc.run, lc.lf)))
-		lc.run.Rescore(ontology.Default())
+		lc.run.Rescore(lc.onto)
 		t.Logf("[%s] default  %s", lc.name, scLine(Score(lc.run, lc.lf)))
 	}
 }

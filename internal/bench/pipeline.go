@@ -133,9 +133,9 @@ func (r *Run) StageGraph() { r.Graph = concepter.BuildCallGraph(r.Units) }
 
 // StageTag learns the concept lexicon and assigns memberships, accumulating
 // both corpus statistics: member counts, and the summed confidence that weights
-// information content. A Run with Onto pre-set keeps it — the weight-override
-// seam AnalyzeWith uses; nil derives the per-corpus vocabulary, which is what
-// production does.
+// information content. A Run with Onto pre-set keeps it (AnalyzeWith); nil
+// derives the per-corpus vocabulary, which is what production does and what
+// every weight variant in the harness reweights through Rescore.
 //
 // This mirrors cmd/pipeline.go's index() exactly, and the two must move
 // together: a harness measuring a differently-tagged corpus than the tool is
@@ -240,8 +240,12 @@ func Analyze(units []parser.CodeUnit, opt retriever.Options) *Run {
 	return AnalyzeWith(units, opt, nil)
 }
 
-// AnalyzeWith runs every stage under a custom vocabulary — the seam the
-// ablation and fitting harness scores through. A nil onto is Analyze exactly.
+// AnalyzeWith runs every stage under a custom vocabulary. A nil onto is Analyze
+// exactly. A non-nil one is kept as given — StageTag derives no leaves for it —
+// so it must already carry the concept vocabulary the corpus will be tagged
+// with, which a caller cannot know before the lexicon runs. The weight seam the
+// ablation and fitting harness scores through is therefore Analyze followed by
+// Rescore(ontology.WithWeightsOver(run.Onto, …)), not this.
 func AnalyzeWith(units []parser.CodeUnit, opt retriever.Options, onto *ontology.Ontology) *Run {
 	return analyze(&Run{Units: units, Onto: onto}, opt)
 }
@@ -274,6 +278,13 @@ func analyze(r *Run, opt retriever.Options) *Run {
 // weights affect neither the taxonomy nor IC nor any retrieval channel; the
 // only reader is Compare's composite sum. This is what makes a 12-way ablation
 // cost twelve compare passes instead of twelve pipelines.
+//
+// onto must carry this run's concept leaves: r.Onto itself, or
+// ontology.WithWeightsOver(r.Onto, …). The reuse of r.IC is exact only then —
+// IC was accumulated over the learned vocabulary, and a scorer whose taxonomy
+// lacks those IDs (ontology.Default(), or WithWeights over it) still finds
+// their IC but no LCA, so every non-exact concept match silently drops. Callers
+// that Rescore repeatedly snapshot r.Onto first and restore it last.
 func (r *Run) Rescore(onto *ontology.Ontology) {
 	r.Onto = onto
 	r.Comp = comparator.New(ontology.NewScorer(onto, r.IC))
