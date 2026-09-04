@@ -88,7 +88,8 @@ cmd/            CLI commands (Cobra).
   root.go       rootCmd, Execute()
   analyze.go    Pipeline orchestrator; analyze's own flags (each command registers its own in init)
   families.go   doppel families: the census view, plus analyze's family stage
-  fingerprint.go doppel fingerprint: one function's fingerprint, or two functions' label merge, for verifying the score by hand
+  fingerprint.go doppel fingerprint: one function's fingerprint, or two functions' label merge, for verifying the score by hand;
+                --label maps a bag row's hash back to the canonical subtree that produced it
   overview.go   Queries the corpus model (culture, ontology, call graph) into reporter.Overview
   dashboard.go  Assembles dashboard.Payload — the semantic model the HTML page draws
   pipeline.go   index() + finishAnalyze(): the pipeline split into corpus-building prefix and reporting tail; filterByOverlap; snapshotOf
@@ -103,7 +104,8 @@ cmd/            CLI commands (Cobra).
   ontology.go   doppel ontology: print the vocabulary, check its axioms
 internal/
   syntax/       The language-neutral IR: Kind/Role/Node/Func/File and Inspect. Imports nothing from this module
-  gofront/      The Go frontend: the only package that imports go/ast. gofront.go maps *ast.File → syntax.File and runs canon; syntax_map.go is the node-for-node mapper
+  gofront/      The Go frontend: the only package that imports go/ast. gofront.go maps *ast.File → syntax.File and runs canon; syntax_map.go is the node-for-node mapper;
+                render.go re-derives one function's canonical tree with a go/printer render per node, for the --label view
   lexfront/     The language-agnostic frontend: spec.go is the per-language table, lexer.go tokenizes, segment.go finds functions, build.go builds the shallow tree
   parser/       frontend.go owns the Frontend interface, the extension registry, IsTestFile and SameBuildUnit; parser.go is the neutral syntax.File → CodeUnit projection (and owns ShouldSkipDir, the walk rule cmd and bench share); signals.go extracts the tagger's evidence channels over the IR; go_parser.go and lex_parser.go are the two registry adapters
   canon/        Canonical Go AST shapes with a per-function rule log: canon.go + rules.go (the rule
@@ -111,6 +113,7 @@ internal/
                 imported by gofront (to run it) and by analyzer (to name its rules)
   fingerprint/  Token shingles + control-flow histogram + signature types over the neutral IR; the code-similarity score
                 wl.go is the WL label bag; wlexplain.go names its shallow labels for reports;
+                wlsource.go maps a label back to its nodes (LabelChains, the per-node label vectors; Outline, the hashed extent);
                 cons.go hash-conses the canonical forest; wlcodec.go encodes bags for the snapshot
   ontology/     The formal vocabulary: entity kinds, typed relations, concept taxonomy, roles, axioms
   tagger/       The 14 seed rules: AST-signal matching → founding member sets for the lexicon
@@ -131,7 +134,8 @@ internal/
   reporter/     Plain-text (stdout), Markdown (--output), JSON (--format json), and the five hook digests
                 (impact.go: ConceptDigest, ImpactDigest, AgentDigest; scope.go: ScopeDigest, AdviceDigest)
                 fingerprint.go is the fingerprint view: the whole weighted bag of one function, or the
-                shared / only-A / only-B partition of two, whose masses reproduce the WL Jaccard exactly
+                shared / only-A / only-B partition of two, whose masses reproduce the WL Jaccard exactly;
+                labelsource.go is its --label half, the node(s) behind one hash
                 overview.go + mermaid.go render the corpus model into the markdown report only
   dashboard/    The two HTML pages: payload.go + assets/(shell.html, app.js, app.css) is the
                 single-run dashboard (--output *.html); timeline.go + assets/(timeline.html,
@@ -491,6 +495,22 @@ guard two levels deep matched exactly, three times") and a strictly weaker one t
 second serialization of the thing the hash already is, which is the drift the pattern levels spent
 their renders avoiding. `LabelKind` is an enum whose `String()` is the hash input, so the
 vocabulary cannot fork; `Label` travels on `SharedChain` so a consumer can join on the identity.
+
+**Lost from the bag, not from the tree.** `doppel fingerprint <path> <fn> --label <hex>` recovers
+the render at debug time: `fingerprint.LabelChains` re-derives every node's label vector from the
+same recurrence (calling `wlLabel0`/`wlKind`/`wlHash`, never copying them — the `wlexplain.go`
+rule), the lookup is a scan for every `(node, round)` whose label matches, and each hit prints two
+ways. The *render* is Go text from `gofront.CanonicalRenders`, which re-parses the file, runs canon
+again and pairs each canonical `ast.Node` with its `syntax.Node` by the index-wise order
+`TestMapperPreservesOrder` pins; `cmd` refuses to show it unless `fingerprint.WLBagOf` over the
+re-derived tree equals the unit's stored bag, label, count, round and kind alike. It is the
+**canonical form** — `canon.Clone` zeroes every position by design, so bound identifiers read
+`x0, x1, …` and every rule's rewrite is in place — never the source as written, and the section
+says so. The *outline* is `fingerprint.Outline`: the label_0 vocabulary truncated at the label's
+round, which is exactly the extent the hash folded in, printed whenever there is no render (a
+`lexfront` language, a field list) or the render shows more tree than the label saw. The render
+is the convenience, the outline is the claim, and nothing *stored* gained a second serialization:
+the bag is still opaque hashes, and this view is rebuilt from the tree on demand.
 
 Three quantities per pair, all from one sorted-intersection pass (`pairEvidence`):
 
@@ -1594,7 +1614,9 @@ discrimination rather than correctness.
   than reimplementing `ast.Walk`'s per-type field ordering, so order and node count are correct
   by construction and there is no ordering table to fall out of sync with the stdlib; roles are
   recovered separately by identity against the parent's named fields. `TestMapperPreservesNodeCount`
-  and `TestMapperPreservesOrder` pin both halves. It also **runs `internal/canon`** and maps the
+  and `TestMapperPreservesOrder` pin both halves; `render.go`'s `CanonicalRenders` rests on the
+  second, pairing a go/printer render with each canonical IR node by index, and
+  `TestCanonicalRendersPairWithTree` re-checks it. It also **runs `internal/canon`** and maps the
   canonical declaration a second time into `syntax.Func.Canon` — see *Canonicalization is a
   frontend's job* below.
 - **`internal/lexfront`** has no grammar: one tokenizer, one block rule, and a per-language table

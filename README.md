@@ -204,6 +204,35 @@ disagree with can be traced to the labels that produced it. Names are `package.N
 `package.*Receiver.Method`; a bare name works when it is unique. `--labels N` bounds the rows per
 section (`0` for all).
 
+A label is still a hash. `--label <hex>` (repeatable, the `#` optional) shows the node or nodes
+that produced one — the subtree as Go text, and the exact extent the label hashed as an outline
+truncated at the label's depth:
+
+```
+$ doppel fingerprint . mapper.sortedKeys lexicon.sortedKeys --label 80e9c3fe3ce5ff64
+...
+  label #80e9c3fe3ce5ff64: depth-3 RANGE  df 33  weight 3.38  A ×1  B ×1
+    A mapper.sortedKeys
+      node 21 of 38: range, subtree 4 deep (10 nodes); depth-3 folds 3 of those 4 levels
+        for x2 := range x0 {
+        	x1 = append(x1, x2)
+        }
+        hashed extent (3 levels; identifier names and literal values are not part of it):
+          RANGE
+            ID
+            ID
+            BLOCK
+              ASSIGN/=
+                ID
+                CALL/append
+```
+
+The code shown is the **canonical form** — identifiers renamed to `x0, x1, …`, commutative operands
+sorted, guards flipped — because that is the tree the bag was built over, and the canonical tree
+keeps no source positions to map back to. A depth-3 label folds in three levels below its node and
+nothing further, so the outline, not the code, is the exact claim; the code is printed because it is
+what a reader recognizes.
+
 ### Two scores per pair
 
 Every reported pair carries two independent numbers:
