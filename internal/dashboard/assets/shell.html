@@ -58,6 +58,10 @@
           </div>
           <div class="control" id="selection-panel"></div>
           <div class="control">
+            <div class="control-label">Borders</div>
+            <div class="legend border-legend" id="border-legend"></div>
+          </div>
+          <div class="control">
             <div class="control-label">Concepts</div>
             <div class="legend" id="legend"></div>
           </div>
@@ -71,10 +75,12 @@
             <p class="control-note">
               <strong>A shared border is geometry; its weight is the data.</strong>
               Regions are packed so related ones tend to land side by side, but
-              touching is not itself a claim. Where two related regions do meet,
-              the border between them is painted by how much duplication crosses
-              it. Where they don't, a curved arc says so instead — so nothing is
-              hidden by the packing.
+              touching is not itself a claim — two regions can adjoin for no
+              reason but the packing. Where two <em>related</em> regions do meet,
+              the border between them is painted, and its width is the summed
+              retrieval evidence of the pairs crossing it. Where they don't, a
+              dashed arc says so instead — so nothing is hidden by the packing.
+              The <strong>Borders</strong> key above is the sample of each.
             </p>
           </div>
         </aside>

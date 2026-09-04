@@ -140,6 +140,21 @@ input[type="range"] { accent-color: var(--color-accent); width: 100%; }
 .legend-id { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .legend-n { margin-left: auto; color: var(--color-neutral-600); font-variant-numeric: tabular-nums; flex: none; }
 
+/* The border key. Each swatch is drawn with the map's own stroke classes, so
+   the sample and the thing it describes cannot drift apart. The stepped widths
+   are the legend saying "width is the variable" without a sentence. */
+.border-legend { gap: var(--space-2); }
+.legend-border-row { align-items: flex-start; }
+.legend-border-row .swatch { flex: none; margin-top: 2px; overflow: visible; }
+/* The map's strokes are clickable; a sample of one is not. */
+.legend-border-row .swatch line { cursor: default; }
+/* The hairline is faint on the map on purpose. In the key it has to be seen
+   before it can be recognised, so this one swatch is opaque and heavier; its
+   row says in words that the map draws it lighter. */
+.legend-border-row .swatch line.border { stroke-opacity: 1; }
+.legend-border-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.legend-border-note { color: var(--color-neutral-600); font-size: 11px; line-height: 1.35; }
+
 /* ── Map ──────────────────────────────────────────────────────────────── */
 
 .map-canvas {
