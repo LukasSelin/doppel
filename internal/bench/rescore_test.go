@@ -64,8 +64,9 @@ func TestRescoreRoundTrip(t *testing.T) {
 	for i, p := range run.Pairs {
 		original[i] = p.Evidence.OverlapScore
 	}
+	saved := run.Onto
 
-	ablated, err := ontology.WithWeights(map[ontology.TermID]float64{ontology.RelCalls: 0})
+	ablated, err := ontology.WithWeightsOver(saved, map[ontology.TermID]float64{ontology.RelCalls: 0})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +82,7 @@ func TestRescoreRoundTrip(t *testing.T) {
 		t.Error("zeroing the calls weight moved no overlap score; the seam is not reaching Compare")
 	}
 
-	run.Rescore(ontology.Default())
+	run.Rescore(saved)
 	for i, p := range run.Pairs {
 		if p.Evidence.OverlapScore != original[i] {
 			t.Fatalf("pair %d: overlap %v after round-trip, want %v exactly",

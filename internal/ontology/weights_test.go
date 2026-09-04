@@ -120,3 +120,77 @@ func TestScoredRelationsAreTheTwelve(t *testing.T) {
 		seen[rel] = true
 	}
 }
+
+// A reweighted vocabulary must keep the base's taxonomy, not Default()'s. A
+// run reasons over learned concept leaves (WithConcepts); if reweighting
+// rebuilt from the seed table, every non-identical pair of those leaves would
+// lose its LCA — which is the defect internal/bench carried for a while.
+func TestWithWeightsOverKeepsDerivedConcepts(t *testing.T) {
+	derived := []DerivedConcept{
+		{ID: "stash.Fetch+Unpack", Seed: ConDBAccess, Def: "Learned."},
+		{ID: "ledger.Begin+Post", Seed: ConTransaction, Def: "Learned."},
+	}
+	base := WithConcepts(Default(), DerivedConceptTerms(Default(), derived))
+	if errs := base.Validate(); len(errs) != 0 {
+		t.Fatalf("derived base failed validation: %v", errs)
+	}
+
+	same, err := WithWeightsOver(base, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if same != base {
+		t.Error("WithWeightsOver(base, nil) built a copy; want base itself")
+	}
+
+	o, err := WithWeightsOver(base, map[TermID]float64{RelCalls: 0})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if errs := o.Validate(); len(errs) != 0 {
+		t.Fatalf("reweighted derived vocabulary failed validation: %v", errs)
+	}
+	if o.Weight(RelCalls) != 0 {
+		t.Errorf("calls = %v, want 0", o.Weight(RelCalls))
+	}
+	var sum float64
+	for _, rel := range o.ScoredRelations() {
+		sum += o.Weight(rel)
+	}
+	if math.Abs(sum-1.0) > 1e-9 {
+		t.Errorf("weights sum to %v, want 1.0", sum)
+	}
+
+	// The learned leaves survive with their placement, and the seed leaf they
+	// replaced is still gone.
+	for _, d := range derived {
+		got, ok := o.Get(TermID(d.ID))
+		if !ok {
+			t.Fatalf("learned concept %q missing after reweighting", d.ID)
+		}
+		want, _ := base.Get(TermID(d.ID))
+		if got != want {
+			t.Errorf("learned concept %q changed: %+v, want %+v", d.ID, got, want)
+		}
+	}
+	if lca, ok := o.LCA("stash.Fetch+Unpack", "ledger.Begin+Post"); !ok || lca != ConDataStoreAccess {
+		t.Errorf("LCA of the two learned leaves = %q, %v; want %q", lca, ok, ConDataStoreAccess)
+	}
+	if _, ok := o.Get(ConDBAccess); ok {
+		t.Error("seed leaf reappeared in a reweighted derived vocabulary")
+	}
+
+	// Declaration order is the only iteration order; it must be base's.
+	bt, ot := base.Terms(), o.Terms()
+	if len(bt) != len(ot) {
+		t.Fatalf("term count %d, want %d", len(ot), len(bt))
+	}
+	for i := range bt {
+		if bt[i].ID != ot[i].ID {
+			t.Fatalf("term %d is %q, want %q: declaration order not preserved", i, ot[i].ID, bt[i].ID)
+		}
+	}
+	if base.Weight(RelCalls) != 0.210 {
+		t.Fatalf("WithWeightsOver mutated its base: calls = %v", base.Weight(RelCalls))
+	}
+}

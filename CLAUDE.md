@@ -2523,19 +2523,44 @@ functions for exactly this reason, and the first version of them did not and fai
     same four-term sum in the same order, bit-identical), `retriever.Options.Weights` (zero value
     = defaults; cmd never sets it), `analyzer.RankOptions{TrophicPower, TestCallDiscount}` /
     `SortForReportWith` (power 2 uses `t*t`, not `math.Pow`, so the default key is byte-identical),
-    and `ontology.WithWeights`. Options and arguments, never package globals.
+    and `ontology.WithWeightsOver(base, overrides)`. Options and arguments, never package globals.
+
+    The last one is reweighted **over the run's own vocabulary**, and that is a rule with a history.
+    `ontology.WithWeights(overrides)` is the same seam over `Default()` — the fourteen-leaf *seed*
+    concept table — and for a while every bench variant used it: `Rescore(WithWeights(…))`, then
+    `Rescore(Default())` to restore. But a run reasons over `WithConcepts(Default(), …)`, whose
+    concept leaves are the learned IDs, and `Ontology.LCA` fails for any ID it has not heard of —
+    so under the seed vocabulary every non-exact concept pairing (`sql.Open+QueryRow` against a
+    sibling under `data_store_access`) silently dropped, the `rel.*` rows measured "weight change
+    plus taxonomy collapse", and the restore left the run under the seed vocabulary so every
+    variant scored after it was measured against a baseline taken under the derived one. The
+    seam now takes the base explicitly; bench snapshots `run.Onto` into `labeledCorpus.onto`,
+    reweights that, and restores that. `TestRescoreKeepsDerivedTaxonomy` is the regression: a
+    synthetic corpus that grows three learned concepts under production lexicon settings, and a
+    retrieved pair whose only concept evidence is a shared ancestor — reweighting the derived
+    vocabulary keeps the match and `PatternRelatedness` bit for bit, the seed vocabulary loses it.
+    On cobra the correction moved a tenth here and there (three ablation rows by 0.1–0.5, one
+    rank variant), because its labeled pairs mostly share concepts exactly; the point is that the
+    number measured was not the one the row named.
   - `TestSelfWeight` (guard `DOPPEL_BENCH_SELFWEIGHT=1`) is the label-free weighting experiment:
     `comparator.SignalVector` (the twelve graded signals in `ScoredRelations` order; pinned to
     reproduce `OverlapScore` exactly) over the candidate set versus a null sample
     (`calibrate.SamplePairs`, cross test/prod dropped), Fisher ratio per signal normalized to
-    weights, an entropy variant for contrast, each scored via `Rescore(WithWeights)`. **Measured
-    on cobra and not adopted:** Fisher loads 0.37 on `shares_neighborhood` and 0.29 on `calls`
-    and cuts `exhibits` to 0.05, and the labels get worse (merge 5.5 / refactor 20.0 against
-    5.2 / 16.1; entropy 5.3 / 19.6). The contrast is confounded: what separates *retrieved* pairs
-    from random pairs is largely call-graph adjacency, which retrieval selected for — the
-    experiment measures what retrieval wants, not what a reviewer judges. Label-free weighting
-    from this corpus alone cannot replace the hand-set table; the harness that could is the
-    labeled fitter, once more corpora are labeled.
+    weights, an entropy variant for contrast, each scored via
+    `Rescore(WithWeightsOver(run.Onto, …))`. **Measured on cobra and not adopted:** Fisher loads
+    0.40 on `exhibits`, 0.18 on `shares_neighborhood`, 0.15 on `calls` and 0.14 on
+    `calls_into_concept`, and cuts `called_by` to 0.01 and `declared_in` to 0.01; the labels
+    split rather than agree — merge 4.8 / refactor 13.7 / fp 60.5 against the default 5.3 /
+    12.8 / 50.5 (entropy 4.8 / 15.3 / 53.0), so the merge and false-positive means improve while
+    the refactor mean worsens. The contrast is confounded: what separates *retrieved* pairs from
+    random pairs is what retrieval selected for — shared concepts and call-graph adjacency, and
+    the concept channel retrieves on exactly the quantity `exhibits` scores — so the experiment
+    measures what retrieval wants, not what a reviewer judges. (An earlier reading of this table,
+    Fisher on `shares_neighborhood` and `calls` with every label mean worse, was taken before
+    membership became coverage-based and under the seed-vocabulary seam described above; the
+    weight vectors do not depend on that seam, the rescored means do.) Label-free weighting from
+    this corpus alone cannot replace the hand-set table; the harness that could is the labeled
+    fitter, once more corpora are labeled.
   - `TestMinIDF` and `TestMinIDFLadder` (guard `DOPPEL_BENCH_MINIDF=1`) measure the information
     floor against the absolute df caps: derived caps, union size, suppressed functions and
     surviving labels per floor on every fetched corpus, plus the labeled rankings where labels
@@ -2589,17 +2614,20 @@ functions for exactly this reason, and the first version of them did not and fai
     that moved. It asserts nothing, and it is what first priced the `--min-nodes` default: the WL
     retrieval change tripped `AssertZeroFPInTop20`, the sweep priced the three constants that
     could clear it, and 12 → 18 was adopted on that evidence (`TestMinNodesLadder` later narrowed
-    it to 16, the lowest value holding the same pin). **Measured on cobra (18 labels):**
-    the merge pairs never move under any variant; every sensitivity is in the
-    refactor/false-positive tail. Inert in both directions: `MaxConceptDF`, `fp.Depth`. Inert in
-    one: `ChannelK`→8, `Threshold`→0.30, `MaxCallDF`→100, `calls_into_concept`×0.5,
-    `shares_neighborhood`×0.5, `calls_into_package`×0.5, `called_from_concept`×2;
-    `TestCallDiscount` (no test pairs under `exclude`). Load-bearing: `MinNodes` in either
-    direction (it changes which pairs retrieval sees at all — this is the knob, so it should be).
-    Largest movers: `fp.AST`, `MaxLabelDF`, `calls`, `exhibits`, `TrophicPower`. Not swept: `ChainTopN`
-    (explanation only), `struct-min`/`family-min` (no bench analogue / census only),
-    `ForkShapeFloor` (annotation). One corpus is a direction, not a verdict; the gin/chi labels
-    are what would make it one.
+    it to 16, the lowest value holding the same pin). **Measured on cobra (18 labels), with the
+    `rel.*` rows reweighting the run's own learned vocabulary:** no variant loses a merge pair
+    (6/6 retrieved and in the top 50 on every row) and the merge mean stays within 0.5 of its
+    baseline 5.3; nearly every sensitivity is in the refactor/false-positive tail. Inert in both
+    directions: `MaxConceptDF`. Inert in one: `ChannelK`→8, `Threshold`→0.30, `MaxCallDF`→100,
+    `bound_to`×0.5; `TestCallDiscount` (no test pairs under `exclude`). Load-bearing:
+    `MinNodes`→12 — the one violation in the table, the `Less` false positive re-entering the top
+    20 (it changes which pairs retrieval sees at all — this is the knob, so it should be);
+    `MinNodes`→24 merely moves. Largest movers: `MaxLabelDF` (→25 merge 5.7 / fp 46.0, →100 fp
+    54.5), `TrophicPower` (→1 merge 5.8, →3 refactor 15.1), `fp.AST`, and among the relations
+    `exhibits`, `has_role` and `called_by` (fp 48.5–53.5, merge 5.0–5.5 either way); every other
+    `rel.*` row moves a label or two by a rank. Not swept: `ChainTopN` (explanation only),
+    `struct-min`/`family-min` (no bench analogue / census only), `ForkShapeFloor` (annotation).
+    One corpus is a direction, not a verdict; the gin/chi labels are what would make it one.
   - `TestGenerateExamples` (guard `DOPPEL_BENCH_EXAMPLES=1`) regenerates `examples/<name>.md` by
     running the **built binary** with `cmd.Dir` set to the corpus — not the library — so the
     committed reports are what the documented command actually prints, culture/habitat/arena
