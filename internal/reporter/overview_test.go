@@ -1,6 +1,7 @@
 package reporter
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -19,6 +20,12 @@ func sampleOverview() *Overview {
 			{Tag: "mapping", Count: 3},
 		},
 		Absent: []string{"db_access", "http_call"},
+		SeedMap: []TaxonomyNode{
+			{ID: "concept", Abstract: true},
+			{ID: "io_operation", Parent: "concept", Abstract: true},
+			{ID: "http_call", Parent: "io_operation"},
+			{ID: "file_io", Parent: "io_operation", Count: 12},
+		},
 		Taxonomy: []TaxonomyNode{
 			{ID: "concept", Abstract: true},
 			{ID: "io_operation", Parent: "concept", Abstract: true},
@@ -63,8 +70,8 @@ func TestPrintMarkdownOverview(t *testing.T) {
 	if !strings.Contains(out, "Most uniform is `bench`") {
 		t.Errorf("habitat superlatives missing:\n%s", out)
 	}
-	if n := strings.Count(out, "```mermaid"); n != 3 {
-		t.Errorf("got %d diagrams, want 3 (concepts, duplication, habitats):\n%s", n, out)
+	if n := strings.Count(out, "```mermaid"); n != 4 {
+		t.Errorf("got %d diagrams, want 4 (seed map, learned concepts, duplication, habitats):\n%s", n, out)
 	}
 }
 
@@ -210,5 +217,80 @@ func TestHabitatTailJoinsCleanly(t *testing.T) {
 	}
 	if strings.Contains(out, "0 functions are alien") {
 		t.Errorf("an empty misfit clause was rendered:\n%s", out)
+	}
+}
+
+// The taxonomy diagram is a tree, so it is bounded per branch rather than
+// globally: a learned vocabulary hangs hundreds of leaves off eight authored
+// parents, and a global top-N would draw one crowded branch and seven bare
+// ones. moby learns 519 concepts, which unbounded is a 527-node picture.
+func TestBoundTaxonomyKeepsTheLargestLeafPerBranch(t *testing.T) {
+	nodes := []TaxonomyNode{
+		{ID: "concept", Abstract: true},
+		{ID: "io_operation", Parent: "concept", Abstract: true},
+		{ID: "data_transformation", Parent: "concept", Abstract: true},
+	}
+	for i := 0; i < maxTaxonomyLeaves+4; i++ {
+		nodes = append(nodes, TaxonomyNode{ID: fmt.Sprintf("io%d", i), Parent: "io_operation", Count: i})
+	}
+	nodes = append(nodes, TaxonomyNode{ID: "lonely", Parent: "data_transformation", Count: 1})
+
+	got, more := BoundTaxonomy(nodes)
+	if more != 4 {
+		t.Errorf("dropped %d leaves, want 4", more)
+	}
+	if len(got) != 3+maxTaxonomyLeaves+1 {
+		t.Fatalf("kept %d nodes, want %d", len(got), 3+maxTaxonomyLeaves+1)
+	}
+	// Every abstract node survives, and the thin branch keeps its one leaf:
+	// the interior is the map, and a branch drawn empty says something false.
+	var kept []string
+	for _, n := range got {
+		kept = append(kept, n.ID)
+	}
+	want := []string{"concept", "io_operation", "data_transformation", "io4", "io5", "io6", "lonely"}
+	if strings.Join(kept, ",") != strings.Join(want, ",") {
+		t.Errorf("kept %v, want %v", kept, want)
+	}
+}
+
+// What is dropped is counted in the prose, the rule every other diagram in
+// this package follows.
+func TestTaxonomyDiagramReportsWhatItLeftOut(t *testing.T) {
+	ov := sampleOverview()
+	ov.TaxonomyMore = 507
+	var b strings.Builder
+	PrintMarkdownOverview(&b, ov)
+	if out := b.String(); !strings.Contains(out, "**507 further concepts**") {
+		t.Errorf("bounded diagram does not say what it dropped:\n%s", out)
+	}
+}
+
+// The section carries two concept diagrams and they must be told apart. Ids
+// are per-block so they could collide harmlessly, but a report where c4 names
+// one concept in the first picture and another in the second cannot be checked
+// against the corpus by whoever has to check it.
+func TestConceptDiagramsUseDistinctNodeIDs(t *testing.T) {
+	var b strings.Builder
+	PrintMarkdownOverview(&b, sampleOverview())
+	out := b.String()
+	for _, want := range []string{`s0(["concept"])`, `s3["file_io<br/>12"]`, `c0(["concept"])`} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %s — the two concept diagrams share a prefix:\n%s", want, out)
+		}
+	}
+}
+
+// The seed map is the picture the report opened with before the vocabulary
+// became corpus-derived: the authored tree, absent leaves in red.
+func TestSeedMapDrawsAbsentSeedsInRed(t *testing.T) {
+	var b strings.Builder
+	PrintMarkdownOverview(&b, sampleOverview())
+	out := b.String()
+	if !strings.Contains(out, `s2["http_call<br/>absent"]`) {
+		t.Errorf("a seed that grew nothing is not marked absent:\n%s", out)
+	}
+	if !strings.Contains(out, "class s2 hot") {
+		t.Errorf("an absent seed is not coloured:\n%s", out)
 	}
 }
