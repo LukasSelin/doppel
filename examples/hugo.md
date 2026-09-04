@@ -9,7 +9,7 @@ static site generator; a large monolith with heavy template and resource subsyst
 | Corpus | [hugo](https://github.com/gohugoio/hugo) |
 | Pinned at | `v0.165.0` (`76a5e1880ab46688155b02e99bab9be2a6134492`) |
 | Project since | 2013 |
-| doppel | `c4861da` |
+| doppel | `4214f9d` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -52,7 +52,62 @@ Families: 609 over 619 components, 2053 functions in a family, 7137 edges comple
 
 ### Concepts
 
-These concepts were **learned from this corpus**, not read off a fixed list: each one is a group of functions that share a way of being written, named after the evidence that identified it. They hang from an authored interior, so two functions under the same *branch* score partial credit rather than nothing. Counts below are members; membership is graded, and a function can carry several.
+Two pictures of the same vocabulary. The first is what doppel **searched with**: an authored tree of fourteen seed practices, each leaf showing how many functions here ended up in a concept that seed grew. It is the same shape on every corpus, which is what makes it the one concept picture two runs can be compared on. The second is what this corpus **turned out to have**: concepts learned from the code itself, named after the evidence that identified them, hung from that same interior — so two functions under one *branch* score partial credit rather than nothing. Counts are members; membership is graded, and a function can carry several.
+
+**What doppel looked for, and how much of it grew here.**
+
+```mermaid
+flowchart LR
+    s0(["concept"])
+    s1(["io_operation"])
+    s2(["remote_io"])
+    s3["http_call<br/>84"]
+    s4["grpc_call<br/>absent"]
+    s5(["data_store_access"])
+    s6["db_access<br/>absent"]
+    s7["caching<br/>242"]
+    s8["transaction<br/>absent"]
+    s9["file_io<br/>152"]
+    s10["logging<br/>128"]
+    s11(["data_transformation"])
+    s12["mapping<br/>207"]
+    s13["validation<br/>205"]
+    s14["serialization<br/>50"]
+    s15(["control_flow"])
+    s16["concurrency<br/>209"]
+    s17(["fault_tolerance"])
+    s18["retry<br/>absent"]
+    s19["circuit_breaker<br/>absent"]
+    s20(["error_handling"])
+    s21["error_wrapping<br/>258"]
+    s0 --> s1
+    s1 --> s2
+    s2 --> s3
+    s2 --> s4
+    s1 --> s5
+    s5 --> s6
+    s5 --> s7
+    s5 --> s8
+    s1 --> s9
+    s1 --> s10
+    s0 --> s11
+    s11 --> s12
+    s11 --> s13
+    s11 --> s14
+    s0 --> s15
+    s15 --> s16
+    s15 --> s17
+    s17 --> s18
+    s17 --> s19
+    s0 --> s20
+    s20 --> s21
+    classDef good fill:#d7ecd9,color:#1b3d20
+    classDef warn fill:#fbeecb,color:#4a3a12
+    classDef hot fill:#f7d6d6,color:#4a1c1c
+    class s4,s6,s8,s18,s19 hot
+```
+
+**What it learned instead.**
 
 ```mermaid
 flowchart LR
@@ -64,553 +119,22 @@ flowchart LR
     c5(["control_flow"])
     c6(["fault_tolerance"])
     c7(["error_handling"])
-    c8["Array.isArray+Symbol.iterator<br/>7"]
-    c9["BaseFs.PublishFs+bufferpool<br/>35"]
-    c10["Body.Close+api.OnLoadArgs<br/>152"]
-    c11["Buffer.Len+ctx.Buffer<br/>29"]
-    c12["Build.Render+m.cascadeCompiled<br/>44"]
-    c13["Build.Render+pagemeta.Never<br/>89"]
-    c14["BuildState.IsRebuild+h.BuildState<br/>7"]
-    c15["C.BaseURL+conf.C<br/>233"]
-    c16["Cfg.Logger+a.Cfg<br/>13"]
-    c17["Conf.ConfiguredDimensions+sitesmatrix.IntSetsConfig<br/>23"]
-    c18["Conf.IsMultilingual+Conf.IsMultihost<br/>27"]
-    c19["Conf.IsMultilingual+Conf.IsMultihost+s.Language<br/>58"]
-    c20["Conf.NewIdentityManager+s.Conf<br/>46"]
-    c21["Config.Sorted+c.C<br/>203"]
-    c22["Config.Sorted+c.C+c.Languages<br/>108"]
-    c23["Config.Sorted+c.copyStatic<br/>128"]
-    c24["ConfiguredDimensions.Config…+pp.ConfiguredDimensions<br/>9"]
-    c25["Constructor.prototype+descriptor.configurable<br/>14"]
-    c26["Content.Markup+fmt.Errorf<br/>17"]
-    c27["Converters.GetHighlighter+c.applyTransformations<br/>207"]
-    c28["Data.Params+Params.Height<br/>18"]
-    c29["Data.Params+Params.Height+Params.Width<br/>12"]
-    c30["Default.UnmarshalToMap+metadecoders.Default<br/>11"]
-    c31["DependencyManagerScopedProv…+Context.DependencyManagerSc…<br/>10"]
-    c32["Divider.IsZero+Divider.Low<br/>8"]
-    c33["ElseList.CopyList+List.CopyList<br/>11"]
-    c34["ExecHelper.Sec+rs.ExecHelper<br/>54"]
-    c35["Fi.Meta+htmltemplate<br/>10"]
-    c36["Format.Name+output<br/>3"]
-    c37["Fs.Create+fs.Fs<br/>4"]
-    c38["Fs.OpenFile+fs.Fs<br/>4"]
-    c39["Internal.Watch+Base.Internal<br/>19"]
-    c40["Lastmod.After+collections.*Namespace.After<br/>35"]
-    c41["Lastmod.After+htime.Now<br/>13"]
-    c42["LoadingInfo.ConfigFiles+configs.LoadingInfo<br/>45"]
-    c43["Matrix.IsZero+Sites.Matrix<br/>28"]
-    c44["Matrix.Languages+Sites.Matrix<br/>40"]
-    c45["MediaType.Type+collections<br/>18"]
-    c46["Meta.InclusionFilter+Meta.Rename<br/>40"]
-    c47["Meta.Rename+filepath.Split<br/>32"]
-    c48["Object.prototype+constructor.name<br/>4"]
-    c49["PartialDecoratorIDStack.Get+Context.PartialDecoratorIDS…<br/>18"]
-    c50["PathInfo.Path+fmt.Errorf<br/>11"]
-    c51["PathInfo.Path+metrics<br/>4"]
-    c52["PathSpec.BaseFs+Content.Fs<br/>16"]
-    c53["PathSpec.ProcessingStats+s.PathSpec<br/>11"]
-    c54["Proc.Cfg+Proc.Codec<br/>81"]
-    c55["ResourceSpec.FileCaches+c.isExpired<br/>242"]
-    c56["ShouldListLocal.And+pagePredicates.KindPage<br/>33"]
-    c57["ShouldListLocal.And+pagePredicates.KindPage+pageMap.getPagesInSection<br/>53"]
-    c58["ShouldListLocal.And+pagePredicates.KindPage+pageMap.getPagesInSection~2<br/>5"]
-    c59["ShouldListLocal.And+pagePredicates.KindPage+pagePredicates.ShouldListLo…<br/>15"]
-    c60["Sites.Matrix+Matrix.IsZero<br/>25"]
-    c61["Source.MkdirAll+s.C<br/>40"]
-    c62["Source.MkdirAll+s.atomicSavedFiles<br/>27"]
-    c63["Source.MkdirAll+s.writeSource<br/>8"]
-    c64["Symbol.toPrimitive+prim.call<br/>7"]
-    c65["TemplateStore.TextParse+fmt.Errorf<br/>23"]
-    c66["WalkContext.AddEventListener+WalkContext.SendEvent<br/>14"]
-    c67["WalkContext.AddEventListener+WalkContext.SendEvent+doctree.Event<br/>7"]
-    c68["WrapperEnd.Low+WrapperStart.High<br/>14"]
-    c69["a.m+cnh.GetIdentity<br/>80"]
-    c70["a.m+h.SourceSpec<br/>31"]
-    c71["a.m+h.SourceSpec+a.h<br/>32"]
-    c72["afero.Exists+module<br/>16"]
-    c73["afero.Walk+info.IsDir<br/>47"]
-    c74["allconfig.ConfigLanguage.De…+i18n<br/>10"]
-    c75["anim.GetFrames+h.img<br/>39"]
-    c76["arguments.length+_add-to-unscopables<br/>42"]
-    c77["ast.Heading+n.Kind<br/>46"]
-    c78["ast.WalkSkipChildren+w.Write<br/>16"]
-    c79["attr.Value+attr.Name<br/>18"]
-    c80["b.Grow+b.WriteString<br/>58"]
-    c81["b.Grow+b.WriteString+utf8.DecodeRuneInString<br/>59"]
-    c82["b.Pos+b.tr<br/>5"]
-    c83["b.SourceFilesystems+hugofs.NoOpFs<br/>25"]
-    c84["b.String+bp.GetBuffer<br/>22"]
-    c85["b.WriteString+b.String<br/>32"]
-    c86["b.cf+Log.Printf<br/>9"]
-    c87["b.cf+b.sourceFs<br/>5"]
-    c88["b.configOptions+b.dependencyManager<br/>73"]
-    c89["b.writeHeadings+s.WriteString<br/>4"]
-    c90["best.w+best.templ<br/>25"]
-    c91["bluemonday+passthrough<br/>5"]
-    c92["buf.WriteString+buf.Bytes<br/>14"]
-    c93["buff.Reset+buff.WriteRune<br/>9"]
-    c94["bytes.Contains+text<br/>27"]
-    c95["bytes.Equal+bytes<br/>27"]
-    c96["bytes.Index+afero.WriteFile<br/>34"]
-    c97["bytes.IndexAny+state.String<br/>13"]
-    c98["bytes.ToLower+utf8<br/>7"]
-    c99["bytes.TrimSpace+unicode<br/>10"]
-    c100["c.Get+cast<br/>6"]
-    c101["c.Pos+c.tr<br/>7"]
-    c102["c.ToTOML+security.Config.ToTOML<br/>14"]
-    c103["c.collect+coll.err<br/>11"]
-    c104["c.commands+parser<br/>9"]
-    c105["c.contentRendered+c.mustContentPlain<br/>12"]
-    c106["c.contentRendered+c.prepareContext<br/>5"]
-    c107["c.disableLiveReload+c.tlsAuto<br/>39"]
-    c108["c.g+c.h<br/>6"]
-    c109["c.getNestedKeyAndMap+c.root<br/>36"]
-    c110["c.hasBeenInitialized+call.done<br/>209"]
-    c111["c.jsCtx+c.jsBraceDepth<br/>15"]
-    c112["c.match+predicate.IndexString<br/>6"]
-    c113["c.mustContentPlain+c.prepareContext<br/>4"]
-    c114["c.partitions+lazycache<br/>25"]
-    c115["c.pi+c.pco<br/>105"]
-    c116["c.rootCmd+Root.Command<br/>17"]
-    c117["c.serverPorts+c.serverInterface<br/>81"]
-    c118["cast.ToFloat32+cast.ToInt<br/>18"]
-    c119["cast.ToFloat32+images.newFilterOpts<br/>10"]
-    c120["cast.ToFloat64+cast.ToInt<br/>40"]
-    c121["cast.ToFloat64E+cast.ToIntE<br/>17"]
-    c122["cast.ToStringSlice+strings.ToLower<br/>119"]
-    c123["cfg.ConfiguredRoles+cfg.ConfiguredVersions<br/>9"]
-    c124["cfg.ConfiguredRoles+cfg.ConfiguredVersions+other.languages<br/>13"]
-    c125["cfg.Deps+ExecHelper.New<br/>4"]
-    c126["cfg.Fs+filepath.Join<br/>15"]
-    c127["cfg.GetStringMap+cfg.IsSet<br/>17"]
-    c128["cfg.MarkupConfig+fmt.Errorf<br/>45"]
-    c129["cfg.taxonomyTermDisabled+viewName.plural<br/>7"]
-    c130["cfg.taxonomyTermDisabled+viewName.plural+viewName.pluralTreeKey<br/>22"]
-    c131["cmd.PersistentFlags+cmd.MarkFlagDirname<br/>32"]
-    c132["cmd.PersistentFlags+cobra.FixedCompletions<br/>33"]
-    c133["cmd.RunE+cmd.Long<br/>24"]
-    c134["cmd.RunE+cmd.Long+cmd.Short<br/>15"]
-    c135["cmp+quicktest<br/>14"]
-    c136["conf.Name+idx.index<br/>21"]
-    c137["conf.OutputFormats+init.taxonomies<br/>73"]
-    c138["config.C+c.config<br/>21"]
-    c139["configs.IsMultihost+configs.Languages<br/>31"]
-    c140["console.log+this.console<br/>94"]
-    c141["console.log+this.console+this.options<br/>58"]
-    c142["content.pi+pi.contentSource<br/>43"]
-    c143["converter.ProviderConfig.Ma…+blockquotes<br/>9"]
-    c144["create+skeletons<br/>3"]
-    c145["ctx.pids+ctx.values<br/>29"]
-    c146["d.Date+d.Lastmod<br/>5"]
-    c147["d.ExpiryDate+d.PublishDate<br/>6"]
-    c148["d.Fs+lockedfile<br/>52"]
-    c149["d.IsDir+fs.WalkDir<br/>6"]
-    c150["d.Name+fs<br/>104"]
-    c151["d.Name+overlayfs<br/>70"]
-    c152["d.PageConfigEarly+d.PageConfigLate<br/>10"]
-    c153["d.Site+d.Conf<br/>25"]
-    c154["d.d+goat<br/>4"]
-    c155["d.debugl+debugl.Log<br/>13"]
-    c156["d.warnl+imagemeta.EXIF<br/>16"]
-    c157["deps.PathSpec+ns.deps<br/>5"]
-    c158["depsFinder.Contains+identity.FinderConfig<br/>53"]
-    c159["doc+docshelper<br/>4"]
-    c160["docshelper.AddDocProviderFu…+docshelper.DocProvider<br/>5"]
-    c161["doctree.LockTypeRead+m.treePages<br/>50"]
-    c162["doctree.LockTypeRead+m.treePages+doctree.NodeShiftTreeWalker<br/>78"]
-    c163["doctree.NodeShiftTreeWalker+w.Walk<br/>54"]
-    c164["doctree.WalkContext+cnh.isBranchNode<br/>40"]
-    c165["draw.Over+image.NewRGBA<br/>16"]
-    c166["e.called+e.derived<br/>11"]
-    c167["errState.setBuildErr+errState.wasErr<br/>31"]
-    c168["errorl.Logf+l.errorl<br/>4"]
-    c169["errors.Unwrap+v2<br/>7"]
-    c170["exec.LookPath+bufio<br/>13"]
-    c171["f.MediaType+MediaType.FirstSuffix<br/>11"]
-    c172["f.fs+f.name<br/>26"]
-    c173["f.name+f.fs<br/>10"]
-    c174["fe.UpdatePosition+herrors.UnwrapFileError<br/>5"]
-    c175["fe.UpdatePosition+herrors.UnwrapFileError+fe.Position<br/>6"]
-    c176["fe.position+errors.Unwrap<br/>22"]
-    c177["fi.fim+fi.p<br/>16"]
-    c178["fi.fim+fim.IsDir<br/>33"]
-    c179["fi.fim+fim.Meta<br/>4"]
-    c180["fi.p+source.*File.p<br/>7"]
-    c181["filepath.Abs+hugofs.Os<br/>41"]
-    c182["filepath.Ext+strings.TrimPrefix<br/>26"]
-    c183["filepath.SkipDir+info.IsDir<br/>4"]
-    c184["files.ComponentFolderData+files.ComponentFolderAssets<br/>27"]
-    c185["fim.IsDir+fim.Meta<br/>4"]
-    c186["fim.IsDir+meta.Filename<br/>35"]
-    c187["fmt.Fprint+fmt.Fprintf<br/>38"]
-    c188["fmt.Printf+runtime<br/>14"]
-    c189["fmt.Println+filepath.Join<br/>8"]
-    c190["fmt.Sprint+template.indirectToStringer…<br/>11"]
-    c191["fmt.Sprintf+hugo.deprecationLogLevelFro…<br/>16"]
-    c192["fn.Call+mt.Type<br/>7"]
-    c193["fn.IsValid+htmltemplate.Must<br/>205"]
-    c194["fs.PublishDirStatic+fs.PublishDir<br/>12"]
-    c195["fs.WorkingDirReadOnly+s.fs<br/>7"]
-    c196["fs.rootMapToReal+radix.WalkFn<br/>7"]
-    c197["fs.trackAndWrapFile+Fs.Open<br/>24"]
-    c198["fsnotify.Chmod+fsnotify.Rename<br/>30"]
-    c199["fsnotify.Chmod+fsnotify.Write<br/>11"]
-    c200["fw.Close+helpers.OpenFilesForWriting<br/>129"]
-    c201["fw.Close+helpers.OpenFilesForWriting+BaseFs.PublishFs<br/>25"]
-    c202["gift.OverOperator+image.NewRGBA<br/>14"]
-    c203["glob.Compile+glob<br/>8"]
-    c204["glob.Glob+hglob.GetGlob<br/>17"]
-    c205["gohtml.EscapeString+h.cfg<br/>23"]
-    c206["gohtml.EscapeString+html.EscapeString<br/>21"]
-    c207["h.Fs+Fs.Source<br/>21"]
-    c208["h.PathSpec+PathSpec.BaseFs<br/>87"]
-    c209["h.PathSpec+PathSpec.BaseFs+BaseFs.Content<br/>5"]
-    c210["h.SourceSpec+SourceSpec.IgnoreFile<br/>7"]
-    c211["h.allSites+Conf.Watching<br/>35"]
-    c212["h.img+h.Assert<br/>12"]
-    c213["h.img+h.Assert+qt.IsTrue<br/>5"]
-    c214["h.numWorkers+g.Enqueue<br/>9"]
-    c215["h.sitesVersionsRoles+doctree.NodeShiftTreeWalker<br/>28"]
-    c216["hashing.HashString+hashing<br/>23"]
-    c217["hashing.HashUint64+hashing<br/>10"]
-    c218["helpers.Exists+filepath.Join<br/>30"]
-    c219["helpers.FilePathSeparator+filepath.Join<br/>20"]
-    c220["helpers.WriteToDisk+filepath.Base<br/>21"]
-    c221["herrors.NewFileErrorFromFile+fe.Position<br/>8"]
-    c222["herrors.NewFileErrorFromFile+pos.Filename<br/>2"]
-    c223["herrors.NewFileErrorFromName+meta.Filename<br/>13"]
-    c224["hex.EncodeToString+cast.ToStringE<br/>8"]
-    c225["hexec.InPath+fmt.Errorf<br/>7"]
-    c226["hmaps.Params.GetMergeStrate…+cast<br/>9"]
-    c227["hooks.LinkRenderer+html.IsDangerousURL<br/>30"]
-    c228["hooks.LinkRenderer+lr.RenderLink<br/>25"]
-    c229["hooks.LinkRenderer+lr.RenderLink+Buffer.Len<br/>17"]
-    c230["hpaths.AbsPathify+paths.AbsPathify<br/>30"]
-    c231["hr.templ+hr.templateHandler<br/>5"]
-    c232["hreflect.IsMap+css<br/>4"]
-    c233["hreflect.ToFloat64E+hreflect.ToStringE<br/>23"]
-    c234["hstrings.GetOrCompileRegexp+cast.ToIntE<br/>32"]
-    c235["hstrings.GetOrCompileRegexp+cast.ToIntE+hreflect.Indirect<br/>65"]
-    c236["hstrings.UniqueStringsReuse+hstrings<br/>9"]
-    c237["htesting.SupportsAll+internal<br/>8"]
-    c238["html.ElementNode+html.Node<br/>9"]
-    c239["html.IsDangerousURL+html.RenderAttributes<br/>8"]
-    c240["html.IsDangerousURL+util.URLEscape<br/>8"]
-    c241["html.RenderAttributes+attributes.AttributesOwnerG…<br/>20"]
-    c242["htmlFormat.MediaType+s.htmlFormat<br/>50"]
-    c243["htmltemplate.Template+texttemplate.Template<br/>8"]
-    c244["http+io<br/>84"]
-    c245["hugio.CopyDir+hugofs.Os<br/>15"]
-    c246["hugio.NewReadSeekerNoOpClos…+hugio.ReadSeekCloser<br/>14"]
-    c247["hugo.CurrentVersion+v.String<br/>91"]
-    c248["hugoSites.GetOrCreate+hugolib.NewHugoSites<br/>14"]
-    c249["hugoSites.GetOrCreate+hugolib.NewHugoSites+r.newDepsConfig<br/>33"]
-    c250["hugofs.NewFrom+afero.NewMemMapFs<br/>44"]
-    c251["i.ReadSeekCloser+i.Format<br/>72"]
-    c252["i.Type+util<br/>11"]
-    c253["i.WithSpec+i.baseResource<br/>8"]
-    c254["i.getResourcePaths+i.hash<br/>66"]
-    c255["i.opts+opts.Conf<br/>6"]
-    c256["i.processActionSpec+resources.*imageResource.pr…<br/>4"]
-    c257["ic.Quality+c.Compression<br/>5"]
-    c258["id.High+id.Low<br/>23"]
-    c259["identity.Anonymous+resources.ResourceSourceDes…<br/>10"]
-    c260["identity.GenghisKhan+pageTrees.treePagesFromTemp…<br/>31"]
-    c261["identity.IdentityProvider+reflect<br/>6"]
-    c262["idm.AddIdentity+identity.WalkIdentitiesShal…<br/>13"]
-    c263["ids.vals+blackfriday<br/>8"]
-    c264["image.Config+draw<br/>30"]
-    c265["image.NewNRGBA+src.Bounds<br/>12"]
-    c266["image.NewPaletted+src.Bounds<br/>35"]
-    c267["images.hexStringToColorGo+gift<br/>16"]
-    c268["init.Value+lcp.init<br/>15"]
-    c269["init.data+init.gitInfo<br/>162"]
-    c270["init.taxonomies+menus.Value<br/>21"]
-    c271["iofs.DirEntry+iofs.ReadDirFile<br/>14"]
-    c272["iofs.DirEntry+meta.Open<br/>18"]
-    c273["item.Kind+item.Len<br/>13"]
-    c274["iter.Next+parse.NumberNode<br/>15"]
-    c275["iter.Next+reflect.New<br/>33"]
-    c276["json.MarshalIndent+json.NewDecoder<br/>50"]
-    c277["kinds.KindPage+kinds.KindSection<br/>54"]
-    c278["l.LanguageConfig+l.Logger<br/>20"]
-    c279["l.backup+l.next<br/>14"]
-    c280["l.cfg+cfg.Get<br/>21"]
-    c281["l.closingState+l.currShortcodeName<br/>25"]
-    c282["l.content+bytes.HasPrefix<br/>27"]
-    c283["l.currShortcodeName+l.elementStepNum<br/>10"]
-    c284["l.current+l.isInline<br/>21"]
-    c285["l.currentRightShortcodeDelim+l.ignore<br/>17"]
-    c286["l.emitItem+l.thisItem<br/>4"]
-    c287["l.rightDelim+l.input<br/>9"]
-    c288["l.sd+mime<br/>10"]
-    c289["l.spec+mime<br/>46"]
-    c290["l.startLine+l.line<br/>20"]
-    c291["l.startLine+l.width<br/>36"]
-    c292["l.urlize+p.Slug<br/>4"]
-    c293["l.w+l.append<br/>24"]
-    c294["l.w+l.content<br/>6"]
-    c295["l.w+l.content+l.start<br/>19"]
-    c296["l.warnl+warnl.Logf<br/>37"]
-    c297["l.width+utf8.DecodeRune<br/>20"]
-    c298["langs.Languages+l.Lang<br/>25"]
-    c299["langs.Languages+l.Lang+fmt.Errorf<br/>27"]
-    c300["language.Lang+publisher<br/>85"]
-    c301["lf.matcher+gzip<br/>7"]
-    c302["logg.Field+logg.Fields<br/>15"]
-    c303["logg.LevelDebug+fmt.Errorf<br/>20"]
-    c304["loggers.Log+htime<br/>5"]
-    c305["loggers.TimeTrackf+l.WithField<br/>78"]
-    c306["ls.Sorted+predicate<br/>9"]
-    c307["lv.Index+lv.Kind<br/>24"]
-    c308["lv.Index+lv.Kind+lv.Len<br/>41"]
-    c309["lv.Index+lv.Kind+lv.Len~2<br/>5"]
-    c310["m.Kind+kinds.KindSection<br/>20"]
-    c311["m.Owner+m.Version<br/>38"]
-    c312["m.Owner+m.gomod<br/>19"]
-    c313["m.Renderer+renderer.WithNodeRenderers<br/>7"]
-    c314["m.Version+m.Owner<br/>99"]
-    c315["m.f+f.FileInfo<br/>35"]
-    c316["m.keys+m.values<br/>16"]
-    c317["m.names+hashstructure<br/>6"]
-    c318["m.term+pageMap.cfg<br/>2"]
-    c319["m.treeResources+m.treePages<br/>1"]
-    c320["m.treeTaxonomyEntries+doctree.LockTypeNone<br/>38"]
-    c321["main.buildFlags+main.flagEnv<br/>22"]
-    c322["main.testGoFlags+main.runCmd<br/>8"]
-    c323["maps.Clone+maps<br/>11"]
-    c324["maps.Copy+maps<br/>33"]
-    c325["math.Floor+lazycache<br/>9"]
-    c326["media.Types+allconfig.ConfigLanguage.Ge…<br/>10"]
-    c327["memory+strconv<br/>5"]
-    c328["meta.Filename+fim.Meta<br/>15"]
-    c329["meta.Name+Meta.InclusionFilter<br/>33"]
-    c330["meta.PathInfo+pi.Base<br/>25"]
-    c331["metadecoders.FormatFromStri…+parser<br/>6"]
-    c332["mnt.init+typ.In<br/>258"]
-    c333["mt.Type+hreflect.IsContextType<br/>8"]
-    c334["muTmpl.RLock+muTmpl.RUnlock<br/>8"]
-    c335["n.Args+t.ParseInfo<br/>13"]
-    c336["n.compareGet+n.checkComparisonArgCount<br/>5"]
-    c337["n.forEeachContentNode+sitesmatrix.Vector<br/>7"]
-    c338["ns.castPrecisionNumber+ns.translator<br/>10"]
-    c339["ns.createClient+cast.ToStringE<br/>8"]
-    c340["o.h+create<br/>18"]
-    c341["of.MediaType+goldmark_config<br/>56"]
-    c342["openapi3+resources<br/>43"]
-    c343["options.compression+options.hint<br/>6"]
-    c344["os.ErrNotExist+fs<br/>6"]
-    c345["os.ErrNotExist+overlayfs<br/>26"]
-    c346["os.Getenv+t.Helper<br/>20"]
-    c347["other.ForEachVector+s.HasVector<br/>12"]
-    c348["output.Formats+f.Name<br/>79"]
-    c349["overlayfs.OverlayFs+b.p<br/>19"]
-    c350["overlayfs.OverlayFs+b.p+b.theBigFs<br/>28"]
-    c351["p.Base+files<br/>7"]
-    c352["p.Base+p.Path<br/>18"]
-    c353["p.Base+pt.p<br/>29"]
-    c354["p.Ctx+p.Page<br/>7"]
-    c355["p.CurrentSection+hstrings<br/>8"]
-    c356["p.Draft+p.ExpiryDate<br/>9"]
-    c357["p.Draft+p.Weight<br/>39"]
-    c358["p.GetLanguagePrefix+paths.*Paths.GetLanguagePre…<br/>4"]
-    c359["p.IsBundle+files.ComponentFolderLayouts<br/>18"]
-    c360["p.IsBundle+paths.*Path.IsBundle<br/>3"]
-    c361["p.Kind+p.Path<br/>12"]
-    c362["p.Layout+p.Type<br/>11"]
-    c363["p.Layout+p.Type+p.Section<br/>3"]
-    c364["p.PageNumber+page.*Pager.PageNumber<br/>5"]
-    c365["p.Pairs+compare<br/>4"]
-    c366["p.Path+hugofs.FileMetaInfo<br/>84"]
-    c367["p.Path+hugofs.FileMetaInfo+strings.HasPrefix<br/>4"]
-    c368["p.PathInfo+pathInfo.Unnormalized<br/>32"]
-    c369["p.PathInfo+pathInfo.Unnormalized+kinds.KindTaxonomy<br/>31"]
-    c370["p.SitesComplements+p.SitesMatrix<br/>4"]
-    c371["p.buildState+p.p<br/>20"]
-    c372["p.component+files<br/>12"]
-    c373["p.els+urls<br/>5"]
-    c374["p.groupByDateField+time.Time<br/>4"]
-    c375["p.identifierAsString+paths.*Path.identifierAsStr…<br/>6"]
-    c376["p.norm+p.posContainerHigh<br/>8"]
-    c377["p.outputFormat+s.Conf<br/>8"]
-    c378["p.pagers+math<br/>5"]
-    c379["p.paginatedElements+math<br/>5"]
-    c380["p.posIdentifierBaseof+p.posNameHigh<br/>11"]
-    c381["p.posIdentifierBaseof+p.posNameHigh+p.posIdentifierLayout<br/>21"]
-    c382["p.posIdentifierOutputFormat+p.posIdentifierLanguage<br/>10"]
-    c383["p.trace+p.zero<br/>17"]
-    c384["p.trace+trace.Log<br/>4"]
-    c385["pageConfig.Dates+m.pageConfig<br/>12"]
-    c386["pageConfigSource.Content+Content.Markup<br/>53"]
-    c387["pageConfigSource.Content+b.Bytes<br/>64"]
-    c388["pageConfigSource.Content+p.wrapError<br/>120"]
-    c389["pageOutput.pco+ps.pageOutput<br/>144"]
-    c390["parse.BreakNode+parse.ContinueNode<br/>9"]
-    c391["parse.ChainNode+parse.IdentifierNode<br/>20"]
-    c392["parse.DotNode+parse.NilNode<br/>34"]
-    c393["parse.StringNode+parse.PipeNode<br/>38"]
-    c394["parse.TextNode+parse.TemplateNode<br/>8"]
-    c395["parse.WithNode+parse.IfNode<br/>10"]
-    c396["parser.InterfaceToConfig+bytes.Buffer<br/>5"]
-    c397["parser.InterfaceToConfig+metadecoders.TOML<br/>13"]
-    c398["parson.json_array_append_va…+parson.json_value_free<br/>4"]
-    c399["parson.json_array_replace_v…+parson.json_value_free<br/>4"]
-    c400["parson.json_object_dotset_v…+parson.json_value_free<br/>4"]
-    c401["parson.json_object_set_value+parson.json_value_free<br/>5"]
-    c402["passthrough+attributes<br/>9"]
-    c403["passthrough.KindPassthrough…+ast.WalkContinue<br/>21"]
-    c404["path.Split+path.Join<br/>34"]
-    c405["pathInfo.Base+pi.Base<br/>37"]
-    c406["pathInfo.IsBranchBundle+strings.HasPrefix<br/>6"]
-    c407["pathInfo.Unnormalized+kinds.KindTerm<br/>44"]
-    c408["pathInfo.Unnormalized+p.PathInfo<br/>36"]
-    c409["paths.FileAndExtNoDelimiter+pos.Filename<br/>10"]
-    c410["paths.NormalizePathStringBa…+files<br/>5"]
-    c411["paths.PathEscape+path.Join<br/>33"]
-    c412["paths.TargetPath+l.paths<br/>7"]
-    c413["paths.ToSlashPreserveLeading+hsync<br/>10"]
-    c414["paths.ToSlashTrimLeading+opts.TargetPath<br/>27"]
-    c415["paths.fileAndExt+unicode<br/>4"]
-    c416["pco.c+hugolib.*pageContentOutput.c<br/>7"]
-    c417["pco.fail+hugolib.*pageContentOutput.…<br/>4"]
-    c418["pco.mustRender+hugolib.*pageContentOutput.…<br/>7"]
-    c419["pflag+log<br/>4"]
-    c420["pi.Ext+fi.Meta<br/>47"]
-    c421["pi.itemsStep2+fmt.Errorf<br/>27"]
-    c422["po.f+pco.po<br/>36"]
-    c423["po.f+po.p<br/>9"]
-    c424["pos.ColumnNumber+fe.UpdatePosition<br/>13"]
-    c425["pos.LineNumber+herrors.*fileError.UpdatePo…<br/>4"]
-    c426["ps.File+ps.Path<br/>19"]
-    c427["q.Path+rungroup<br/>11"]
-    c428["qt.Contains+qt.Not<br/>9"]
-    c429["qt.Equals+qt.Commentf<br/>7"]
-    c430["r.Cfg+Cfg.GetConfigSection<br/>47"]
-    c431["r.Hugo+r.ConfigFromProvider<br/>38"]
-    c432["r.Sorted+version<br/>19"]
-    c433["r.StdOut+hugolib<br/>11"]
-    c434["r.cfgDir+r.cfgFile<br/>39"]
-    c435["r.field+postpub.*PostPublishResourc…<br/>7"]
-    c436["r.getImageOps+resources.*resourceAdapter.…<br/>10"]
-    c437["r.metaProvider+r.init<br/>14"]
-    c438["r.r+pagesfromdata<br/>6"]
-    c439["r.shift+r.shifter<br/>16"]
-    c440["reflect.Invalid+reflect.Uintptr<br/>18"]
-    c441["reg.Register+attributes<br/>4"]
-    c442["replacer.Replace+strings.NewReplacer<br/>4"]
-    c443["resource.MarkStale+sitesmatrix<br/>6"]
-    c444["resource.StaleVersion+p.c<br/>20"]
-    c445["resources.InternalResourceS…+identity.FirstIdentity<br/>11"]
-    c446["resources.InternalResourceT…+identity.FirstIdentity<br/>31"]
-    c447["result.setVector+s.ForEachVector<br/>35"]
-    c448["runes+transform<br/>4"]
-    c449["s.C+s.H<br/>48"]
-    c450["s.CheckReady+i18n<br/>48"]
-    c451["s.Fatalf+s.Helper<br/>5"]
-    c452["s.TemplateStore+context.Background<br/>35"]
-    c453["s.build+s.Cfg<br/>43"]
-    c454["s.cfg+s.s<br/>6"]
-    c455["s.inPath+strings.Index<br/>49"]
-    c456["s.inPath+treePages.LongestPrefix<br/>35"]
-    c457["s.insertTemplate+opts.PathParser<br/>115"]
-    c458["s.lastBuildLog+s.Helper<br/>14"]
-    c459["s.s+s.Language<br/>58"]
-    c460["s.sets+hashstructure<br/>21"]
-    c461["s.vars+fmtsort<br/>9"]
-    c462["sb.WriteByte+sb.WriteString<br/>5"]
-    c463["scp.Page+pageparser<br/>4"]
-    c464["seqv.Index+seqv.Kind<br/>19"]
-    c465["sh.Run+page_generate<br/>19"]
-    c466["sid.dp+sid.eqer<br/>5"]
-    c467["siteVector.Language+s.siteVector<br/>32"]
-    c468["sitesmatrix.IntSetsConfig+sitesmatrix.NewIntSetsBuild…<br/>16"]
-    c469["sitesmatrix.VectorStore+files<br/>9"]
-    c470["slices.Contains+fmt.Sprintf<br/>63"]
-    c471["slices.Delete+slices<br/>4"]
-    c472["slices.Equal+slices<br/>4"]
-    c473["smartcrop+gift<br/>5"]
-    c474["sort.Slice+fmt.Errorf<br/>33"]
-    c475["sort.Sort+reflect<br/>16"]
-    c476["sort.Stable+compare<br/>5"]
-    c477["sort.Strings+c.mu<br/>26"]
-    c478["source.*File.p+glob<br/>9"]
-    c479["source.NewFileInfo+source<br/>3"]
-    c480["spc.get+compare<br/>12"]
-    c481["spec.Cfg+Cfg.BaseURL<br/>14"]
-    c482["srcBounds.Dx+srcBounds.Dy<br/>6"]
-    c483["state.String+c.state<br/>11"]
-    c484["strconv.Atoi+strings.TrimSpace<br/>26"]
-    c485["strconv.FormatUint+tpl<br/>8"]
-    c486["strconv.Itoa+strconv<br/>12"]
-    c487["strings.ContainsAny+unicode<br/>6"]
-    c488["strings.Cut+cut<br/>8"]
-    c489["strings.CutPrefix+fmt.Errorf<br/>12"]
-    c490["strings.EqualFold+strings.Contains<br/>25"]
-    c491["strings.LastIndex+runtime<br/>11"]
-    c492["strings.NewReader+regexp<br/>8"]
-    c493["strings.Repeat+fmt.Sprintf<br/>11"]
-    c494["strings.ReplaceAll+hugofs.FileMetaInfo<br/>50"]
-    c495["strings.SplitSeq+strings.TrimSpace<br/>20"]
-    c496["strings.Trim+strings.Join<br/>59"]
-    c497["syscall.EPERM+syscall<br/>8"]
-    c498["t.Mode+t.treeSet<br/>6"]
-    c499["t.Mode+t.treeSet+t.funcs<br/>7"]
-    c500["t.ParseName+t.Root<br/>8"]
-    c501["t.Skip+t.Helper<br/>2"]
-    c502["t.Skipf+runtime.GOARCH<br/>12"]
-    c503["t.Tree+t.Name<br/>19"]
-    c504["t.items+t.lastPos<br/>5"]
-    c505["t.leftDelim+t.rightDelim<br/>12"]
-    c506["t.name+parse<br/>9"]
-    c507["t.peek+t.next<br/>16"]
-    c508["t.peekCount+t.token<br/>5"]
-    c509["t.pipeline+t.backup<br/>14"]
-    c510["t.pipeline+t.peekNonSpace<br/>23"]
-    c511["t.rangeDepth+t.pipeline<br/>20"]
-    c512["t.translateFuncs+context.Context<br/>16"]
-    c513["t.translateFuncs+i18n<br/>9"]
-    c514["t.tree+iter<br/>8"]
-    c515["t.treeResources+t.treePages<br/>7"]
-    c516["t.treeSet+t.Mode<br/>12"]
-    c517["t.unexpected+token.typ<br/>6"]
-    c518["t.vars+t.errorf<br/>8"]
-    c519["templ.Name+goldmark_config<br/>18"]
-    c520["template.errorf+html<br/>32"]
-    c521["testing.Short+t.Skip<br/>28"]
-    c522["testing.Short+t.Skip+t.Skipf<br/>26"]
-    c523["testing.Short+t.Skip+t.Skipf~2<br/>48"]
-    c524["text.Position+text<br/>92"]
-    c525["this._connectionDesired+this._reconnectTimer<br/>12"]
-    c526["this._handshakeTimeout+this._disconnectionReason<br/>10"]
-    c527["this.connector+this.initialized<br/>14"]
-    c528["this.handlers+this._disconnectionReason<br/>15"]
-    c529["this.options+livereload.start<br/>72"]
-    c530["this.window+livereload.generateCacheBus…<br/>67"]
-    c531["ti.D+tpl.Template<br/>13"]
-    c532["ti.Template+metrics<br/>30"]
-    c533["ti.noBaseOf+ti.subCategory<br/>12"]
-    c534["time.Duration+fmt.Errorf<br/>10"]
-    c535["time.RFC3339+p.File<br/>26"]
-    c536["time.Since+time.Second<br/>17"]
-    c537["treePages.LongestPrefix+pt.p<br/>7"]
-    c538["treePages.LongestPrefix+pt.p+cnh.isBranchNode<br/>8"]
-    c539["treePages.LongestPrefix+s.home<br/>29"]
-    c540["tt.tree+t.Trees<br/>4"]
-    c541["types.IsNil+compare<br/>9"]
-    c542["types.LowHigh+strings.Index<br/>59"]
-    c543["types.ToStringSlicePreserve…+cmp<br/>14"]
-    c544["unicode.IsDigit+unicode.IsLetter<br/>5"]
-    c545["unicode.IsSpace+unicode<br/>20"]
-    c546["v.Index+v.Len<br/>7"]
-    c547["v.Major+v.Minor<br/>16"]
-    c548["v.Role+v.Version<br/>9"]
-    c549["v2+transform<br/>5"]
-    c550["vv.category+dh.compareDescriptors<br/>15"]
-    c551["vv.noBaseOf+s.treeShortcodes<br/>84"]
-    c552["w.w2+w.w3<br/>10"]
-    c553["websocket+net<br/>7"]
-    c554["weight.distance+best.isBetter<br/>5"]
+    c8["Body.Close+api.OnLoadArgs<br/>152"]
+    c9["C.BaseURL+conf.C<br/>233"]
+    c10["Config.Sorted+c.C<br/>203"]
+    c11["Config.Sorted+c.C+c.Languages<br/>108"]
+    c12["Converters.GetHighlighter+c.applyTransformations<br/>207"]
+    c13["ResourceSpec.FileCaches+c.isExpired<br/>242"]
+    c14["c.getNestedKeyAndMap+c.root<br/>36"]
+    c15["c.hasBeenInitialized+call.done<br/>209"]
+    c16["fn.IsValid+htmltemplate.Must<br/>205"]
+    c17["fw.Close+helpers.OpenFilesForWriting<br/>129"]
+    c18["h.allSites+Conf.Watching<br/>35"]
+    c19["http+io<br/>84"]
+    c20["init.data+init.gitInfo<br/>162"]
+    c21["m.Version+m.Owner<br/>99"]
+    c22["mnt.init+typ.In<br/>258"]
+    c23["pageOutput.pco+ps.pageOutput<br/>144"]
     c0 --> c1
     c1 --> c2
     c1 --> c3
@@ -618,554 +142,25 @@ flowchart LR
     c0 --> c5
     c5 --> c6
     c0 --> c7
-    c3 --> c8
+    c1 --> c8
     c1 --> c9
-    c1 --> c10
-    c4 --> c11
-    c7 --> c12
-    c7 --> c13
-    c7 --> c14
-    c1 --> c15
+    c3 --> c10
+    c3 --> c11
+    c4 --> c12
+    c3 --> c13
+    c5 --> c14
+    c5 --> c15
     c4 --> c16
-    c7 --> c17
-    c1 --> c18
-    c7 --> c19
+    c1 --> c17
+    c5 --> c18
+    c2 --> c19
     c7 --> c20
-    c3 --> c21
-    c3 --> c22
-    c1 --> c23
-    c7 --> c24
-    c3 --> c25
-    c7 --> c26
-    c4 --> c27
-    c1 --> c28
-    c1 --> c29
-    c1 --> c30
-    c3 --> c31
-    c7 --> c32
-    c1 --> c33
-    c1 --> c34
-    c7 --> c35
-    c7 --> c36
-    c1 --> c37
-    c1 --> c38
-    c3 --> c39
-    c3 --> c40
-    c1 --> c41
-    c1 --> c42
-    c1 --> c43
-    c7 --> c44
-    c7 --> c45
-    c1 --> c46
-    c1 --> c47
-    c4 --> c48
-    c7 --> c49
-    c7 --> c50
-    c1 --> c51
-    c1 --> c52
-    c3 --> c53
-    c3 --> c54
-    c3 --> c55
-    c3 --> c56
-    c3 --> c57
-    c3 --> c58
-    c3 --> c59
-    c1 --> c60
-    c1 --> c61
-    c1 --> c62
-    c1 --> c63
-    c7 --> c64
-    c7 --> c65
-    c7 --> c66
-    c7 --> c67
-    c3 --> c68
-    c7 --> c69
-    c7 --> c70
-    c7 --> c71
-    c7 --> c72
-    c7 --> c73
-    c7 --> c74
-    c4 --> c75
-    c3 --> c76
-    c4 --> c77
-    c4 --> c78
-    c4 --> c79
-    c7 --> c80
-    c7 --> c81
-    c1 --> c82
-    c7 --> c83
-    c7 --> c84
-    c7 --> c85
-    c7 --> c86
-    c7 --> c87
-    c4 --> c88
-    c4 --> c89
-    c7 --> c90
-    c4 --> c91
-    c4 --> c92
-    c5 --> c93
-    c4 --> c94
-    c7 --> c95
-    c4 --> c96
-    c7 --> c97
-    c7 --> c98
-    c7 --> c99
-    c3 --> c100
-    c1 --> c101
-    c4 --> c102
-    c7 --> c103
-    c1 --> c104
-    c7 --> c105
-    c7 --> c106
-    c1 --> c107
-    c1 --> c108
-    c5 --> c109
-    c5 --> c110
-    c7 --> c111
-    c3 --> c112
-    c7 --> c113
-    c3 --> c114
-    c7 --> c115
-    c1 --> c116
-    c1 --> c117
-    c3 --> c118
-    c4 --> c119
-    c7 --> c120
-    c4 --> c121
-    c7 --> c122
-    c7 --> c123
-    c7 --> c124
-    c1 --> c125
-    c1 --> c126
-    c7 --> c127
-    c4 --> c128
-    c3 --> c129
-    c7 --> c130
-    c3 --> c131
-    c3 --> c132
-    c3 --> c133
-    c3 --> c134
-    c4 --> c135
-    c3 --> c136
-    c3 --> c137
-    c1 --> c138
-    c1 --> c139
-    c3 --> c140
-    c3 --> c141
-    c7 --> c142
-    c4 --> c143
-    c1 --> c144
-    c4 --> c145
-    c3 --> c146
-    c1 --> c147
-    c7 --> c148
-    c1 --> c149
-    c1 --> c150
-    c7 --> c151
-    c7 --> c152
-    c3 --> c153
-    c4 --> c154
-    c3 --> c155
-    c7 --> c156
-    c7 --> c157
-    c3 --> c158
-    c1 --> c159
-    c3 --> c160
-    c3 --> c161
-    c7 --> c162
-    c7 --> c163
-    c7 --> c164
-    c4 --> c165
-    c4 --> c166
-    c1 --> c167
-    c1 --> c168
-    c4 --> c169
-    c1 --> c170
-    c7 --> c171
-    c1 --> c172
-    c7 --> c173
-    c7 --> c174
-    c7 --> c175
-    c7 --> c176
-    c7 --> c177
-    c7 --> c178
-    c7 --> c179
-    c7 --> c180
-    c1 --> c181
-    c1 --> c182
-    c7 --> c183
-    c7 --> c184
-    c7 --> c185
-    c7 --> c186
-    c3 --> c187
-    c1 --> c188
-    c1 --> c189
-    c4 --> c190
-    c1 --> c191
-    c4 --> c192
-    c4 --> c193
-    c1 --> c194
-    c1 --> c195
-    c7 --> c196
-    c1 --> c197
-    c1 --> c198
-    c1 --> c199
-    c1 --> c200
-    c1 --> c201
-    c1 --> c202
-    c1 --> c203
-    c7 --> c204
-    c3 --> c205
-    c4 --> c206
-    c1 --> c207
-    c1 --> c208
-    c1 --> c209
-    c7 --> c210
-    c5 --> c211
-    c1 --> c212
-    c1 --> c213
-    c5 --> c214
-    c7 --> c215
-    c1 --> c216
-    c3 --> c217
-    c1 --> c218
-    c1 --> c219
-    c1 --> c220
-    c1 --> c221
-    c7 --> c222
-    c7 --> c223
-    c1 --> c224
-    c4 --> c225
-    c7 --> c226
-    c4 --> c227
-    c4 --> c228
-    c7 --> c229
-    c1 --> c230
-    c1 --> c231
-    c4 --> c232
-    c4 --> c233
-    c4 --> c234
-    c4 --> c235
-    c1 --> c236
-    c7 --> c237
-    c4 --> c238
-    c4 --> c239
-    c4 --> c240
-    c4 --> c241
-    c7 --> c242
-    c4 --> c243
-    c2 --> c244
-    c1 --> c245
-    c1 --> c246
-    c7 --> c247
-    c1 --> c248
-    c1 --> c249
-    c1 --> c250
-    c1 --> c251
-    c7 --> c252
-    c3 --> c253
-    c3 --> c254
-    c1 --> c255
-    c4 --> c256
-    c7 --> c257
-    c7 --> c258
-    c3 --> c259
-    c3 --> c260
-    c1 --> c261
-    c3 --> c262
-    c4 --> c263
-    c1 --> c264
-    c1 --> c265
-    c4 --> c266
-    c7 --> c267
-    c7 --> c268
-    c7 --> c269
-    c7 --> c270
-    c7 --> c271
-    c7 --> c272
-    c4 --> c273
-    c4 --> c274
-    c4 --> c275
-    c4 --> c276
-    c3 --> c277
-    c1 --> c278
-    c4 --> c279
-    c7 --> c280
-    c1 --> c281
-    c7 --> c282
-    c7 --> c283
-    c7 --> c284
-    c7 --> c285
-    c7 --> c286
-    c7 --> c287
-    c1 --> c288
-    c1 --> c289
-    c7 --> c290
-    c7 --> c291
-    c1 --> c292
-    c7 --> c293
-    c1 --> c294
-    c1 --> c295
-    c1 --> c296
-    c7 --> c297
-    c1 --> c298
-    c7 --> c299
-    c1 --> c300
-    c1 --> c301
-    c1 --> c302
-    c1 --> c303
-    c1 --> c304
-    c1 --> c305
-    c4 --> c306
-    c4 --> c307
-    c4 --> c308
-    c4 --> c309
-    c4 --> c310
-    c4 --> c311
-    c4 --> c312
-    c4 --> c313
-    c4 --> c314
-    c7 --> c315
-    c4 --> c316
-    c7 --> c317
-    c7 --> c318
-    c3 --> c319
-    c3 --> c320
-    c1 --> c321
-    c1 --> c322
-    c3 --> c323
-    c7 --> c324
-    c3 --> c325
-    c3 --> c326
-    c3 --> c327
-    c7 --> c328
-    c1 --> c329
-    c7 --> c330
-    c1 --> c331
-    c7 --> c332
-    c4 --> c333
-    c5 --> c334
-    c7 --> c335
-    c4 --> c336
-    c3 --> c337
-    c7 --> c338
-    c4 --> c339
-    c4 --> c340
-    c7 --> c341
-    c3 --> c342
-    c7 --> c343
-    c1 --> c344
-    c1 --> c345
-    c1 --> c346
-    c7 --> c347
-    c1 --> c348
-    c7 --> c349
-    c7 --> c350
-    c1 --> c351
-    c7 --> c352
-    c7 --> c353
-    c7 --> c354
-    c3 --> c355
-    c3 --> c356
-    c7 --> c357
-    c7 --> c358
-    c7 --> c359
-    c1 --> c360
-    c7 --> c361
-    c7 --> c362
-    c4 --> c363
-    c4 --> c364
-    c4 --> c365
-    c7 --> c366
-    c7 --> c367
-    c7 --> c368
-    c3 --> c369
-    c7 --> c370
-    c7 --> c371
-    c7 --> c372
-    c1 --> c373
-    c3 --> c374
-    c7 --> c375
-    c7 --> c376
-    c3 --> c377
-    c4 --> c378
-    c4 --> c379
-    c7 --> c380
-    c7 --> c381
-    c7 --> c382
-    c3 --> c383
-    c3 --> c384
-    c7 --> c385
-    c7 --> c386
-    c7 --> c387
-    c7 --> c388
-    c7 --> c389
-    c4 --> c390
-    c4 --> c391
-    c4 --> c392
-    c4 --> c393
-    c7 --> c394
-    c4 --> c395
-    c4 --> c396
-    c4 --> c397
-    c4 --> c398
-    c4 --> c399
-    c4 --> c400
-    c1 --> c401
-    c4 --> c402
-    c4 --> c403
-    c7 --> c404
-    c7 --> c405
-    c1 --> c406
-    c7 --> c407
-    c3 --> c408
-    c7 --> c409
-    c7 --> c410
-    c7 --> c411
-    c1 --> c412
-    c7 --> c413
-    c7 --> c414
-    c1 --> c415
-    c4 --> c416
-    c4 --> c417
-    c4 --> c418
-    c1 --> c419
-    c7 --> c420
-    c7 --> c421
-    c7 --> c422
-    c7 --> c423
-    c7 --> c424
-    c7 --> c425
-    c7 --> c426
-    c3 --> c427
-    c1 --> c428
-    c1 --> c429
-    c3 --> c430
-    c3 --> c431
-    c1 --> c432
-    c1 --> c433
-    c1 --> c434
-    c4 --> c435
-    c4 --> c436
-    c4 --> c437
-    c3 --> c438
-    c3 --> c439
-    c4 --> c440
-    c4 --> c441
-    c7 --> c442
-    c7 --> c443
-    c3 --> c444
-    c1 --> c445
-    c1 --> c446
-    c3 --> c447
-    c1 --> c448
-    c1 --> c449
-    c1 --> c450
-    c1 --> c451
-    c7 --> c452
-    c1 --> c453
-    c7 --> c454
-    c7 --> c455
-    c7 --> c456
-    c7 --> c457
-    c1 --> c458
-    c3 --> c459
-    c3 --> c460
-    c4 --> c461
-    c1 --> c462
-    c7 --> c463
-    c4 --> c464
-    c1 --> c465
-    c5 --> c466
-    c3 --> c467
-    c7 --> c468
-    c7 --> c469
-    c7 --> c470
-    c7 --> c471
-    c7 --> c472
-    c4 --> c473
-    c1 --> c474
-    c7 --> c475
-    c4 --> c476
-    c7 --> c477
-    c1 --> c478
-    c7 --> c479
-    c3 --> c480
-    c3 --> c481
-    c4 --> c482
-    c1 --> c483
-    c7 --> c484
-    c7 --> c485
-    c7 --> c486
-    c7 --> c487
-    c7 --> c488
-    c7 --> c489
-    c7 --> c490
-    c1 --> c491
-    c1 --> c492
-    c7 --> c493
-    c7 --> c494
-    c7 --> c495
-    c7 --> c496
-    c1 --> c497
-    c1 --> c498
-    c1 --> c499
-    c1 --> c500
-    c1 --> c501
-    c1 --> c502
-    c7 --> c503
-    c1 --> c504
-    c5 --> c505
-    c5 --> c506
-    c4 --> c507
-    c1 --> c508
-    c1 --> c509
-    c7 --> c510
-    c4 --> c511
-    c7 --> c512
-    c4 --> c513
-    c5 --> c514
-    c3 --> c515
-    c7 --> c516
-    c4 --> c517
-    c4 --> c518
-    c7 --> c519
-    c7 --> c520
-    c1 --> c521
-    c1 --> c522
-    c1 --> c523
-    c7 --> c524
-    c5 --> c525
-    c3 --> c526
-    c3 --> c527
-    c3 --> c528
-    c3 --> c529
-    c3 --> c530
-    c4 --> c531
-    c7 --> c532
-    c4 --> c533
-    c3 --> c534
-    c7 --> c535
-    c1 --> c536
-    c3 --> c537
-    c3 --> c538
-    c7 --> c539
-    c5 --> c540
-    c7 --> c541
-    c7 --> c542
-    c7 --> c543
-    c4 --> c544
-    c7 --> c545
-    c4 --> c546
-    c4 --> c547
-    c7 --> c548
-    c1 --> c549
-    c4 --> c550
-    c7 --> c551
-    c7 --> c552
-    c1 --> c553
-    c7 --> c554
+    c4 --> c21
+    c7 --> c22
+    c7 --> c23
 ```
+
+The diagram draws the 3 largest concepts on each branch; **531 further concepts** are left out of the picture and listed in the table below.
 
 **No practice here for** `circuit_breaker`, `db_access`, `grpc_call`, `retry`, `transaction`. Concepts are learned from this corpus, so one can never be absent — it exists because functions carry it. These are the *seeds* the search started from that grew nothing: a direct answer to "does this codebase already do X".
 
@@ -1723,7 +718,7 @@ Convention is how uniformly this corpus realizes a concept: `1.00` means every f
 
 ### Where the duplication is
 
-Merge-worthy pairs folded up to their packages. An edge means two packages keep solving the same problem separately; a count on a node means the repetition is inside one package.
+Merge-worthy pairs are folded up to their packages: only pairs doppel judges worth consolidating are counted. An edge means two packages keep solving the same problem separately; a count on a node means the repetition is inside one package. Weights are **merge-worthy pairs**.
 
 ```mermaid
 flowchart LR
@@ -1758,7 +753,7 @@ flowchart LR
     p16 ---|"5"| p10
 ```
 
-_407 further package pairs are connected by merge-worthy duplication and are not drawn._
+_407 further package pairs are connected by duplication and are not drawn._
 
 ### How settled each package is
 

@@ -9,7 +9,7 @@ HTTP router; a narrow core with a middleware package beside it
 | Corpus | [chi](https://github.com/go-chi/chi) |
 | Pinned at | `v5.3.2` (`38939062c5df4d3e8814aad1a488983112627ced`) |
 | Project since | 2015 |
-| doppel | `c4861da` |
+| doppel | `4214f9d` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -51,7 +51,62 @@ Families: 6 over 16 components, 28 functions in a family, 9 edges completed
 
 ### Concepts
 
-These concepts were **learned from this corpus**, not read off a fixed list: each one is a group of functions that share a way of being written, named after the evidence that identified it. They hang from an authored interior, so two functions under the same *branch* score partial credit rather than nothing. Counts below are members; membership is graded, and a function can carry several.
+Two pictures of the same vocabulary. The first is what doppel **searched with**: an authored tree of fourteen seed practices, each leaf showing how many functions here ended up in a concept that seed grew. It is the same shape on every corpus, which is what makes it the one concept picture two runs can be compared on. The second is what this corpus **turned out to have**: concepts learned from the code itself, named after the evidence that identified them, hung from that same interior — so two functions under one *branch* score partial credit rather than nothing. Counts are members; membership is graded, and a function can carry several.
+
+**What doppel looked for, and how much of it grew here.**
+
+```mermaid
+flowchart LR
+    s0(["concept"])
+    s1(["io_operation"])
+    s2(["remote_io"])
+    s3["http_call<br/>absent"]
+    s4["grpc_call<br/>absent"]
+    s5(["data_store_access"])
+    s6["db_access<br/>absent"]
+    s7["caching<br/>absent"]
+    s8["transaction<br/>absent"]
+    s9["file_io<br/>absent"]
+    s10["logging<br/>absent"]
+    s11(["data_transformation"])
+    s12["mapping<br/>absent"]
+    s13["validation<br/>absent"]
+    s14["serialization<br/>absent"]
+    s15(["control_flow"])
+    s16["concurrency<br/>absent"]
+    s17(["fault_tolerance"])
+    s18["retry<br/>absent"]
+    s19["circuit_breaker<br/>absent"]
+    s20(["error_handling"])
+    s21["error_wrapping<br/>absent"]
+    s0 --> s1
+    s1 --> s2
+    s2 --> s3
+    s2 --> s4
+    s1 --> s5
+    s5 --> s6
+    s5 --> s7
+    s5 --> s8
+    s1 --> s9
+    s1 --> s10
+    s0 --> s11
+    s11 --> s12
+    s11 --> s13
+    s11 --> s14
+    s0 --> s15
+    s15 --> s16
+    s15 --> s17
+    s17 --> s18
+    s17 --> s19
+    s0 --> s20
+    s20 --> s21
+    classDef good fill:#d7ecd9,color:#1b3d20
+    classDef warn fill:#fbeecb,color:#4a3a12
+    classDef hot fill:#f7d6d6,color:#4a1c1c
+    class s3,s4,s6,s7,s8,s9,s10,s12,s13,s14,s16,s18,s19,s21 hot
+```
+
+**What it learned instead.**
 
 ```mermaid
 flowchart LR
@@ -63,27 +118,9 @@ flowchart LR
     c5(["control_flow"])
     c6(["fault_tolerance"])
     c7(["error_handling"])
-    c8["URL.RawPath+chi.RouteContext<br/>11"]
-    c9["b.ResponseWriter+b.discard<br/>28"]
-    c10["buf.String+bytes.Buffer<br/>11"]
-    c11["context.WithValue+r.WithContext<br/>13"]
-    c12["cw.ResponseWriter+cw.writer<br/>20"]
-    c13["fmt.Sprintf+r.Context<br/>11"]
-    c14["h.handler+n.endpoints<br/>20"]
-    c15["http.StatusUnsupportedMedia…+Header.Get<br/>11"]
-    c16["http.StatusUnsupportedMedia…+Header.Get+context.WithValue<br/>16"]
-    c17["http.StatusUnsupportedMedia…+chi.RouteContext<br/>23"]
-    c18["http.StatusUnsupportedMedia…+strings.ToLower<br/>9"]
-    c19["http.StatusUnsupportedMedia…+w.WriteHeader<br/>8"]
-    c20["mx.handle+chi.*Mux.handle<br/>10"]
-    c21["mx.inline+mx.handler<br/>7"]
-    c22["mx.tree+rctx.RoutePath<br/>13"]
-    c23["netip.Addr+context.WithValue<br/>7"]
-    c24["r.Context+http.Handler<br/>7"]
-    c25["rctx.URLParams+URLParams.Keys<br/>8"]
-    c26["strings.Cut+chi.*Mux.Get<br/>5"]
-    c27["strings.TrimSpace+space<br/>3"]
-    c28["w.Header+http.Handler<br/>6"]
+    c8["b.ResponseWriter+b.discard<br/>28"]
+    c9["cw.ResponseWriter+cw.writer<br/>20"]
+    c10["http.StatusUnsupportedMedia…+chi.RouteContext<br/>23"]
     c0 --> c1
     c1 --> c2
     c1 --> c3
@@ -94,25 +131,9 @@ flowchart LR
     c0 --> c8
     c0 --> c9
     c0 --> c10
-    c0 --> c11
-    c0 --> c12
-    c0 --> c13
-    c0 --> c14
-    c0 --> c15
-    c0 --> c16
-    c0 --> c17
-    c0 --> c18
-    c0 --> c19
-    c0 --> c20
-    c0 --> c21
-    c0 --> c22
-    c0 --> c23
-    c0 --> c24
-    c0 --> c25
-    c0 --> c26
-    c0 --> c27
-    c0 --> c28
 ```
+
+The diagram draws the 3 largest concepts on each branch; **18 further concepts** are left out of the picture and listed in the table below.
 
 **No practice here for** `caching`, `circuit_breaker`, `concurrency`, `db_access`, `error_wrapping`, `file_io`, `grpc_call`, `http_call`, `logging`, `mapping`, `retry`, `serialization`, `transaction`, `validation`. Concepts are learned from this corpus, so one can never be absent — it exists because functions carry it. These are the *seeds* the search started from that grew nothing: a direct answer to "does this codebase already do X".
 
@@ -144,7 +165,7 @@ Convention is how uniformly this corpus realizes a concept: `1.00` means every f
 
 ### Where the duplication is
 
-Merge-worthy pairs folded up to their packages. An edge means two packages keep solving the same problem separately; a count on a node means the repetition is inside one package.
+Merge-worthy pairs are folded up to their packages: only pairs doppel judges worth consolidating are counted. An edge means two packages keep solving the same problem separately; a count on a node means the repetition is inside one package. Weights are **merge-worthy pairs**.
 
 ### How settled each package is
 

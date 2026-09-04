@@ -9,7 +9,7 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `c4861da` |
+| doppel | `4214f9d` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -52,7 +52,62 @@ Families: 914 over 637 components, 2024 functions in a family, 7944 edges comple
 
 ### Concepts
 
-These concepts were **learned from this corpus**, not read off a fixed list: each one is a group of functions that share a way of being written, named after the evidence that identified it. They hang from an authored interior, so two functions under the same *branch* score partial credit rather than nothing. Counts below are members; membership is graded, and a function can carry several.
+Two pictures of the same vocabulary. The first is what doppel **searched with**: an authored tree of fourteen seed practices, each leaf showing how many functions here ended up in a concept that seed grew. It is the same shape on every corpus, which is what makes it the one concept picture two runs can be compared on. The second is what this corpus **turned out to have**: concepts learned from the code itself, named after the evidence that identified them, hung from that same interior — so two functions under one *branch* score partial credit rather than nothing. Counts are members; membership is graded, and a function can carry several.
+
+**What doppel looked for, and how much of it grew here.**
+
+```mermaid
+flowchart LR
+    s0(["concept"])
+    s1(["io_operation"])
+    s2(["remote_io"])
+    s3["http_call<br/>35"]
+    s4["grpc_call<br/>absent"]
+    s5(["data_store_access"])
+    s6["db_access<br/>120"]
+    s7["caching<br/>362"]
+    s8["transaction<br/>93"]
+    s9["file_io<br/>121"]
+    s10["logging<br/>325"]
+    s11(["data_transformation"])
+    s12["mapping<br/>102"]
+    s13["validation<br/>257"]
+    s14["serialization<br/>71"]
+    s15(["control_flow"])
+    s16["concurrency<br/>368"]
+    s17(["fault_tolerance"])
+    s18["retry<br/>109"]
+    s19["circuit_breaker<br/>absent"]
+    s20(["error_handling"])
+    s21["error_wrapping<br/>468"]
+    s0 --> s1
+    s1 --> s2
+    s2 --> s3
+    s2 --> s4
+    s1 --> s5
+    s5 --> s6
+    s5 --> s7
+    s5 --> s8
+    s1 --> s9
+    s1 --> s10
+    s0 --> s11
+    s11 --> s12
+    s11 --> s13
+    s11 --> s14
+    s0 --> s15
+    s15 --> s16
+    s15 --> s17
+    s17 --> s18
+    s17 --> s19
+    s0 --> s20
+    s20 --> s21
+    classDef good fill:#d7ecd9,color:#1b3d20
+    classDef warn fill:#fbeecb,color:#4a3a12
+    classDef hot fill:#f7d6d6,color:#4a1c1c
+    class s4,s19 hot
+```
+
+**What it learned instead.**
 
 ```mermaid
 flowchart LR
@@ -64,396 +119,27 @@ flowchart LR
     c5(["control_flow"])
     c6(["fault_tolerance"])
     c7(["error_handling"])
-    c8["BigEndian.PutUint16+a.b<br/>35"]
-    c9["Compaction.FromOutOfOrder+Compaction.FromSelectedSeri…<br/>10"]
-    c10["ErrorBoundary+hooks<br/>9"]
-    c11["Expr.PositionRange+e.Expr<br/>28"]
-    c12["Expr.PositionRange+p.lex<br/>42"]
-    c13["Expr.Pretty+e.Op<br/>189"]
-    c14["Expr.Pretty+e.String<br/>6"]
-    c15["FH.Schema+H.Schema<br/>325"]
-    c16["FillValues.LHS+FillValues.RHS<br/>22"]
-    c17["H.DetectReset+annotations.HistogramSub<br/>5"]
-    c18["HTTPClientConfig.OAuth2+binary.Uvarint<br/>257"]
-    c19["Metric.Hash+ev.errorf<br/>16"]
-    c20["OutOfOrderTimeWindow.Load+h.appendableMinValidTime<br/>90"]
-    c21["Panel+TimeInput<br/>5"]
-    c22["PositionRange.StartPosInput+e.count<br/>11"]
-    c23["Range.Seconds+ms.Range<br/>18"]
-    c24["Range.Seconds+ms.Range+ms.VectorSelector<br/>12"]
-    c25["Range.Seconds+ms.Range+ms.VectorSelector~2<br/>5"]
-    c26["Retention.Percentage+Retention.Size<br/>368"]
-    c27["StartTimestamps.Floats+enh.StartTimestamps<br/>55"]
-    c28["Status.State+buf1.PutBE32int<br/>468"]
-    c29["Table.Th+Table.Tbody<br/>7"]
-    c30["ValueType.scalar+ValueType.vector<br/>16"]
-    c31["a.appendable+a.appendableGauge<br/>10"]
-    c32["a.cnt+a.nBuckets<br/>8"]
-    c33["a.tDelta+a.t<br/>14"]
-    c34["a.tDelta+a.t+b.writeBits<br/>7"]
-    c35["a.writeVDelta+a.tDelta<br/>19"]
-    c36["a.writeVDelta+a.v<br/>12"]
-    c37["a.writeVDelta+binary.PutVarint<br/>4"]
-    c38["a.writeVDelta+bits.TrailingZeros64<br/>11"]
-    c39["alignmentRqmts.memoryAlign+alignmentRqmts.offsetAlign<br/>13"]
-    c40["annotations.HistogramAdd+annotations.HistogramSub<br/>7"]
-    c41["annotations.HistogramAgg+annotations.HistogramAdd<br/>29"]
-    c42["annotations.HistogramAgg+annotations.NewHistogramCou…<br/>26"]
-    c43["annotations.HistogramAgg+annotations.NewHistogramCou…+annotations.NewMismatchedCu…<br/>29"]
-    c44["annotations.HistogramAgg+annotations.NewNativeHistog…<br/>31"]
-    c45["annotations.NewHistogramCou…+annotations.HistogramSub<br/>37"]
-    c46["annotations.NewHistogramIgn…+annotations.New<br/>12"]
-    c47["annotations.NewMixedFloatsH…+H.CounterResetHint<br/>19"]
-    c48["annotations.NewNativeHistog…+annotations.New<br/>22"]
-    c49["annotations.NewNativeHistog…+annotations.NewMixedFloatsH…<br/>9"]
-    c50["annotations.maybeAddMetricN…+posrange<br/>5"]
-    c51["api.enableAdmin+autoCompactMtx.Lock<br/>120"]
-    c52["api.parseMatchersParam+Queryable.Querier<br/>75"]
-    c53["api.parseMatchersParam+r.ParseForm<br/>91"]
-    c54["api.parser+parser.ParseExpr<br/>14"]
-    c55["api.respond+api.CORSOrigin<br/>51"]
-    c56["api.respond+api.CORSOrigin+httputil.SetCORS<br/>15"]
-    c57["appErrs.numDuplicates+appErrs.numExemplarOutOfOrd…<br/>134"]
-    c58["appender.Commit+appender.Rollback<br/>93"]
-    c59["attribute.Int+span.SetAttributes<br/>57"]
-    c60["b.AvailableBuffer+b.Write<br/>22"]
-    c61["b.Bytes+b.Len<br/>5"]
-    c62["b.Bytes+b.Len+ls.syms<br/>27"]
-    c63["b.Bytes+ls.syms<br/>35"]
-    c64["b.Del+b.Labels<br/>4"]
-    c65["b.Lower+b.Upper<br/>8"]
-    c66["b.Reset+c.b<br/>5"]
-    c67["b.Sort+b.Add<br/>22"]
-    c68["b.base+b.del<br/>9"]
-    c69["b.base+b.del+b.Name<br/>12"]
-    c70["b.buffer+b.valid<br/>7"]
-    c71["b.commonSearchPostProps+base.DynamicValue<br/>7"]
-    c72["b.commonSearchPostProps+yaml.ScalarNode<br/>63"]
-    c73["b.f+b.alignmentRqmts<br/>12"]
-    c74["b.nums+syms.nameTable<br/>22"]
-    c75["b.nums+syms.nameTable+b.syms<br/>14"]
-    c76["b.nums+syms.nameTable+base.Range<br/>15"]
-    c77["b.output+b.add<br/>15"]
-    c78["b.prevTime+b.lastTime<br/>14"]
-    c79["b.readBitFast+b.readBitsFast<br/>4"]
-    c80["b.searchDefaultLimit+exampleTime.Add<br/>15"]
-    c81["b.searchDefaultLimit+exampleTime.Add+v3.Parameter<br/>18"]
-    c82["b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2<br/>25"]
-    c83["base.Example+examples.Set<br/>44"]
-    c84["base.Range+b.base<br/>8"]
-    c85["base.Range+b.base+b.del<br/>30"]
-    c86["br.buffer+br.readBit<br/>11"]
-    c87["br.buffer+br.readBit+it.baselineV<br/>16"]
-    c88["br.buffer+it.stDiff<br/>14"]
-    c89["br.readBit+br.buffer<br/>4"]
-    c90["br.readBit+br.readBits<br/>4"]
-    c91["bucket.LowerInclusive+bucket.UpperInclusive<br/>9"]
-    c92["buf.PutBE64int64+first.Ref<br/>11"]
-    c93["buf.PutBEFloat64+buf.PutUvarint<br/>4"]
-    c94["buf.PutBEFloat64+buf.PutUvarint64<br/>28"]
-    c95["buf1.PutUvarint+buf.PutUvarint<br/>26"]
-    c96["buf1.PutUvarintStr+buf1.Get<br/>9"]
-    c97["byteSlice.Len+byteSlice.Range<br/>35"]
-    c98["c.Bytes+BigEndian.Uint16<br/>14"]
-    c99["c.ConvertClassicHistogramsT…+convertnhcb.GetHistogramMet…<br/>102"]
-    c100["c.CustomValues+c.ZeroThreshold<br/>42"]
-    c101["c.CustomValues+c.ZeroThreshold+c.NegativeSpans<br/>26"]
-    c102["c.EC2SDConfig+c.ECSSDConfig<br/>362"]
-    c103["c.OverlapsClosedInterval+o.chunkRange<br/>9"]
-    c104["c.builder+builder.Set<br/>33"]
-    c105["c.curH+series.floats<br/>36"]
-    c106["c.curH+series.floats+series.histograms<br/>30"]
-    c107["c.ignoredSamples+prompb.Sample<br/>14"]
-    c108["ce.nextIndex+lock.RLock<br/>11"]
-    c109["ch.lastMmapRef+ch.postings<br/>25"]
-    c110["chk.maxTime+chunk.Bytes<br/>13"]
-    c111["chk.maxTime+s.firstChunkID<br/>11"]
-    c112["chk.minTime+chk.maxTime<br/>22"]
-    c113["chunk.Bytes+headChunks.chunk<br/>2"]
-    c114["chunkenc.Appender+chunkenc.NewEmptyChunk<br/>18"]
-    c115["chunkenc.EncFloatHistogram+chunkenc.EncFloatHistogramST<br/>30"]
-    c116["chunks.Inc+chunksCreated.Inc<br/>15"]
-    c117["chunks.Iterator+tsdb.*memChunk.len<br/>57"]
-    c118["client.Get+d.config<br/>17"]
-    c119["codes.Set+v3.Responses<br/>7"]
-    c120["config.JoinDir+HTTPClientConfig.SetDirecto…<br/>27"]
-    c121["constants+Panel<br/>7"]
-    c122["context.WithValue+logging<br/>5"]
-    c123["context.metricName+node.to<br/>15"]
-    c124["cp.Close+fd.Close<br/>121"]
-    c125["crc32.Checksum+binary.BigEndian<br/>31"]
-    c126["crc32.New+hash<br/>4"]
-    c127["crc32.Reset+binary.PutUvarint<br/>20"]
-    c128["ctx.Value+testutil.*MockContext.Value<br/>5"]
-    c129["currMeta.Chunk+p.currMeta<br/>38"]
-    c130["data.data+styles<br/>14"]
-    c131["dec.GetCounter+dec.GetSummary<br/>11"]
-    c132["dec.GetCounter+dec.GetSummary+h.GetBucket<br/>12"]
-    c133["dec.GetCounter+dec.GetSummary+p.fieldsDone<br/>16"]
-    c134["deltatocumulativeprocessor+prometheusremotewrite<br/>7"]
-    c135["discovery.RegisterConfig+config<br/>52"]
-    c136["e.C+e.B<br/>10"]
-    c137["e.EnableSTStorage+encoding<br/>4"]
-    c138["e.EndPos+Expr.PositionRange<br/>19"]
-    c139["e.LHS+e.RHS<br/>7"]
-    c140["e.Op+ev.endTimestamp<br/>85"]
-    c141["e.PosRange+posrange<br/>35"]
-    c142["el.F+el.H<br/>11"]
-    c143["el.F+el.H+enh.enableDelayedNameRemoval<br/>5"]
-    c144["el.Floats+el.Histograms<br/>4"]
-    c145["engine.NewInstantQuery+promql.Scalar<br/>72"]
-    c146["engine.NewInstantQuery+promql.Scalar+q.Exec<br/>66"]
-    c147["enh.StartTimestamps+annotations.NewMixedFloatsH…<br/>18"]
-    c148["enh.numSigs+tsdb.*memChunk.len<br/>4"]
-    c149["enh.resetBuilder+enh.lb<br/>4"]
-    c150["enh.resetSigsPresent+parser.CardManyToMany<br/>41"]
-    c151["ep.ToExemplar+hp.IsFloatHistogram<br/>14"]
-    c152["ev.eval+ev.enableDelayedNameRemoval<br/>23"]
-    c153["ev.matrixIterSlice+storage.NewBuffer<br/>98"]
-    c154["ev.useStartTimestamps+result.TotalSamples<br/>27"]
-    c155["expr.Pretty+p.ParseExpr<br/>45"]
-    c156["f.F+annotations.NewHistogramIgn…<br/>23"]
-    c157["f.histograms+f.samples<br/>10"]
-    c158["f.histograms+f.samples+f.idx<br/>19"]
-    c159["fh.Count+fh.ZeroCount<br/>31"]
-    c160["filepath.Abs+url<br/>4"]
-    c161["first.ST+h.ST<br/>10"]
-    c162["first.ST+prev.Ref<br/>11"]
-    c163["fmt.Errorf+encoding.*Encbuf.PutBE32<br/>95"]
-    c164["formatTime+settingsSlice<br/>15"]
-    c165["fs.Blocks+fs.Bsize<br/>6"]
-    c166["g.interval+codes<br/>65"]
-    c167["h.AllBucketIterator+bucket.Lower<br/>5"]
-    c168["h.GetCountInt+h.GetNegativeDeltas<br/>26"]
-    c169["h.NumSeries+h.MaxTime<br/>4"]
-    c170["h.ST+h.Ref<br/>114"]
-    c171["h.ToFloat+histogram.*Histogram.ToFloat<br/>5"]
-    c172["h.WriteString+xxhash.New<br/>28"]
-    c173["h.WriteString+xxhash.New+h.Sum64<br/>9"]
-    c174["h.ZeroBucket+h.NegativeBucketIterator<br/>5"]
-    c175["h.floatBucketIterator+h.Schema<br/>6"]
-    c176["h.initialized+h.metrics<br/>5"]
-    c177["h.maxt+h.mint<br/>19"]
-    c178["h.mtx+h.config<br/>154"]
-    c179["h.updateMinMaxTime+ooo.oooMmappedChunks<br/>116"]
-    c180["h.updateMinOOOMaxOOOTime+ooo.oooHeadChunk<br/>24"]
-    c181["h.wbl+h.wal<br/>51"]
-    c182["hOld.NegativeBuckets+hOld.NegativeSpans<br/>31"]
-    c183["hOld.NegativeBuckets+hOld.NegativeSpans+hOld.PositiveBuckets<br/>17"]
-    c184["hOld.NegativeBuckets+hOld.NegativeSpans+hOld.PositiveBuckets~2<br/>29"]
-    c185["head.initTime+head.appender<br/>5"]
-    c186["heap.Pop+heap.Push<br/>12"]
-    c187["hints.Filter+hints.OrderBy<br/>24"]
-    c188["histogram.IsExponentialSche…+Appender.AppendHistogram<br/>26"]
-    c189["histogram.IsExponentialSche…+Appender.AppendHistogram+app.AppenderV2<br/>8"]
-    c190["histogram.UnknownCounterRes…+histogram.GaugeType<br/>37"]
-    c191["hsi.Iterator+hsi.lastIsCurrent<br/>4"]
-    c192["http.Error+http.StatusInternalServerEr…<br/>9"]
-    c193["http.HandlerFunc+http.ResponseWriter<br/>105"]
-    c194["http.StatusNotFound+http.Error<br/>12"]
-    c195["httpClient.Transport+request.WithContext<br/>35"]
-    c196["idx.oldest+idx.newest<br/>10"]
-    c197["index.AllPostingsKey+errors.New<br/>23"]
-    c198["index.Intersect+selectedSeriesRefs.sortedBy…<br/>12"]
-    c199["it.AtHistogram+it.AtST<br/>29"]
-    c200["it.AtST+b.lastTime<br/>28"]
-    c201["it.AtT+b.lastTime<br/>20"]
-    c202["it.Iter+v2<br/>19"]
-    c203["it.Seek+b.lastTime<br/>48"]
-    c204["it.Seek+it.AtFloatHistogram<br/>78"]
-    c205["it.atHistogramCalled+it.nFloatBuckets<br/>10"]
-    c206["it.atHistogramCalled+it.nFloatBuckets+it.pFloatBuckets<br/>20"]
-    c207["it.atHistogramCalled+it.nFloatBuckets+it.pFloatBuckets~2<br/>20"]
-    c208["it.atHistogramCalled+it.nFloatBuckets+it.pFloatBuckets~3<br/>7"]
-    c209["it.current+it.postings<br/>50"]
-    c210["it.list+it.cur<br/>24"]
-    c211["it.nBucketsLeading+it.nBucketsTrailing<br/>6"]
-    c212["it.samples+samples.Get<br/>7"]
-    c213["it.stDiff+br.buffer<br/>12"]
-    c214["it.stDiff+br.valid<br/>8"]
-    c215["it.stDiff+br.valid+it.schema<br/>5"]
-    c216["it.stDiff+it.baselineV<br/>18"]
-    c217["it.stDiff+it.firstSTChangeOn<br/>10"]
-    c218["item.PositionRange+lval.item<br/>5"]
-    c219["item.PositionRange+p.addParseErr<br/>12"]
-    c220["iter.At+iter.Next<br/>15"]
-    c221["ix.Postings+labels.MatchType<br/>28"]
-    c222["ix.Postings+labels.MustNewMatcher<br/>34"]
-    c223["ix.Postings+m.Matches<br/>28"]
-    c224["ix.Postings+model.MetricTypeLabel<br/>19"]
-    c225["json.MarshalIndent+json.NewDecoder<br/>71"]
-    c226["jsonutil.MarshalFloat+jsonutil.MarshalTimestamp<br/>7"]
-    c227["jsonutil.MarshalFloat+jsonutil.MarshalTimestamp+stream.WriteObjectField<br/>4"]
-    c228["kingpin.New+HelpFlag.Short<br/>83"]
-    c229["l.gotColon+l.histogramState<br/>12"]
-    c230["l.gotColon+l.histogramState+l.bracketOpen<br/>12"]
-    c231["l.gotColon+l.histogramState+l.bracketOpen~2<br/>12"]
-    c232["l.gotColon+l.histogramState+l.seriesDesc<br/>14"]
-    c233["l.input+l.pos<br/>15"]
-    c234["l.stringOpen+l.errorf<br/>5"]
-    c235["labels.*Builder.Keep+labels.*Builder.Del<br/>10"]
-    c236["labels.MatchType+labels.MatchNotEqual<br/>20"]
-    c237["labels.MustNewMatcher+n.LabelMatchers<br/>18"]
-    c238["labels.NewMatcher+labels.MatchEqual<br/>8"]
-    c239["labels.labelSize+tsdb.*memChunk.len<br/>32"]
-    c240["lb.Del+lb.Set<br/>23"]
-    c241["lb.Reset+lb.Labels<br/>52"]
-    c242["lex.input+p.parseGenerated<br/>14"]
-    c243["ll.storage+embed<br/>49"]
-    c244["ls.data+l.Name<br/>33"]
-    c245["ls.syms+ls.data<br/>12"]
-    c246["m.AddToLabels+p.enableTypeAndUnitLabels<br/>26"]
-    c247["m.conflicts+m.unique<br/>7"]
-    c248["m.contains+m.prefixes<br/>33"]
-    c249["m.contains+m.stringMatcher<br/>14"]
-    c250["m.desiredNumShards+m.droppedExemplarsTotal<br/>109"]
-    c251["m.failuresCount+prometheus.NewSummary<br/>25"]
-    c252["m.failuresCount+prometheus.NewSummaryVec<br/>9"]
-    c253["m.prefixes+m.lengthsMask<br/>9"]
-    c254["math.Abs+math.IsNaN<br/>16"]
-    c255["math.Floor+histogram<br/>4"]
-    c256["math.Max+math.Min<br/>11"]
-    c257["math.Mod+math.Pow<br/>4"]
-    c258["math.NaN+math.Inf<br/>55"]
-    c259["math.Round+round<br/>3"]
-    c260["math.Sqrt+natsort<br/>35"]
-    c261["mc.maxTime+mc.minTime<br/>176"]
-    c262["mediaType.Examples+content.Set<br/>5"]
-    c263["metric.ExponentialHistogram+metric.Histogram<br/>5"]
-    c264["metricRegisterer.RegisterMe…+m.metricRegisterer<br/>9"]
-    c265["metricRegisterer.Unregister…+m.metricRegisterer<br/>9"]
-    c266["minTime.Store+minValidTime.Store<br/>142"]
-    c267["model.MetricTypeStateset+model.MetricTypeInfo<br/>9"]
-    c268["model.MetricTypeStateset+model.MetricTypeInfo+model.MetricTypeGaugeHistog…<br/>22"]
-    c269["n.Func+n.Args<br/>4"]
-    c270["n.LabelMatchers+parser.Inspect<br/>5"]
-    c271["n.StartOrEnd+n.Func<br/>8"]
-    c272["n.StartOrEnd+n.OriginalOffset<br/>14"]
-    c273["n.StartOrEnd+n.OriginalOffset+n.Func<br/>10"]
-    c274["n.StartOrEnd+parser.UnaryExpr<br/>12"]
-    c275["n.Step+n.Range<br/>3"]
-    c276["n.Step+vs.OriginalOffset<br/>2"]
-    c277["n.Val+parser.DurationExpr<br/>6"]
-    c278["net.SplitHostPort+net.JoinHostPort<br/>6"]
-    c279["next.appendID+appendsOpenList.appendID<br/>8"]
-    c280["node.Expr+Expr.String<br/>6"]
-    c281["node.Op+Op.String<br/>9"]
-    c282["node.to+node.from<br/>32"]
-    c283["ooo.oooHeadChunk+ooo.oooMmappedChunks<br/>11"]
-    c284["os.Getenv+fmt.Errorf<br/>23"]
-    c285["p.Close+p.parseGenerated<br/>7"]
-    c286["p.F+p.T<br/>16"]
-    c287["p.H+p.F<br/>17"]
-    c288["p.addParseErr+lval.item<br/>8"]
-    c289["p.buf+p.alloc<br/>12"]
-    c290["p.chunksFromIterable+p.chunksFromIterableIdx<br/>56"]
-    c291["p.curr+v2<br/>8"]
-    c292["p.hasTS+p.val<br/>33"]
-    c293["p.lvs+p.m<br/>46"]
-    c294["p.mtype+p.series<br/>23"]
-    c295["p.options+p.addParseErrf<br/>4"]
-    c296["page.alloc+w.page<br/>16"]
-    c297["parent.type+node.parent<br/>45"]
-    c298["parser.UnaryExpr+n.Args<br/>23"]
-    c299["parser.UnaryExpr+parser.ParenExpr<br/>9"]
-    c300["parser.ValueTypeScalar+parser.ValueTypeVector<br/>40"]
-    c301["path.Join+url.Parse<br/>19"]
-    c302["posrange.Pos+l.input<br/>15"]
-    c303["prometheus.ExponentialBucke…+prometheus.NewGaugeFunc<br/>38"]
-    c304["prometheus.ExponentialBucke…+prometheus.NewHistogramVec<br/>9"]
-    c305["prometheus.MustRegister+flag<br/>32"]
-    c306["prometheus.NewGaugeVec+prometheus.NewHistogramVec<br/>36"]
-    c307["prometheus.NewHistogramVec+prometheus.NewSummaryVec<br/>12"]
-    c308["prometheus.NewSummary+prometheus.SummaryOpts<br/>absent"]
-    c309["prometheus.NewSummaryVec+prometheus.NewHistogramVec<br/>30"]
-    c310["promql.FPoint+labels.FromStrings<br/>87"]
-    c311["promql.FPoint+promql.Matrix<br/>53"]
-    c312["promql.simpleFloatFunc+natsort<br/>19"]
-    c313["props.Set+base.DynamicValue<br/>25"]
-    c314["props.Set+base.DynamicValue+base.SchemaProxy<br/>33"]
-    c315["props.Set+base.DynamicValue+base.SchemaProxy~2<br/>9"]
-    c316["q.chunks+q.tombstones<br/>23"]
-    c317["q.querier+v2<br/>19"]
-    c318["q.results+te.name<br/>11"]
-    c319["qs.Interval+qs.StartTimestamp<br/>6"]
-    c320["querier.Close+errors.Join<br/>69"]
-    c321["querier.Select+storage.SelectHints<br/>37"]
-    c322["r.RequireSuccess+r.t<br/>4"]
-    c323["r.Value+r.Err<br/>4"]
-    c324["r.add+r.fBuf<br/>6"]
-    c325["r.delta+r.i<br/>8"]
-    c326["r.dependencyRules+r.dependentRules<br/>8"]
-    c327["r.labels+r.name<br/>30"]
-    c328["r.labels+ts.Sub<br/>79"]
-    c329["r.rdr+r.writeIndex<br/>13"]
-    c330["r.readIndex+r.writeIndex<br/>10"]
-    c331["r.refresh+opts.SetName<br/>5"]
-    c332["r.vector+vector.String<br/>57"]
-    c333["rc.config+v3<br/>12"]
-    c334["re.Sub+re.Op<br/>8"]
-    c335["react-router-dom+icons-react<br/>5"]
-    c336["regexp.Compile+fmt.Errorf<br/>6"]
-    c337["relabel.ProcessBuilder+lb.Labels<br/>18"]
-    c338["require.Equal+require.NotNil<br/>24"]
-    c339["require.Equal+require.True<br/>15"]
-    c340["result.TotalSamples+it.Reset<br/>46"]
-    c341["result.TotalSamples+it.Reset+ss.Floats<br/>68"]
-    c342["result.TotalSamples+ss.Floats<br/>103"]
-    c343["result.finalizer+api.Queryable<br/>31"]
-    c344["s.EndPos+s.PosRange<br/>21"]
-    c345["s.EndPos+s.PosRange+PosRange.End<br/>10"]
-    c346["s.EndPos+s.PosRange+PosRange.End~2<br/>6"]
-    c347["s.Exemplars+s.Samples<br/>4"]
-    c348["s.Offset+s.Length<br/>18"]
-    c349["s.err+annotations<br/>9"]
-    c350["s.f+fh.Copy<br/>35"]
-    c351["s.f+s.fh<br/>30"]
-    c352["s.genericQuerier+annotations<br/>11"]
-    c353["s.idx+s.results<br/>4"]
-    c354["s.pushHeadChunk+o.chunkRange<br/>11"]
-    c355["s.rs+cmp<br/>16"]
-    c356["s.seen+d.Skip<br/>33"]
-    c357["s.seen+s.offsets<br/>11"]
-    c358["sb.WriteString+s.String<br/>42"]
-    c359["sb.WriteString+sb.WriteRune<br/>10"]
-    c360["series.Histograms+series.Floats<br/>24"]
-    c361["series.getByHash+head.series<br/>14"]
-    c362["set.At+set.Warnings<br/>73"]
-    c363["set.Warnings+c.set<br/>36"]
-    c364["slices.Clone+tsdb.*memChunk.len<br/>23"]
-    c365["sort.Reverse+sort.Sort<br/>14"]
-    c366["ss.Warnings+series.Iterator<br/>13"]
-    c367["ssi.currF+ssi.floats<br/>5"]
-    c368["stats.GetSpanTimer+ng.metrics<br/>42"]
-    c369["storage.Close+embed<br/>64"]
-    c370["storage.EmptySearchResultSet+annotations<br/>10"]
-    c371["strconv.AppendQuote+b.AvailableBuffer<br/>9"]
-    c372["strconv.ParseFloat+labels.BucketLabel<br/>16"]
-    c373["strings.Builder+model.Duration<br/>17"]
-    c374["strings.HasPrefix+promqltest.parseSeries<br/>26"]
-    c375["strings.HasSuffix+strings.HasPrefix<br/>38"]
-    c376["strings.IndexByte+syntax<br/>17"]
-    c377["strings.Repeat+tsdb.*memChunk.len<br/>5"]
-    c378["strings.ReplaceAll+tsdb.*memChunk.len<br/>7"]
-    c379["strings.SplitSeq+profile<br/>155"]
-    c380["strings.ToUpper+fmt.Errorf<br/>11"]
-    c381["syntax.OpConcat+syntax.OpAlternate<br/>23"]
-    c382["syntax.OpEmptyMatch+syntax.OpAlternate<br/>6"]
-    c383["syntax.OpEmptyMatch+syntax.OpBeginText<br/>14"]
-    c384["this.diagnostics+this.checkAST<br/>11"]
-    c385["this.lint+complete<br/>7"]
-    c386["time.Minute+rules<br/>52"]
-    c387["time.Nanosecond+time.Millisecond<br/>63"]
-    c388["time.Time+promql.dateWrapper<br/>7"]
-    c389["toc.LabelIndices+toc.Series<br/>114"]
-    c390["txs.add+o.useHistogramST<br/>19"]
-    c391["unsafe.Pointer+syscall<br/>8"]
-    c392["unsafe.SliceData+unsafe.String<br/>5"]
-    c393["url.QueryEscape+fmt.Sprintf<br/>4"]
-    c394["utf8.DecodeRuneInString+tsdb.*memChunk.len<br/>4"]
-    c395["utf8.Valid+p.nextToken<br/>15"]
-    c396["v1+kubernetes<br/>5"]
-    c397["yaml.ScalarNode+yaml.Node<br/>27"]
+    c8["Expr.Pretty+e.Op<br/>189"]
+    c9["FH.Schema+H.Schema<br/>325"]
+    c10["HTTPClientConfig.OAuth2+binary.Uvarint<br/>257"]
+    c11["Retention.Percentage+Retention.Size<br/>368"]
+    c12["Status.State+buf1.PutBE32int<br/>468"]
+    c13["attribute.Int+span.SetAttributes<br/>57"]
+    c14["c.EC2SDConfig+c.ECSSDConfig<br/>362"]
+    c15["cp.Close+fd.Close<br/>121"]
+    c16["g.interval+codes<br/>65"]
+    c17["h.ST+h.Ref<br/>114"]
+    c18["h.mtx+h.config<br/>154"]
+    c19["h.updateMinMaxTime+ooo.oooMmappedChunks<br/>116"]
+    c20["h.wbl+h.wal<br/>51"]
+    c21["httpClient.Transport+request.WithContext<br/>35"]
+    c22["m.desiredNumShards+m.droppedExemplarsTotal<br/>109"]
+    c23["mc.maxTime+mc.minTime<br/>176"]
+    c24["minTime.Store+minValidTime.Store<br/>142"]
+    c25["parser.ValueTypeScalar+parser.ValueTypeVector<br/>40"]
+    c26["promql.FPoint+labels.FromStrings<br/>87"]
+    c27["strings.SplitSeq+profile<br/>155"]
+    c28["toc.LabelIndices+toc.Series<br/>114"]
     c0 --> c1
     c1 --> c2
     c1 --> c3
@@ -462,400 +148,29 @@ flowchart LR
     c5 --> c6
     c0 --> c7
     c4 --> c8
-    c3 --> c9
+    c1 --> c9
     c4 --> c10
-    c4 --> c11
+    c5 --> c11
     c7 --> c12
-    c4 --> c13
-    c4 --> c14
+    c2 --> c13
+    c3 --> c14
     c1 --> c15
-    c4 --> c16
-    c4 --> c17
-    c4 --> c18
-    c4 --> c19
-    c1 --> c20
-    c3 --> c21
-    c4 --> c22
-    c4 --> c23
-    c4 --> c24
-    c4 --> c25
-    c5 --> c26
+    c6 --> c16
+    c7 --> c17
+    c3 --> c18
+    c1 --> c19
+    c5 --> c20
+    c2 --> c21
+    c6 --> c22
+    c3 --> c23
+    c5 --> c24
+    c2 --> c25
+    c6 --> c26
     c4 --> c27
     c7 --> c28
-    c4 --> c29
-    c4 --> c30
-    c4 --> c31
-    c4 --> c32
-    c4 --> c33
-    c4 --> c34
-    c4 --> c35
-    c4 --> c36
-    c1 --> c37
-    c4 --> c38
-    c7 --> c39
-    c4 --> c40
-    c4 --> c41
-    c4 --> c42
-    c4 --> c43
-    c4 --> c44
-    c4 --> c45
-    c4 --> c46
-    c4 --> c47
-    c4 --> c48
-    c4 --> c49
-    c7 --> c50
-    c3 --> c51
-    c7 --> c52
-    c7 --> c53
-    c7 --> c54
-    c3 --> c55
-    c4 --> c56
-    c3 --> c57
-    c3 --> c58
-    c2 --> c59
-    c2 --> c60
-    c2 --> c61
-    c2 --> c62
-    c4 --> c63
-    c4 --> c64
-    c4 --> c65
-    c3 --> c66
-    c4 --> c67
-    c4 --> c68
-    c4 --> c69
-    c4 --> c70
-    c2 --> c71
-    c1 --> c72
-    c7 --> c73
-    c4 --> c74
-    c4 --> c75
-    c4 --> c76
-    c4 --> c77
-    c4 --> c78
-    c7 --> c79
-    c2 --> c80
-    c2 --> c81
-    c2 --> c82
-    c1 --> c83
-    c4 --> c84
-    c4 --> c85
-    c4 --> c86
-    c4 --> c87
-    c4 --> c88
-    c4 --> c89
-    c4 --> c90
-    c4 --> c91
-    c7 --> c92
-    c4 --> c93
-    c7 --> c94
-    c7 --> c95
-    c7 --> c96
-    c5 --> c97
-    c4 --> c98
-    c4 --> c99
-    c4 --> c100
-    c4 --> c101
-    c3 --> c102
-    c3 --> c103
-    c4 --> c104
-    c6 --> c105
-    c6 --> c106
-    c4 --> c107
-    c3 --> c108
-    c3 --> c109
-    c1 --> c110
-    c5 --> c111
-    c5 --> c112
-    c3 --> c113
-    c4 --> c114
-    c4 --> c115
-    c1 --> c116
-    c4 --> c117
-    c2 --> c118
-    c2 --> c119
-    c4 --> c120
-    c2 --> c121
-    c2 --> c122
-    c3 --> c123
-    c1 --> c124
-    c4 --> c125
-    c7 --> c126
-    c4 --> c127
-    c2 --> c128
-    c7 --> c129
-    c4 --> c130
-    c4 --> c131
-    c4 --> c132
-    c4 --> c133
-    c4 --> c134
-    c3 --> c135
-    c4 --> c136
-    c4 --> c137
-    c4 --> c138
-    c7 --> c139
-    c4 --> c140
-    c7 --> c141
-    c4 --> c142
-    c4 --> c143
-    c4 --> c144
-    c4 --> c145
-    c7 --> c146
-    c4 --> c147
-    c6 --> c148
-    c4 --> c149
-    c4 --> c150
-    c1 --> c151
-    c4 --> c152
-    c4 --> c153
-    c7 --> c154
-    c4 --> c155
-    c4 --> c156
-    c6 --> c157
-    c4 --> c158
-    c4 --> c159
-    c1 --> c160
-    c7 --> c161
-    c7 --> c162
-    c7 --> c163
-    c4 --> c164
-    c2 --> c165
-    c6 --> c166
-    c4 --> c167
-    c4 --> c168
-    c3 --> c169
-    c7 --> c170
-    c4 --> c171
-    c1 --> c172
-    c1 --> c173
-    c4 --> c174
-    c4 --> c175
-    c3 --> c176
-    c3 --> c177
-    c3 --> c178
-    c1 --> c179
-    c5 --> c180
-    c5 --> c181
-    c4 --> c182
-    c4 --> c183
-    c1 --> c184
-    c3 --> c185
-    c7 --> c186
-    c1 --> c187
-    c7 --> c188
-    c7 --> c189
-    c4 --> c190
-    c6 --> c191
-    c1 --> c192
-    c3 --> c193
-    c3 --> c194
-    c2 --> c195
-    c4 --> c196
-    c3 --> c197
-    c1 --> c198
-    c1 --> c199
-    c1 --> c200
-    c4 --> c201
-    c3 --> c202
-    c4 --> c203
-    c4 --> c204
-    c7 --> c205
-    c4 --> c206
-    c4 --> c207
-    c4 --> c208
-    c7 --> c209
-    c4 --> c210
-    c4 --> c211
-    c4 --> c212
-    c4 --> c213
-    c4 --> c214
-    c4 --> c215
-    c7 --> c216
-    c4 --> c217
-    c4 --> c218
-    c4 --> c219
-    c7 --> c220
-    c7 --> c221
-    c4 --> c222
-    c1 --> c223
-    c4 --> c224
-    c4 --> c225
-    c4 --> c226
-    c4 --> c227
-    c1 --> c228
-    c4 --> c229
-    c4 --> c230
-    c4 --> c231
-    c4 --> c232
-    c4 --> c233
-    c4 --> c234
-    c4 --> c235
-    c4 --> c236
-    c4 --> c237
-    c4 --> c238
-    c2 --> c239
-    c4 --> c240
-    c4 --> c241
-    c7 --> c242
-    c3 --> c243
-    c4 --> c244
-    c4 --> c245
-    c4 --> c246
-    c5 --> c247
-    c4 --> c248
-    c4 --> c249
-    c6 --> c250
-    c1 --> c251
-    c4 --> c252
-    c4 --> c253
-    c4 --> c254
-    c4 --> c255
-    c4 --> c256
-    c4 --> c257
-    c4 --> c258
-    c4 --> c259
-    c4 --> c260
-    c3 --> c261
-    c2 --> c262
-    c4 --> c263
-    c3 --> c264
-    c3 --> c265
-    c5 --> c266
-    c4 --> c267
-    c4 --> c268
-    c4 --> c269
-    c4 --> c270
-    c4 --> c271
-    c4 --> c272
-    c4 --> c273
-    c4 --> c274
-    c6 --> c275
-    c3 --> c276
-    c4 --> c277
-    c2 --> c278
-    c3 --> c279
-    c4 --> c280
-    c7 --> c281
-    c3 --> c282
-    c5 --> c283
-    c4 --> c284
-    c7 --> c285
-    c4 --> c286
-    c4 --> c287
-    c4 --> c288
-    c1 --> c289
-    c7 --> c290
-    c3 --> c291
-    c7 --> c292
-    c7 --> c293
-    c4 --> c294
-    c4 --> c295
-    c1 --> c296
-    c3 --> c297
-    c4 --> c298
-    c4 --> c299
-    c2 --> c300
-    c2 --> c301
-    c4 --> c302
-    c1 --> c303
-    c4 --> c304
-    c2 --> c305
-    c6 --> c306
-    c1 --> c307
-    c6 --> c308
-    c4 --> c309
-    c6 --> c310
-    c1 --> c311
-    c4 --> c312
-    c4 --> c313
-    c2 --> c314
-    c2 --> c315
-    c3 --> c316
-    c3 --> c317
-    c7 --> c318
-    c6 --> c319
-    c3 --> c320
-    c1 --> c321
-    c4 --> c322
-    c7 --> c323
-    c4 --> c324
-    c6 --> c325
-    c5 --> c326
-    c4 --> c327
-    c1 --> c328
-    c1 --> c329
-    c1 --> c330
-    c7 --> c331
-    c1 --> c332
-    c2 --> c333
-    c4 --> c334
-    c4 --> c335
-    c4 --> c336
-    c4 --> c337
-    c4 --> c338
-    c4 --> c339
-    c4 --> c340
-    c4 --> c341
-    c4 --> c342
-    c7 --> c343
-    c4 --> c344
-    c1 --> c345
-    c1 --> c346
-    c6 --> c347
-    c4 --> c348
-    c3 --> c349
-    c1 --> c350
-    c3 --> c351
-    c1 --> c352
-    c7 --> c353
-    c1 --> c354
-    c3 --> c355
-    c7 --> c356
-    c7 --> c357
-    c4 --> c358
-    c4 --> c359
-    c6 --> c360
-    c4 --> c361
-    c1 --> c362
-    c1 --> c363
-    c4 --> c364
-    c7 --> c365
-    c7 --> c366
-    c4 --> c367
-    c6 --> c368
-    c1 --> c369
-    c4 --> c370
-    c2 --> c371
-    c4 --> c372
-    c4 --> c373
-    c4 --> c374
-    c4 --> c375
-    c4 --> c376
-    c1 --> c377
-    c1 --> c378
-    c4 --> c379
-    c2 --> c380
-    c4 --> c381
-    c4 --> c382
-    c4 --> c383
-    c3 --> c384
-    c3 --> c385
-    c3 --> c386
-    c6 --> c387
-    c4 --> c388
-    c7 --> c389
-    c1 --> c390
-    c3 --> c391
-    c2 --> c392
-    c2 --> c393
-    c4 --> c394
-    c7 --> c395
-    c3 --> c396
-    c2 --> c397
-    classDef good fill:#d7ecd9,color:#1b3d20
-    classDef warn fill:#fbeecb,color:#4a3a12
-    classDef hot fill:#f7d6d6,color:#4a1c1c
-    class c308 hot
 ```
+
+The diagram draws the 3 largest concepts on each branch; **369 further concepts** are left out of the picture and listed in the table below.
 
 **No practice here for** `circuit_breaker`, `grpc_call`. Concepts are learned from this corpus, so one can never be absent — it exists because functions carry it. These are the *seeds* the search started from that grew nothing: a direct answer to "does this codebase already do X".
 
@@ -1255,7 +570,7 @@ Convention is how uniformly this corpus realizes a concept: `1.00` means every f
 
 ### Where the duplication is
 
-Merge-worthy pairs folded up to their packages. An edge means two packages keep solving the same problem separately; a count on a node means the repetition is inside one package.
+Merge-worthy pairs are folded up to their packages: only pairs doppel judges worth consolidating are counted. An edge means two packages keep solving the same problem separately; a count on a node means the repetition is inside one package. Weights are **merge-worthy pairs**.
 
 ```mermaid
 flowchart LR
@@ -1288,7 +603,7 @@ flowchart LR
     p4 ---|"8"| p14
 ```
 
-_391 further package pairs are connected by merge-worthy duplication and are not drawn._
+_391 further package pairs are connected by duplication and are not drawn._
 
 ### How settled each package is
 

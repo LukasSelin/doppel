@@ -31,6 +31,7 @@ type AnalysisConfig struct {
 	Format     *string   `json:"format,omitempty"`
 	Families   *int      `json:"families,omitempty"`
 	FamilyMin  *float64  `json:"family-min,omitempty"`
+	MapMetric  *string   `json:"map-metric,omitempty"`
 	HookNotify *string   `json:"hook-notify,omitempty"`
 }
 
@@ -205,6 +206,9 @@ func applyConfig(cmd *cobra.Command, cfg *AnalysisConfig) {
 	}
 	if cfg.FamilyMin != nil {
 		set("family-min", strconv.FormatFloat(*cfg.FamilyMin, 'f', -1, 64))
+	}
+	if cfg.MapMetric != nil {
+		set("map-metric", *cfg.MapMetric)
 	}
 }
 

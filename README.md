@@ -369,6 +369,7 @@ refuses comparison.
 | `--format`          | `text`  | Stdout format: `text` or `json`. The JSON form is a deterministic snapshot of the whole run — every function, its concepts with confidence, its role, its Weisfeiler-Lehman label bag, and every reported pair with its containment, its rule-attributed explanation and its concept views (the concept signal read through the taxonomy, through this corpus's frequencies, and through the learned vocabularies alone, plus the direction of the last) |
 | `--families`        | `5`     | Near-duplicate families to show after the pair list (`0` removes the section) |
 | `--family-min`      | *(calibrated)* | Pin the code similarity every two members of a family must reach. Turns calibration off; falls back to `0.60` |
+| `--map-metric`      | `merge-worthy` | What the Markdown report's package duplication map weighs an edge by: `merge-worthy` (only pairs doppel judges worth consolidating — the map's original question), `pairs` (every surviving candidate, the gate taken off), or `evidence` (summed corroborated evidence, so one strong finding outweighs several weak ones). Presentation only: no score, filter or baseline reads it, and the map names the metric it was drawn under |
 | `--config`          | `.doppel.json` if present | Path to a JSON config file                                |
 
 `--min-nodes`, `--channel-k` and `--max-per-func` are retrieval and report
