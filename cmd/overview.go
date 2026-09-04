@@ -5,6 +5,7 @@ import (
 	"slices"
 	"sort"
 
+	"github.com/LukasSelin/doppel/internal/comparator"
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/culture"
 	"github.com/LukasSelin/doppel/internal/lexicon"
@@ -39,6 +40,12 @@ func buildOverview(res Result, suppressed int) *reporter.Overview {
 		UnionPairs:       res.Retrieval.Union,
 		OnlyConceptPairs: res.Retrieval.OnlyConcept,
 		OnlyCallPairs:    res.Retrieval.OnlyCall,
+
+		ViewsCompared:     res.Views.WithFeature,
+		ViewsDisagree:     res.Views.Disagree,
+		ViewsFeatureOnly:  res.Views.FeatureOnly,
+		ViewsTaxonomyOnly: res.Views.TaxonomyOnly,
+		ViewsSpread:       comparator.ViewDisagreeSpread,
 
 		Metrics: reporter.CorpusMetrics{
 			TotalNodes:           res.ConsStats.TotalNodes,

@@ -9,7 +9,7 @@ HTTP router; a narrow core with a middleware package beside it
 | Corpus | [chi](https://github.com/go-chi/chi) |
 | Pinned at | `v5.3.2` (`38939062c5df4d3e8814aad1a488983112627ced`) |
 | Project since | 2015 |
-| doppel | `a5c4552` |
+| doppel | `c4861da` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -33,6 +33,7 @@ Found 183 functions. Retrieving candidates...
 Retrieval: shape 86, concept 532, call 357 -> 814 unique pairs
   concept-only 48.4%  call-only 29.5%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1340
 Running structural comparison on 814 pairs...
+  Concept views: 0 of 814 compared pairs disagree with the taxonomy (0 vocabulary the tree misses, 0 kinship the vocabularies lack)
   124 pairs remain after struct-min=0.51 filter
 Families: 6 over 16 components, 28 functions in a family, 9 edges completed
   1 pairs suppressed by max-per-func=2
@@ -164,6 +165,8 @@ Most uniform is `chi` (norm `0.92`); most varied is `middleware` (norm `0.90`).
 ### How these candidates were found
 
 Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **814 candidate pairs** (shape 86, concept 532, call 357), of which 29% arrived on call evidence alone and 48% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+
+The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **0 of 814** pairs the taxonomy and the vocabularies differ by at least 0.50: 0 where the vocabularies agree and the tree cannot see it, 0 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 162 functions reached an equilibrium: **121** settled on a single concept, **41** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -368,6 +371,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `9.89` — `depth-2 SEL` ×3
 - `8.42` — `depth-3 BIN` ×2
 
+**Concept views:** shape `1.00`, corpus `0.89`, feature `0.89`, a-in-b `0.89`, b-in-a `1.00`
+
+**Shared vocabulary:** `call:chi.patNextSegment`, `id:catch`, `id:child`
+
 **Structural overlap:** `0.66` (merge-worthy)
 
 - share 1 callees: [len]
@@ -405,6 +412,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `13.18` — `depth-1 EXPRSTMT` ×4
 - `13.18` — `depth-0 CALL` ×4
 - `11.84` — `depth-3 LIT` ×11
+
+**Concept views:** shape `1.00`, corpus `0.96`, feature `0.96`, a-in-b `1.00`, b-in-a `0.96`
+
+**Shared vocabulary:** `id:debug`, `id:green`, `id:magenta`
 
 **Structural overlap:** `0.94` (merge-worthy)
 
@@ -448,6 +459,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `4.83` — `depth-1 ASSIGN` ×3
 - `4.68` — `depth-3 ASSIGN` ×2
 - `4.68` — `depth-2 ASSIGN` ×2
+
+**Concept views:** shape `1.00`, corpus `0.99`, feature `0.99`, a-in-b `1.00`, b-in-a `0.99`
+
+**Shared vocabulary:** `call:chi.Chain`, `id:inline`, `sel:mx.inline`
 
 **Structural overlap:** `0.95` (merge-worthy)
 
@@ -493,6 +508,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `7.61` — `depth-2 STRUCTTYPE` ×2
 - `7.61` — `depth-1 STRUCTTYPE` ×2
 
+**Concept views:** shape `1.00`, corpus `0.96`, feature `0.96`, a-in-b `0.96`, b-in-a `1.00`
+
+**Shared vocabulary:** `id:media`, `id:unsupported`, `sel:http.StatusUnsupportedMediaType`
+
 **Structural overlap:** `0.65` (merge-worthy)
 
 - share 7 callees: [http.HandlerFunc, len, make, next.ServeHTTP, strings.ToLower, strings.TrimSpace, w.WriteHeader]
@@ -531,6 +550,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `4.21` — `depth-3 BIN`
 - `4.21` — `depth-3 IF`
 
+**Concept views:** shape `1.00`, corpus `0.86`, feature `0.86`, a-in-b `0.86`, b-in-a `1.00`
+
+**Shared vocabulary:** `lit:GET`, `sel:URL.RawPath`, `id:raw`
+
 **Structural overlap:** `0.59` (merge-worthy)
 
 - share 5 callees: [chi.RouteContext, http.HandlerFunc, len, next.ServeHTTP, r.Context]
@@ -568,6 +591,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `7.26` — `depth-3 INDEX` ×4
 - `7.26` — `depth-2 INDEX` ×4
 - `7.26` — `depth-1 INDEX` ×4
+
+**Concept views:** shape `1.00`, corpus `0.99`, feature `0.99`, a-in-b `0.99`, b-in-a `1.00`
+
+**Shared vocabulary:** `id:media`, `id:unsupported`, `sel:http.StatusUnsupportedMediaType`
 
 **Structural overlap:** `0.81` (merge-worthy)
 
@@ -609,6 +636,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `7.15` — `depth-0 FIELD` ×6
 - `6.59` — `depth-1 FIELDLIST` ×4
 - `5.72` — `depth-0 FIELDLIST` ×5
+
+**Concept views:** shape `1.00`, corpus `0.95`, feature `0.95`, a-in-b `1.00`, b-in-a `0.95`
+
+**Shared vocabulary:** `call:middleware.parseHeaderAddr`, `id:trusted`, `sel:netip.Addr`
 
 **Structural overlap:** `0.70` (merge-worthy)
 
@@ -653,6 +684,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `3.52` — `depth-2 BLOCK`
 - `3.52` — `depth-1 BLOCK`
 
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
+
+**Shared vocabulary:** `id:compress`, `id:encoders`, `id:pooled`
+
 **Structural overlap:** `0.68` (merge-worthy)
 
 - share 1 callees: [fl.Flush]
@@ -693,6 +728,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `3.52` — `depth-2 BLOCK`
 - `3.52` — `depth-1 BLOCK`
 
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
+
+**Shared vocabulary:** `id:compress`, `id:encoders`, `id:pooled`
+
 **Structural overlap:** `0.68` (merge-worthy)
 
 - share 1 callees: [fl.Flush]
@@ -732,6 +771,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `3.52` — `depth-3 BLOCK`
 - `3.52` — `depth-2 BLOCK`
 - `3.52` — `depth-1 BLOCK`
+
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
+
+**Shared vocabulary:** `id:compress`, `id:encoders`, `id:pooled`
 
 **Structural overlap:** `0.68` (merge-worthy)
 

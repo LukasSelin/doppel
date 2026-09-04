@@ -1074,6 +1074,44 @@
     comps.appendChild(bars);
     host.appendChild(comps);
 
+    /* The concept signal read from every angle it can be. The three symmetric
+       views answer different questions — the taxonomy, this corpus's
+       frequencies, the learned vocabularies with no tree in between — and are
+       drawn unblended for the same reason code-shape and overlap are: their
+       disagreement is a finding. The two containments give the vocabulary
+       view a direction and never enter a score. -1 means the view was not
+       measured, which is not a zero. */
+    if (e.views && e.views[2] >= 0) {
+      var vw = panel("Concept views",
+        "Shape is what the taxonomy asserts; corpus is the same tree read through this " +
+        "corpus's concept frequencies; feature is how much of what the two sides' concepts are " +
+        "made of is the same, with no tree in between. a-in-b and b-in-a are the feature view's " +
+        "direction: how much of one side's vocabulary the other side's concepts also carry.");
+      var vbars = el("div", "bars");
+      ["shape", "corpus", "feature", "a-in-b", "b-in-a"].forEach(function (name, i) {
+        var v = e.views[i];
+        var row = el("div", "bar-row");
+        row.appendChild(el("span", null, name));
+        var track = el("div", "bar-track");
+        var fill = el("div", "bar-fill" + (v >= 0.9 ? " hot" : ""));
+        fill.style.width = Math.max(0, Math.min(100, v * 100)) + "%";
+        track.appendChild(fill);
+        row.appendChild(track);
+        row.appendChild(el("span", "bar-n", fixed(v)));
+        vbars.appendChild(row);
+      });
+      vw.appendChild(vbars);
+      if (e.viewsDisagree) {
+        vw.appendChild(el("p", "panel-note", e.views[2] > e.views[0]
+          ? "The taxonomy disagrees with the corpus: these concepts are made of the same things, and the tree cannot see it."
+          : "The taxonomy disagrees with the corpus: the tree asserts a kinship the vocabularies do not show."));
+      }
+      if (e.sharedVocab && e.sharedVocab.length) {
+        vw.appendChild(el("p", "panel-note", "Shared vocabulary: " + e.sharedVocab.join(", ")));
+      }
+      host.appendChild(vw);
+    }
+
     if (e.explain) {
       host.appendChild(panel("What the canonicalizer did", e.explain));
     }

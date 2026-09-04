@@ -9,7 +9,7 @@ static site generator; a large monolith with heavy template and resource subsyst
 | Corpus | [hugo](https://github.com/gohugoio/hugo) |
 | Pinned at | `v0.165.0` (`76a5e1880ab46688155b02e99bab9be2a6134492`) |
 | Project since | 2013 |
-| doppel | `a5c4552` |
+| doppel | `c4861da` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -34,6 +34,7 @@ Retrieval: shape 7040, concept 20716, call 8634 -> 32238 unique pairs
   concept-only 56.0%  call-only 18.8%  suppressed-shape functions: 19  large identity buckets: 0  surviving labels: 24465
   343 cross test/prod pairs dropped
 Running structural comparison on 31895 pairs...
+  Concept views: 2218 of 31895 compared pairs disagree with the taxonomy (149 vocabulary the tree misses, 2069 kinship the vocabularies lack)
   13571 pairs remain after struct-min=0.31 filter
 Families: 609 over 619 components, 2053 functions in a family, 7137 edges completed
   2 component(s) skipped as too large or too dense: sizes [145 611]
@@ -1789,6 +1790,8 @@ _117 further packages are modeled and not drawn._ Most uniform is `dartsass` (no
 
 Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **32238 candidate pairs** (shape 7040, concept 20716, call 8634), of which 19% arrived on call evidence alone and 56% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
+The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **2218 of 31895** pairs the taxonomy and the vocabularies differ by at least 0.50: 149 where the vocabularies agree and the tree cannot see it, 2069 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
+
 Each function is also an arena where its candidate concepts compete for its evidence. 5544 functions reached an equilibrium: **3227** settled on a single concept, **2310** on a coalition, **0** hold concepts this corpus says do not go together.
 
 ### Corpus metrics
@@ -2505,6 +2508,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `69.10` — `depth-2 IF` ×11
 - `61.57` — `depth-3 IF` ×9
 
+**Concept views:** shape `1.00`, corpus `0.97`, feature `0.97`, a-in-b `0.97`, b-in-a `1.00`
+
+**Shared vocabulary:** `id:strncpy`, `sel:options.compression`, `sel:options.hint`
+
 **Structural overlap:** `0.58` (merge-worthy)
 
 - share 13 callees: [fprintf, json_array_get_count, json_array_get_number, json_object_get_array, json_object_get_number, json_object_get_object, json_object_get_string, json_parse_string, json_value_free, json_value_get_object, json_value_get_type, malloc, strncpy]
@@ -2543,6 +2550,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `39.71` — `depth-3 CALL` ×6
 - `39.71` — `depth-2 CALL` ×6
 - `33.98` — `depth-1 CALL` ×6
+
+**Concept views:** shape `1.00`, corpus `0.95`, feature `0.95`, a-in-b `0.95`, b-in-a `1.00`
+
+**Shared vocabulary:** `call:github.com/gohugoio/hugo/tpl/internal/go_templates/htmltemplate.Must`, `call:github.com/gohugoio/hugo/tpl/internal/go_templates/texttemplate.Must`, `call:paths.ValidateIdentifier`
 
 **Structural overlap:** `0.65` (merge-worthy)
 
@@ -2587,6 +2598,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `30.05` — `depth-2 BLOCK` ×6
 - `24.59` — `depth-3 EXPRSTMT` ×4
 
+**Concept views:** shape `1.00`, corpus `0.95`, feature `0.95`, a-in-b `0.95`, b-in-a `1.00`
+
+**Shared vocabulary:** `call:github.com/gohugoio/hugo/tpl/internal/go_templates/htmltemplate.Must`, `call:github.com/gohugoio/hugo/tpl/internal/go_templates/texttemplate.Must`, `call:paths.ValidateIdentifier`
+
 **Structural overlap:** `0.73` (merge-worthy)
 
 - share 26 callees: [AssignableTo, Elem, FieldByName, Key, etyp.FieldByName, etyp.Kind, indirect, len, method.IsValid, nameVal.Type, panic, ptr.Addr, ptr.CanAddr, ptr.Kind, ptr.MethodByName, receiver.FieldByIndexErr, receiver.IsValid, receiver.Kind, receiver.MapIndex, receiver.Type, reflect.ValueOf, reflect.Zero, result.IsValid, s.errorf, s.evalCall, tField.IsExported]
@@ -2628,6 +2643,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `57.55` — `depth-2 SEL` ×11
 - `50.25` — `depth-3 SEL` ×8
 
+**Concept views:** shape `1.00`, corpus `0.96`, feature `0.96`, a-in-b `0.96`, b-in-a `1.00`
+
+**Shared vocabulary:** `id:strncpy`, `sel:options.compression`, `sel:options.hint`
+
 **Structural overlap:** `0.59` (merge-worthy)
 
 - share 13 callees: [fflush, fprintf, json_array_append_number, json_free_serialized_string, json_object_set_number, json_object_set_string, json_object_set_value, json_serialize_to_string, json_value_free, json_value_get_array, json_value_get_object, json_value_init_array, json_value_init_object]
@@ -2664,6 +2683,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `12.87` — `depth-1 RETURN` ×2
 - `11.04` — `depth-1 BLOCK` ×2
 - `7.13` — `depth-3 EXPRSTMT`
+
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
+
+**Shared vocabulary:** `call:./_core.call`, `call:./_core.next`, `call:livereload.e`
 
 **Structural overlap:** `0.76` (merge-worthy)
 
@@ -2705,6 +2728,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `11.04` — `depth-1 BLOCK` ×2
 - `7.13` — `depth-3 EXPRSTMT`
 
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
+
+**Shared vocabulary:** `call:./_core.call`, `call:./_core.next`, `call:livereload.e`
+
 **Structural overlap:** `0.76` (merge-worthy)
 
 - share 10 callees: [Array.isArray, F, TypeError, _unsupportedIterableToArray, e, f, it.call, it.next, n, s]
@@ -2744,6 +2771,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `12.87` — `depth-1 RETURN` ×2
 - `11.04` — `depth-1 BLOCK` ×2
 - `7.13` — `depth-3 EXPRSTMT`
+
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
+
+**Shared vocabulary:** `call:./_core.call`, `call:./_core.next`, `call:livereload.e`
 
 **Structural overlap:** `0.76` (merge-worthy)
 
@@ -2788,6 +2819,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Culture:** A realizes `i.ReadSeekCloser+i.Format` atypically (typicality 0.18, concept median 0.43, convention 0.50)
 
 **Culture:** B realizes `i.ReadSeekCloser+i.Format` atypically (typicality 0.18, concept median 0.43, convention 0.50)
+
+**Concept views:** shape `1.00`, corpus `0.98`, feature `0.98`, a-in-b `1.00`, b-in-a `0.98`
+
+**Shared vocabulary:** `sel:i.ReadSeekCloser`, `sel:i.Format`, `sel:i.getSpec`
 
 **Structural overlap:** `0.93` (merge-worthy)
 
@@ -2835,6 +2870,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `22.97` — `depth-0 CALL` ×4
 - `15.07` — `depth-3 BLOCK` ×2
 
+**Concept views:** shape `0.50`, corpus `0.63`, feature `0.59`, a-in-b `0.97`, b-in-a `0.60`
+
+**Shared vocabulary:** `call:github.com/gohugoio/hugo/tpl/internal/go_templates/htmltemplate.Must`, `call:github.com/gohugoio/hugo/tpl/internal/go_templates/texttemplate.Must`, `call:paths.ValidateIdentifier`
+
 **Structural overlap:** `0.54` (merge-worthy)
 
 - share 14 callees: [AssignableTo, Elem, canBeNil, reflect.PointerTo, reflect.ValueOf, reflect.Zero, s.errorf, value.Addr, value.CanAddr, value.Elem, value.IsNil, value.IsValid, value.Kind, value.Type]
@@ -2870,6 +2909,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `147.95` — `depth-1 EXPRSTMT` ×30
 - `147.95` — `depth-0 CALL` ×30
 - `142.86` — `depth-3 ARRAYTYPE` ×30
+
+**Concept views:** shape `0.00`, corpus `0.00`, feature `0.00`, a-in-b `0.00`, b-in-a `0.00`
 
 **Structural overlap:** `0.51` (merge-worthy)
 

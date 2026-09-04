@@ -9,7 +9,7 @@ structured concurrency library; generics-heavy, one idea, written recently and a
 | Corpus | [conc](https://github.com/sourcegraph/conc) |
 | Pinned at | `v0.3.0` (`7b8c8f2875cb861bb61844c9bcaa1aed070adbd4`) |
 | Project since | 2023 |
-| doppel | `a5c4552` |
+| doppel | `c4861da` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -33,6 +33,7 @@ Found 81 functions. Retrieving candidates...
 Retrieval: shape 26, concept 121, call 15 -> 155 unique pairs
   concept-only 75.5%  call-only 7.1%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 354
 Running structural comparison on 155 pairs...
+  Concept views: 0 of 155 compared pairs disagree with the taxonomy (0 vocabulary the tree misses, 0 kinship the vocabularies lack)
 Families: 1 over 6 components, 5 functions in a family
   6 pairs suppressed by max-per-func=2
 ```
@@ -121,6 +122,8 @@ Most uniform is `iter` (norm `0.95`); most varied is `pool` (norm `0.73`). 14 fu
 ### How these candidates were found
 
 Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **155 candidate pairs** (shape 26, concept 121, call 15), of which 7% arrived on call evidence alone and 75% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+
+The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **0 of 155** pairs the taxonomy and the vocabularies differ by at least 0.50: 0 where the vocabularies agree and the tree cannot see it, 0 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 39 functions reached an equilibrium: **38** settled on a single concept, **1** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -211,6 +214,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 - `3.00` — `depth-3 KV`
 - `3.00` — `depth-3 CALL`
 
+**Concept views:** shape `0.00`, corpus `0.00`, feature `0.00`, a-in-b `0.00`, b-in-a `0.00`
+
 **Structural overlap:** `0.50` (merge-worthy)
 
 - share 2 callees: [WithContext, p.panicIfInitialized]
@@ -247,6 +252,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 **Habitat:** A fits poorly in `pool` (fit 0.18, package norm 0.73)
 
 **Habitat:** B fits poorly in `pool` (fit 0.18, package norm 0.73)
+
+**Concept views:** shape `0.00`, corpus `0.00`, feature `0.00`, a-in-b `0.00`, b-in-a `0.00`
 
 **Structural overlap:** `0.60` (merge-worthy)
 
@@ -290,6 +297,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Habitat:** B fits poorly in `pool` (fit 0.20, package norm 0.73)
 
+**Concept views:** shape `0.00`, corpus `0.00`, feature `0.00`, a-in-b `0.00`, b-in-a `0.00`
+
 **Structural overlap:** `0.40` (not merge-worthy)
 
 - share 2 callees: [context.WithCancel, p.panicIfInitialized]
@@ -325,6 +334,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 - `3.00` — `depth-3 BLOCK`
 - `3.00` — `depth-3 RETURN`
 
+**Concept views:** shape `0.00`, corpus `0.00`, feature `0.00`, a-in-b `0.00`, b-in-a `0.00`
+
 **Structural overlap:** `0.50` (merge-worthy)
 
 - share 1 callees: [Wait]
@@ -359,6 +370,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 - `3.79` — `depth-3 INDEX` ×2
 - `3.79` — `depth-2 INDEX` ×2
 - `3.79` — `depth-1 INDEX` ×2
+
+**Concept views:** shape `0.00`, corpus `0.00`, feature `0.00`, a-in-b `0.00`, b-in-a `0.00`
 
 **Structural overlap:** `0.54` (merge-worthy)
 
@@ -398,6 +411,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 - `2.08` — `depth-3 EXPRSTMT`
 - `2.08` — `depth-3 BLOCK`
 
+**Concept views:** shape `0.00`, corpus `0.00`, feature `0.00`, a-in-b `0.00`, b-in-a `0.00`
+
 **Structural overlap:** `0.50` (merge-worthy)
 
 - share 2 callees: [WithMaxGoroutines, p.panicIfInitialized]
@@ -430,6 +445,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 - `2.08` — `depth-3 CALL`
 - `2.08` — `depth-3 EXPRSTMT`
 - `2.08` — `depth-3 BLOCK`
+
+**Concept views:** shape `0.00`, corpus `0.00`, feature `0.00`, a-in-b `0.00`, b-in-a `0.00`
 
 **Structural overlap:** `0.50` (merge-worthy)
 
@@ -466,6 +483,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 - `2.08` — `depth-3 EXPRSTMT`
 - `2.08` — `depth-3 BLOCK`
 
+**Concept views:** shape `0.00`, corpus `0.00`, feature `0.00`, a-in-b `0.00`, b-in-a `0.00`
+
 **Structural overlap:** `0.50` (merge-worthy)
 
 - share 2 callees: [WithMaxGoroutines, p.panicIfInitialized]
@@ -498,6 +517,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 - `2.08` — `depth-3 CALL`
 - `2.08` — `depth-3 EXPRSTMT`
 - `2.08` — `depth-3 BLOCK`
+
+**Concept views:** shape `0.00`, corpus `0.00`, feature `0.00`, a-in-b `0.00`, b-in-a `0.00`
 
 **Structural overlap:** `0.50` (merge-worthy)
 
@@ -539,6 +560,10 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 **Habitat:** A fits poorly in `pool` (fit 0.07, package norm 0.73)
 
 **Habitat:** B fits poorly in `pool` (fit 0.10, package norm 0.73)
+
+**Concept views:** shape `1.00`, corpus `0.91`, feature `0.91`, a-in-b `0.91`, b-in-a `1.00`
+
+**Shared vocabulary:** `id:lock`, `id:unlock`, `id:make`
 
 **Structural overlap:** `0.66` (merge-worthy)
 

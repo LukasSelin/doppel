@@ -95,7 +95,15 @@ type Result struct {
 	UnusedSeeds []string // seed concepts this corpus grew no practice for
 	Onto        *ontology.Ontology
 	IC          *ontology.IC
+	Vocab       *ontology.Vocabulary // each learned concept's feature vocabulary; the feature view's substrate
 	Pairs       []analyzer.SimilarPair
+
+	// Views counts how the concept views agreed across the compared pairs —
+	// the retrieval union, before --struct-min, the same population NN is
+	// drawn over. It is the per-report form of the "inert interior" finding:
+	// how often the taxonomy and the learned vocabularies disagree about
+	// whether two functions do related work. Never feeds a score.
+	Views ViewStats
 
 	// WL is the corpus surprisal of every Weisfeiler-Lehman structural
 	// label, counted over exactly the population above. It is a corpus
@@ -131,6 +139,20 @@ type Result struct {
 	// anyone is excluded from the percentiles and counted separately. See
 	// nnDistribution.
 	NN NNStats
+}
+
+// ViewStats is the corpus-wide agreement between the concept views — see
+// Result.Views for the population.
+type ViewStats struct {
+	Compared    int // pairs the comparator scored
+	WithFeature int // of Compared, how many had a measured feature view
+	Disagree    int // of WithFeature, how many crossed comparator.ViewDisagreeSpread
+
+	// The two directions of disagreement, summing to Disagree. FeatureOnly is
+	// vocabulary the taxonomy cannot see (feature above shape); TaxonomyOnly
+	// is kinship the vocabularies do not show (shape above feature).
+	FeatureOnly  int
+	TaxonomyOnly int
 }
 
 // NNStats is the corpus-wide nearest-neighbour code-shape summary — see
@@ -334,6 +356,7 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 		ontology.DerivedConceptTerms(ontology.Default(), derivedConcepts(lex)))
 	ic := ontology.NewCorpusICMass(onto, conceptMass)
 	res.Onto, res.IC = onto, ic
+	res.Vocab = vocabularyOf(lex)
 
 	// Generate concept documents for every unit.
 	// docs[i] describes units[i]; the pipeline relies on that alignment.
@@ -352,7 +375,7 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 	units, docs, cg := res.Units, res.Docs, res.Graph
 	onto, ic := res.Onto, res.IC
-	scorer := ontology.NewScorer(onto, ic)
+	scorer := ontology.NewScorer(onto, ic).WithVocabulary(res.Vocab)
 	comp := comparator.New(scorer)
 
 	// Model the corpus's own conceptual practice: which concepts/roles/calls
@@ -464,6 +487,15 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 		// filter is a selection stage for the *report*, not a reason to
 		// declare a function neighbourless.
 		res.NN = nnDistribution(pairs, len(units), p.Threshold)
+		res.Views = viewStats(pairs)
+		if res.Views.WithFeature > 0 {
+			fmt.Fprintf(progress, "  Concept views: %d of %d compared pairs disagree with the taxonomy (%d vocabulary the tree misses, %d kinship the vocabularies lack)",
+				res.Views.Disagree, res.Views.WithFeature, res.Views.FeatureOnly, res.Views.TaxonomyOnly)
+			if n := res.Vocab.Truncated(); n > 0 {
+				fmt.Fprintf(progress, "; %d concepts cut to their strongest %d features", n, ontology.MaxVocabularyFeatures)
+			}
+			fmt.Fprintln(progress)
+		}
 
 		if p.StructMin > 0 {
 			pairs = filterByOverlap(pairs, p.StructMin)
@@ -630,6 +662,49 @@ func derivedConcepts(lex *lexicon.Model) []ontology.DerivedConcept {
 		}
 	}
 	return out
+}
+
+// vocabularyOf carries each learned concept's feature vocabulary across to the
+// ontology's side table, so the comparator's feature view can read what two
+// concepts are made of. lexicon may not import ontology, which is why this
+// bridge lives here; internal/bench mirrors it and the two must move together.
+func vocabularyOf(lex *lexicon.Model) *ontology.Vocabulary {
+	concepts := lex.Concepts()
+	entries := make([]ontology.VocabularyEntry, len(concepts))
+	for i, c := range concepts {
+		feats := make([]ontology.WeightedFeature, len(c.Features))
+		for j, f := range c.Features {
+			feats[j] = ontology.WeightedFeature{Name: f.Name, Weight: f.Weight, Opaque: lexicon.Opaque(f.Name)}
+		}
+		entries[i] = ontology.VocabularyEntry{ID: ontology.TermID(c.ID), Features: feats}
+	}
+	return ontology.NewVocabulary(entries)
+}
+
+// viewStats counts the concept views' agreement over the compared pairs.
+func viewStats(pairs []analyzer.SimilarPair) ViewStats {
+	var s ViewStats
+	for _, p := range pairs {
+		if p.Evidence == nil {
+			continue
+		}
+		s.Compared++
+		v := p.Evidence.Views
+		if !v.HasFeature {
+			continue
+		}
+		s.WithFeature++
+		if !v.Disagree {
+			continue
+		}
+		s.Disagree++
+		if v.Feature > v.Shape {
+			s.FeatureOnly++
+		} else {
+			s.TaxonomyOnly++
+		}
+	}
+	return s
 }
 
 // unusedSeeds is the seed vocabulary minus the seeds that grew a concept: the

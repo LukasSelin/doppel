@@ -146,7 +146,21 @@ import (
 // baseline and a schema-9 run compare cleanly and report drift nobody made.
 // A unit also keeps at most Options.MaxMemberships concepts, so the lists are
 // shorter as well as differently graded.
-const Schema = 9
+//
+// 10 adds the concept views to Pair. The views — ViewShape (taxonomy-only
+// Wu-Palmer over bare concept IDs), ViewCorpus (the IC-Lin,
+// confidence-weighted number the exhibits slot reads), ViewFeature (weighted
+// Jaccard over the two sides' learned concept vocabularies, no tree in
+// between), the two containments that give the feature view a direction, and
+// ViewsDisagree — are annotations in the sense Containment and Explain are:
+// reported, never diffed. They are also every one of them corpus-relative,
+// since the vocabulary is learned per run, so a schema-9 baseline cannot
+// supply them and this run must not invent them, which is the same reason 6
+// and 8 were bumps rather than fallbacks. Nothing a schema-9 snapshot stores
+// changed meaning: the exhibits slot still reads the corpus view
+// (comparator.DefaultOptions — measured against the labels and kept), so
+// Overlap and MergeWorthy are the same numbers they were.
+const Schema = 10
 
 // Snapshot is one full analysis run.
 //
@@ -367,6 +381,20 @@ type Pair struct {
 	Overlap     float64 `json:"overlap"`     // corpus-relative
 	MergeWorthy bool    `json:"mergeWorthy"` // half corpus-relative
 	Explain     string  `json:"explain"`     // annotation; never diffed
+
+	// The concept views (schema 10): the concept signal read three ways, plus
+	// its direction. Annotations in the sense Containment and Explain are —
+	// reported, never diffed — and rounded to two decimals like Concept.Conf,
+	// because the Stop hook rewrites this file every turn. ViewFeature,
+	// ViewAInB and ViewBInA are -1 when the run measured no feature view
+	// (no comparator evidence, or a scorer without a vocabulary table): an
+	// unmeasured view is not a zero.
+	ViewShape     float64 `json:"viewShape"`     // taxonomy-only Wu-Palmer over bare concept IDs
+	ViewCorpus    float64 `json:"viewCorpus"`    // IC-Lin, confidence-weighted
+	ViewFeature   float64 `json:"viewFeature"`   // weighted Jaccard over the learned vocabularies
+	ViewAInB      float64 `json:"viewAInB"`      // how much of A's vocabulary B's concepts carry
+	ViewBInA      float64 `json:"viewBInA"`      // and the other way
+	ViewsDisagree bool    `json:"viewsDisagree"` // |feature − shape| crossed the comparator's spread
 }
 
 // Build assembles a Snapshot from one pipeline run.
@@ -429,10 +457,17 @@ func Build(units []parser.CodeUnit, docs []concepter.ConceptDoc, pairs []analyze
 		if a > b {
 			a, b = b, a
 		}
-		rec := Pair{A: a, B: b, Score: pr.Score, Containment: pr.Breakdown.Containment, Explain: pr.Explain}
+		rec := Pair{A: a, B: b, Score: pr.Score, Containment: pr.Breakdown.Containment, Explain: pr.Explain,
+			ViewFeature: -1, ViewAInB: -1, ViewBInA: -1}
 		if pr.Evidence != nil {
 			rec.Overlap = pr.Evidence.OverlapScore
 			rec.MergeWorthy = pr.MergeWorthy()
+			v := pr.Evidence.Views
+			rec.ViewShape, rec.ViewCorpus = round2(v.Shape), round2(v.Corpus)
+			if v.HasFeature {
+				rec.ViewFeature, rec.ViewAInB, rec.ViewBInA = round2(v.Feature), round2(v.AInB), round2(v.BInA)
+				rec.ViewsDisagree = v.Disagree
+			}
 		}
 		s.Pairs = append(s.Pairs, rec)
 	}
@@ -630,3 +665,8 @@ func concepts(cs []parser.Concept) []Concept {
 	}
 	return out
 }
+
+// round2 is the storage rounding every graded annotation in this file uses:
+// two decimals, the resolution the digests render at. Nothing reads a
+// rounded value back into a score.
+func round2(x float64) float64 { return math.Round(x*100) / 100 }

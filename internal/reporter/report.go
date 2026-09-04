@@ -94,6 +94,14 @@ func Print(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 			}
 		}
 		if p.Evidence != nil {
+			// The views go above the overlap number, as explain goes above
+			// code-shape: they are what the concept half of it was read from.
+			if line := viewsLine(p.Evidence.Views); line != "" {
+				fmt.Fprintf(w, "  %s\n", line)
+				if shared := sharedVocabularyLine(p.Evidence.Views); shared != "" {
+					fmt.Fprintf(w, "    %s\n", shared)
+				}
+			}
 			fmt.Fprintf(w, "  structural overlap: %.2f", p.Evidence.OverlapScore)
 			if p.MergeWorthy() {
 				fmt.Fprintf(w, " (merge-worthy)")
@@ -192,6 +200,12 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 			label := "not merge-worthy"
 			if p.MergeWorthy() {
 				label = "merge-worthy"
+			}
+			if line := mdViewsLine(p.Evidence.Views); line != "" {
+				fmt.Fprintf(w, "%s\n\n", line)
+				if shared := mdSharedVocabularyLine(p.Evidence.Views); shared != "" {
+					fmt.Fprintf(w, "%s\n\n", shared)
+				}
 			}
 			fmt.Fprintf(w, "**Structural overlap:** `%.2f` (%s)\n\n", p.Evidence.OverlapScore, label)
 			if len(p.Evidence.Reasons) > 0 {

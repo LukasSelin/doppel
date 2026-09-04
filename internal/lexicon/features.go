@@ -226,3 +226,13 @@ func canSeed(feature string) bool {
 	}
 	return false
 }
+
+// Opaque reports whether a feature's name is a hash rather than a term a
+// reader can look up: the structural channel's Weisfeiler-Lehman labels. It is
+// the rule nameableChannels already applies to naming a concept, exported so
+// the evidence a report prints for a concept pair can prefer the same legible
+// features naming does.
+func Opaque(feature string) bool {
+	channel, _ := channelOf(feature)
+	return channel == ChanAction
+}
