@@ -287,9 +287,9 @@ func dashboardEdges(res Result) []dashboard.Edge {
 			A:           a,
 			B:           b,
 			Shape:       round4(pair.Score),
-			Rank:        round4(analyzer.RankKey(pair, opts)),
+			Rank:        round4(analyzer.RankKey(pair, opts, res.Units)),
 			Merge:       pair.MergeWorthy(),
-			Cross:       pair.A.Package != pair.B.Package,
+			Cross:       res.Units[pair.AIdx].Package != res.Units[pair.BIdx].Package,
 			Containment: round4(pair.Breakdown.Containment),
 			Explain:     pair.Explain,
 			Breakdown: [6]float64{

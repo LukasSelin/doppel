@@ -145,7 +145,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	// Final ranking: corroborated evidence — retrieval mass discounted by
 	// architectural corroboration and structural similarity — with a
 	// per-function diversity cap. The displayed scores stay unblended.
-	pairs, suppressed := analyzer.SortForReport(res.Pairs, topN, maxPerFunc)
+	pairs, suppressed := analyzer.SortForReport(res.Pairs, res.Units, topN, maxPerFunc)
 	if suppressed > 0 {
 		fmt.Fprintf(cmd.ErrOrStderr(), "  %d pairs suppressed by max-per-func=%d\n", suppressed, maxPerFunc)
 	}
@@ -170,7 +170,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		reporter.Print(cmd.OutOrStdout(), pairs, meta)
+		reporter.Print(cmd.OutOrStdout(), pairs, res.Units, meta)
 		reporter.PrintFamilies(cmd.OutOrStdout(), fams, famStats, res.Units, familiesN)
 	}
 
@@ -197,7 +197,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 				fmt.Fprintf(cmd.ErrOrStderr(), "  %d pairs' shared structure omitted to bound the page size\n", n)
 			}
 		} else {
-			reporter.PrintMarkdown(f, pairs, meta)
+			reporter.PrintMarkdown(f, pairs, res.Units, meta)
 			reporter.PrintMarkdownFamilies(f, fams, famStats, res.Units, familiesN)
 			fmt.Fprintf(cmd.ErrOrStderr(), "Markdown report written to %s\n", outputFile)
 		}
@@ -358,7 +358,55 @@ func habitatNotes(cult *culture.Model, aIdx, bIdx int, aPkg, bPkg string) []anal
 // A before B. A side qualifies when it carries at least one tag and has a
 // profile, which is exactly when a tags: line already renders, so profiles
 // add no lines to previously silent units.
-func profileNotes(cult *culture.Model, aIdx, bIdx int, aTags, bTags []string) []analyzer.ProfileNote {
+// profileCache builds a pair's arena-profile notes, reusing each unit's own.
+//
+// An arena equilibrium is a property of a *unit*, and a unit appears in many
+// pairs — 18 461 pairs on moby is 36 922 sides over at most 7 658 distinct
+// units. Copying the survivor and extinct masses per side per pair made this
+// the second-largest retained object in a run at 37.6MB, for notes that are
+// read only by the two renderers and never mutated. Cached per unit, the
+// masses are allocated once and the per-pair cost is the note header.
+//
+// The same shape as analyzer.BuildLabelKinds and ontology.split before it:
+// per-unit work that was being redone per pair. The annotation loop is
+// sequential, so the cache needs no synchronisation; if that loop is ever
+// fanned out, this becomes per-worker state or a pre-pass.
+type profileCache struct {
+	cult  *culture.Model
+	notes []analyzer.ProfileNote // per unit, Side unset
+	built []bool
+}
+
+func newProfileCache(cult *culture.Model, n int) *profileCache {
+	return &profileCache{cult: cult, notes: make([]analyzer.ProfileNote, n), built: make([]bool, n)}
+}
+
+// forUnit returns unit idx's note, or ok=false when the arena stayed silent.
+// The returned Concepts and Extinct slices are shared with every other pair
+// this unit appears in, so a caller must not write to them.
+func (c *profileCache) forUnit(idx int) (analyzer.ProfileNote, bool) {
+	if idx < 0 || idx >= len(c.notes) {
+		return analyzer.ProfileNote{}, false
+	}
+	if !c.built[idx] {
+		c.built[idx] = true
+		if p, ok := c.cult.ArenaProfile(idx); ok {
+			note := analyzer.ProfileNote{State: p.State, Rounds: p.Rounds, Converged: p.Converged}
+			for _, cm := range p.Survivors {
+				note.Concepts = append(note.Concepts, analyzer.ProfileMass{Tag: cm.Tag, Mass: cm.Mass})
+			}
+			for _, cm := range p.Extinct {
+				note.Extinct = append(note.Extinct, analyzer.ProfileMass{Tag: cm.Tag, Mass: cm.Mass})
+			}
+			c.notes[idx] = note
+		}
+	}
+	// State is empty exactly when ArenaProfile said no.
+	n := c.notes[idx]
+	return n, n.State != ""
+}
+
+func (c *profileCache) pair(aIdx, bIdx int, aTags, bTags []string) []analyzer.ProfileNote {
 	var notes []analyzer.ProfileNote
 	for _, side := range []struct {
 		label string
@@ -368,22 +416,11 @@ func profileNotes(cult *culture.Model, aIdx, bIdx int, aTags, bTags []string) []
 		if len(side.tags) == 0 {
 			continue
 		}
-		p, ok := cult.ArenaProfile(side.idx)
+		note, ok := c.forUnit(side.idx)
 		if !ok {
 			continue
 		}
-		note := analyzer.ProfileNote{
-			Side:      side.label,
-			State:     p.State,
-			Rounds:    p.Rounds,
-			Converged: p.Converged,
-		}
-		for _, cm := range p.Survivors {
-			note.Concepts = append(note.Concepts, analyzer.ProfileMass{Tag: cm.Tag, Mass: cm.Mass})
-		}
-		for _, cm := range p.Extinct {
-			note.Extinct = append(note.Extinct, analyzer.ProfileMass{Tag: cm.Tag, Mass: cm.Mass})
-		}
+		note.Side = side.label // a copy of the header; the mass slices are shared
 		notes = append(notes, note)
 	}
 	return notes

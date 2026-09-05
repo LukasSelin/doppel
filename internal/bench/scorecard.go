@@ -60,18 +60,18 @@ func ScoreWith(run *Run, lf LabelsFile, ro analyzer.RankOptions) Scorecard {
 
 	retrieved := make(map[string]bool, len(pairs))
 	for _, p := range pairs {
-		retrieved[pairKey(qualifiedName(p.A), qualifiedName(p.B))] = true
+		retrieved[pairKey(qualifiedName(run.Units[p.AIdx]), qualifiedName(run.Units[p.BIdx]))] = true
 	}
 
-	kept, suppressed := analyzer.SortForReportWith(pairs, 0, 2, ro)
+	kept, suppressed := analyzer.SortForReportWith(pairs, run.Units, 0, 2, ro)
 
 	rankOf := make(map[string]int, len(kept))
 	keyOf := make(map[string]float64, len(kept))
 	for i, p := range kept {
-		k := pairKey(qualifiedName(p.A), qualifiedName(p.B))
+		k := pairKey(qualifiedName(run.Units[p.AIdx]), qualifiedName(run.Units[p.BIdx]))
 		if _, ok := rankOf[k]; !ok {
 			rankOf[k] = i + 1
-			keyOf[k] = analyzer.RankKey(p, ro)
+			keyOf[k] = analyzer.RankKey(p, ro, run.Units)
 		}
 	}
 

@@ -8,9 +8,23 @@ import (
 	"github.com/LukasSelin/doppel/internal/parser"
 )
 
-// SimilarPair holds two code units and their static similarity score.
+// SimilarPair names two code units by index and carries their similarity.
+//
+// # Why the units are not here
+//
+// This struct once embedded both parser.CodeUnits by value, which was 976 of
+// its 1 168 bytes. A pair slice is the largest retained object in a run — moby
+// keeps 40 203 of them — so those copies were 45MB of live heap, and about
+// twice that in RSS once the collector's headroom is counted. The units slice
+// outlives every pair built from it and AIdx/BIdx were already here, so the
+// copies said nothing the indices did not.
+//
+// Consequently a pair is only meaningful beside the units slice it was built
+// from, and a consumer that renders one takes that slice too — see
+// reporter.Print. Removing the fields rather than making them pointers was
+// deliberate: it turns every stale reader into a compile error instead of
+// letting one keep a value that is no longer stored.
 type SimilarPair struct {
-	A, B       parser.CodeUnit
 	AIdx, BIdx int                            // positions in the units slice, for looking up parallel data
 	Score      float64                        // composite fingerprint similarity, 0.0-1.0
 	Breakdown  fingerprint.Breakdown          // per-component scores behind Score
@@ -169,8 +183,6 @@ func FindSimilar(units []parser.CodeUnit, threshold float64, topN, minNodes int)
 			bd := fingerprint.Similarity(units[i].Fingerprint, units[j].Fingerprint, wl)
 			if bd.Score >= threshold {
 				pairs = append(pairs, SimilarPair{
-					A:         units[i],
-					B:         units[j],
 					AIdx:      i,
 					BIdx:      j,
 					Score:     bd.Score,

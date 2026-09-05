@@ -93,8 +93,8 @@ func TestNilOverviewRendersNothing(t *testing.T) {
 	// And through the report itself: a Meta without an Overview is unchanged.
 	var with, without strings.Builder
 	pair := samplePair(nil)
-	PrintMarkdown(&with, []analyzer.SimilarPair{pair}, Meta{})
-	PrintMarkdown(&without, []analyzer.SimilarPair{pair}, Meta{Overview: nil})
+	PrintMarkdown(&with, []analyzer.SimilarPair{pair}, sampleUnits, Meta{})
+	PrintMarkdown(&without, []analyzer.SimilarPair{pair}, sampleUnits, Meta{Overview: nil})
 	if with.String() != without.String() {
 		t.Error("an absent overview changed the report bytes")
 	}

@@ -29,7 +29,11 @@ type Meta struct {
 // the code-shape score — how alike the two normalized bodies are — which is
 // deliberately not named "score": pairs are ranked by retrieval evidence, and
 // a 1.0 shape match on a trivial idiom is not a 1.0 verdict.
-func Print(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
+// units is the slice a pair's AIdx/BIdx index. A pair no longer carries its
+// two CodeUnits — they were 84% of its bytes and the largest retained object in
+// a run — so a renderer takes the corpus alongside the findings, the way
+// PrintFamilies already does.
+func Print(w io.Writer, pairs []analyzer.SimilarPair, units []parser.CodeUnit, meta Meta) {
 	fmt.Fprintf(w, "\nCode Similarity Report\n")
 	fmt.Fprintf(w, "======================\n")
 	fmt.Fprintf(w, "Functions analyzed: %d  |  Threshold: %.2f\n\n", meta.TotalFuncs, meta.Threshold)
@@ -41,8 +45,8 @@ func Print(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 
 	for i, p := range pairs {
 		fmt.Fprintf(w, "#%-3d  code-shape: %.4f\n", i+1, p.Score)
-		printUnit(w, "  A", p.A)
-		printUnit(w, "  B", p.B)
+		printUnit(w, "  A", units[p.AIdx])
+		printUnit(w, "  B", units[p.BIdx])
 		if p.Kind != nil {
 			fmt.Fprintf(w, "  kind: %s\n", kindClause(p.Kind, false, false))
 		}
@@ -115,8 +119,9 @@ func Print(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 	}
 }
 
-// PrintMarkdown writes the similarity report as a Markdown document to w.
-func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
+// PrintMarkdown writes the similarity report as a Markdown document to w. units
+// is the slice a pair's AIdx/BIdx index — see Print.
+func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, units []parser.CodeUnit, meta Meta) {
 	fmt.Fprintf(w, "# Code Similarity Report\n\n")
 	fmt.Fprintf(w, "**Functions analyzed:** %d | **Threshold:** %.2f | **Pairs found:** %d\n\n", meta.TotalFuncs, meta.Threshold, len(pairs))
 	fmt.Fprintf(w, "---\n\n")
@@ -137,8 +142,8 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, meta Meta) {
 		// Table header
 		fmt.Fprintf(w, "| | Location | Function | Signature | Concepts |\n")
 		fmt.Fprintf(w, "|---|---|---|---|---|\n")
-		mdTableRow(w, "A", p.A)
-		mdTableRow(w, "B", p.B)
+		mdTableRow(w, "A", units[p.AIdx])
+		mdTableRow(w, "B", units[p.BIdx])
 		fmt.Fprintln(w)
 
 		if p.Kind != nil {

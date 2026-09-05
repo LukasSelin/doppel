@@ -381,6 +381,43 @@ stage timing says *which* stage, the profile says *what inside it*.
   process start, flag parsing and report rendering sit outside the pipeline — and the stage
   lines sum to their own total rather than to the wall clock.
 
+- **`DOPPEL_HEAPPROFILE=<prefix>` with `DOPPEL_HEAPPROFILE_AT=<stage>[,...]`** writes a heap
+  profile at the end of the named stages, *while the data those stages built is still reachable*
+  (`cmd/heapdump.go`). It hangs off the stage timer, so there is one list of stage names in the
+  tool and a dump cannot name a stage that does not exist; it fires whether or not `DOPPEL_TIMING`
+  is on. Both halves of the gate are required, and with either unset nothing runs and both streams
+  are byte-identical — verified, including a hook staying silent (a hook's progress writer is
+  `io.Discard`, so the "wrote" line vanishes; the *file* is still written, exactly as `--cpuprofile`
+  would be, because setting the variable is the opt-in).
+
+  **It exists because `--memprofile` cannot answer the footprint question.** That one fires from a
+  defer in `Execute`, after the pipeline's `Result` is unreachable, so its `inuse_space` reads 24MB
+  on a run whose peak RSS is 800MB — the right profile for "what leaked" and useless for "what does
+  the corpus model cost to hold".
+
+- **`DOPPEL_MEMSTATS=1`** (or `=<path>.json`) records **exact** heap accounting at every stage:
+  `live` (HeapAlloc after a forced GC — bytes reachable), `alloc` (bytes this run allocated),
+  `objects` (Mallocs−Frees) and `heapSys`. `cmd/memstats.go`, hooked into the same stage marks.
+
+  **It exists because a sampled profile cannot resolve a footprint change.** `DOPPEL_HEAPPROFILE`
+  samples one allocation per 512KB, so its `inuse_space` is an estimate that moves: the same binary
+  dumping the same stage three times read 129.6, 137.8 and 143.2MB, a **10% spread**, and peak RSS
+  over six runs of one binary spanned 624–755MB. `runtime.MemStats` is not sampled — those are
+  counters the runtime maintains exactly — so the same measurement repeated reads **0.02MB apart
+  across processes** and 0.2MB within one. That is roughly 700x the resolution, and it is what makes
+  a 10MB change decidable at all. `TestMemStatsNoiseFloor` (guard `DOPPEL_BENCH_MEMSTATS=<corpus>`,
+  `task memstats`) asserts the floor rather than printing it.
+
+  Two properties are load-bearing. `Alloc` is measured **from when recording began, not from process
+  start** — the noise-floor test drives three runs in one process and read a 5GB spread before that
+  was fixed, which is run 2 carrying run 1's total. And the recorder is a **process-wide singleton**,
+  because `index()` and `finishAnalyze()` each own a stage timer and two recorders writing one JSON
+  path would silently drop the first half of the run.
+
+  What it deliberately does not report is RSS: every stage boundary forces a GC, so a run under this
+  flag has a collector schedule no normal run has. Use the OS working set for that, knowing its
+  spread.
+
 - **`--cpuprofile` / `--memprofile`** are hidden persistent flags on the root command
   (`cmd/profile.go`), so every subcommand is profilable without each registering its own pair.
   Hidden for the reason `--channel-k` and `--min-nodes` are: no question about a codebase is
@@ -595,6 +632,94 @@ One consequence for measurement: `internal/bench`'s `Load` does its own sequenti
 for comparing parse cost across corpora, and the wrong one for predicting a run's wall clock —
 which is what `DOPPEL_TIMING` is for.
 
+**What the retained-heap measurement found, and the proposal it killed.** Live heap is 141MB at the
+end of `index()` and 317MB at the end of the pipeline, against a peak RSS of ~800MB — so roughly
+`GOGC=100`'s doubling of a 317MB live set, plus allocator overhead, and **every megabyte of retained
+data costs about two megabytes of RSS**. The retained set is not what it was assumed to be: at full
+run it is `gofront.toSyntax` 54MB (the canonical trees), `filterByOverlap` 45MB and
+`comparator.intersect` 36MB and `profileNotes` 33MB (all per *pair*, scaling with the 40 225-pair
+union), `wlBagOf` 16MB, `LabelWeights` 11MB. `Fingerprint.Shingles` — proposed for removal on the
+grounds that it is a per-unit slice with exactly one reader — retains **1.5MB, 0.47%**, and folding
+it away was dropped on that measurement. Measure the retained set before trading a field away for
+it.
+
+**That measurement was then acted on.** `analyzer.SimilarPair` was **1 168 bytes**, of which
+`A, B parser.CodeUnit` by value was 976 (84%) — two whole unit copies per pair, while `AIdx`/`BIdx`
+were already on the struct and `units[AIdx] == A` held by construction at every construction site.
+The fields are gone: the struct is **192 bytes**, and a consumer that renders a pair takes the units
+slice beside it (`reporter.Print`, the way `PrintFamilies` always did). Removing them rather than
+making them pointers was the deliberate choice — it turns every stale reader into a compile error
+instead of letting one keep a value that is no longer stored, and it leaves no aliasing invariant to
+maintain. The blast radius was ten production sites, eight of which already had `units` in scope.
+
+`RankKey` was the one reader inside `analyzer`, and only to ask whether both sides are test units,
+so it (and `SortForReport`/`SortForReportWith`, and `bench.RankKey`) now take the slice. **A nil or
+short `units` skips the test discount rather than panicking** — that is what a pair built without a
+corpus behind it did before, when its two zero-value `CodeUnit`s carried an empty `File` that is not
+a test file, and several rank tests depend on it.
+
+`filterByOverlap` was fixed in the same change: it sized the survivor slice at `len(pairs)` — the
+whole union, 40 203 pairs against 18 461 survivors — so half of it was live heap for the rest of the
+run. Counted first, then allocated exactly.
+
+Measured on moby: that slice **44.79MB -> 3.39MB**, live heap **317.6MB -> 257.8MB (-19%)**, peak RSS
+**712MB -> 642MB (-10%)**, `--format json` and stderr byte-identical on all seven rungs. What is
+left at the top is `gofront.toSyntax` 54MB (the canonical trees), `profileNotes` 37.6MB and
+`comparator.intersect` 29.3MB.
+
+**`profileNotes` was the third instance of one pattern, and naming the pattern is the point.** An
+arena equilibrium is a property of a *unit*; the annotation loop was copying one per *pair*, so moby
+built 36 922 sets of survivor and extinct masses over at most 7 658 distinct units. `profileCache`
+(`cmd/analyze.go`) builds each unit's note once and shares the mass slices — safe because the two
+renderers only range over them, and the annotation loop is sequential, which the type says out loud
+in case that loop is ever fanned out. Measured: live heap **225.3MB -> 200.3MB** (-25.0MB, against a
+0.14MB floor) and **46.7MB less allocated**, so it is cheaper on both axes at once.
+
+That is the same shape as `analyzer.BuildLabelKinds` (797MB, 21% of a run), `ontology.split` (306MB)
+and `concepter.Graded` before it: **per-unit work redone per pair**. Four sites, each found by a
+profile rather than by reading the code, and each invisible until the pair count made it large. When
+a footprint or allocation number here looks wrong, ask first whether something that belongs to a
+function is being recomputed for every pair that function appears in.
+
+**Releasing the canonical trees was rejected, then re-measured, then adopted — and the reversal is
+the lesson.** After `index()` the only consumer of `CodeUnit.Canonical` is the explain sentence's
+label table, so `analyze` builds that table over the whole corpus and drops the trees, and the heavy
+half of the pipeline runs without them.
+
+Where it happens is forced from both sides. Not in `finishAnalyze`, which starts culture on its own
+goroutine — culture passes `units[i]` to `CallTokens` and `flowFeatures` **by value**, so writing any
+field of a unit while it runs is a data race whether or not culture reads that field. Not in
+`index()` either, which is the whole of `doppel query` and `doppel fingerprint`: both want the trees,
+and would pay for a table they never read. So it sits in `analyze`, between the two.
+
+It frees ~23MB of the ~51MB that `gofront.toSyntax` allocates, `Canonical` being one of the two trees
+it builds. **Measured with `DOPPEL_MEMSTATS`: live heap 249.9MB -> 225.3MB at the end of the run,
+-24.6MB from calibration onward, against a per-stage noise floor of 0.18-0.82MB** — thirty to a
+hundred and thirty times the floor. It costs +10.3MB of total allocation (+0.4%), the table now being
+built over every unit rather than the paired ones, and the ladder stays byte-identical, explain
+sentences included.
+
+**It was reverted once, on a measurement that was simply wrong.** The sampled heap profile put live
+heap at the peak point at 240.66MB before and 240.79MB after — no change — and peak RSS medians
+differed by less than the before-distribution's own spread, so the change looked like it bought
+nothing against a real price: a lifetime invariant on `Canonical`, a `Result.LabelKinds` coupling, and
+a degraded sentence for the free `Explain` on tree-less units. Re-run under exact counters, the same
+patch shows -24.6MB. The instrument, not the change, was the problem. Two rules follow:
+
+- **A footprint change is not decidable from a sampled profile.** Use `DOPPEL_MEMSTATS`.
+- **A negative result from a coarse instrument is a statement about the instrument.** Sharpening it
+  and re-asking is cheaper than it looks, and here it overturned the answer.
+
+The two prices are still paid, and they are the reason this is documented rather than merely done.
+`Canonical` is nil on every unit of a `Result` that came back from `analyze`, and non-nil on one from
+`index()` alone; and `analyzer.Explain`'s free form, handed two tree-less units with no table, says
+"structures differ; no canonical tree to name the difference" instead of falling through to the h=0
+tier, which would read an empty diff as "the same statement kinds" and be confidently wrong.
+
+**`DOPPEL_MEMSTATS` is the answer to that problem and the way to measure the next one**: exact
+counters instead of samples, a floor of 0.02MB rather than 13.6MB. Its first use was to re-open the
+canonical-tree question above, which the sampled profile had closed wrongly.
+
 That is the standing gap: `internal/bench/pipeline.go` omits culture, habitats and arenas
 because "they annotate, they never rank", which is right for ranking measurement and wrong for
 performance measurement — together with annotation and the snapshot encode, roughly a third of
@@ -652,7 +777,8 @@ profile ahead of parallelism in the optimisation order and found the `Explain` s
 - **ConceptDoc** (`internal/concepter/concepter.go`) — the architectural context the comparator
   scores. It is no longer rendered to text anywhere; `Format()` existed only to build embedding
   input and is gone.
-- **SimilarPair** (`internal/analyzer/similarity.go`) — two `CodeUnit`s plus `AIdx`/`BIdx`, `Score`,
+- **SimilarPair** (`internal/analyzer/similarity.go`) — `AIdx`/`BIdx` into the run's `units`
+  slice, `Score`,
   `Breakdown` (per-component code similarity), `Evidence` (**nil until the structural
   comparison stage**), and `Retrieval` (**nil for `FindSimilar`-produced pairs** — set by the
   pipeline from retriever candidates).

@@ -28,7 +28,7 @@ func TestPrintKindNote(t *testing.T) {
 	p := samplePair(nil)
 	p.Kind = interfaceKind()
 	var b strings.Builder
-	Print(&b, []analyzer.SimilarPair{p}, Meta{})
+	Print(&b, []analyzer.SimilarPair{p}, sampleUnits, Meta{})
 	want := "  kind: interface implementations — both implement Validate(context.Context) (error) on *AWS and *GCP, sibling packages aws and gcp\n"
 	if !strings.Contains(b.String(), want) {
 		t.Errorf("missing kind line %q in:\n%s", want, b.String())
@@ -42,7 +42,7 @@ func TestPrintKindNote(t *testing.T) {
 
 	p.Kind = forkKind()
 	b.Reset()
-	Print(&b, []analyzer.SimilarPair{p}, Meta{})
+	Print(&b, []analyzer.SimilarPair{p}, sampleUnits, Meta{})
 	want = "  kind: diverged copy — *state.evalCallOld and *state.evalCall share the stem evalCall in package template\n"
 	if !strings.Contains(b.String(), want) {
 		t.Errorf("missing fork line %q in:\n%s", want, b.String())
@@ -53,7 +53,7 @@ func TestPrintMarkdownKindNote(t *testing.T) {
 	p := samplePair(nil)
 	p.Kind = interfaceKind()
 	var b strings.Builder
-	PrintMarkdown(&b, []analyzer.SimilarPair{p}, Meta{})
+	PrintMarkdown(&b, []analyzer.SimilarPair{p}, sampleUnits, Meta{})
 	want := "**Kind:** interface implementations — both implement `Validate(context.Context) (error)` on `*AWS` and `*GCP`, sibling packages `aws` and `gcp`\n\n"
 	if !strings.Contains(b.String(), want) {
 		t.Errorf("missing markdown kind %q in:\n%s", want, b.String())
@@ -62,8 +62,8 @@ func TestPrintMarkdownKindNote(t *testing.T) {
 
 func TestPrintNilKindRendersNothing(t *testing.T) {
 	var b strings.Builder
-	Print(&b, []analyzer.SimilarPair{samplePair(nil)}, Meta{Debug: true})
-	PrintMarkdown(&b, []analyzer.SimilarPair{samplePair(nil)}, Meta{Debug: true})
+	Print(&b, []analyzer.SimilarPair{samplePair(nil)}, sampleUnits, Meta{Debug: true})
+	PrintMarkdown(&b, []analyzer.SimilarPair{samplePair(nil)}, sampleUnits, Meta{Debug: true})
 	if strings.Contains(b.String(), "kind:") || strings.Contains(b.String(), "Kind:") {
 		t.Errorf("unlabeled pair rendered a kind line:\n%s", b.String())
 	}

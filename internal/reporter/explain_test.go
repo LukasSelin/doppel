@@ -15,7 +15,7 @@ func explainPair(sentence string) analyzer.SimilarPair {
 
 func TestPrintRendersExplain(t *testing.T) {
 	var b strings.Builder
-	Print(&b, []analyzer.SimilarPair{explainPair("identical after rename, commutative-reorder")}, Meta{})
+	Print(&b, []analyzer.SimilarPair{explainPair("identical after rename, commutative-reorder")}, sampleUnits, Meta{})
 	if !strings.Contains(b.String(), "  explain: identical after rename, commutative-reorder\n") {
 		t.Errorf("text report missing the explain line:\n%s", b.String())
 	}
@@ -23,7 +23,7 @@ func TestPrintRendersExplain(t *testing.T) {
 
 func TestPrintMarkdownRendersExplain(t *testing.T) {
 	var b strings.Builder
-	PrintMarkdown(&b, []analyzer.SimilarPair{explainPair("differs by one extra defer")}, Meta{})
+	PrintMarkdown(&b, []analyzer.SimilarPair{explainPair("differs by one extra defer")}, sampleUnits, Meta{})
 	if !strings.Contains(b.String(), "**Explain:** differs by one extra defer") {
 		t.Errorf("markdown report missing the explain line:\n%s", b.String())
 	}
@@ -38,8 +38,8 @@ func TestPrintMarkdownRendersExplain(t *testing.T) {
 // before explanations existed is byte-identical to one written now.
 func TestExplainOmittedWhenEmpty(t *testing.T) {
 	var text, md strings.Builder
-	Print(&text, []analyzer.SimilarPair{explainPair("")}, Meta{})
-	PrintMarkdown(&md, []analyzer.SimilarPair{explainPair("")}, Meta{})
+	Print(&text, []analyzer.SimilarPair{explainPair("")}, sampleUnits, Meta{})
+	PrintMarkdown(&md, []analyzer.SimilarPair{explainPair("")}, sampleUnits, Meta{})
 	if strings.Contains(text.String(), "explain:") {
 		t.Errorf("text report rendered an empty explain line:\n%s", text.String())
 	}

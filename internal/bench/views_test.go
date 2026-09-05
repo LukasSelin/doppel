@@ -92,7 +92,7 @@ func TestViewsLadder(t *testing.T) {
 			byKey := make(map[string]comparator.ConceptViews, len(run.Pairs))
 			for _, p := range run.Pairs {
 				if p.Evidence != nil {
-					byKey[pairKey(qualifiedName(p.A), qualifiedName(p.B))] = p.Evidence.Views
+					byKey[pairKey(qualifiedName(run.Units[p.AIdx]), qualifiedName(run.Units[p.BIdx]))] = p.Evidence.Views
 				}
 			}
 			for _, l := range lf.Labels {

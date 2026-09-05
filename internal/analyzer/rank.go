@@ -64,8 +64,8 @@ func SortByEvidence(pairs []SimilarPair, topN int) []SimilarPair {
 // maxPerFunc 0 disables the cap). Suppressed pairs are skipped and
 // backfilled by lower-ranked ones; the count of skips is returned for the
 // stderr accounting. SortByEvidence remains the simple library ranking.
-func SortForReport(pairs []SimilarPair, topN, maxPerFunc int) ([]SimilarPair, int) {
-	return SortForReportWith(pairs, topN, maxPerFunc, DefaultRankOptions())
+func SortForReport(pairs []SimilarPair, units []parser.CodeUnit, topN, maxPerFunc int) ([]SimilarPair, int) {
+	return SortForReportWith(pairs, units, topN, maxPerFunc, DefaultRankOptions())
 }
 
 // RankOptions parameterizes the rank key for measurement. Production always
@@ -83,7 +83,13 @@ func DefaultRankOptions() RankOptions { return RankOptions{TrophicPower: 2, Test
 // exposed so a scorecard can print it and a sweep can vary it — there is one
 // definition, so the bench copy cannot drift. A nil Retrieval keys 0; a nil
 // Evidence contributes factor 1.
-func RankKey(p SimilarPair, o RankOptions) float64 {
+//
+// units is the slice a pair's AIdx/BIdx index, and is read for one thing only:
+// whether both sides are test units. Pass nil when there is none — a pair with
+// no units behind it then ranks without the test discount, which is exactly
+// what it did when the units were embedded and a pair built without them
+// carried two zero-value CodeUnits whose empty File is not a test file.
+func RankKey(p SimilarPair, o RankOptions, units []parser.CodeUnit) float64 {
 	if p.Retrieval == nil {
 		return 0
 	}
@@ -108,15 +114,15 @@ func RankKey(p SimilarPair, o RankOptions) float64 {
 	// --tests uses, asked of the unit's own frontend. Production pairs are
 	// untouched; under --tests only, the whole hygiene view becomes
 	// SUT-aware, which is the point.
-	if o.TestCallDiscount && parser.IsTestUnit(p.A) && parser.IsTestUnit(p.B) {
+	if o.TestCallDiscount && bothTests(p, units) {
 		k *= p.Retrieval.CallSim
 	}
 	return k
 }
 
 // SortForReportWith is SortForReport under an explicit rank key.
-func SortForReportWith(pairs []SimilarPair, topN, maxPerFunc int, o RankOptions) ([]SimilarPair, int) {
-	key := func(p SimilarPair) float64 { return RankKey(p, o) }
+func SortForReportWith(pairs []SimilarPair, units []parser.CodeUnit, topN, maxPerFunc int, o RankOptions) ([]SimilarPair, int) {
+	key := func(p SimilarPair) float64 { return RankKey(p, o, units) }
 	sort.SliceStable(pairs, func(i, j int) bool {
 		ki, kj := key(pairs[i]), key(pairs[j])
 		if ki != kj {
@@ -154,4 +160,18 @@ func SortForReportWith(pairs []SimilarPair, topN, maxPerFunc int, o RankOptions)
 		kept = append(kept, p)
 	}
 	return kept, suppressed
+}
+
+// bothTests reports whether both sides of a pair are test units.
+//
+// Out-of-range or absent indices answer false rather than panicking: a pair
+// can legitimately be built without a units slice behind it (FindSimilar's
+// callers, the bench harness's synthetic pairs, every rank test), and such a
+// pair must rank exactly as it did when the units travelled inside it — where
+// a zero-value CodeUnit's empty File was simply not a test file.
+func bothTests(p SimilarPair, units []parser.CodeUnit) bool {
+	if p.AIdx < 0 || p.BIdx < 0 || p.AIdx >= len(units) || p.BIdx >= len(units) {
+		return false
+	}
+	return parser.IsTestUnit(units[p.AIdx]) && parser.IsTestUnit(units[p.BIdx])
 }

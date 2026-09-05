@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/LukasSelin/doppel/internal/comparator"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 func pairWith(aIdx, bIdx int, score float64, ret *Retrieval) SimilarPair {
@@ -61,7 +62,7 @@ func TestSortForReportCorroboratedOrdering(t *testing.T) {
 		corroboratedT(4, 5, 1810.83, 0.26, 0.39, 0.55), // vocabulary FP
 		corroboratedT(6, 7, 755.00, 0.37, 0.72, 0.91),  // cross-package clone
 	}
-	kept, suppressed := SortForReport(pairs, 0, 0)
+	kept, suppressed := SortForReport(pairs, nil, 0, 0)
 	var order []int
 	for _, p := range kept {
 		order = append(order, p.AIdx)
@@ -87,7 +88,7 @@ func TestSortForReportFamilySkeletonBelowFamilyClones(t *testing.T) {
 		corroboratedT(4, 5, 456.72, 0.83, 0.9397, 0.97), // family clone
 		corroboratedT(6, 7, 485.42, 0.83, 0.9400, 1.00), // family clone
 	}
-	kept, _ := SortForReport(pairs, 0, 0)
+	kept, _ := SortForReport(pairs, nil, 0, 0)
 	if kept[len(kept)-1].AIdx != 0 {
 		var order []int
 		for _, p := range kept {
@@ -102,11 +103,18 @@ func TestSortForReportFamilySkeletonBelowFamilyClones(t *testing.T) {
 // machinery) must sink below both production pairs and same-SUT test pairs.
 // Production pairs never carry the CallSim factor.
 func TestSortForReportSUTAwareTestDiscount(t *testing.T) {
+	// The corpus these pairs index into: which side is a test is a property of
+	// the unit, so it lives here rather than on the pair.
+	units := []parser.CodeUnit{
+		0: {File: "pkg/a_test.go"}, 1: {File: "pkg/b_test.go"},
+		2: {File: "pkg/c_test.go"}, 3: {File: "pkg/d_test.go"},
+		4: {File: "pkg/a.go"}, 5: {File: "pkg/b.go"},
+		6: {File: "pkg/e_test.go"}, 7: {File: "pkg/f.go"},
+		8: {File: "x_test.go"}, 9: {File: "y_test.go"},
+	}
 	testPair := func(aIdx, bIdx int, total, overlap, score, trophic, callSim float64) SimilarPair {
 		p := corroboratedT(aIdx, bIdx, total, overlap, score, trophic)
 		p.Retrieval.CallSim = callSim
-		p.A.File = "pkg/a_test.go"
-		p.B.File = "pkg/b_test.go"
 		return p
 	}
 	pairs := []SimilarPair{
@@ -119,12 +127,10 @@ func TestSortForReportSUTAwareTestDiscount(t *testing.T) {
 		func() SimilarPair {
 			p := corroboratedT(4, 5, 300.00, 0.59, 0.92, 0.93)
 			p.Retrieval.CallSim = 0.0
-			p.A.File = "pkg/a.go"
-			p.B.File = "pkg/b.go"
 			return p
 		}(),
 	}
-	kept, _ := SortForReport(pairs, 0, 0)
+	kept, _ := SortForReport(pairs, units, 0, 0)
 	var order []int
 	for _, p := range kept {
 		order = append(order, p.AIdx)
@@ -136,9 +142,7 @@ func TestSortForReportSUTAwareTestDiscount(t *testing.T) {
 	// A mixed test/prod pair is not discounted either.
 	mixed := corroboratedT(6, 7, 100, 0.5, 0.5, 0.5)
 	mixed.Retrieval.CallSim = 0.0
-	mixed.A.File = "pkg/a_test.go"
-	mixed.B.File = "pkg/b.go"
-	kept, _ = SortForReport([]SimilarPair{mixed}, 0, 0)
+	kept, _ = SortForReport([]SimilarPair{mixed}, units, 0, 0)
 	if len(kept) != 1 || kept[0].Retrieval.Total != 100 {
 		t.Fatal("mixed pair mangled")
 	}
@@ -146,9 +150,7 @@ func TestSortForReportSUTAwareTestDiscount(t *testing.T) {
 	// true test pair with CallSim 0.
 	zeroTest := corroboratedT(8, 9, 100, 0.5, 0.5, 0.5)
 	zeroTest.Retrieval.CallSim = 0.0
-	zeroTest.A.File = "x_test.go"
-	zeroTest.B.File = "y_test.go"
-	kept, _ = SortForReport([]SimilarPair{zeroTest, mixed}, 0, 0)
+	kept, _ = SortForReport([]SimilarPair{zeroTest, mixed}, units, 0, 0)
 	if kept[0].AIdx != 6 {
 		t.Errorf("mixed pair should outrank the zero-CallSim test pair, got %v first", kept[0].AIdx)
 	}
@@ -158,7 +160,7 @@ func TestSortForReportNilFallbacks(t *testing.T) {
 	noEvidence := SimilarPair{AIdx: 0, BIdx: 1, Score: 0.5, Retrieval: &Retrieval{Total: 100, TrophicSim: 1}}
 	noRetrieval := SimilarPair{AIdx: 2, BIdx: 3, Score: 0.99}
 	small := corroborated(4, 5, 100, 0.4, 0.5) // key 20 < nil-Evidence key 50
-	kept, _ := SortForReport([]SimilarPair{noRetrieval, small, noEvidence}, 0, 0)
+	kept, _ := SortForReport([]SimilarPair{noRetrieval, small, noEvidence}, nil, 0, 0)
 	if kept[0].AIdx != 0 || kept[1].AIdx != 4 || kept[2].AIdx != 2 {
 		t.Errorf("order = %d,%d,%d; want nil-Evidence (Total×Score) first, nil-Retrieval last",
 			kept[0].AIdx, kept[1].AIdx, kept[2].AIdx)
@@ -175,7 +177,7 @@ func TestSortForReportDiversityCap(t *testing.T) {
 		corroborated(0, 4, 200, 1, 1), // suppressed
 		corroborated(5, 6, 100, 1, 1), // backfills
 	}
-	kept, suppressed := SortForReport(hub, 3, 2)
+	kept, suppressed := SortForReport(hub, nil, 3, 2)
 	var order [][2]int
 	for _, p := range kept {
 		order = append(order, [2]int{p.AIdx, p.BIdx})
@@ -193,19 +195,19 @@ func TestSortForReportDiversityCap(t *testing.T) {
 		corroborated(9, 2, 400, 1, 1), // 9 as A (2nd)
 		corroborated(3, 9, 300, 1, 1), // 9 full → suppressed
 	}
-	kept, suppressed = SortForReport(both, 0, 2)
+	kept, suppressed = SortForReport(both, nil, 0, 2)
 	if len(kept) != 2 || suppressed != 1 {
 		t.Errorf("kept %d / suppressed %d, want 2/1 (A and B appearances both count)", len(kept), suppressed)
 	}
 
 	// Cap 0 disables; topN still truncates.
-	kept, suppressed = SortForReport(hub, 2, 0)
+	kept, suppressed = SortForReport(hub, nil, 2, 0)
 	if len(kept) != 2 || suppressed != 0 {
 		t.Errorf("cap=0: kept %d / suppressed %d, want 2/0", len(kept), suppressed)
 	}
 
 	// topN 0 with cap active: cap still applies across the whole list.
-	kept, suppressed = SortForReport(hub, 0, 2)
+	kept, suppressed = SortForReport(hub, nil, 0, 2)
 	if len(kept) != 3 || suppressed != 2 {
 		t.Errorf("topN=0: kept %d / suppressed %d, want 3/2", len(kept), suppressed)
 	}
@@ -217,7 +219,7 @@ func TestSortForReportTieDeterminism(t *testing.T) {
 		corroborated(0, 6, 100, 0.5, 0.8),
 		corroborated(0, 1, 100, 0.5, 0.9), // higher Score wins first
 	}
-	kept, _ := SortForReport(tied, 0, 0)
+	kept, _ := SortForReport(tied, nil, 0, 0)
 	if kept[0].BIdx != 1 || kept[1].BIdx != 6 || kept[2].AIdx != 4 {
 		t.Errorf("tie order = %v; want Score desc then AIdx/BIdx asc", kept)
 	}
@@ -250,12 +252,12 @@ func TestRankKeyMatchesSortForReport(t *testing.T) {
 	for _, p := range pairs {
 		t2 := p.Retrieval.TrophicSim * p.Retrieval.TrophicSim
 		want := p.Retrieval.Total * p.Score * t2 * p.Evidence.OverlapScore
-		if got := RankKey(p, DefaultRankOptions()); got != want {
+		if got := RankKey(p, DefaultRankOptions(), nil); got != want {
 			t.Errorf("RankKey = %v, want %v (exact t*t form)", got, want)
 		}
 	}
-	a, _ := SortForReport(append([]SimilarPair(nil), pairs...), 0, 0)
-	b, _ := SortForReportWith(append([]SimilarPair(nil), pairs...), 0, 0, DefaultRankOptions())
+	a, _ := SortForReport(append([]SimilarPair(nil), pairs...), nil, 0, 0)
+	b, _ := SortForReportWith(append([]SimilarPair(nil), pairs...), nil, 0, 0, DefaultRankOptions())
 	for i := range a {
 		if a[i].AIdx != b[i].AIdx || a[i].BIdx != b[i].BIdx {
 			t.Fatalf("orders differ at %d", i)
@@ -263,10 +265,10 @@ func TestRankKeyMatchesSortForReport(t *testing.T) {
 	}
 	// A different power reorders: with power 1 the high-trophic pair no
 	// longer out-keys the high-mass one by as much.
-	if k1, k2 := RankKey(pairs[1], RankOptions{TrophicPower: 1, TestCallDiscount: true}), RankKey(pairs[1], DefaultRankOptions()); k1 <= k2 {
+	if k1, k2 := RankKey(pairs[1], RankOptions{TrophicPower: 1, TestCallDiscount: true}, nil), RankKey(pairs[1], DefaultRankOptions(), nil); k1 <= k2 {
 		t.Errorf("power 1 should key higher than power 2 for trophic < 1: %v vs %v", k1, k2)
 	}
-	if RankKey(SimilarPair{}, DefaultRankOptions()) != 0 {
+	if RankKey(SimilarPair{}, DefaultRankOptions(), nil) != 0 {
 		t.Error("nil Retrieval must key 0")
 	}
 }
