@@ -426,20 +426,25 @@ Then the arena fan-out took `culture.Build` 1.52s -> 0.75s and overlapping it wi
 retrieval took the run to **5.7s** — 11.9s when the timing seam was first added, and every step of
 it byte-identical on `--format json` across the ladder.
 
-Retrieval then went **2.24s -> 0.36s**, and the lexicon **0.93s -> 0.44s**, taking the run to
-**3.2s** against 11.9s when the timing seam was added — **3.7x**, with `--format json` and stderr
-both byte-identical at every step, and a `GOMAXPROCS=1` run byte-identical to a parallel one.
+Retrieval then went **2.24s -> 0.36s**, the lexicon **0.93s -> 0.44s** and calibration
+**0.73s -> 0.11s**, taking the run to **2.9s** against 11.9s when the timing seam was added —
+**4.1x**, with `--format json` and stderr both byte-identical at every step, and a `GOMAXPROCS=1`
+run byte-identical to a parallel one.
 
-What is left, on moby: **calibration 0.73s**, **culture 0.72s** (0.15s of it paid), **parse 0.42s**,
-**retrieval 0.35s**, **lexicon 0.44s**, **pair annotation 0.26s**, **comparison 0.19s**. Calibration
-is the largest single stage now — 20 000 null pairs scored twice over, which is the same
-embarrassingly-parallel shape as the comparison stage and has not been touched.
+**The overlap is now the binding constraint, which is a new situation.** `culture.Build` used to
+hide entirely behind calibration and retrieval; those two are now 0.46s together against culture's
+0.95s, so 0.31s of it is paid — and its *own* time rose from 0.72s to 0.95s, because it competes for
+cores with the stages it overlaps instead of running beside idle ones. Culture is therefore the next
+place to look, and the target inside it is `buildAssociations` (580ms of its 1.52s originally, PMI
+accumulation into shared maps — the same shape `buildCorpus`'s df tally has, and the reason that one
+stayed sequential). Everything else on moby is now under half a second: parse 0.43s, lexicon 0.45s,
+retrieval 0.35s, pair annotation 0.26s, comparison 0.18s, calibration 0.11s.
 
 ### Concurrency: fanned-out loops, one overlap, and one shared memo
 
 Concurrency lives in `parseAll`, `compareAll`, `culture.buildArenas`, all three of retrieval's
-admission channels, `retriever.evaluate`, three loops in `lexicon`, and `finishAnalyze`'s culture
-goroutine — and the constraint that decides the shape of every one of them is the determinism
+admission channels, `retriever.evaluate`, three loops in `lexicon`, both of calibration's null
+distributions, and `finishAnalyze`'s culture goroutine — and the constraint that decides the shape of every one of them is the determinism
 guarantee: an unchanged tree must produce a byte-identical report.
 
 `internal/parallel` is the fan-out the three loops share (`Blocks`, `BlocksWith`, plus `Workers`
@@ -538,6 +543,14 @@ different treatment:
   so the lock is never on a hot path, and both are order-independent anyway (one sorts, one sums).
 
 On moby the lexicon went **0.93s -> 0.44s**.
+
+**Calibration is the plainest of them.** Both null distributions are index-keyed loops over
+independent pairs, sorted afterwards, so even the fill order is immaterial — writing by index keeps
+it exact anyway. The shape null is pure (`SimilarityWith` over two fingerprints and the corpus
+weights); the overlap null takes **one forked comparator per worker**, and it must be a fork of the
+run's own `comp` rather than a fresh comparator, because the whole point is the null distribution of
+the comparator that will actually score the corpus. `MinNullPairs` (1 000) sits above the sequential
+floor, so a calibration that runs at all runs across cores. On moby, **0.73s -> 0.11s**.
 
 **Culture then overlaps the retrieval chain**, which is the one piece of concurrency here that is
 not a fan-out. `culture.Build`'s result is not read until the pair-annotation loop, while
