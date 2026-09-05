@@ -62,6 +62,18 @@ therefore the signature component of the score. Functions in different languages
 paired with each other. `--languages go` (or a `languages` key in `.doppel.json`) narrows the
 corpus to one language.
 
+The corpus is your repository's own code, not its dependencies. Doppel skips the directories
+every ecosystem installs into — `node_modules`, `vendor`, `site-packages`, `Pods`, `Carthage`,
+`third_party` — and the ones it builds into — `target`, `dist`, `build`, `out`, `obj`,
+`coverage` — along with anything dot- or underscore-prefixed, as the go tool does.
+Names that would shadow real source in a language doppel reads are deliberately absent:
+`deps` is a Go package in hugo, `packages` is where a pnpm workspace keeps its own code, and
+`bin` is where an npm package keeps its CLI. That matters
+more than a walk rule usually does here: every judgment doppel makes is corpus-relative, so a
+`node_modules` in the population means the learned vocabulary is named after somebody else's
+code and every score is weighted against it. `--exclude` adds to the list, and `--exclude '!name'`
+takes one back.
+
 ## Real-world examples
 
 [`examples/`](examples/README.md) holds doppel's actual output on seven pinned
@@ -398,6 +410,7 @@ refuses comparison.
 | `--format`          | `text`  | Stdout format: `text` or `json`. The JSON form is a deterministic snapshot of the whole run — every function, its concepts with confidence, its role, its Weisfeiler-Lehman label bag, and every reported pair with its containment, its rule-attributed explanation and its concept views (the concept signal read through the taxonomy, through this corpus's frequencies, and through the learned vocabularies alone, plus the direction of the last) |
 | `--families`        | `5`     | Near-duplicate families to show after the pair list (`0` removes the section) |
 | `--family-min`      | *(calibrated)* | Pin the code similarity every two members of a family must reach. Turns calibration off; falls back to `0.60` |
+| `--exclude`         | *(none, on top of the built-in blocklist)* | Directory patterns to skip. Doppel already skips the dependency and build-output directories of every ecosystem it reads — `node_modules`, `vendor`, `site-packages`, `Pods`, `Carthage`, `third_party`, `target`, `dist`, `build`, `out`, `obj`, `coverage` — because code your repo did not write is not a merge candidate, and counting it changes every corpus-relative number in the report. This adds to that list: a glob over a directory name, or over its path relative to the analysis root when it contains a `/`. A leading `!` takes one back, for a repo whose real source lives in a directory the defaults call build output (`--exclude '!dist'`) |
 | `--config`          | `.doppel.json` if present | Path to a JSON config file                                |
 
 `--min-nodes`, `--channel-k` and `--max-per-func` are retrieval and report
@@ -426,11 +439,15 @@ Any flag above except `--config` can be set in a `.doppel.json` at the repo root
   "calibrate": 0.01,
   "top": 10,
   "families": 5,
-  "output": "doppel-report.md"
+  "output": "doppel-report.md",
+  "exclude": ["generated", "!bin", "internal/proto/*"]
 }
 ```
 
-A missing config file is not an error; malformed JSON is.
+A missing config file is not an error; malformed JSON is. A malformed `exclude`
+glob is an error too, rather than a pattern that quietly matches nothing: an
+exclusion decides what the corpus is, and a corpus changed by a typo is not
+something you notice until the report is already wrong.
 
 Setting `threshold`, `struct-min` or `family-min` here turns calibration off for
 every run in the repo, exactly as passing the flag would — pinning a floor and

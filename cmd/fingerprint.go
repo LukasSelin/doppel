@@ -22,6 +22,7 @@ var (
 	fpTests     string
 	fpGenerated string
 	fpLanguages []string
+	fpExclude   []string
 	fpConfig    string
 )
 
@@ -75,6 +76,7 @@ func init() {
 	fingerprintCmd.Flags().IntVar(&fpLabels, "labels", 20, "Bag rows to print per section, heaviest first (0 = all)")
 	fingerprintCmd.Flags().StringSliceVar(&fpLabel, "label", nil, "Show the subtree behind a label from a bag row (hex, with or without #; repeatable)")
 	fingerprintCmd.Flags().StringSliceVar(&fpLanguages, "languages", nil, "Languages to read, comma-separated (default: every language doppel has a frontend for)")
+	fingerprintCmd.Flags().StringSliceVar(&fpExclude, "exclude", nil, "Directory patterns to skip, comma-separated, on top of the built-in blocklist (node_modules, vendor, site-packages, Pods, third_party, target, dist, build, out, obj, coverage). A pattern is a glob over a directory name, or over its root-relative path when it contains a slash; a leading exclamation mark re-admits a directory the defaults would have skipped. Repeatable.")
 	fingerprintCmd.Flags().StringVar(&fpTests, "tests", "exclude", "Test-function population: include, exclude, or only")
 	fingerprintCmd.Flags().StringVar(&fpGenerated, "generated", "exclude", "Generated-file population: include, exclude, or only")
 	fingerprintCmd.Flags().StringVar(&fpConfig, "config", "", "Path to JSON config file (default: .doppel.json if present)")
@@ -88,6 +90,7 @@ func runFingerprint(cmd *cobra.Command, args []string) error {
 		ChannelK:  5,
 		TestsMode: fpTests,
 		Languages: fpLanguages,
+		Exclude:   fpExclude,
 		Generated: fpGenerated,
 	}
 	res, err := index(args[0], p, cmd.ErrOrStderr(), nil)

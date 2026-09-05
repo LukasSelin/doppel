@@ -30,6 +30,7 @@ var (
 	testsMode     string
 	genMode       string
 	languages     []string
+	excludeDirs   []string
 	calibrateRate float64
 	familiesN     int
 	familyMin     float64
@@ -87,6 +88,7 @@ func init() {
 	analyzeCmd.Flags().BoolVar(&debugFlag, "debug", false, "Show per-pair retrieval provenance in the report")
 	analyzeCmd.Flags().IntVar(&maxPerFunc, "max-per-func", 2, "Maximum pairs any one function may appear in in the final report (0 = no cap)")
 	analyzeCmd.Flags().StringSliceVar(&languages, "languages", nil, "Languages to read, comma-separated (default: every language doppel has a frontend for). The extension allowlist is the whole scope rule — a file is in the corpus because a frontend claims its extension, never because its contents looked like code.")
+	analyzeCmd.Flags().StringSliceVar(&excludeDirs, "exclude", nil, "Directory patterns to skip, comma-separated, on top of the built-in blocklist (node_modules, vendor, site-packages, Pods, third_party, target, dist, build, out, obj, coverage). A pattern is a glob over a directory name, or over its root-relative path when it contains a slash; a leading exclamation mark re-admits a directory the defaults would have skipped. Repeatable.")
 	analyzeCmd.Flags().StringVar(&testsMode, "tests", "exclude", "Test-function population: include, exclude, or only. Tests are conventionally similar, so the default models production code; cross test/prod pairs are never reported.")
 	analyzeCmd.Flags().StringVar(&genMode, "generated", "exclude", "Generated-file population: include, exclude, or only. Files carrying Go's \"Code generated ... DO NOT EDIT.\" marker are near-identical by construction and unactionable, so the default models hand-written code.")
 	analyzeCmd.Flags().Float64Var(&calibrateRate, "calibrate", defaultCalibrateRate, "Fraction of random unrelated pairs the thresholds may admit. Derives --threshold, --struct-min and --family-min from this corpus, so the operating point means the same thing at any size; 0 = use the fixed defaults")
@@ -113,6 +115,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		TestsMode:  testsMode,
 		Generated:  genMode,
 		Languages:  languages,
+		Exclude:    excludeDirs,
 		Calibrate:  calibrateRate,
 		Debug:      debugFlag,
 	}

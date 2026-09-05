@@ -160,7 +160,19 @@ import (
 // changed meaning: the exhibits slot still reads the corpus view
 // (comparator.DefaultOptions — measured against the labels and kept), so
 // Overlap and MergeWorthy are the same numbers they were.
-const Schema = 10
+//
+// 11 adds Params.Exclude, and it is the same bump 6 was on the language line
+// for the same reason one layer out. Which directories a walk skips decides
+// what the corpus *is* — a run that read a repository's node_modules and one
+// that did not counted different dfs, learned a different vocabulary and
+// scored every pair against a different population — so it belongs beside
+// Languages among the parameters that make two runs comparable. A schema-10
+// baseline records no exclusions at all, and defaulting it to "none
+// configured" would assert something the older run never stated. The built-in
+// blocklist is not recorded and deliberately: it is a property of the doppel
+// build, like the set of registered frontends, and a baseline already refuses
+// to compare across builds.
+const Schema = 11
 
 // Snapshot is one full analysis run.
 //
@@ -259,6 +271,10 @@ type Params struct {
 	Generated  string   `json:"generated"` // generated-file population: include, exclude, or only
 	Calibrate  float64  `json:"calibrate"` // null admission rate the thresholds were derived at; 0 = fixed thresholds
 	Languages  []string `json:"languages"` // the languages this run read, sorted; corpus-defining like TestsMode
+	// Exclude are the directory patterns this run was configured with, sorted
+	// and deduplicated — corpus-defining like Languages. The built-in
+	// blocklist is absent on purpose: see the Schema 11 note.
+	Exclude []string `json:"exclude,omitempty"`
 }
 
 // Equal reports whether two runs asked the same question.
@@ -275,13 +291,18 @@ func (p Params) Equal(q Params) bool {
 		p.Generated != q.Generated || p.Calibrate != q.Calibrate {
 		return false
 	}
-	if len(p.Languages) != len(q.Languages) {
+	// Both sides are stored sorted, so these are order-sensitive on purpose:
+	// two runs that read the same languages, or excluded the same
+	// directories, produce the same list.
+	return sameStrings(p.Languages, q.Languages) && sameStrings(p.Exclude, q.Exclude)
+}
+
+func sameStrings(a, b []string) bool {
+	if len(a) != len(b) {
 		return false
 	}
-	// Both sides are stored sorted, so this is order-sensitive on purpose:
-	// two runs that read the same languages produce the same list.
-	for i := range p.Languages {
-		if p.Languages[i] != q.Languages[i] {
+	for i := range a {
+		if a[i] != b[i] {
 			return false
 		}
 	}

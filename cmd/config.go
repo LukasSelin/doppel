@@ -27,6 +27,7 @@ type AnalysisConfig struct {
 	Tests      *string   `json:"tests,omitempty"`
 	Generated  *string   `json:"generated,omitempty"`
 	Languages  *[]string `json:"languages,omitempty"`
+	Exclude    *[]string `json:"exclude,omitempty"`
 	Calibrate  *float64  `json:"calibrate,omitempty"`
 	Format     *string   `json:"format,omitempty"`
 	Families   *int      `json:"families,omitempty"`
@@ -194,6 +195,9 @@ func applyConfig(cmd *cobra.Command, cfg *AnalysisConfig) {
 	if cfg.Languages != nil {
 		set("languages", strings.Join(*cfg.Languages, ","))
 	}
+	if cfg.Exclude != nil {
+		set("exclude", strings.Join(*cfg.Exclude, ","))
+	}
 	if cfg.Calibrate != nil {
 		set("calibrate", strconv.FormatFloat(*cfg.Calibrate, 'f', -1, 64))
 	}
@@ -259,6 +263,11 @@ func hookParams(root string) (Params, error) {
 	// decides what the population is, so a hook must measure the same one.
 	if cfg.Languages != nil {
 		p.Languages = *cfg.Languages
+	}
+	// Corpus-defining for the same reason, one level out: which directories
+	// were walked decides what the population is.
+	if cfg.Exclude != nil {
+		p.Exclude = *cfg.Exclude
 	}
 	if cfg.Calibrate != nil {
 		p.Calibrate = *cfg.Calibrate
