@@ -426,19 +426,21 @@ Then the arena fan-out took `culture.Build` 1.52s -> 0.75s and overlapping it wi
 retrieval took the run to **5.7s** — 11.9s when the timing seam was first added, and every step of
 it byte-identical on `--format json` across the ladder.
 
-Retrieval then went **2.24s -> 0.36s** and the run to **3.9s**, against 11.9s when the timing seam
-was added — 3.0x, with `--format json` and stderr both byte-identical at every step.
+Retrieval then went **2.24s -> 0.36s**, and the lexicon **0.93s -> 0.44s**, taking the run to
+**3.2s** against 11.9s when the timing seam was added — **3.7x**, with `--format json` and stderr
+both byte-identical at every step, and a `GOMAXPROCS=1` run byte-identical to a parallel one.
 
-What is left is **lexicon 0.93s**, **culture 0.73s** (of which 0.12s is paid), **calibration
-0.69s**, **pair annotation 0.47s** and **parse 0.44s** — no single stage above a second, and the
-1.62s `index()` prefix is now the larger half of the run.
+What is left, on moby: **calibration 0.73s**, **culture 0.72s** (0.15s of it paid), **parse 0.42s**,
+**retrieval 0.35s**, **lexicon 0.44s**, **pair annotation 0.26s**, **comparison 0.19s**. Calibration
+is the largest single stage now — 20 000 null pairs scored twice over, which is the same
+embarrassingly-parallel shape as the comparison stage and has not been touched.
 
 ### Concurrency: fanned-out loops, one overlap, and one shared memo
 
 Concurrency lives in `parseAll`, `compareAll`, `culture.buildArenas`, all three of retrieval's
-admission channels, `retriever.evaluate`, and `finishAnalyze`'s culture goroutine — and the
-constraint that decides the shape of every one of them is the determinism guarantee: an unchanged
-tree must produce a byte-identical report.
+admission channels, `retriever.evaluate`, three loops in `lexicon`, and `finishAnalyze`'s culture
+goroutine — and the constraint that decides the shape of every one of them is the determinism
+guarantee: an unchanged tree must produce a byte-identical report.
 
 `internal/parallel` is the fan-out the three loops share (`Blocks`, `BlocksWith`, plus `Workers`
 so a test can ask whether its fixture is large enough to exercise the parallel path at all). It
@@ -514,6 +516,28 @@ sequentially — the same compute-then-merge split `buildArenas` makes, and for 
 `callIndex` and `shapeIndex` are read-only once built, and the concept channel's `ontology.Scorer`
 is safe to share because it is unforked and therefore has no scratch: that is exactly the contract
 `Scorer.Fork` was written to state.
+
+**The lexicon is where a sequential dependency had to be respected rather than removed.** Its
+820ms was `emergeConcepts` 340ms, `buildCorpus` 240ms and `assign` 170ms, and each needed a
+different treatment:
+
+- `buildCorpus` splits in two. `unitFeatures` is per unit and pure (140ms, fanned out); the `df`
+  tally is one shared map and stays sequential (60ms). One extra pass over the feature slices buys
+  the expensive half.
+- `emergeConcepts` **keeps its selection loop exactly where it was**, because `duplicate()` tests a
+  candidate member set against the sets kept *earlier in that loop* — so which of two overlapping
+  cliques survives depends on visit order, and that order is the vocabulary. What moves out is
+  `clique.Maximal` (210ms), a pure function of the graph and one feature's neighbourhood: it is
+  enumerated for every feature in parallel first, and the deciding loop then consumes the results
+  in the same order it always did. The `EdgeK+1` bound on a neighbourhood is what makes holding
+  every feature's enumeration at once cheap.
+- `forEachCoverage` gets per-worker scratch (the `evidence`/`touched`/`cover` buffers were one set
+  reused down the loop) and a documented contract: **fn may be called concurrently and must confine
+  its writes to `unit`**. `assign` already did. Its two other callers, `floors` and `dropUnfounded`,
+  accumulate per *concept* instead and take a mutex — they run only under a non-default `FloorRule`,
+  so the lock is never on a hot path, and both are order-independent anyway (one sorts, one sums).
+
+On moby the lexicon went **0.93s -> 0.44s**.
 
 **Culture then overlaps the retrieval chain**, which is the one piece of concurrency here that is
 not a fan-out. `culture.Build`'s result is not read until the pair-annotation loop, while

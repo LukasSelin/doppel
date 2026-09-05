@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/LukasSelin/doppel/internal/clique"
+	"github.com/LukasSelin/doppel/internal/parallel"
 )
 
 // emergeConcepts discovers concepts no seed accounts for.
@@ -44,29 +45,54 @@ func emergeConcepts(c *corpus, claimed map[string]bool, stats *Stats, opt Option
 	post := postings(c, cand, index)
 	hits := make([]int, c.n) // scratch for foundingMembers, reset by it
 
+	// Enumeration first, across cores, then the selection loop unchanged.
+	//
+	// The split is forced by a real sequential dependency: duplicate() below
+	// tests a candidate member set against the sets already kept *earlier in
+	// this loop*, so which of two overlapping cliques survives depends on the
+	// order they are visited in. That order is the vocabulary, so it cannot be
+	// left to a scheduler. clique.Maximal, on the other hand, is a pure
+	// function of the graph and one feature's neighbourhood — g is read-only
+	// here and Neighbors sorts its own output — so the expensive half moves out
+	// and the deciding half stays exactly where it was.
+	//
+	// The search is one feature's own neighbourhood, never a connected
+	// component. A top-K co-occurrence graph is sparse but overwhelmingly
+	// connected — its giant component is most of the vocabulary — so
+	// enumerating per component means enumerating over thousands of features,
+	// tripping every guard and returning nothing. A neighbourhood is at most
+	// EdgeK+1 vertices, so enumeration is bounded by construction rather than
+	// by a budget, and the guard below only ever catches a pathology. That
+	// bound is also what makes holding every feature's result at once cheap.
+	type enumeration struct {
+		cliques [][]int
+		ok      bool
+		skipped bool
+	}
+	enumerated := make([]enumeration, len(cand))
+	parallel.Blocks(len(cand), cliqueBlock, minFeaturesPerCliqueWorker, func(a int) {
+		nbrs := g.Neighbors(a)
+		if len(nbrs) < opt.MinCliqueSize-1 {
+			enumerated[a].skipped = true
+			return
+		}
+		local := clique.Insert(append([]int(nil), nbrs...), a)
+		enumerated[a].cliques, enumerated[a].ok = clique.Maximal(g, local, opt.MaxSearch)
+	})
+
 	var out []Concept
 	var founders [][]int
 	var kept [][]int // founding member sets already turned into a concept
 	for a := 0; a < len(cand); a++ {
-		nbrs := g.Neighbors(a)
-		if len(nbrs) < opt.MinCliqueSize-1 {
+		e := enumerated[a]
+		if e.skipped {
 			continue
 		}
-		// The search is one feature's own neighbourhood, never a connected
-		// component. A top-K co-occurrence graph is sparse but overwhelmingly
-		// connected — its giant component is most of the vocabulary — so
-		// enumerating per component means enumerating over thousands of
-		// features, tripping every guard and returning nothing. A
-		// neighbourhood is at most EdgeK+1 vertices, so enumeration is
-		// bounded by construction rather than by a budget, and the guard below
-		// only ever catches a pathology.
-		local := clique.Insert(append([]int(nil), nbrs...), a)
-		cliques, ok := clique.Maximal(g, local, opt.MaxSearch)
-		if !ok {
+		if !e.ok {
 			stats.Skipped++
 			continue
 		}
-		for _, cl := range cliques { // size desc: the strongest cluster claims its members first
+		for _, cl := range e.cliques { // size desc: the strongest cluster claims its members first
 			// Every maximal clique containing a lies inside a's neighbourhood
 			// — an extending vertex would have to be adjacent to a — so each is
 			// globally maximal, and each is rediscovered once per member. The
@@ -364,3 +390,10 @@ func (g *featureGraph) edges() int {
 	}
 	return n / 2
 }
+
+// One feature's neighbourhood is at most EdgeK+1 vertices, so a single
+// enumeration is small and a block amortises the atomic over many of them.
+const (
+	cliqueBlock                = 16
+	minFeaturesPerCliqueWorker = 64
+)
