@@ -30,11 +30,17 @@ type stageTimer struct {
 	start time.Time
 	last  time.Time
 	on    bool
+	// heap is the stage-targeted heap dumper, nil unless asked for. It hangs
+	// off the timer because the timer already owns the one list of stage
+	// boundaries, so a dump cannot name a stage that does not exist — and it
+	// fires whether or not timing itself is on.
+	heap *heapDumper
 }
 
 func newStageTimer(progress io.Writer) *stageTimer {
 	now := time.Now()
-	return &stageTimer{w: progressOr(progress), start: now, last: now, on: timingEnabled()}
+	return &stageTimer{w: progressOr(progress), start: now, last: now,
+		on: timingEnabled(), heap: newHeapDumper()}
 }
 
 func timingEnabled() bool {
@@ -47,6 +53,7 @@ func timingEnabled() bool {
 // vocabulary, not the function names, so a reader can line a timing line up
 // with the stage list in CLAUDE.md.
 func (t *stageTimer) mark(stage string) {
+	t.heap.dump(stage, t.w)
 	if !t.on {
 		return
 	}
@@ -78,6 +85,7 @@ func (t *stageTimer) total(label string) {
 // stop summing to the total, and printing only the second would hide work the
 // machine really did.
 func (t *stageTimer) markOverlapped(stage string, ran time.Duration) {
+	t.heap.dump(stage, t.w)
 	if !t.on {
 		return
 	}

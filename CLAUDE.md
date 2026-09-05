@@ -381,6 +381,20 @@ stage timing says *which* stage, the profile says *what inside it*.
   process start, flag parsing and report rendering sit outside the pipeline — and the stage
   lines sum to their own total rather than to the wall clock.
 
+- **`DOPPEL_HEAPPROFILE=<prefix>` with `DOPPEL_HEAPPROFILE_AT=<stage>[,...]`** writes a heap
+  profile at the end of the named stages, *while the data those stages built is still reachable*
+  (`cmd/heapdump.go`). It hangs off the stage timer, so there is one list of stage names in the
+  tool and a dump cannot name a stage that does not exist; it fires whether or not `DOPPEL_TIMING`
+  is on. Both halves of the gate are required, and with either unset nothing runs and both streams
+  are byte-identical — verified, including a hook staying silent (a hook's progress writer is
+  `io.Discard`, so the "wrote" line vanishes; the *file* is still written, exactly as `--cpuprofile`
+  would be, because setting the variable is the opt-in).
+
+  **It exists because `--memprofile` cannot answer the footprint question.** That one fires from a
+  defer in `Execute`, after the pipeline's `Result` is unreachable, so its `inuse_space` reads 24MB
+  on a run whose peak RSS is 800MB — the right profile for "what leaked" and useless for "what does
+  the corpus model cost to hold".
+
 - **`--cpuprofile` / `--memprofile`** are hidden persistent flags on the root command
   (`cmd/profile.go`), so every subcommand is profilable without each registering its own pair.
   Hidden for the reason `--channel-k` and `--min-nodes` are: no question about a codebase is
@@ -594,6 +608,21 @@ One consequence for measurement: `internal/bench`'s `Load` does its own sequenti
 `BenchmarkCorpus/parse` now times something the tool no longer does. It is still the right number
 for comparing parse cost across corpora, and the wrong one for predicting a run's wall clock —
 which is what `DOPPEL_TIMING` is for.
+
+**What the retained-heap measurement found, and the proposal it killed.** Live heap is 141MB at the
+end of `index()` and 317MB at the end of the pipeline, against a peak RSS of ~800MB — so roughly
+`GOGC=100`'s doubling of a 317MB live set, plus allocator overhead, and **every megabyte of retained
+data costs about two megabytes of RSS**. The retained set is not what it was assumed to be: at full
+run it is `gofront.toSyntax` 54MB (the canonical trees), `filterByOverlap` 45MB and
+`comparator.intersect` 36MB and `profileNotes` 33MB (all per *pair*, scaling with the 40 225-pair
+union), `wlBagOf` 16MB, `LabelWeights` 11MB. `Fingerprint.Shingles` — proposed for removal on the
+grounds that it is a per-unit slice with exactly one reader — retains **1.5MB, 0.47%**, and folding
+it away was dropped on that measurement. Measure the retained set before trading a field away for
+it.
+
+The largest single lever the numbers point at is `analyzer.SimilarPair`, which is **1 168 bytes**, of
+which `A, B parser.CodeUnit` by value is 976 (84%) — two whole unit copies per pair when `AIdx`/`BIdx`
+are already on the struct. That is a refactor of a widely-read type, not a tuning change.
 
 That is the standing gap: `internal/bench/pipeline.go` omits culture, habitats and arenas
 because "they annotate, they never rank", which is right for ranking measurement and wrong for
