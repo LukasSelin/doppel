@@ -15,6 +15,7 @@ var (
 	familiesChannelK  int
 	familiesTests     string
 	familiesLanguages []string
+	familiesExclude   []string
 	familiesGenerated string
 	familiesCalibrate float64
 	familiesMin       float64
@@ -75,6 +76,7 @@ func init() {
 	familiesCmd.Flags().IntVar(&familiesMinNodes, "min-nodes", defaultMinNodes, "Exclude functions with fewer body AST nodes from structural retrieval")
 	familiesCmd.Flags().IntVar(&familiesChannelK, "channel-k", 5, "Candidates each function keeps per retrieval channel")
 	familiesCmd.Flags().StringSliceVar(&familiesLanguages, "languages", nil, "Languages to read, comma-separated (default: every language doppel has a frontend for). The extension allowlist is the whole scope rule — a file is in the corpus because a frontend claims its extension, never because its contents looked like code.")
+	familiesCmd.Flags().StringSliceVar(&familiesExclude, "exclude", nil, "Directory patterns to skip, comma-separated, on top of the built-in blocklist (node_modules, vendor, site-packages, Pods, third_party, target, dist, build, out, obj, coverage). A pattern is a glob over a directory name, or over its root-relative path when it contains a slash; a leading exclamation mark re-admits a directory the defaults would have skipped. Repeatable.")
 	familiesCmd.Flags().StringVar(&familiesTests, "tests", "exclude", "Test-function population: include, exclude, or only")
 	familiesCmd.Flags().StringVar(&familiesGenerated, "generated", "exclude", "Generated-file population: include, exclude, or only")
 	familiesCmd.Flags().Float64Var(&familiesCalibrate, "calibrate", defaultCalibrateRate, "Fraction of random unrelated pairs the thresholds may admit. Derives --threshold and --family-min from this corpus; 0 = use the fixed defaults")
@@ -97,6 +99,7 @@ func runFamilies(cmd *cobra.Command, args []string) error {
 		ChannelK:  familiesChannelK,
 		TestsMode: familiesTests,
 		Languages: familiesLanguages,
+		Exclude:   familiesExclude,
 		Generated: familiesGenerated,
 		Calibrate: familiesCalibrate,
 	}
