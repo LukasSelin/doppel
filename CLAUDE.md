@@ -350,6 +350,63 @@ doppel ontology --defs                                # print the vocabulary and
   and a timestamp inside one would fail it.
 - `.gitattributes` forces LF for Go/shell/markdown/config so the bash hook works under Git Bash on Windows.
 
+### Finding where a run's time goes
+
+Two seams, both off by default and neither an operating point. Use them in this order: the
+stage timing says *which* stage, the profile says *what inside it*.
+
+- **`DOPPEL_TIMING=1`** prints the wall-clock cost of each pipeline stage beside the progress
+  lines that already mark those boundaries (`cmd/timing.go`). Env-gated rather than a flag,
+  following the `DOPPEL_BENCH_*` convention: what a run *cost* has no bearing on what it
+  *measured*, so it must never travel in `Params` or acquire a config key, or a baseline could
+  go incomparable because somebody timed it. It writes to the pipeline's own progress writer,
+  which is what keeps a hook silent — hook runs pass `io.Discard`, so even with the variable
+  exported into a session's environment no hook can emit a byte on stderr. Unset, a timer emits
+  nothing, so an untimed run is byte-identical on **both** streams to one from before the file
+  existed; verified, along with the hook staying silent under `DOPPEL_TIMING=1`.
+
+  `index()` and `finishAnalyze()` each carry their own timer and print their own total,
+  deliberately: `doppel query` stops after the first, so one elapsed figure spanning both would
+  be a number no caller experiences. Neither total is what `time doppel analyze` prints —
+  process start, flag parsing and report rendering sit outside the pipeline — and the stage
+  lines sum to their own total rather than to the wall clock.
+
+- **`--cpuprofile` / `--memprofile`** are hidden persistent flags on the root command
+  (`cmd/profile.go`), so every subcommand is profilable without each registering its own pair.
+  Hidden for the reason `--channel-k` and `--min-nodes` are: no question about a codebase is
+  answered by setting them. `stopProfiling` is deferred from `Execute` rather than run in a
+  `PersistentPostRunE`, because cobra skips Post hooks when a command returns an error and a
+  failing run is exactly the one worth a profile of; a profile that cannot be written is
+  reported and never returned, so `--memprofile` cannot turn a clean analysis into a failed
+  one. **No subcommand may define a `PersistentPreRunE`** without calling `startProfiling`
+  itself — cobra's nearest-ancestor rule would otherwise leave profiling silently dead for that
+  command alone.
+
+**What the first run of both found, on moby (7 658 functions), and what it corrected.** The
+stage lines: parse 2.87s, lexicon 0.94s, culture+habitats 1.61s, calibration 0.80s, retrieval
+2.54s, comparison 1.69s, **pair annotation 1.14s** — against an 11.9s pipeline. Three of those
+were wrong in the estimate that preceded the measurement, which is the argument for the seams
+existing. Calibration was assumed free (a differential CLI measurement put it at noise; it is
+0.80s). Culture was assumed ~3.0s by subtraction; it is 1.61s. And **pair annotation was not
+suspected at all** — `analyzer.Explain`, the culture and habitat notes, and `ClassifyPairWith`
+over every surviving pair — because no stage in `BenchmarkCorpus` models it.
+
+The heap profile then named the cause: `analyzer.Explain` alone was 797MB of a 3.68GB run, 21% of
+every byte allocated, for a sentence — see *Pair explanations* for the per-pair naming table that
+turned out to be, and the corpus-wide one that replaced it. Annotation fell 1.14s -> 0.43s and the
+run's allocation 3.68GB -> 3.26GB. The lesson generalises past that one site: the live heap at the
+end of a run is **25MB**, so essentially all of the 3.3GB is churn, and the largest remaining
+sites — `ontology.split` (350MB), `comparator.intersect` (296MB), `Scorer.matchShared` (324MB) —
+are per-unit or per-pair work in the comparison stage. Allocation, not arithmetic, is what this
+pipeline is spending its time on, and nothing in the tool is parallel.
+
+That is the standing gap: `internal/bench/pipeline.go` omits culture, habitats and arenas
+because "they annotate, they never rank", which is right for ranking measurement and wrong for
+performance measurement — together with annotation and the snapshot encode, roughly a third of
+a run is invisible to `task bench`. The CPU profile reads the same run differently again:
+`runtime.gcDrain` was 36% cumulative and `runtime.scanobject` 28%, which is what put the heap
+profile ahead of parallelism in the optimisation order and found the `Explain` site above.
+
 ## Key types
 
 - **CodeUnit** (`internal/parser/parser.go`) — one function/method, projected from a
@@ -1450,6 +1507,25 @@ name. Kinds sort statements first, then expressions, then scaffolding (blocks, b
 and the `ExprStmt`/`DeclStmt` wrappers, which always accompany what they wrap), capped at three
 plus a count — an explanation is a sentence, not a dump. Sides are not named: the difference is
 symmetric.
+
+**The naming table is built once per corpus, and it used to be built once per pair.**
+`labelKinds` carried a written argument for the per-pair form — a shared table would be "a second
+index over every label in the corpus, kept alive for a sentence printed on a few dozen pairs" —
+and the premise was measured and is false. The pipeline annotates *every surviving pair*, 18 461
+of them on moby, so the per-pair table re-walked one unit's canonical tree once for every pair
+that unit appeared in: 36 922 walks over at most 7 658 distinct trees, which made `Explain` the
+single largest allocator in the tool at **797MB, 21% of a run**. `analyzer.BuildLabelKinds(units,
+idx)` is the rejected alternative, adopted on that measurement; `ExplainWith(a, b, table)` is the
+seam and `Explain(a, b)` is `ExplainWith(a, b, nil)`, which builds the per-pair table exactly as
+before — the free function and every test are untouched.
+
+The widening cannot change a sentence. `wlHash` takes the round as an input, so an h>=2 label in a
+bag can only match an h<=1 label from an unrelated unit by 64-bit hash collision — the caveat
+Explain's bag-equality tier already carries. What does move is the tie-break: `idx` is sorted
+ascending and merged first-wins, so a collision resolves to the lowest unit index where it used to
+resolve to A. Both are fixed orders, and they differ only on a collision neither form could name
+correctly. Verified byte-identical `--format json` on all seven pinned corpora, and the golden
+scorecard is unchanged (merge 5.3, 6/6, no false positive in the top 20).
 
 Where it renders: the text pair list (`explain:`), the markdown pair list (`**Explain:**`), the
 dashboard's *What the canonicalizer did* panel, and `snapshot.Pair.Explain` — which is part of why

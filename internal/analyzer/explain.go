@@ -54,7 +54,15 @@ import (
 // is the known limit of the refinement. Both would overstate the tier-one
 // claim on one pair's sentence. Neither can move a number, since the score,
 // the ranking and the filters were all decided before this runs.
-func Explain(a, b parser.CodeUnit) string {
+func Explain(a, b parser.CodeUnit) string { return ExplainWith(a, b, nil) }
+
+// ExplainWith is Explain against a naming table built once for a whole corpus
+// rather than once per pair. A nil table means build one from these two units,
+// which is exactly what Explain does and what every test pins.
+//
+// The seam exists because the per-pair form's cost premise stopped being true:
+// see BuildLabelKinds.
+func ExplainWith(a, b parser.CodeUnit, lk *LabelKinds) string {
 	abag, bbag := a.Fingerprint.WL, b.Fingerprint.WL
 	if len(abag) == 0 || len(bbag) == 0 {
 		return "no body to compare"
@@ -66,7 +74,7 @@ func Explain(a, b parser.CodeUnit) string {
 		}
 		return "identical after " + strings.Join(rules, ", ")
 	}
-	return residual(a, b)
+	return residual(a, b, lk)
 }
 
 // firedUnion maps the rules that fired on either side to their friendly names,
@@ -170,8 +178,11 @@ const explainMaxKinds = 3
 // length to carry a fact the reader gets from opening either file, and a
 // residual mixing extras in both directions reads as a contradiction when
 // each half is attributed.
-func residual(a, b parser.CodeUnit) string {
-	kinds := labelKinds(a.Canonical, b.Canonical)
+func residual(a, b parser.CodeUnit, lk *LabelKinds) string {
+	kinds := lk.lookup()
+	if kinds == nil {
+		kinds = labelKinds(a.Canonical, b.Canonical)
+	}
 
 	counts := make(map[string]int)
 	diffAtH1 := false
@@ -288,13 +299,16 @@ func countWord(n int) string {
 }
 
 // labelKinds is the label -> (round, kind) table for one pair, built from the
-// two units' own canonical trees.
+// two units' own canonical trees. It is the fallback path: the free Explain,
+// and every caller holding two units and no corpus.
 //
-// Per pair rather than per corpus, deliberately. A shared table would be a
-// second index over every label in the corpus, built during the pipeline and
-// kept alive for a sentence printed on a few dozen pairs. This is two walks of
-// two functions, at the point where the sentence is wanted, and it is a pure
-// function of the two trees — which is what makes the string deterministic.
+// It was once the only path, on the reasoning that a shared table would be "a
+// second index over every label in the corpus, kept alive for a sentence
+// printed on a few dozen pairs". The premise was measured and is false — the
+// pipeline annotates every surviving pair, 18 461 of them on moby, so this ran
+// 36 922 times over at most 7 658 distinct trees and Explain became the single
+// largest allocator in the tool at 797MB, 21% of a run. BuildLabelKinds is the
+// alternative that comment rejected, adopted on that measurement.
 //
 // A collision between the two sides resolves to A's naming, since A is merged
 // first. Both name the same kind unless the hash collided, and the ordering
@@ -349,4 +363,60 @@ func bagDiff(a, b []fingerprint.LabelCount) []labelDelta {
 		out = append(out, labelDelta{label: b[j].Label, n: int(b[j].Count)})
 	}
 	return out
+}
+
+// LabelKinds is the label -> (round, kind) naming table residual reads, built
+// once over a corpus instead of once per pair.
+//
+// The zero value and a nil pointer both mean "no table", which is what makes
+// ExplainWith(a, b, nil) identical to Explain.
+type LabelKinds struct {
+	m map[uint64]fingerprint.LowLabel
+}
+
+func (lk *LabelKinds) lookup() map[uint64]fingerprint.LowLabel {
+	if lk == nil {
+		return nil
+	}
+	return lk.m
+}
+
+// BuildLabelKinds builds the naming table over the units at the given indices,
+// which the caller supplies so that only the units actually appearing in a pair
+// are walked.
+//
+// # Why this is not the per-pair table repeated
+//
+// A unit's h<=1 labels are a pure function of its own canonical tree, so the
+// per-pair form recomputed the same walk once per pair the unit appears in.
+// This walks each unit once. The lookup itself cannot gain a hit from the
+// widening: wlHash takes the round as an input, so an h>=2 label in a bag can
+// only collide with an h<=1 label from another unit by 64-bit hash collision —
+// the same caveat Explain's bag-equality tier already carries and the same one
+// that made a per-pair collision resolve arbitrarily.
+//
+// # Determinism
+//
+// idx is sorted ascending and merged first-wins, so a collision between two
+// units resolves to the lower index. The per-pair form resolved it to A. Both
+// are fixed orders; they differ only on a genuine hash collision between two
+// distinct (round, kind) pairs, which is the case neither form can name
+// correctly anyway.
+func BuildLabelKinds(units []parser.CodeUnit, idx []int) *LabelKinds {
+	lk := &LabelKinds{m: make(map[uint64]fingerprint.LowLabel)}
+	seen := make(map[int]bool, len(idx))
+	ordered := append([]int(nil), idx...)
+	slices.Sort(ordered)
+	for _, i := range ordered {
+		if i < 0 || i >= len(units) || seen[i] {
+			continue
+		}
+		seen[i] = true
+		for _, l := range fingerprint.LowLabels(units[i].Canonical) {
+			if _, dup := lk.m[l.Label]; !dup {
+				lk.m[l.Label] = l
+			}
+		}
+	}
+	return lk
 }
