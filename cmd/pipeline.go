@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"path/filepath"
 	"sort"
+	"time"
 
 	"github.com/LukasSelin/doppel/internal/analyzer"
 	"github.com/LukasSelin/doppel/internal/calibrate"
@@ -216,6 +217,7 @@ func progressOr(w io.Writer) io.Writer {
 // to ask how a proposed function would sit in this corpus.
 func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (Result, error) {
 	progress = progressOr(progress)
+	timer := newStageTimer(progress)
 	res := Result{Root: root, Params: p,
 		TagCounts:   map[ontology.TermID]int{},
 		ConceptMass: map[ontology.TermID]float64{},
@@ -242,7 +244,10 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 	}
 
 	fmt.Fprintf(progress, "Scanning %s ...\n", root)
-	var units []parser.CodeUnit
+	// The walk collects paths and parses none of them: parsing is the single
+	// largest stage in a run and every file is independent, so it is done
+	// afterwards across all cores. See parseAll for why the order survives.
+	var paths []string
 	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil // skip unreadable entries
@@ -262,17 +267,13 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 		if !sel.Admits(path) {
 			return nil
 		}
-		parsed, err := parser.Parse(path)
-		if err != nil {
-			fmt.Fprintf(progress, "  warn: %s: %v\n", path, err)
-			return nil
-		}
-		units = append(units, parsed...)
+		paths = append(paths, path)
 		return nil
 	})
 	if err != nil {
 		return res, fmt.Errorf("walk %s: %w", root, err)
 	}
+	units := parseAll(paths, progress)
 
 	// Population filters, applied before any corpus statistic exists: IC,
 	// dfs, culture, habitats, and arenas all model exactly the population
@@ -286,6 +287,7 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 	// population was chosen, not a reason to change it.
 	units = append(units, extra...)
 	res.Units = units
+	timer.mark("walk + parse")
 
 	if len(units) == 0 {
 		// An empty corpus is not an error, and it is not this function's job
@@ -316,6 +318,7 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 		canonical[i] = units[i].Canonical
 	}
 	res.ConsStats = fingerprint.ConsCorpus(canonical)
+	timer.mark("corpus statistics")
 
 	// The two statistics above are structural: they read each unit's own
 	// canonical AST and nothing else, so they are computed here, first, where
@@ -327,6 +330,7 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 	// can be learned from, and the strongest one on most corpora.
 	cg := concepter.BuildCallGraph(units)
 	res.Graph = cg
+	timer.mark("call graph")
 
 	// Learn this corpus's concept vocabulary. The rule tagger still runs, but
 	// only to seed the search: it says which functions to look at, and the
@@ -350,6 +354,7 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 	for i := range units {
 		units[i].Concepts = assignments[i]
 	}
+	timer.mark("lexicon")
 
 	// Corpus statistics for concept matching, in two currencies. TagCounts is
 	// members per concept, which is what an inventory reports; ConceptMass is
@@ -374,6 +379,7 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 	ic := ontology.NewCorpusICMass(onto, conceptMass)
 	res.Onto, res.IC = onto, ic
 	res.Vocab = vocabularyOf(lex)
+	timer.mark("ontology + IC")
 
 	// Generate concept documents for every unit.
 	// docs[i] describes units[i]; the pipeline relies on that alignment.
@@ -382,6 +388,8 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 	cptr := concepter.New()
 	docs := mapper.Map(units, cg, cptr)
 	res.Docs = docs
+	timer.mark("concept docs")
+	timer.total("index total")
 
 	return res, nil
 }
@@ -394,19 +402,39 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 	onto, ic := res.Onto, res.IC
 	scorer := ontology.NewScorer(onto, ic).WithVocabulary(res.Vocab)
 	comp := comparator.New(scorer)
+	// A second timer, not a continuation of index's: the two halves run
+	// separately (`doppel query` stops after index), so a single elapsed total
+	// spanning both would be a number no caller actually experiences.
+	timer := newStageTimer(progress)
 
 	// Model the corpus's own conceptual practice: which concepts/roles/calls
 	// co-occur beyond chance, and how each concept is normally realized here.
 	// Root lets habitats roll up into subsystems (parent directories).
+	//
+	// It runs on its own goroutine because nothing between here and the pair
+	// annotation below reads it, while calibration and retrieval — the two
+	// stages it now runs beside — are single-threaded and together cost more
+	// than it does. Safe because units and docs are read-only for the whole of
+	// finishAnalyze (the pipeline's only write to a unit is in index(), where
+	// the lexicon assigns concepts), and because culture never touches comp,
+	// which is what calibration and the comparator share.
+	//
+	// A buffered channel rather than a WaitGroup and a shared variable: this is
+	// one value from one producer to one consumer, and the receive is the join.
+	// That is the case a channel is for, unlike the per-pair fan-out in
+	// compareAll, where a channel measured slower than an atomic counter.
+	type cultureResult struct {
+		model *culture.Model
+		ran   time.Duration
+	}
 	cultOpts := culture.DefaultOptions()
 	cultOpts.Root = res.Root
-	cult := culture.Build(units, docs, cg, cultOpts)
-	res.Culture = cult
-	cs := cult.Stats()
-	fmt.Fprintf(progress, "Culture: %d concepts modeled, %d associations, %d unusual realizations\n",
-		cs.ConceptsModeled, cs.AssociationCount, cs.UnusualRealizations)
-	printHabitatSummary(progress, cs)
-	printArenaSummary(progress, cs)
+	cultCh := make(chan cultureResult, 1)
+	go func() {
+		start := time.Now()
+		m := culture.Build(units, docs, cg, cultOpts)
+		cultCh <- cultureResult{model: m, ran: time.Since(start)}
+	}()
 
 	// Null calibration, when asked for: derive the code-shape and overlap
 	// thresholds from what random unrelated pairs score in this corpus. It
@@ -439,6 +467,7 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 		}
 	}
 	res.Params = p
+	timer.mark("calibration")
 
 	// Multi-channel candidate retrieval: structural shape, shared concepts,
 	// and shared resolved calls each retrieve per-function top-K neighbors
@@ -454,6 +483,7 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 	cands, stats := retriever.Retrieve(units, cg, onto, ic, res.WL, opts)
 	res.Retrieval = stats
 	printRetrievalStats(progress, stats)
+	timer.mark("retrieval")
 
 	pairs := make([]analyzer.SimilarPair, 0, len(cands))
 	crossDropped := 0
@@ -493,10 +523,7 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 	// Attach structural evidence to every candidate pair.
 	if len(pairs) > 0 {
 		fmt.Fprintf(progress, "Running structural comparison on %d pairs...\n", len(pairs))
-		for i := range pairs {
-			ev := comp.Compare(docs[pairs[i].AIdx], docs[pairs[i].BIdx])
-			pairs[i].Evidence = &ev
-		}
+		compareAll(pairs, docs, comp)
 
 		// Nearest-neighbour code-shape distribution, over exactly this set:
 		// the retrieval union with every pair's exact fingerprint.Breakdown
@@ -521,6 +548,31 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 	} else {
 		res.NN = nnDistribution(nil, len(units), p.Threshold)
 	}
+	timer.mark("comparison")
+
+	// The explain sentence's naming table, built once over exactly the units
+	// these pairs reference rather than once per pair. Explain runs on every
+	// surviving pair, so the per-pair form re-walked one unit's canonical tree
+	// once for every pair it appeared in — measured at 797MB, 21% of a run's
+	// allocation, on moby.
+	explainIdx := make([]int, 0, 2*len(pairs))
+	for i := range pairs {
+		explainIdx = append(explainIdx, pairs[i].AIdx, pairs[i].BIdx)
+	}
+	labelKinds := analyzer.BuildLabelKinds(units, explainIdx)
+
+	// Join culture. Unconditional and before anything reads it: an early return
+	// between the spawn above and this point would leak the goroutine and leave
+	// res.Culture nil, so there must not be one.
+	cr := <-cultCh
+	cult := cr.model
+	res.Culture = cult
+	cs := cult.Stats()
+	fmt.Fprintf(progress, "Culture: %d concepts modeled, %d associations, %d unusual realizations\n",
+		cs.ConceptsModeled, cs.AssociationCount, cs.UnusualRealizations)
+	printHabitatSummary(progress, cs)
+	printArenaSummary(progress, cs)
+	timer.markOverlapped("culture + habitats", cr.ran)
 
 	// Annotate surviving pairs with unusual concept realizations and habitat
 	// misfits — positional lookup, like Evidence attachment; never name-keyed.
@@ -530,11 +582,13 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 		pairs[i].Habitat = habitatNotes(cult, pairs[i].AIdx, pairs[i].BIdx,
 			pairs[i].A.Package, pairs[i].B.Package)
 		pairs[i].Kind = analyzer.ClassifyPairWith(pairs[i].A, pairs[i].B, pairs[i].Score, forkFloor)
-		pairs[i].Explain = analyzer.Explain(pairs[i].A, pairs[i].B)
+		pairs[i].Explain = analyzer.ExplainWith(pairs[i].A, pairs[i].B, labelKinds)
 		pairs[i].Profile = profileNotes(cult, pairs[i].AIdx, pairs[i].BIdx,
 			parser.ConceptIDs(pairs[i].A.Concepts), parser.ConceptIDs(pairs[i].B.Concepts))
 	}
 	res.Pairs = pairs
+	timer.mark("pair annotation")
+	timer.total("report total")
 
 	return res, nil
 }

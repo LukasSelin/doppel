@@ -9,7 +9,7 @@ static site generator; a large monolith with heavy template and resource subsyst
 | Corpus | [hugo](https://github.com/gohugoio/hugo) |
 | Pinned at | `v0.165.0` (`76a5e1880ab46688155b02e99bab9be2a6134492`) |
 | Project since | 2013 |
-| doppel | `4214f9d` |
+| doppel | `e65f1c6` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -24,10 +24,6 @@ Scanning . ...
 Learning concept vocabulary...
 Lexicon: 547 concepts (9 seeded, 538 emergent), 14865/41801 features above 2110 df, 361 functions unlabeled
 Generating concept documents...
-Culture: 501 concepts modeled, 2599 associations, 1138 unusual realizations
-Habitats: 129 modeled, 416 misfits (62 excused by subsystem), 33 subsystems; most uniform dartsass (norm 0.98), most diverse page (norm 0.66)
-Conventions: strongest Symbol.toPrimitive+prim.call (1.00), loosest d.ExpiryDate+d.PublishDate (0.14)
-Ecosystems: 5544 profiled (3227 dominance, 2310 coalition, 0 conflict, 7 weak)
 Calibration: rate 0.01 over 20000 null pairs -> threshold 0.34, struct-min 0.31, family-min 0.34
 Found 5737 functions. Retrieving candidates...
 Retrieval: shape 7040, concept 20716, call 8634 -> 32238 unique pairs
@@ -36,6 +32,10 @@ Retrieval: shape 7040, concept 20716, call 8634 -> 32238 unique pairs
 Running structural comparison on 31895 pairs...
   Concept views: 2218 of 31895 compared pairs disagree with the taxonomy (149 vocabulary the tree misses, 2069 kinship the vocabularies lack)
   13571 pairs remain after struct-min=0.31 filter
+Culture: 501 concepts modeled, 2599 associations, 1138 unusual realizations
+Habitats: 129 modeled, 416 misfits (62 excused by subsystem), 33 subsystems; most uniform dartsass (norm 0.98), most diverse page (norm 0.66)
+Conventions: strongest Symbol.toPrimitive+prim.call (1.00), loosest d.ExpiryDate+d.PublishDate (0.14)
+Ecosystems: 5544 profiled (3227 dominance, 2310 coalition, 0 conflict, 7 weak)
 Families: 609 over 619 components, 2053 functions in a family, 7137 edges completed
   2 component(s) skipped as too large or too dense: sizes [145 611]
 ```

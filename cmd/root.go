@@ -26,5 +26,9 @@ drift are all out of scope.`,
 }
 
 func Execute() error {
+	// Deferred rather than run from a PersistentPostRunE: cobra skips Post
+	// hooks when a command returns an error, and a failing run is exactly the
+	// one worth having a profile of.
+	defer stopProfiling()
 	return rootCmd.Execute()
 }

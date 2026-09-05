@@ -4,6 +4,8 @@ import (
 	"math"
 	"sort"
 
+	"github.com/LukasSelin/doppel/internal/parallel"
+
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/parser"
 )
@@ -126,69 +128,88 @@ func buildArenas(m *Model, units []parser.CodeUnit, docs []concepter.ConceptDoc,
 		return inter[[2]string{c, d}]
 	}
 
-	var scratch []float64 // interaction matrix, reused across units
-	for i := range units {
-		// Candidate set: own tags plus concepts positively associated with
-		// the unit's call tokens or role. Empty set = silence.
-		cand := make(map[string]bool)
-		for _, t := range uf.sortedPatterns[i] {
-			cand[t] = true
-		}
-		for _, tok := range uf.tokens[i] {
-			for _, tp := range posCallTag[tok] {
-				cand[tp.tag] = true
-			}
-		}
-		for _, tp := range posRoleTag[docs[i].Role] {
-			cand[tp.tag] = true
-		}
-		candidates := sortedStrings(cand)
-		if len(candidates) == 0 {
-			continue
-		}
-
-		// Evidence per candidate, fixed component order: direct concept IC
-		// scaled by how strongly the unit carries it, then call support, then
-		// role support. Scaling only the direct term is deliberate: the
-		// association terms are facts about the corpus, not about this unit's
-		// membership, and discounting them would let one uncertain membership
-		// quiet evidence that never depended on it.
-		evidence := make([]float64, len(candidates))
-		hasTag := make(map[string]bool, len(uf.sortedPatterns[i]))
-		for _, t := range uf.sortedPatterns[i] {
-			hasTag[t] = true
-		}
-		for ci, c := range candidates {
-			var e float64
-			if hasTag[c] {
-				e += uf.conf[i][c] * math.Log(float64(n)/float64(tagDF[c]))
+	// Per-unit compute, fanned out, then a sequential merge. The loop body is
+	// pure in i — everything above is read-only from here on — so the only
+	// obstacles to running it across cores are that m.arenas is a map and that
+	// the five Stats counters are shared accumulators. Both live in the merge
+	// pass below, which walks 0..n-1 in order: the counters are order-
+	// independent sums either way, and doing them sequentially makes that
+	// provable rather than argued.
+	profiles := make([]ArenaProfile, n)
+	have := make([]bool, n)
+	parallel.BlocksWith(n, arenaBlock, minUnitsPerWorker,
+		// The interaction matrix buffer was one slice reused across every unit;
+		// it becomes one per worker, which is the only state the body carries.
+		func() *[]float64 { return new([]float64) },
+		func(scratch *[]float64, i int) {
+			// Candidate set: own tags plus concepts positively associated with
+			// the unit's call tokens or role. Empty set = silence.
+			cand := make(map[string]bool)
+			for _, t := range uf.sortedPatterns[i] {
+				cand[t] = true
 			}
 			for _, tok := range uf.tokens[i] {
 				for _, tp := range posCallTag[tok] {
+					cand[tp.tag] = true
+				}
+			}
+			for _, tp := range posRoleTag[docs[i].Role] {
+				cand[tp.tag] = true
+			}
+			candidates := sortedStrings(cand)
+			if len(candidates) == 0 {
+				return // silence, not a state: nothing is recorded for this unit
+			}
+
+			// Evidence per candidate, fixed component order: direct concept IC
+			// scaled by how strongly the unit carries it, then call support, then
+			// role support. Scaling only the direct term is deliberate: the
+			// association terms are facts about the corpus, not about this unit's
+			// membership, and discounting them would let one uncertain membership
+			// quiet evidence that never depended on it.
+			evidence := make([]float64, len(candidates))
+			hasTag := make(map[string]bool, len(uf.sortedPatterns[i]))
+			for _, t := range uf.sortedPatterns[i] {
+				hasTag[t] = true
+			}
+			for ci, c := range candidates {
+				var e float64
+				if hasTag[c] {
+					e += uf.conf[i][c] * math.Log(float64(n)/float64(tagDF[c]))
+				}
+				for _, tok := range uf.tokens[i] {
+					for _, tp := range posCallTag[tok] {
+						if tp.tag == c {
+							e += tp.pmi
+						}
+					}
+				}
+				for _, tp := range posRoleTag[docs[i].Role] {
 					if tp.tag == c {
 						e += tp.pmi
 					}
 				}
+				evidence[ci] = e
 			}
-			for _, tp := range posRoleTag[docs[i].Role] {
-				if tp.tag == c {
-					e += tp.pmi
-				}
+			var totalEvidence float64
+			for _, e := range evidence {
+				totalEvidence += e
 			}
-			evidence[ci] = e
-		}
-		var totalEvidence float64
-		for _, e := range evidence {
-			totalEvidence += e
-		}
 
-		profile := runReplicator(candidates, evidence, interactionOf, &scratch)
-		profile.TotalEvidence = totalEvidence
-		profile.classify(interactionOf, opt)
+			profile := runReplicator(candidates, evidence, interactionOf, scratch)
+			profile.TotalEvidence = totalEvidence
+			profile.classify(interactionOf, opt)
 
-		m.arenas[i] = profile
+			profiles[i], have[i] = profile, true
+		})
+
+	for i := range n {
+		if !have[i] {
+			continue
+		}
+		m.arenas[i] = profiles[i]
 		m.stats.ArenaProfiled++
-		switch profile.State {
+		switch profiles[i].State {
 		case StateDominance:
 			m.stats.ArenaDominance++
 		case StateCoalition:
@@ -340,3 +361,13 @@ func hasNegativePair(survivors []ConceptMass, interactionOf func(c, d string) fl
 	}
 	return false
 }
+
+// arenaBlock is how many consecutive units a worker claims per atomic bump, and
+// minUnitsPerWorker keeps a small corpus sequential — the same two knobs the
+// parse and compare stages carry, at the same order of magnitude relative to
+// the cost of one item (a replicator run is tens of microseconds, between a
+// pair comparison and a file parse).
+const (
+	arenaBlock        = 64
+	minUnitsPerWorker = 256
+)

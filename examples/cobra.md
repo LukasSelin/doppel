@@ -9,7 +9,7 @@ CLI framework; one dominant type with a long method set, plus shell-completion g
 | Corpus | [cobra](https://github.com/spf13/cobra) |
 | Pinned at | `v1.10.2` (`88b30ab89da2d0d0abb153818746c5a2d30eccec`) |
 | Project since | 2015 |
-| doppel | `4214f9d` |
+| doppel | `e65f1c6` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -24,10 +24,6 @@ Scanning . ...
 Learning concept vocabulary...
 Lexicon: 26 concepts (2 seeded, 24 emergent), 992/2492 features above 98 df, 59 functions unlabeled
 Generating concept documents...
-Culture: 26 concepts modeled, 184 associations, 10 unusual realizations
-Habitats: 2 modeled, 0 misfits; most uniform cobra (norm 0.93), most diverse doc (norm 0.93)
-Conventions: strongest f.Name+flag.ContinueOnError+flag.NewFlagSet (0.59), loosest Value.Type+flag.Value (0.23)
-Ecosystems: 235 profiled (171 dominance, 62 coalition, 0 conflict, 2 weak)
 Calibration: rate 0.01 over 14535 shape / 20000 overlap null pairs -> threshold 0.44, struct-min 0.53, family-min 0.44
 Found 269 functions. Retrieving candidates...
 Retrieval: shape 135, concept 811, call 712 -> 1401 unique pairs
@@ -35,6 +31,10 @@ Retrieval: shape 135, concept 811, call 712 -> 1401 unique pairs
 Running structural comparison on 1401 pairs...
   Concept views: 42 of 1401 compared pairs disagree with the taxonomy (1 vocabulary the tree misses, 41 kinship the vocabularies lack)
   239 pairs remain after struct-min=0.53 filter
+Culture: 26 concepts modeled, 184 associations, 10 unusual realizations
+Habitats: 2 modeled, 0 misfits; most uniform cobra (norm 0.93), most diverse doc (norm 0.93)
+Conventions: strongest f.Name+flag.ContinueOnError+flag.NewFlagSet (0.59), loosest Value.Type+flag.Value (0.23)
+Ecosystems: 235 profiled (171 dominance, 62 coalition, 0 conflict, 2 weak)
 Families: 19 over 43 components, 57 functions in a family, 9 edges completed
 ```
 

@@ -9,7 +9,7 @@ HTTP router; a narrow core with a middleware package beside it
 | Corpus | [chi](https://github.com/go-chi/chi) |
 | Pinned at | `v5.3.2` (`38939062c5df4d3e8814aad1a488983112627ced`) |
 | Project since | 2015 |
-| doppel | `4214f9d` |
+| doppel | `e65f1c6` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -24,10 +24,6 @@ Scanning . ...
 Learning concept vocabulary...
 Lexicon: 21 concepts (0 seeded, 21 emergent), 717/1935 features above 67 df, 34 functions unlabeled
 Generating concept documents...
-Culture: 20 concepts modeled, 71 associations, 6 unusual realizations
-Habitats: 2 modeled, 0 misfits; most uniform chi (norm 0.92), most diverse middleware (norm 0.90)
-Conventions: strongest mx.handle+chi.*Mux.handle (0.89), loosest mx.inline+mx.handler (0.23)
-Ecosystems: 162 profiled (121 dominance, 41 coalition, 0 conflict, 0 weak)
 Calibration: rate 0.01 over 9045 shape / 16653 overlap null pairs -> threshold 0.45, struct-min 0.51, family-min 0.45
 Found 183 functions. Retrieving candidates...
 Retrieval: shape 86, concept 532, call 357 -> 814 unique pairs
@@ -35,6 +31,10 @@ Retrieval: shape 86, concept 532, call 357 -> 814 unique pairs
 Running structural comparison on 814 pairs...
   Concept views: 0 of 814 compared pairs disagree with the taxonomy (0 vocabulary the tree misses, 0 kinship the vocabularies lack)
   124 pairs remain after struct-min=0.51 filter
+Culture: 20 concepts modeled, 71 associations, 6 unusual realizations
+Habitats: 2 modeled, 0 misfits; most uniform chi (norm 0.92), most diverse middleware (norm 0.90)
+Conventions: strongest mx.handle+chi.*Mux.handle (0.89), loosest mx.inline+mx.handler (0.23)
+Ecosystems: 162 profiled (121 dominance, 41 coalition, 0 conflict, 0 weak)
 Families: 6 over 16 components, 28 functions in a family, 9 edges completed
   1 pairs suppressed by max-per-func=2
 ```

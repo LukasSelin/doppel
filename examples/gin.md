@@ -9,7 +9,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `4214f9d` |
+| doppel | `e65f1c6` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -24,10 +24,6 @@ Scanning . ...
 Learning concept vocabulary...
 Lexicon: 46 concepts (6 seeded, 40 emergent), 1266/3382 features above 182 df, 76 functions unlabeled
 Generating concept documents...
-Culture: 37 concepts modeled, 153 associations, 31 unusual realizations
-Habitats: 5 modeled, 15 misfits (0 excused by subsystem), 1 subsystems; most uniform binding (norm 0.92), most diverse json (norm 0.63)
-Conventions: strongest c.MustBindWith+gin.*Context.MustBindWith (1.00), loosest gin.*Context.Header+gin.*Context.Set (0.22)
-Ecosystems: 443 profiled (351 dominance, 74 coalition, 0 conflict, 18 weak)
 Calibration: rate 0.01 over 20000 null pairs -> threshold 0.41, struct-min 0.49, family-min 0.41
 Found 497 functions. Retrieving candidates...
 Retrieval: shape 187, concept 1637, call 609 -> 2116 unique pairs
@@ -35,6 +31,10 @@ Retrieval: shape 187, concept 1637, call 609 -> 2116 unique pairs
 Running structural comparison on 2116 pairs...
   Concept views: 70 of 2116 compared pairs disagree with the taxonomy (4 vocabulary the tree misses, 66 kinship the vocabularies lack)
   570 pairs remain after struct-min=0.49 filter
+Culture: 37 concepts modeled, 153 associations, 31 unusual realizations
+Habitats: 5 modeled, 15 misfits (0 excused by subsystem), 1 subsystems; most uniform binding (norm 0.92), most diverse json (norm 0.63)
+Conventions: strongest c.MustBindWith+gin.*Context.MustBindWith (1.00), loosest gin.*Context.Header+gin.*Context.Set (0.22)
+Ecosystems: 443 profiled (351 dominance, 74 coalition, 0 conflict, 18 weak)
 Families: 35 over 58 components, 169 functions in a family, 211 edges completed
 ```
 

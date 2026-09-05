@@ -9,7 +9,7 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `4214f9d` |
+| doppel | `e65f1c6` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -24,10 +24,6 @@ Scanning . ...
 Learning concept vocabulary...
 Lexicon: 390 concepts (12 seeded, 378 emergent), 17323/43540 features above 2068 df, 650 functions unlabeled
 Generating concept documents...
-Culture: 360 concepts modeled, 2597 associations, 737 unusual realizations
-Habitats: 97 modeled, 115 misfits (58 excused by subsystem), 22 subsystems; most uniform graphite (norm 1.00), most diverse src (norm 0.65)
-Conventions: strongest b.Bytes+b.Len (0.98), loosest n.StartOrEnd+n.Func (0.13)
-Ecosystems: 5273 profiled (2739 dominance, 2495 coalition, 0 conflict, 39 weak)
 Calibration: rate 0.01 over 20000 null pairs -> threshold 0.33, struct-min 0.34, family-min 0.33
 Found 5623 functions. Retrieving candidates...
 Retrieval: shape 8068, concept 17036, call 8171 -> 29105 unique pairs
@@ -36,6 +32,10 @@ Retrieval: shape 8068, concept 17036, call 8171 -> 29105 unique pairs
 Running structural comparison on 28982 pairs...
   Concept views: 1736 of 28982 compared pairs disagree with the taxonomy (177 vocabulary the tree misses, 1559 kinship the vocabularies lack)
   13079 pairs remain after struct-min=0.34 filter
+Culture: 360 concepts modeled, 2597 associations, 737 unusual realizations
+Habitats: 97 modeled, 115 misfits (58 excused by subsystem), 22 subsystems; most uniform graphite (norm 1.00), most diverse src (norm 0.65)
+Conventions: strongest b.Bytes+b.Len (0.98), loosest n.StartOrEnd+n.Func (0.13)
+Ecosystems: 5273 profiled (2739 dominance, 2495 coalition, 0 conflict, 39 weak)
 Families: 914 over 637 components, 2024 functions in a family, 7944 edges completed
   2 component(s) skipped as too large or too dense: sizes [231 699]
 ```

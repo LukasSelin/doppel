@@ -25,6 +25,7 @@ import (
 	"github.com/LukasSelin/doppel/internal/comparator"
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/fingerprint"
+	"github.com/LukasSelin/doppel/internal/parallel"
 	"github.com/LukasSelin/doppel/internal/parser"
 )
 
@@ -89,10 +90,16 @@ func Run(units []parser.CodeUnit, docs []concepter.ConceptDoc, comp *comparator.
 		res.Declined = declined(len(shapePairs), o.MinNullPairs, "shape")
 		return res
 	}
-	shape := make([]float64, 0, len(shapePairs))
-	for _, p := range shapePairs {
-		shape = append(shape, fingerprint.SimilarityWith(units[p[0]].Fingerprint, units[p[1]].Fingerprint, wl, w).Score)
-	}
+	// Scored across cores, by index. Every null pair is independent and
+	// SimilarityWith is pure — two fingerprints, the corpus label weights and
+	// the blend, all read-only here — so nothing is shared but the result
+	// slice, and each slot is written once. The sort below makes even the fill
+	// order immaterial; writing by index keeps it exact anyway.
+	shape := make([]float64, len(shapePairs))
+	parallel.Blocks(len(shapePairs), nullBlock, minPairsPerNullWorker, func(i int) {
+		p := shapePairs[i]
+		shape[i] = fingerprint.SimilarityWith(units[p[0]].Fingerprint, units[p[1]].Fingerprint, wl, w).Score
+	})
 
 	// Overlap null: every unit, the way the comparator sees pairs.
 	overlapPairs := samplePopulation(units, order, o.MaxPairs, seed^0x9e3779b97f4a7c15)
@@ -101,10 +108,18 @@ func Run(units []parser.CodeUnit, docs []concepter.ConceptDoc, comp *comparator.
 		res.Declined = declined(len(overlapPairs), o.MinNullPairs, "overlap")
 		return res
 	}
-	overlap := make([]float64, 0, len(overlapPairs))
-	for _, p := range overlapPairs {
-		overlap = append(overlap, comp.Compare(docs[p[0]], docs[p[1]]).OverlapScore)
-	}
+	// The same fan-out, with one forked comparator per worker — the comparator
+	// carries the vocabulary's profile scratch, which is the only mutable state
+	// in a Compare and the reason Fork exists. This is the null distribution of
+	// exactly the comparator the run will use, so it must be that comparator
+	// and not a fresh one.
+	overlap := make([]float64, len(overlapPairs))
+	parallel.BlocksWith(len(overlapPairs), nullBlock, minPairsPerNullWorker,
+		comp.Fork,
+		func(c *comparator.Comparator, i int) {
+			p := overlapPairs[i]
+			overlap[i] = c.Compare(docs[p[0]], docs[p[1]]).OverlapScore
+		})
 
 	sort.Float64s(shape)
 	sort.Float64s(overlap)
@@ -247,3 +262,11 @@ func roundUp(v float64) float64 {
 }
 
 func itoa(n int) string { return strconv.Itoa(n) }
+
+// One null pair costs about what one candidate comparison does, so these mirror
+// the comparison stage's two knobs. MinNullPairs (1000) is above the sequential
+// floor, so a calibration that runs at all runs across cores.
+const (
+	nullBlock             = 64
+	minPairsPerNullWorker = 512
+)

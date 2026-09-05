@@ -35,7 +35,7 @@ type conceptIndex struct {
 	concepts [][]parser.Concept        // per unit: its memberships, as learned
 	expanded [][]ontology.TermID       // per unit: concepts + non-root ancestors, sorted unique
 	postings map[ontology.TermID][]int // expanded term → unit indices, ascending
-	mass     map[pairKey]float64       // memoized shared information per pair
+	mass     *pairMemo[float64]        // memoized shared information per pair
 }
 
 func buildConceptIndex(units []parser.CodeUnit, onto *ontology.Ontology,
@@ -46,7 +46,7 @@ func buildConceptIndex(units []parser.CodeUnit, onto *ontology.Ontology,
 		concepts: make([][]parser.Concept, len(units)),
 		expanded: make([][]ontology.TermID, len(units)),
 		postings: make(map[ontology.TermID][]int),
-		mass:     make(map[pairKey]float64),
+		mass:     newPairMemo[float64](),
 	}
 	for i := range units {
 		x.concepts[i] = units[i].Concepts
@@ -88,11 +88,7 @@ func buildConceptIndex(units []parser.CodeUnit, onto *ontology.Ontology,
 // top ChannelK by (mass desc, idx asc) are admitted. Zero-mass pairs — sets
 // that meet only cross-branch — are never admitted.
 func (x *conceptIndex) admitPairs(opt Options) []pairKey {
-	var pairs []pairKey
-	for a := range x.expanded {
-		pairs = append(pairs, x.admitFor(a, opt)...)
-	}
-	return pairs
+	return concatByIndex(len(x.expanded), func(a int) []pairKey { return x.admitFor(a, opt) })
 }
 
 // admitFor is one function's turn of the admitPairs loop, factored out so a
@@ -139,11 +135,9 @@ func (x *conceptIndex) admitFor(a int, opt Options) []pairKey {
 // the weaker side asserts it, memoized per unordered pair.
 func (x *conceptIndex) sharedMass(a, b int) float64 {
 	k := orderPair(a, b)
-	if m, ok := x.mass[k]; ok {
+	return x.mass.get(k, func() float64 {
+		m, _ := x.scorer.SharedInformationW(
+			concepter.Graded(x.concepts[k[0]]), concepter.Graded(x.concepts[k[1]]))
 		return m
-	}
-	m, _ := x.scorer.SharedInformationW(
-		concepter.Graded(x.concepts[k[0]]), concepter.Graded(x.concepts[k[1]]))
-	x.mass[k] = m
-	return m
+	})
 }

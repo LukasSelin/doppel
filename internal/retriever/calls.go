@@ -92,11 +92,7 @@ func (x *callIndex) callSim(a, b int, sharedMass float64) float64 {
 // asc). No similarity floor and no size gate — a syntactically alien pair
 // sharing rare resolved calls is exactly what this channel exists to admit.
 func (x *callIndex) admitPairs(opt Options) []pairKey {
-	var pairs []pairKey
-	for a := range x.surviving {
-		pairs = append(pairs, x.admitFor(a, opt)...)
-	}
-	return pairs
+	return concatByIndex(len(x.surviving), func(a int) []pairKey { return x.admitFor(a, opt) })
 }
 
 // admitFor is one function's turn of the admitPairs loop, factored out so a

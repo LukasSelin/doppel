@@ -29,8 +29,10 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/LukasSelin/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/parallel"
 	"github.com/LukasSelin/doppel/internal/parser"
 )
 
@@ -397,8 +399,13 @@ func buildCorpus(units []parser.CodeUnit, g *concepter.Graph, opt Options) *corp
 		df:       make(map[string]int),
 		idf:      make(map[string]float64),
 	}
-	for i := range units {
+	// Feature extraction is per unit and pure; the df tally is one shared map,
+	// so it stays sequential. Splitting them costs one extra pass over the
+	// feature slices and takes the expensive half across cores.
+	parallel.Blocks(len(units), featureBlock, minUnitsPerFeatureWorker, func(i int) {
 		c.features[i] = unitFeatures(units[i], g, internal)
+	})
+	for i := range units {
 		for _, f := range c.features[i] {
 			c.df[f]++
 		}
@@ -426,11 +433,11 @@ func buildCorpus(units []parser.CodeUnit, g *concepter.Graph, opt Options) *corp
 	// feature outside it has no idf and contributes to neither side — the same
 	// "surviving features only" rule fit counts under.
 	c.mass = make([]float64, c.n)
-	for i := range c.features {
+	parallel.Blocks(c.n, featureBlock, minUnitsPerFeatureWorker, func(i int) {
 		for _, f := range c.features[i] { // ascending: addition order is fixed
 			c.mass[i] += c.idf[f]
 		}
-	}
+	})
 	return c
 }
 
@@ -494,6 +501,12 @@ func weightsOf(features []Feature) map[string]float64 {
 // The callback receives the concept indices the unit touched and their
 // coverages, positionally aligned; both slices are scratch and must not be
 // retained.
+// fn may be called from several goroutines at once, and the slices it is handed
+// are the calling worker's scratch — valid for the call and reused after it. A
+// callback must therefore confine its writes to unit, or serialise them itself;
+// floors and dropUnfounded, which accumulate per concept rather than per unit,
+// take the second route (they run only under a non-default FloorRule, so the
+// lock is never on a hot path).
 func forEachCoverage(c *corpus, concepts []Concept, fn func(unit int, touched []int, cover []float64)) {
 	type weighted struct {
 		concept int
@@ -506,32 +519,37 @@ func forEachCoverage(c *corpus, concepts []Concept, fn func(unit int, touched []
 		}
 	}
 
-	evidence := make([]float64, len(concepts))
-	var touched []int
-	var cover []float64
-	for i := 0; i < c.n; i++ {
-		touched = touched[:0]
-		cover = cover[:0]
-		for _, f := range c.features[i] { // ascending: the addition order is fixed
-			for _, w := range byFeature[f] {
-				if evidence[w.concept] == 0 {
-					touched = append(touched, w.concept)
-				}
-				evidence[w.concept] += w.weight
-			}
-		}
-		sort.Ints(touched) // concepts are sorted by ID, so this is ID order
-		for _, j := range touched {
-			e := evidence[j]
-			evidence[j] = 0 // reset only what was touched
-			cov := 0.0
-			if c.mass[i] > 0 {
-				cov = e / c.mass[i] // one division at the end: accumulation order is untouched
-			}
-			cover = append(cover, cov)
-		}
-		fn(i, touched, cover)
+	// The three scratch buffers were one set reused down the loop; they become
+	// one set per worker. byFeature is read-only from here on.
+	type scratch struct {
+		evidence []float64
+		touched  []int
+		cover    []float64
 	}
+	parallel.BlocksWith(c.n, coverageBlock, minUnitsPerCoverageWorker,
+		func() *scratch { return &scratch{evidence: make([]float64, len(concepts))} },
+		func(s *scratch, i int) {
+			s.touched, s.cover = s.touched[:0], s.cover[:0]
+			for _, f := range c.features[i] { // ascending: the addition order is fixed
+				for _, w := range byFeature[f] {
+					if s.evidence[w.concept] == 0 {
+						s.touched = append(s.touched, w.concept)
+					}
+					s.evidence[w.concept] += w.weight
+				}
+			}
+			sort.Ints(s.touched) // concepts are sorted by ID, so this is ID order
+			for _, j := range s.touched {
+				e := s.evidence[j]
+				s.evidence[j] = 0 // reset only what was touched
+				cov := 0.0
+				if c.mass[i] > 0 {
+					cov = e / c.mass[i] // one division at the end: accumulation order is untouched
+				}
+				s.cover = append(s.cover, cov)
+			}
+			fn(i, s.touched, s.cover)
+		})
 }
 
 // floors sets every concept's membership bar from the corpus's own distribution
@@ -579,12 +597,15 @@ func floors(c *corpus, concepts []Concept, opt Options) {
 		return
 	}
 	curves := make([][]float64, len(concepts))
+	var mu sync.Mutex // curves accumulates per concept, not per unit
 	forEachCoverage(c, concepts, func(_ int, touched []int, cover []float64) {
+		mu.Lock()
 		for k, j := range touched {
 			if cover[k] > 0 {
 				curves[j] = append(curves[j], cover[k])
 			}
 		}
+		mu.Unlock()
 	})
 	for j := range concepts {
 		sort.Float64s(curves[j])
@@ -626,13 +647,16 @@ func retainedFounders(c *corpus, concepts []Concept, founders [][]int) []int {
 		}
 	}
 	kept := make([]int, len(concepts))
+	var mu sync.Mutex // kept counts per concept, not per unit
 	forEachCoverage(c, concepts, func(i int, touched []int, cover []float64) {
+		mu.Lock()
 		for _, j := range founded[i] {
 			k := sort.SearchInts(touched, j)
 			if k < len(touched) && touched[k] == j && cover[k] >= concepts[j].Floor {
 				kept[j]++
 			}
 		}
+		mu.Unlock()
 	})
 	return kept
 }
@@ -932,3 +956,13 @@ func grownSeeds(concepts []Concept) []string {
 	}
 	return sortedKeys(grown)
 }
+
+// Block sizes for the two per-unit fan-outs in this file. A unit's feature
+// extraction and its coverage pass are both a few microseconds, between a pair
+// comparison and a file parse, so the blocks sit where the other stages' do.
+const (
+	featureBlock              = 32
+	minUnitsPerFeatureWorker  = 128
+	coverageBlock             = 32
+	minUnitsPerCoverageWorker = 128
+)

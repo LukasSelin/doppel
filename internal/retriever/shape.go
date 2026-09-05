@@ -183,11 +183,7 @@ func labelBucket(bag []fingerprint.LabelCount) uint64 {
 // clusters are precisely the junk being suppressed, and an unbounded probe
 // would degenerate back toward O(n²).
 func (x *shapeIndex) admitPairs(sim *simCache, opt Options) []pairKey {
-	var pairs []pairKey
-	for a := range x.surviving {
-		pairs = append(pairs, x.admitFor(a, sim, opt)...)
-	}
-	return pairs
+	return concatByIndex(len(x.surviving), func(a int) []pairKey { return x.admitFor(a, sim, opt) })
 }
 
 // admitFor is one function's turn of the admitPairs loop, factored out so a
