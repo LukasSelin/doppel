@@ -30,17 +30,18 @@ type stageTimer struct {
 	start time.Time
 	last  time.Time
 	on    bool
-	// heap is the stage-targeted heap dumper, nil unless asked for. It hangs
-	// off the timer because the timer already owns the one list of stage
-	// boundaries, so a dump cannot name a stage that does not exist — and it
-	// fires whether or not timing itself is on.
+	// heap is the stage-targeted heap dumper and mem the exact-accounting
+	// recorder, both nil unless asked for. They hang off the timer because it
+	// already owns the one list of stage boundaries, so neither can name a
+	// stage that does not exist — and both fire whether or not timing is on.
 	heap *heapDumper
+	mem  *memRecorder
 }
 
 func newStageTimer(progress io.Writer) *stageTimer {
 	now := time.Now()
 	return &stageTimer{w: progressOr(progress), start: now, last: now,
-		on: timingEnabled(), heap: newHeapDumper()}
+		on: timingEnabled(), heap: newHeapDumper(), mem: newMemRecorder(progress)}
 }
 
 func timingEnabled() bool {
@@ -54,6 +55,7 @@ func timingEnabled() bool {
 // with the stage list in CLAUDE.md.
 func (t *stageTimer) mark(stage string) {
 	t.heap.dump(stage, t.w)
+	t.mem.record(stage)
 	if !t.on {
 		return
 	}
@@ -69,6 +71,8 @@ func (t *stageTimer) mark(stage string) {
 // rendering all sit outside the pipeline, and pretending otherwise would make
 // the stage lines fail to sum.
 func (t *stageTimer) total(label string) {
+	t.mem.record(label)
+	t.mem.flush()
 	if !t.on {
 		return
 	}
@@ -86,6 +90,7 @@ func (t *stageTimer) total(label string) {
 // machine really did.
 func (t *stageTimer) markOverlapped(stage string, ran time.Duration) {
 	t.heap.dump(stage, t.w)
+	t.mem.record(stage)
 	if !t.on {
 		return
 	}

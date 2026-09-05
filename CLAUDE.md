@@ -395,6 +395,29 @@ stage timing says *which* stage, the profile says *what inside it*.
   on a run whose peak RSS is 800MB — the right profile for "what leaked" and useless for "what does
   the corpus model cost to hold".
 
+- **`DOPPEL_MEMSTATS=1`** (or `=<path>.json`) records **exact** heap accounting at every stage:
+  `live` (HeapAlloc after a forced GC — bytes reachable), `alloc` (bytes this run allocated),
+  `objects` (Mallocs−Frees) and `heapSys`. `cmd/memstats.go`, hooked into the same stage marks.
+
+  **It exists because a sampled profile cannot resolve a footprint change.** `DOPPEL_HEAPPROFILE`
+  samples one allocation per 512KB, so its `inuse_space` is an estimate that moves: the same binary
+  dumping the same stage three times read 129.6, 137.8 and 143.2MB, a **10% spread**, and peak RSS
+  over six runs of one binary spanned 624–755MB. `runtime.MemStats` is not sampled — those are
+  counters the runtime maintains exactly — so the same measurement repeated reads **0.02MB apart
+  across processes** and 0.2MB within one. That is roughly 700x the resolution, and it is what makes
+  a 10MB change decidable at all. `TestMemStatsNoiseFloor` (guard `DOPPEL_BENCH_MEMSTATS=<corpus>`,
+  `task memstats`) asserts the floor rather than printing it.
+
+  Two properties are load-bearing. `Alloc` is measured **from when recording began, not from process
+  start** — the noise-floor test drives three runs in one process and read a 5GB spread before that
+  was fixed, which is run 2 carrying run 1's total. And the recorder is a **process-wide singleton**,
+  because `index()` and `finishAnalyze()` each own a stage timer and two recorders writing one JSON
+  path would silently drop the first half of the run.
+
+  What it deliberately does not report is RSS: every stage boundary forces a GC, so a run under this
+  flag has a collector schedule no normal run has. Use the OS working set for that, knowing its
+  spread.
+
 - **`--cpuprofile` / `--memprofile`** are hidden persistent flags on the root command
   (`cmd/profile.go`), so every subcommand is profilable without each registering its own pair.
   Hidden for the reason `--channel-k` and `--min-nodes` are: no question about a codebase is
@@ -662,10 +685,16 @@ and peak RSS over six runs of one binary spans 624-755MB. Every difference the c
 inside that. It was reverted rather than kept, because the price was a new lifetime invariant, a
 `Result.LabelKinds` coupling, and a degraded sentence for the free `Explain` on tree-less units.
 
-**Read every heap number in this section against that floor.** Differences under ~15MB of live heap
-or ~60MB of peak RSS on moby are not measurements, and a single before/after pair cannot establish
-one — the `SimilarPair` result above survives it (44.79MB -> 3.39MB on one site, 1 168 -> 192 bytes
-on a struct, both far outside the noise), and the tree release did not.
+**Read every sampled heap number in this section against that floor.** Differences under ~15MB of
+live heap or ~60MB of peak RSS on moby are not measurements when they come from `-sample_index=
+inuse_space` or the working set — the `SimilarPair` result above survives it (44.79MB -> 3.39MB on
+one site, 1 168 -> 192 bytes on a struct, both far outside the noise), and the tree release did not.
+
+**`DOPPEL_MEMSTATS` is the answer to that problem and the way to measure the next one**: exact
+counters instead of samples, a floor of 0.02MB rather than 13.6MB. The canonical-tree question is
+worth re-asking through it — 23MB was indistinguishable from noise in the old instrument and is 1000
+floors wide in the new one — but re-ask it by measuring, not by assuming the earlier verdict was an
+instrument artefact.
 
 That is the standing gap: `internal/bench/pipeline.go` omits culture, habitats and arenas
 because "they annotate, they never rank", which is right for ranking measurement and wrong for

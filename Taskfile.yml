@@ -96,6 +96,13 @@ tasks:
     cmds:
       - DOPPEL_BENCH_BASELINE=1 go test ./internal/bench/ -run TestGenerateBaseline -v -timeout 30m
 
+  memstats:
+    desc: "Measure the exact per-stage heap accounting and its noise floor (CORPUS=<path>)"
+    vars:
+      CORPUS: '{{.CORPUS | default "."}}'
+    cmds:
+      - DOPPEL_BENCH_MEMSTATS={{.CORPUS}} go test ./cmd/ -run TestMemStatsNoiseFloor -v -timeout 30m
+
   ablate:
     desc: Zero each fingerprint blend component (WL/flow/depth/signature) in turn and score the labeled corpora — a measurement, not a gate
     cmds:
