@@ -111,7 +111,8 @@ internal/
   gofront/      The Go frontend: the only package that imports go/ast. gofront.go maps *ast.File → syntax.File and runs canon; syntax_map.go is the node-for-node mapper;
                 render.go re-derives one function's canonical tree with a go/printer render per node, for the --label view
   lexfront/     The language-agnostic frontend: spec.go is the per-language table, lexer.go tokenizes, segment.go finds functions, build.go builds the shallow tree
-  parser/       frontend.go owns the Frontend interface, the extension registry, IsTestFile and SameBuildUnit; parser.go is the neutral syntax.File → CodeUnit projection (and owns ShouldSkipDir, the walk rule cmd and bench share); signals.go extracts the tagger's evidence channels over the IR; go_parser.go and lex_parser.go are the two registry adapters
+  parser/       frontend.go owns the Frontend interface, the extension registry, IsTestFile and SameBuildUnit; parser.go is the neutral syntax.File → CodeUnit projection;
+                exclude.go is the walk rule cmd and bench share — DefaultExcludes, ShouldSkipDir, and the per-run Excludes --exclude configures; signals.go extracts the tagger's evidence channels over the IR; go_parser.go and lex_parser.go are the two registry adapters
   canon/        Canonical Go AST shapes with a per-function rule log: canon.go + rules.go (the rule
                 set and canon.Version), alpha.go (rename), clone.go, key.go. Go-only by nature;
                 imported by gofront (to run it) and by analyzer (to name its rules)
@@ -2194,6 +2195,7 @@ or the `languages` config key restores the old population exactly.
   "tests": "exclude",
   "generated": "exclude",
   "languages": ["go"],
+  "exclude": ["generated", "!bin", "internal/proto/*"],
   "calibrate": 0.01,
   "families": 5,
   "family-min": 0.60,
@@ -2214,7 +2216,9 @@ overview's package duplication map weighs an edge by — all three presentation,
 `Params` and none can invalidate a baseline; `--languages` picks which
 frontends are read (defaulting to all of them) and is corpus-defining, so it travels in `Params`
 and in `snapshot.Params` and a run reading Go alone is correctly incomparable to one reading Go
-and TypeScript; `--tests` and `--generated`
+and TypeScript; `--exclude` adds directory patterns to `parser.DefaultExcludes` (a `!` prefix
+takes one back) and is corpus-defining for the same reason, travelling in both `Params` and
+`snapshot.Params`; `--tests` and `--generated`
 pick the population (`include`/`exclude`/`only` each, both defaulting `exclude`) before any
 statistic is computed — tests because they are conventionally similar by design, generated files
 (Go's "Code generated ... DO NOT EDIT." marker, detected via `ast.IsGenerated` at parse time)
@@ -2446,6 +2450,16 @@ to rewrite on every turn:
   precedent already used the same sentinel. Nothing a schema-9 snapshot stores changed meaning:
   the composite's `exhibits` slot still reads the corpus view (see *Concept views* for the
   measurement that kept it there), so `overlap` and `mergeWorthy` are the numbers they were.
+
+  **`Schema` 11 adds `Params.Exclude`**, and it is the language line's bump one level out. Which
+  directories a walk skipped decides what the corpus *is* — a run that read a repository's
+  `node_modules` and one that did not counted different dfs, learned a different vocabulary and
+  scored every pair against a different population — so it sits beside `Languages` among the
+  parameters that make two runs comparable. A schema-10 baseline records no exclusions, and
+  defaulting it to "none configured" would assert something the older run never stated.
+  `DefaultExcludes` is deliberately not recorded: it is a property of the build, like the
+  registered frontend set, and a baseline already refuses across builds. `Params.Equal` gained
+  `sameStrings`, the slice comparison `Languages` had inline, rather than a second copy of it.
 
   `Schema` 5 (shape line) was the same kind of bump as 3, one step further: `Pair.Score` changed metric (token shingles → corpus-weighted WL
   Jaccard) *and* became corpus-relative, so a schema-4 baseline and a schema-5 run would disagree
@@ -2927,9 +2941,48 @@ functions for exactly this reason, and the first version of them did not and fai
   `internal/dashboard/assets/vendor/` with their version, source and licence recorded — they never
   reach `go.mod`, and they are never hand-edited.
 - Skipped directories: anything dot- or underscore-prefixed (the go tool's own ignore rule, so
-  `_examples/` demo trees never join the population), plus `vendor`, `testdata`, `build`. The
+  `_examples/` demo trees never join the population), plus `parser.DefaultExcludes` — the
+  dependency directories of every ecosystem doppel reads (`node_modules`, `vendor`,
+  `site-packages`, `Pods`, `Carthage`, `bower_components`, `jspm_packages`, `third_party`) and
+  the build-output ones (`target`, `dist`, `out`, `build`, `obj`, `coverage`, `DerivedData`,
+  `testdata`). The
   walk root itself is exempt — `doppel analyze .` hands the walker a directory named `.`, and a
   user pointing doppel at `_examples/` directly has already made the call.
+
+  **The blocklist is a scope rule, and it is load-bearing for the same reason `--tests` and
+  `--generated` are.** Every judgment doppel makes is corpus-relative, so a `node_modules` in
+  the population is not merely noise in the pair list: the learned vocabulary is named after
+  somebody else's code, IC and every df are counted over functions nobody in the repo
+  maintains, the calibrated floors are drawn from a null that is mostly dependencies, and the
+  top findings are duplication between two copies of a package. The two categories restate
+  arguments the tool already makes — an installed dependency is `vendor` spelled twelve other
+  ways, and build output is what `--generated exclude` says about a generated file — rather
+  than introducing a new one. It is a **fixed list of names**, never a content heuristic and
+  never a path shape, which is the same refusal the tagger and the retriever make; names are
+  compared case-insensitively, because a rule that was not would put one tree in two corpora
+  depending on which platform analysed it.
+
+  **What is deliberately absent bounds it**: a default may not shadow first-party source in a
+  language doppel reads. `deps` is Elixir's install directory and doppel has no Elixir frontend,
+  while hugo's own `deps/deps.go` is a Go package by that name — measured against the ladder,
+  and the reason the rest were reasoned the same way. `packages` is legacy NuGet and also where
+  every pnpm, Lerna and Yarn workspace keeps the repository's own code; `bin` is .NET output
+  whose extensions no frontend claims anyway, and where an npm package keeps `bin/cli.js`;
+  `godeps` and `virtualenv` are dead weight. Each is one `--exclude` away where it does apply,
+  and the trimmed list leaves every rung of the pinned ladder byte-identical.
+
+  `--exclude` (config key `exclude`) adds to the list: a glob over a directory's base name, or
+  over its root-relative slash path when the pattern contains a `/` (`path.Match`, so `*` does
+  not cross a separator — that is what makes the two forms different rules rather than one
+  loose one). A leading `!` **re-admits**, which is the escape hatch for a repo whose real
+  source lives in a directory the defaults call build output. Negation wins outright rather
+  than by position, so the same set of patterns means the same thing whether it arrived from a
+  flag, a config file, or both. A malformed glob is an error rather than a pattern that matches
+  nothing: an exclusion decides what the corpus is, and a corpus changed by a typo is what
+  nobody notices until the report is already wrong. Corpus-defining, so it travels in `Params`
+  and in `snapshot.Params` — the *configured* patterns only, since `DefaultExcludes` is a
+  property of the build, like the frontend set behind `Selection.Names()`, and a baseline
+  already refuses to compare across builds.
   `_test.go` files are always parsed; **`--tests` decides the population** (default `exclude`).
   Tests are conventionally similar by design, so they form their own population: `exclude`
   models production practice, `only` is test-suite hygiene mode, `include` mixes both but

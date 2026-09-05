@@ -23,6 +23,7 @@ var (
 	queryChannelK  int
 	queryTests     string
 	queryLanguages []string
+	queryExclude   []string
 	queryGenerated string
 	queryConfig    string
 )
@@ -82,6 +83,7 @@ func init() {
 	// cut on an index tie-break, which is how the nearest match goes missing.
 	queryCmd.Flags().IntVar(&queryChannelK, "channel-k", 10, "Candidates each function keeps per retrieval channel")
 	queryCmd.Flags().StringSliceVar(&queryLanguages, "languages", nil, "Languages to read, comma-separated (default: every language doppel has a frontend for). The extension allowlist is the whole scope rule — a file is in the corpus because a frontend claims its extension, never because its contents looked like code.")
+	queryCmd.Flags().StringSliceVar(&queryExclude, "exclude", nil, "Directory patterns to skip, comma-separated, on top of the built-in blocklist (node_modules, vendor, site-packages, Pods, third_party, target, dist, build, out, obj, coverage). A pattern is a glob over a directory name, or over its root-relative path when it contains a slash; a leading exclamation mark re-admits a directory the defaults would have skipped. Repeatable.")
 	queryCmd.Flags().StringVar(&queryTests, "tests", "exclude", "Test-function population: include, exclude, or only")
 	queryCmd.Flags().StringVar(&queryGenerated, "generated", "exclude", "Generated-file population: include, exclude, or only")
 	queryCmd.Flags().StringVar(&queryConfig, "config", "", "Path to JSON config file (default: .doppel.json if present)")
@@ -139,6 +141,7 @@ func runQuery(cmd *cobra.Command, args []string) error {
 		ChannelK:  queryChannelK,
 		TestsMode: queryTests,
 		Languages: queryLanguages,
+		Exclude:   queryExclude,
 		Generated: queryGenerated,
 	}
 	res, err := index(args[0], p, cmd.ErrOrStderr(), probes)

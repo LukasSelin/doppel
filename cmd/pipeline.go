@@ -40,8 +40,17 @@ type Params struct {
 	TestsMode  string
 	Generated  string   // generated-file population: include, exclude, or only
 	Languages  []string // language allowlist; empty means every registered frontend
-	Calibrate  float64  // null admission rate; > 0 derives Threshold and StructMin from the corpus
-	Debug      bool
+	// Exclude are directory patterns this run skips on top of the built-in
+	// blocklist (parser.DefaultExcludes), a "!" prefix re-admitting one the
+	// defaults would have skipped.
+	//
+	// Corpus-defining, like Languages: which directories are walked decides
+	// what the population is, so it travels in snapshot.Params and a run that
+	// excluded its generated client is correctly incomparable to one that
+	// did not.
+	Exclude   []string
+	Calibrate float64 // null admission rate; > 0 derives Threshold and StructMin from the corpus
+	Debug     bool
 	// Pinned says Threshold and StructMin were supplied at the rate in
 	// Calibrate rather than derived by this run, so calibration is skipped.
 	//
@@ -225,20 +234,28 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 	if len(unknown) > 0 {
 		return res, fmt.Errorf("unknown languages %v: doppel has frontends for %v", unknown, parser.Languages())
 	}
+	// Rejected here, before a file is read, for the same reason an unknown
+	// language is: a walk rule that silently matched nothing would change the
+	// corpus by a typo, and every number in the report follows from which
+	// corpus it was.
+	exc, err := parser.NewExcludes(p.Exclude)
+	if err != nil {
+		return res, err
+	}
 
 	fmt.Fprintf(progress, "Scanning %s ...\n", root)
 	// The walk collects paths and parses none of them: parsing is the single
 	// largest stage in a run and every file is independent, so it is done
 	// afterwards across all cores. See parseAll for why the order survives.
 	var paths []string
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil // skip unreadable entries
 		}
 		// The root itself is exempt from the skip rules: `doppel analyze .`
 		// hands the walker a directory literally named ".", and a user who
 		// points doppel at _examples/ or .config/ has already made the call.
-		if d.IsDir() && path != root && parser.ShouldSkipDir(d.Name()) {
+		if d.IsDir() && path != root && exc.SkipDir(snapshot.RelSlash(root, path), d.Name()) {
 			return filepath.SkipDir
 		}
 		if d.IsDir() {
@@ -614,6 +631,15 @@ func languageSelection(p Params) parser.Selection {
 	return sel
 }
 
+// excludePatterns is the run's configured directory exclusions, normalised the
+// way a snapshot records them. Errors are impossible here: index() rejects a
+// malformed pattern before any file is walked, so by the time a snapshot
+// exists the patterns have already been validated.
+func excludePatterns(p Params) []string {
+	exc, _ := parser.NewExcludes(p.Exclude)
+	return exc.Patterns()
+}
+
 // nnDistribution computes each function's best code-shape score among pairs,
 // which must be the retrieval union with Score already set on every entry
 // (true of both branches that call this: the full pre-struct-min set, and
@@ -683,6 +709,10 @@ func snapshotOf(res Result, pairs []analyzer.SimilarPair) snapshot.Snapshot {
 			// was built in" — which would compare equal across two builds
 			// that read different corpora.
 			Languages: languageSelection(res.Params).Names(),
+			// The configured patterns only. The built-in blocklist is a
+			// property of the doppel build, like the frontend set behind
+			// Names(), and a baseline already refuses across builds.
+			Exclude: excludePatterns(res.Params),
 		},
 		snapshot.CorpusMetrics{
 			TotalNodes:           res.ConsStats.TotalNodes,

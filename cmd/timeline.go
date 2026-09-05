@@ -202,6 +202,9 @@ func paramsLine(p snapshot.Params) string {
 	if len(p.Languages) > 0 {
 		s += " · " + strings.Join(p.Languages, ",")
 	}
+	if len(p.Exclude) > 0 {
+		s += " · excluding " + strings.Join(p.Exclude, ",")
+	}
 	return s
 }
 

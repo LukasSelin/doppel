@@ -7,7 +7,7 @@ import (
 )
 
 // analyzeFlagNames are every flag applyConfig can touch.
-var analyzeFlagNames = []string{"threshold", "top", "min-nodes", "struct-min", "output", "channel-k", "debug", "max-per-func", "tests", "format", "families", "family-min", "map-metric", "calibrate"}
+var analyzeFlagNames = []string{"threshold", "top", "min-nodes", "struct-min", "output", "channel-k", "debug", "max-per-func", "tests", "generated", "languages", "exclude", "format", "families", "family-min", "map-metric", "calibrate"}
 
 // resetAnalyzeFlags restores analyzeCmd to its registered defaults. The command
 // is a package-level singleton, so tests must not leak state into each other.
@@ -322,5 +322,52 @@ func TestHookParamsCalibratesWithoutAnOverlapFilter(t *testing.T) {
 	}
 	if p.StructMin != 0 {
 		t.Errorf("hook StructMin = %v, want 0", p.StructMin)
+	}
+}
+
+// The exclude key decides what the corpus is, so a hook run must honour it
+// exactly as it honours tests, generated and languages: a baseline that walked
+// a different tree than the session's own runs is not an earlier answer to the
+// same question.
+func TestHookParamsHonorsExclude(t *testing.T) {
+	dir := t.TempDir()
+	body := `{"exclude":["generated","!dist"]}`
+	if err := os.WriteFile(filepath.Join(dir, ".doppel.json"), []byte(body), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	p, err := hookParams(dir)
+	if err != nil {
+		t.Fatalf("hookParams: %v", err)
+	}
+	if len(p.Exclude) != 2 || p.Exclude[0] != "generated" || p.Exclude[1] != "!dist" {
+		t.Errorf("exclude not honored: %+v", p.Exclude)
+	}
+}
+
+// The patterns a snapshot records are the configured ones in normal form, so
+// two runs that configured the same exclusions compare equal however the list
+// was spelled — and a run that configured none records nothing rather than an
+// empty statement about the built-in blocklist.
+func TestExcludePatternsAreNormalised(t *testing.T) {
+	if got := excludePatterns(Params{}); got != nil {
+		t.Errorf("excludePatterns(no config) = %v, want nil", got)
+	}
+	a := excludePatterns(Params{Exclude: []string{"zeta", "alpha", "alpha"}})
+	b := excludePatterns(Params{Exclude: []string{"alpha", "zeta"}})
+	if len(a) != 2 || a[0] != "alpha" || a[1] != "zeta" {
+		t.Errorf("excludePatterns = %v, want [alpha zeta]", a)
+	}
+	if len(a) != len(b) || a[0] != b[0] || a[1] != b[1] {
+		t.Errorf("excludePatterns depends on order: %v vs %v", a, b)
+	}
+}
+
+// A malformed pattern must stop the run before a file is read. An exclusion
+// that silently matched nothing would change the corpus by a typo, and every
+// number in the report follows from which corpus it was.
+func TestIndexRejectsMalformedExclude(t *testing.T) {
+	_, err := index(t.TempDir(), Params{Exclude: []string{"["}}, nil, nil)
+	if err == nil {
+		t.Fatal("index accepted a malformed exclude pattern")
 	}
 }
