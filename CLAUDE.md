@@ -431,14 +431,16 @@ Retrieval then went **2.24s -> 0.36s**, the lexicon **0.93s -> 0.44s** and calib
 **4.1x**, with `--format json` and stderr both byte-identical at every step, and a `GOMAXPROCS=1`
 run byte-identical to a parallel one.
 
-**The overlap is now the binding constraint, which is a new situation.** `culture.Build` used to
-hide entirely behind calibration and retrieval; those two are now 0.46s together against culture's
-0.95s, so 0.31s of it is paid — and its *own* time rose from 0.72s to 0.95s, because it competes for
-cores with the stages it overlaps instead of running beside idle ones. Culture is therefore the next
-place to look, and the target inside it is `buildAssociations` (580ms of its 1.52s originally, PMI
-accumulation into shared maps — the same shape `buildCorpus`'s df tally has, and the reason that one
-stayed sequential). Everything else on moby is now under half a second: parse 0.43s, lexicon 0.45s,
-retrieval 0.35s, pair annotation 0.26s, comparison 0.18s, calibration 0.11s.
+Hoisting the repeated sort out of `buildAssociations` then took culture from 0.95s to 0.25s and the
+run to **2.7s** — **4.4x** end to end, every step byte-identical.
+
+Nothing on moby is above half a second now: lexicon 0.45s, parse 0.43s, retrieval 0.35s, pair
+annotation 0.26s, culture 0.25s, comparison 0.18s, calibration 0.11s. **Further parallelism is not
+the lever it was** — the remaining stages are small, several are already fanned out, and culture
+briefly got *slower* in wall-clock terms when the stages it overlaps sped up, because it competes
+for the same cores rather than running beside idle ones. What has not been revisited since the
+comparison-stage work is allocation: the heap was 2.78GB with a 25MB live set and `gcDrain` at 36%
+of CPU, measured before four of these changes.
 
 ### Concurrency: fanned-out loops, one overlap, and one shared memo
 
@@ -543,6 +545,17 @@ different treatment:
   so the lock is never on a hot path, and both are order-independent anyway (one sorts, one sums).
 
 On moby the lexicon went **0.93s -> 0.44s**.
+
+**`culture.buildAssociations` is the one that needed no concurrency at all**, and it is the
+reminder this section should carry. It was 800ms, and 500ms of that was one line: the TagCall
+enumeration called `sortedCountKeys(tokenCount)` *inside* the per-tag loop, sorting every call
+token in the corpus once per learned concept — thousands of tokens sorted 519 times on moby to
+produce the same slice 519 times. Neither the sort nor the df window depends on the tag, so both
+are hoisted, and the informative tokens are filtered once into a slice carrying its own df rather
+than re-looked-up per pairing. Same enumeration, same order, same output: **800ms -> 90ms**, and
+`culture.Build` with it **0.95s -> 0.25s**. Six stages in a row had been fan-outs, which is exactly
+the frame of mind in which a repeated sort goes unnoticed — profile the stage before assuming its
+shape.
 
 **Calibration is the plainest of them.** Both null distributions are index-keyed loops over
 independent pairs, sorted afterwards, so even the fill order is immaterial — writing by index keeps

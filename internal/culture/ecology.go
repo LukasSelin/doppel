@@ -128,12 +128,27 @@ func buildAssociations(units []parser.CodeUnit, docs []concepter.ConceptDoc,
 			consider(TagRole, a, r, tagCount[a], roleCount[r])
 		}
 	}
+	// The token list and its df window are both invariant in the tag, so they
+	// are built once. They used to be rebuilt inside the loop: sortedCountKeys
+	// sorts every call token in the corpus, and doing that once per learned
+	// concept was 500ms of a 800ms stage on moby — thousands of tokens sorted
+	// 519 times to produce the same slice 519 times. Nothing about the result
+	// changes; this is the same enumeration in the same order.
+	callTokens := sortedCountKeys(tokenCount)
+	type tokenDF struct {
+		tok string
+		df  int
+	}
+	informative := make([]tokenDF, 0, len(callTokens))
+	for _, tok := range callTokens {
+		if df := tokenCount[tok]; df >= 2 && df <= opt.MaxCallTokenDF {
+			informative = append(informative, tokenDF{tok: tok, df: df})
+		}
+	}
 	for _, a := range tags {
-		for _, tok := range sortedCountKeys(tokenCount) {
-			if df := tokenCount[tok]; df < 2 || df > opt.MaxCallTokenDF {
-				continue // singleton or corpus idiom: not association material
-			}
-			consider(TagCall, a, tok, tagCount[a], tokenCount[tok])
+		ca := tagCount[a]
+		for _, t := range informative {
+			consider(TagCall, a, t.tok, ca, t.df)
 		}
 	}
 
