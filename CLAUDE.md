@@ -130,6 +130,7 @@ internal/
                 calltokens.go (the resolved-call token view retriever, culture and lexicon share)
   mapper/       Where enrichment actually happens: callers, role classification, aggregated concepts/packages
   retriever/    Multi-channel candidate retrieval: shape.go / concept.go / calls.go inverted indexes, retriever.go union + evidence
+                admit.go is the per-unit admission fan-out the three channels share; memo.go the sharded pair memo that let them run at all
   culture/      Corpus-culture model: ecology.go (PMI), prototype.go (prototypes + typicality), habitat.go (fit), convention.go
   analyzer/     SimilarPair + Retrieval types; FindSimilar (library API); rank.go: SortForReport (the report's ranking) and SortByEvidence (the plain-Total library one); kind.go + stem.go (pair kinds); explain.go (rule-attributed pair sentences)
   comparator/   Weighted structural overlap scoring (12 signals → 0.0–1.0 composite); options.go is the
@@ -425,16 +426,19 @@ Then the arena fan-out took `culture.Build` 1.52s -> 0.75s and overlapping it wi
 retrieval took the run to **5.7s** — 11.9s when the timing seam was first added, and every step of
 it byte-identical on `--format json` across the ladder.
 
-What is left, in order, is **retrieval 2.24s**, **lexicon 0.96s** and **calibration 0.73s**.
-Retrieval is the largest and the hardest: its three channels accumulate into shared inverted
-indexes, so it is a real parallelisation rather than another fan-out. `culture.buildAssociations`
-(580ms, shared-map PMI accumulation) is the same shape one size smaller.
+Retrieval then went **2.24s -> 0.36s** and the run to **3.9s**, against 11.9s when the timing seam
+was added — 3.0x, with `--format json` and stderr both byte-identical at every step.
 
-### Concurrency: three fanned-out loops and one overlap
+What is left is **lexicon 0.93s**, **culture 0.73s** (of which 0.12s is paid), **calibration
+0.69s**, **pair annotation 0.47s** and **parse 0.44s** — no single stage above a second, and the
+1.62s `index()` prefix is now the larger half of the run.
 
-Concurrency lives in four places — `parseAll`, `compareAll`, `culture.buildArenas` and
-`finishAnalyze`'s culture goroutine — and the constraint that decides the shape of every one of
-them is the determinism guarantee: an unchanged tree must produce a byte-identical report.
+### Concurrency: fanned-out loops, one overlap, and one shared memo
+
+Concurrency lives in `parseAll`, `compareAll`, `culture.buildArenas`, all three of retrieval's
+admission channels, `retriever.evaluate`, and `finishAnalyze`'s culture goroutine — and the
+constraint that decides the shape of every one of them is the determinism guarantee: an unchanged
+tree must produce a byte-identical report.
 
 `internal/parallel` is the fan-out the three loops share (`Blocks`, `BlocksWith`, plus `Workers`
 so a test can ask whether its fixture is large enough to exercise the parallel path at all). It
@@ -488,6 +492,28 @@ make that provable rather than argued. The one piece of per-unit state, the inte
 scratch buffer, becomes per-worker. `TestArenaParallelMatchesSequential` compares a parallel build
 against one taken under `GOMAXPROCS(1)`; the pre-existing `TestArenaStatsAndDeterminism` cannot
 see any of this, because its twelve-unit fixture never clears the worker floor.
+
+**Retrieval is three fan-outs and the memo that made them possible.** Its cost was
+`admitPairs` on the concept channel (1.03s) and the shape channel (750ms), plus `evaluate` (200ms)
+— all three the same per-index loop over a pure `admitFor`, and all three previously blocked by two
+memo maps: `simCache.seen` (the exact fingerprint `Breakdown`) and `conceptIndex.mass` (the shared
+concept information). Those memos are load-bearing rather than incidental: retrieval reaches a pair
+(a,b) from a's turn, again from b's, and once more when the union is evaluated, so removing them to
+get the fan-out would have traded the parallelism straight back.
+
+`retriever.pairMemo` (`memo.go`) keeps both: 64 shards, each a map behind its own `RWMutex`, padded
+past a cache line so two shards' locks never share one. **A racing compute is deliberately allowed**
+— two workers can miss the same key and both compute it, and the stored value is identical either
+way, because every function memoized here is pure in the pair and in corpus statistics that are
+fixed by this point. Holding the shard lock across the computation would serialise the expensive
+part instead of the lookup. Nothing iterates a memo, so map order never reaches an output.
+
+`concatByIndex` (`admit.go`) is the shared admission fan-out; `evaluate` fills `cands[i]` by index
+and folds the channel flags and the two `OnlyConcept`/`OnlyCall` counters in afterwards,
+sequentially — the same compute-then-merge split `buildArenas` makes, and for the same reason. The
+`callIndex` and `shapeIndex` are read-only once built, and the concept channel's `ontology.Scorer`
+is safe to share because it is unforked and therefore has no scratch: that is exactly the contract
+`Scorer.Fork` was written to state.
 
 **Culture then overlaps the retrieval chain**, which is the one piece of concurrency here that is
 not a fan-out. `culture.Build`'s result is not read until the pair-annotation loop, while

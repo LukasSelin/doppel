@@ -16,6 +16,7 @@ import (
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/fingerprint"
 	"github.com/LukasSelin/doppel/internal/ontology"
+	"github.com/LukasSelin/doppel/internal/parallel"
 	"github.com/LukasSelin/doppel/internal/parser"
 )
 
@@ -290,9 +291,14 @@ func evaluate(admitted map[pairKey]*admission, shapes *shapeIndex, concepts *con
 		return keys[i][1] < keys[j][1]
 	})
 
-	cands := make([]Candidate, 0, len(keys))
-	for _, k := range keys {
-		a := admitted[k]
+	// One candidate per key, filled by index: every quantity below is a pure
+	// function of the pair and the (now immutable) indexes, and the two memos
+	// are concurrency-safe. The channel flags and the two stats counters are
+	// folded in afterwards, sequentially, so the counters cannot depend on who
+	// finished first — the same compute-then-merge split buildArenas makes.
+	cands := make([]Candidate, len(keys))
+	parallel.Blocks(len(keys), evaluateBlock, minPairsPerEvaluateWorker, func(i int) {
+		k := keys[i]
 		shapeMass, trophic, chains := shapes.pairEvidence(k[0], k[1], opt.ChainTopN)
 		callMass := calls.sharedMass(k[0], k[1])
 		c := Candidate{
@@ -307,14 +313,19 @@ func evaluate(admitted map[pairKey]*admission, shapes *shapeIndex, concepts *con
 			Chains:     chains,
 		}
 		c.Total = c.Shape + c.Concept + c.Call
+		cands[i] = c
+	})
+
+	for i, k := range keys {
+		a := admitted[k]
 		if a.shape {
-			c.Channels = append(c.Channels, ChannelShape)
+			cands[i].Channels = append(cands[i].Channels, ChannelShape)
 		}
 		if a.concept {
-			c.Channels = append(c.Channels, ChannelConcept)
+			cands[i].Channels = append(cands[i].Channels, ChannelConcept)
 		}
 		if a.call {
-			c.Channels = append(c.Channels, ChannelCall)
+			cands[i].Channels = append(cands[i].Channels, ChannelCall)
 		}
 		if a.concept && !a.shape && !a.call {
 			stats.OnlyConcept++
@@ -322,10 +333,16 @@ func evaluate(admitted map[pairKey]*admission, shapes *shapeIndex, concepts *con
 		if a.call && !a.shape && !a.concept {
 			stats.OnlyCall++
 		}
-		cands = append(cands, c)
 	}
 	return cands
 }
+
+// evaluateBlock and minPairsPerEvaluateWorker mirror the comparison stage's
+// two knobs: one union pair costs about what one comparison does.
+const (
+	evaluateBlock             = 64
+	minPairsPerEvaluateWorker = 512
+)
 
 // simCache memoizes exact fingerprint similarity per unordered pair, so the
 // structural channel's probing and the union's definitive Breakdown never
@@ -334,21 +351,18 @@ type simCache struct {
 	units   []parser.CodeUnit
 	wl      *fingerprint.LabelIDF
 	weights fingerprint.Weights
-	seen    map[pairKey]fingerprint.Breakdown
+	seen    *pairMemo[fingerprint.Breakdown]
 }
 
 func newSimCache(units []parser.CodeUnit, wl *fingerprint.LabelIDF, w fingerprint.Weights) *simCache {
-	return &simCache{units: units, wl: wl, weights: w, seen: make(map[pairKey]fingerprint.Breakdown)}
+	return &simCache{units: units, wl: wl, weights: w, seen: newPairMemo[fingerprint.Breakdown]()}
 }
 
 func (c *simCache) get(a, b int) fingerprint.Breakdown {
 	k := orderPair(a, b)
-	if bd, ok := c.seen[k]; ok {
-		return bd
-	}
-	bd := fingerprint.SimilarityWith(c.units[k[0]].Fingerprint, c.units[k[1]].Fingerprint, c.wl, c.weights)
-	c.seen[k] = bd
-	return bd
+	return c.seen.get(k, func() fingerprint.Breakdown {
+		return fingerprint.SimilarityWith(c.units[k[0]].Fingerprint, c.units[k[1]].Fingerprint, c.wl, c.weights)
+	})
 }
 
 // topK sorts neighbor masses by (mass desc, index asc) and returns at most k
