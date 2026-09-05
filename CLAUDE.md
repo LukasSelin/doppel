@@ -644,6 +644,29 @@ Measured on moby: that slice **44.79MB -> 3.39MB**, live heap **317.6MB -> 257.8
 left at the top is `gofront.toSyntax` 54MB (the canonical trees), `profileNotes` 37.6MB and
 `comparator.intersect` 29.3MB.
 
+**Releasing the canonical trees was tried next and not adopted — and the reason is the
+measurement, not the code.** The idea was sound on its face: after `index()` the only consumer of
+`CodeUnit.Canonical` is the explain sentence's label table, so `analyze` could build that table
+over the whole corpus, nil every `Canonical`, and run the heavy half without them. It has to
+happen in `analyze` rather than in `finishAnalyze` (which starts culture on a goroutine, and
+culture passes `units[i]` **by value**, so writing any field of a unit while it runs is a data
+race) and rather than in `index()` (which is the whole of `doppel query` and `doppel fingerprint`,
+both of which want the trees). All of that works: the ladder stayed byte-identical, explain
+sentences included.
+
+It frees only **~23MB of the 51MB**, because `Canonical` is one of two trees `toSyntax` builds and
+the rest is not reachable through it, and live heap at the peak point did not move at all
+(240.66MB -> 240.79MB). Then the noise floor was measured, which is the part worth keeping: **the
+same binary dumping the same stage three times reads 129.6, 137.8 and 143.2MB — a 10% spread** —
+and peak RSS over six runs of one binary spans 624-755MB. Every difference the change produced sits
+inside that. It was reverted rather than kept, because the price was a new lifetime invariant, a
+`Result.LabelKinds` coupling, and a degraded sentence for the free `Explain` on tree-less units.
+
+**Read every heap number in this section against that floor.** Differences under ~15MB of live heap
+or ~60MB of peak RSS on moby are not measurements, and a single before/after pair cannot establish
+one — the `SimilarPair` result above survives it (44.79MB -> 3.39MB on one site, 1 168 -> 192 bytes
+on a struct, both far outside the noise), and the tree release did not.
+
 That is the standing gap: `internal/bench/pipeline.go` omits culture, habitats and arenas
 because "they annotate, they never rank", which is right for ranking measurement and wrong for
 performance measurement — together with annotation and the snapshot encode, roughly a third of
