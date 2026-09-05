@@ -93,6 +93,9 @@ cmd/            CLI commands (Cobra).
   overview.go   Queries the corpus model (culture, ontology, call graph) into reporter.Overview
   dashboard.go  Assembles dashboard.Payload — the semantic model the HTML page draws
   pipeline.go   index() + finishAnalyze(): the pipeline split into corpus-building prefix and reporting tail; filterByOverlap; snapshotOf
+  compare_parallel.go compareAll: the one parallel stage, an atomic block counter over forked comparators
+  timing.go     DOPPEL_TIMING=1: per-stage wall clock on the progress writer
+  profile.go    --cpuprofile / --memprofile, hidden persistent flags on the root command
   query.go      doppel query: check a proposed function (a snippet on stdin) against the corpus, locality-weighted
   config.go     .doppel.json loading (AnalysisConfig), flag precedence, hookParams
   hook.go       doppel hook session-start / user-prompt / pre-tool / stop: the four Claude Code
@@ -398,7 +401,41 @@ run's allocation 3.68GB -> 3.26GB. The lesson generalises past that one site: th
 end of a run is **25MB**, so essentially all of the 3.3GB is churn, and the largest remaining
 sites — `ontology.split` (350MB), `comparator.intersect` (296MB), `Scorer.matchShared` (324MB) —
 are per-unit or per-pair work in the comparison stage. Allocation, not arithmetic, is what this
-pipeline is spending its time on, and nothing in the tool is parallel.
+pipeline is spending its time on.
+
+**The comparison-stage pass that followed, and what it cost the four sites above.** `split` went
+from two maps per call to two positionally-aligned slices with a binary-search lookup, `intersect`
+from a set build to a merge join over inputs its own doc comment already claimed were sorted (with
+a `slices.IsSorted` guard and the map path kept as the fallback, because sortedness is a property
+of six producers rather than of the type), and `matchShared` onto per-goroutine scratch with a
+typed `slices.SortStableFunc` in place of `sort.SliceStable`, whose reflect swapper was itself an
+allocation per call. Then `compareAll` was parallelised — see *The one parallel stage*. On moby:
+comparison **1.74s -> 0.21s**, retrieval 2.54s -> 2.05s (split serves the concept channel too),
+calibration 0.80s -> 0.63s, allocation 3.26GB -> 2.78GB, and the run 11.8s -> 9.4s. Every rung of
+the pinned ladder stayed byte-identical on `--format json` at each step.
+
+### The one parallel stage
+
+`cmd/compare_parallel.go` is the only concurrency in the tool, and the constraint that decides
+its shape is the determinism guarantee: an unchanged tree must produce a byte-identical report.
+Scoring a pair reads two `ConceptDoc`s and writes one `Evidence` pointer at a known index — no
+accumulation, no shared counter, no order dependence — so results land in the slots the
+sequential loop would have filled and the scheduler cannot be observed. The one piece of mutable
+state was the vocabulary's profile scratch, which `comparator.Fork` -> `ontology.Scorer.Fork`
+now hands out per worker; a forked scorer shares the ontology, the IC and the interned
+vocabulary and owns everything writable.
+
+**The strategy was measured, not chosen.** On moby (18 461 pairs, 24 threads, best of five,
+`TestCompareParallelShape` under `DOPPEL_BENCH_COMPARE`): at 24 workers a static contiguous
+split reads 9.7x, a channel of pair indices 9.9x, and an atomic block counter **13.5x**. The
+static split loses to load imbalance — pairs are not equally expensive, so contiguous chunks
+strand workers at the end — and the channel then pays a send and a receive on a contended queue
+per unit of work where the counter pays one atomic per 64 pairs. A channel is the right tool for
+a stream of unknown length; this is a slice whose length is known before the first goroutine
+starts. `blockSize` 64 is the middle of a plateau (8..128 all within noise; 4096 collapses to
+4.0x as the tail block strands a worker), not a tuned value, and `minPairsPerWorker` keeps conc's
+152 pairs sequential. Nothing else in the pipeline is parallel, and parse — the largest single
+stage at 2.9s — remains the obvious next candidate.
 
 That is the standing gap: `internal/bench/pipeline.go` omits culture, habitats and arenas
 because "they annotate, they never rank", which is right for ranking measurement and wrong for
@@ -938,7 +975,8 @@ id, so a comparison is a merge join over integers — and `Scorer.WithVocabulary
 `NewScorer` is unchanged: retrieval builds its own scorer and has no use for the table, because
 the concept channel is information mass and stays so. **The profile is built by a pairwise
 sorted merge over the pre-sorted per-concept lists into scratch buffers on the table**
-(single-threaded by construction), never by sorting per pair — and that was measured the hard
+(the scratch is the package's only mutable state, so a *Vocabulary is shareable
+only for reading and `Scorer.Fork` hands a goroutine its own), never by sorting per pair — and that was measured the hard
 way. A learned vocabulary has no natural size: moby's median concept carries 44 features and
 its largest 2 479, and the largest is carried by hundreds of functions, so the first version,
 which sorted both sides' merged vocabularies on every comparison, took the comparison stage

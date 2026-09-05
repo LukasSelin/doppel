@@ -491,10 +491,7 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 	// Attach structural evidence to every candidate pair.
 	if len(pairs) > 0 {
 		fmt.Fprintf(progress, "Running structural comparison on %d pairs...\n", len(pairs))
-		for i := range pairs {
-			ev := comp.Compare(docs[pairs[i].AIdx], docs[pairs[i].BIdx])
-			pairs[i].Evidence = &ev
-		}
+		compareAll(pairs, docs, comp)
 
 		// Nearest-neighbour code-shape distribution, over exactly this set:
 		// the retrieval union with every pair's exact fingerprint.Breakdown

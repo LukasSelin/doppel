@@ -3,6 +3,7 @@ package comparator
 import (
 	"fmt"
 	"math"
+	"slices"
 	"sort"
 	"strings"
 
@@ -71,6 +72,19 @@ func New(scorer *ontology.Scorer) *Comparator {
 // the exhibits blend through.
 func NewWith(scorer *ontology.Scorer, opt Options) *Comparator {
 	return &Comparator{scorer: scorer, onto: scorer.Ontology(), opt: opt}
+}
+
+// Fork returns a Comparator equivalent to this one that shares no mutable
+// state with it, so each goroutine in a parallel comparison can hold its own.
+//
+// Compare is otherwise a pure function of the two docs — nothing accumulates
+// across calls — so forked comparators produce bit-identical evidence, and a
+// parallel comparison differs from a sequential one only in when each pair is
+// scored, never in what it scores.
+func (c *Comparator) Fork() *Comparator {
+	cp := *c
+	cp.scorer = c.scorer.Fork()
+	return &cp
 }
 
 // ViewDisagreeSpread is the gap between the shape view and the feature view
@@ -471,6 +485,43 @@ func excludeName(names []string, drop string) []string {
 
 // intersect returns the sorted intersection of two sorted string slices.
 func intersect(a, b []string) []string {
+	if len(a) == 0 || len(b) == 0 {
+		return nil
+	}
+	if !slices.IsSorted(a) || !slices.IsSorted(b) {
+		return intersectUnsorted(a, b)
+	}
+	// Both sorted: a merge join, which allocates only the result. The map form
+	// this replaced built a set of one whole side per call and measured at
+	// 296MB of a 3.26GB moby run, over six calls per compared pair.
+	var out []string
+	for i, j := 0, 0; i < len(a) && j < len(b); {
+		switch {
+		case a[i] < b[j]:
+			i++
+		case a[i] > b[j]:
+			j++
+		default:
+			// Deduplicated on the way out, which is what the set-and-delete
+			// did: a name repeated on both sides yields one shared entry.
+			if n := len(out); n == 0 || out[n-1] != a[i] {
+				out = append(out, a[i])
+			}
+			i++
+			j++
+		}
+	}
+	return out
+}
+
+// intersectUnsorted is the fallback for an input no producer sorted.
+//
+// Every caller passes a list the mapper or the call graph already sorted, so
+// this is not expected to run — but sortedness is a property of six separate
+// producers rather than of the type, and a merge join over unsorted input
+// fails silently by returning too little. The guard costs one linear scan
+// against a map build it usually avoids entirely.
+func intersectUnsorted(a, b []string) []string {
 	set := make(map[string]struct{}, len(a))
 	for _, s := range a {
 		set[s] = struct{}{}

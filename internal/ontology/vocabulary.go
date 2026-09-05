@@ -36,14 +36,24 @@ type VocabularyEntry struct {
 //
 // Feature names are interned once, so a profile is a slice of (id, weight)
 // pairs sorted by id and every comparison is a merge join over integers.
-// Single-threaded by construction: nothing in the pipeline compares
-// concurrently, which is what lets the profile scratch buffers live here.
+// The scratch buffers below are the one piece of mutable state here, so a
+// *Vocabulary is shareable only for reading: a goroutine that profiles needs
+// its own, which is what fork (reached through Scorer.Fork) hands out.
 type Vocabulary struct {
 	names     []string              // interned feature names, sorted; index is the feature id
 	of        map[TermID][]weighted // per concept: sorted by feature id, unique, Weight > 0, at most MaxVocabularyFeatures
 	truncated int                   // concepts whose vocabulary was cut to MaxVocabularyFeatures
 
 	scratch [2][2][]weighted // one pair of merge buffers per side, reused across comparisons
+}
+
+// fork returns a Vocabulary sharing this one's interned names and per-concept
+// feature lists — both read-only once built — with its own profile scratch, so
+// two goroutines can profile at the same time. See Scorer.Fork.
+func (v *Vocabulary) fork() *Vocabulary {
+	cp := *v
+	cp.scratch = [2][2][]weighted{}
+	return &cp
 }
 
 type weighted struct {
@@ -208,8 +218,8 @@ func (v *Vocabulary) Features(id TermID) []WeightedFeature {
 func (v *Vocabulary) profile(terms []WeightedTerm, side int) []weighted {
 	ids, conf := split(terms)
 	cur, nxt := v.scratch[side][0][:0], v.scratch[side][1][:0]
-	for _, id := range ids { // sorted: the merge order is fixed
-		c := conf[TermID(id)]
+	for i, id := range ids { // sorted: the merge order is fixed
+		c := conf[i]
 		list := v.of[TermID(id)]
 		if c <= 0 || len(list) == 0 {
 			continue

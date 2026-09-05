@@ -1,6 +1,9 @@
 package ontology
 
-import "sort"
+import (
+	"cmp"
+	"slices"
+)
 
 // Scorer scores term and set relatedness, optionally weighted by corpus-derived
 // information content.
@@ -14,6 +17,58 @@ type Scorer struct {
 	o     *Ontology
 	ic    *IC
 	vocab *Vocabulary // nil: the feature view is not measured
+
+	// scratch is per-goroutine reusable buffers, nil on every scorer the
+	// pipeline builds. A nil scratch makes matchShared allocate exactly as it
+	// always did, which is what keeps the shared scorer safe to read from
+	// several goroutines at once; Fork is how a worker gets its own.
+	scratch *scorerScratch
+}
+
+// scorerScratch is matchShared's working memory. Only the buffers that stay
+// inside the call are here: the []Match it returns escapes into the evidence a
+// caller keeps, so it is allocated fresh every time and always will be.
+type scorerScratch struct {
+	candidates []matchCandidate
+	usedA      []bool
+	usedB      []bool
+}
+
+// matchCandidate is one possible pairing, scored before the greedy consumes it.
+type matchCandidate struct {
+	i, j    int
+	contrib float64 // IC of the pair's most specific common ancestor
+	sim     float64 // Lin similarity, for the Match record
+	lcs     TermID
+}
+
+// Fork returns a scorer that shares this one's immutable tables — the
+// ontology, the IC, the interned vocabulary — and owns its own mutable
+// scratch, which is what makes it safe to use from one goroutine while another
+// uses the original.
+//
+// It is the whole concurrency contract of this package: a *Scorer with no
+// scratch and a *Vocabulary that is never profiled are read-only and shareable;
+// everything mutable is reached only through a Fork. Scoring is otherwise
+// unchanged, so a forked scorer produces bit-identical numbers — there is no
+// accumulation across calls for a buffer to carry between them.
+func (s *Scorer) Fork() *Scorer {
+	cp := *s
+	cp.scratch = &scorerScratch{}
+	if s.vocab != nil {
+		cp.vocab = s.vocab.fork()
+	}
+	return &cp
+}
+
+// boolBuf resizes a scratch bool slice to n and zeroes it.
+func boolBuf(buf *[]bool, n int) []bool {
+	if cap(*buf) < n {
+		*buf = make([]bool, n)
+	}
+	b := (*buf)[:n]
+	clear(b)
+	return b
 }
 
 // NewScorer pairs an ontology with an optional IC table. A nil ic yields the
@@ -155,13 +210,10 @@ func (s *Scorer) SharedInformation(a, b []string) (float64, []Match) {
 // build on it, so the matching (and its tie-breaks) cannot drift between the
 // normalized and raw views.
 func (s *Scorer) matchShared(as, bs []string) (float64, []Match) {
-	type candidate struct {
-		i, j    int
-		contrib float64 // IC of the pair's most specific common ancestor
-		sim     float64 // Lin similarity, for the Match record
-		lcs     TermID
+	var candidates []matchCandidate
+	if s.scratch != nil {
+		candidates = s.scratch.candidates[:0]
 	}
-	var candidates []candidate
 	for i := range as {
 		for j := range bs {
 			ta, tb := TermID(as[i]), TermID(bs[j])
@@ -169,7 +221,7 @@ func (s *Scorer) matchShared(as, bs []string) (float64, []Match) {
 			if !ok || contrib <= 0 {
 				continue
 			}
-			candidates = append(candidates, candidate{
+			candidates = append(candidates, matchCandidate{
 				i: i, j: j,
 				contrib: contrib,
 				sim:     s.Relatedness(ta, tb),
@@ -179,18 +231,28 @@ func (s *Scorer) matchShared(as, bs []string) (float64, []Match) {
 	}
 	// as and bs are sorted, so ordering by index is ordering by term name; the
 	// tie-break keeps evidence lines byte-stable across runs.
-	sort.SliceStable(candidates, func(x, y int) bool {
-		if candidates[x].contrib != candidates[y].contrib {
-			return candidates[x].contrib > candidates[y].contrib
+	// A typed comparator rather than sort.SliceStable, whose reflect-based
+	// swapper is an allocation per call and showed up as such in the heap
+	// profile. Same order, by construction: the two predicates are the same
+	// three comparisons in the same sequence.
+	slices.SortStableFunc(candidates, func(x, y matchCandidate) int {
+		if x.contrib != y.contrib {
+			return cmp.Compare(y.contrib, x.contrib) // descending
 		}
-		if candidates[x].i != candidates[y].i {
-			return candidates[x].i < candidates[y].i
+		if x.i != y.i {
+			return cmp.Compare(x.i, y.i)
 		}
-		return candidates[x].j < candidates[y].j
+		return cmp.Compare(x.j, y.j)
 	})
 
-	usedA := make([]bool, len(as))
-	usedB := make([]bool, len(bs))
+	var usedA, usedB []bool
+	if s.scratch != nil {
+		usedA = boolBuf(&s.scratch.usedA, len(as))
+		usedB = boolBuf(&s.scratch.usedB, len(bs))
+	} else {
+		usedA = make([]bool, len(as))
+		usedB = make([]bool, len(bs))
+	}
 	var shared float64
 	var matched []Match
 	for _, c := range candidates {
@@ -200,6 +262,9 @@ func (s *Scorer) matchShared(as, bs []string) (float64, []Match) {
 		usedA[c.i], usedB[c.j] = true, true
 		shared += c.contrib
 		matched = append(matched, Match{A: as[c.i], B: bs[c.j], Score: c.sim, LCA: c.lcs})
+	}
+	if s.scratch != nil {
+		s.scratch.candidates = candidates // keep the grown capacity
 	}
 	return shared, matched
 }
@@ -258,7 +323,7 @@ func (s *Scorer) SetRelatednessW(a, b []WeightedTerm) (float64, []Match) {
 		return 0, nil
 	}
 	_, matched := s.matchShared(as, bs)
-	shared := s.weighAll(matched, aw, bw)
+	shared := s.weighAll(matched, as, aw, bs, bw)
 
 	denom := s.weighedTotal(as, aw)
 	if sumB := s.weighedTotal(bs, bw); sumB > denom {
@@ -282,20 +347,25 @@ func (s *Scorer) SharedInformationW(a, b []WeightedTerm) (float64, []Match) {
 		return 0, nil
 	}
 	_, matched := s.matchShared(as, bs)
-	return s.weighAll(matched, aw, bw), matched
+	return s.weighAll(matched, as, aw, bs, bw), matched
 }
 
 // weighAll rescales a matching's contributions by the weaker side's weight.
-func (s *Scorer) weighAll(matched []Match, aw, bw map[TermID]float64) float64 {
+//
+// Weights arrive as each side's split, looked up by ID rather than indexed by
+// the Match, because a Match names terms and not positions — that is what makes
+// it renderable evidence, and re-deriving the position here is a binary search
+// over a handful of sorted strings.
+func (s *Scorer) weighAll(matched []Match, as []string, aw []float64, bs []string, bw []float64) float64 {
 	var shared float64
 	for _, m := range matched { // consumption order: the addition order is fixed
 		contrib, _, ok := s.pairContribution(TermID(m.A), TermID(m.B))
 		if !ok || contrib <= 0 {
 			continue
 		}
-		w := aw[TermID(m.A)]
-		if bw[TermID(m.B)] < w {
-			w = bw[TermID(m.B)]
+		w := weightOf(as, aw, m.A)
+		if wb := weightOf(bs, bw, m.B); wb < w {
+			w = wb
 		}
 		shared += w * contrib
 	}
@@ -304,28 +374,98 @@ func (s *Scorer) weighAll(matched []Match, aw, bw map[TermID]float64) float64 {
 
 // weighedTotal is one side's own information, each term counted only as far as
 // it is asserted.
-func (s *Scorer) weighedTotal(terms []string, w map[TermID]float64) float64 {
+func (s *Scorer) weighedTotal(terms []string, w []float64) float64 {
 	var sum float64
-	for _, t := range terms { // sorted: the addition order is fixed
-		sum += w[TermID(t)] * s.ic.Of(TermID(t))
+	for i, t := range terms { // sorted: the addition order is fixed
+		sum += w[i] * s.ic.Of(TermID(t))
 	}
 	return sum
 }
 
 // split separates graded terms into the sorted-unique ID slice the matcher
-// works on and a weight lookup. A term asserted twice keeps its strongest
-// weight, which cannot happen from the lexicon but must not silently pick one
-// at random if it ever does.
-func split(ts []WeightedTerm) ([]string, map[TermID]float64) {
-	w := make(map[TermID]float64, len(ts))
+// works on and that slice's weights, positionally aligned. A term asserted
+// twice keeps its strongest weight, which cannot happen from the lexicon but
+// must not silently pick one at random if it ever does. Empty IDs are dropped,
+// which was sortedUnique's rule and has to survive replacing it.
+//
+// Two parallel slices rather than a map, because this runs up to eight times
+// per compared pair — three SetRelatednessW, the feature profile, and
+// retrieval's SharedInformationW, each over both sides — and the map form
+// allocated two maps per call (its own and sortedUnique's), measured as the
+// single largest allocation site in the tool at 306MB of a 3.26GB moby run.
+// Every reader wants either a positional walk (weighedTotal, Vocabulary.
+// profile) or a lookup over a handful of sorted entries (weighAll), and
+// neither needs hashing.
+//
+// The common input is already sorted and unique — CodeUnit.Concepts is held
+// ascending by ID, and concepter.Graded preserves that — so the ordered case
+// is filled in one pass with no sort at all. The general path exists because
+// nothing in the type says so.
+func split(ts []WeightedTerm) ([]string, []float64) {
+	if len(ts) == 0 {
+		return nil, nil
+	}
 	ids := make([]string, 0, len(ts))
+	ws := make([]float64, 0, len(ts))
+	ordered := true
 	for _, t := range ts {
-		if t.Weight > w[t.ID] {
-			w[t.ID] = t.Weight
+		if t.ID == "" {
+			continue
+		}
+		// Against the last *kept* id, not the previous element: a skipped
+		// empty ID would otherwise let ["b", "", "a"] pass as ordered.
+		if n := len(ids); n > 0 {
+			switch {
+			case string(t.ID) < ids[n-1]:
+				ordered = false
+			case ids[n-1] == string(t.ID):
+				if t.Weight > ws[n-1] {
+					ws[n-1] = t.Weight
+				}
+				continue
+			}
+			if !ordered {
+				break
+			}
 		}
 		ids = append(ids, string(t.ID))
+		ws = append(ws, t.Weight)
 	}
-	return sortedUnique(ids), w
+	if ordered {
+		return ids, ws
+	}
+	// Unordered: sort a copy of the terms and re-run the same collapse. Not
+	// slices.SortFunc over two parallel slices, which has no way to swap them
+	// together, and not sort.Slice, whose reflect-based swapper is itself an
+	// allocation this function exists to avoid.
+	buf := make([]WeightedTerm, 0, len(ts))
+	for _, t := range ts {
+		if t.ID != "" {
+			buf = append(buf, t)
+		}
+	}
+	slices.SortStableFunc(buf, func(x, y WeightedTerm) int { return cmp.Compare(x.ID, y.ID) })
+	ids, ws = ids[:0], ws[:0]
+	for _, t := range buf {
+		if n := len(ids); n > 0 && ids[n-1] == string(t.ID) {
+			if t.Weight > ws[n-1] {
+				ws[n-1] = t.Weight
+			}
+			continue
+		}
+		ids = append(ids, string(t.ID))
+		ws = append(ws, t.Weight)
+	}
+	return ids, ws
+}
+
+// weightOf looks a term's weight up in a split's parallel slices. Absent reads
+// zero, which is what the map form returned for a term the side never asserted.
+func weightOf(ids []string, ws []float64, id string) float64 {
+	if i, ok := slices.BinarySearch(ids, id); ok {
+		return ws[i]
+	}
+	return 0
 }
 
 // termIDs drops the weights, for the corpus-independent path that has no use
