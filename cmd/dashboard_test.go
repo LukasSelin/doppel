@@ -30,7 +30,7 @@ func unit(pkg, name, file string, line int, body string, concepts ...string) par
 func pair(units []parser.CodeUnit, a, b int, shape, total float64) analyzer.SimilarPair {
 	ev := comparator.StructuralEvidence{OverlapScore: 0.5}
 	return analyzer.SimilarPair{
-		A: units[a], B: units[b], AIdx: a, BIdx: b, Score: shape,
+		AIdx: a, BIdx: b, Score: shape,
 		Breakdown: fingerprint.Breakdown{WL: shape, Flow: 1, Depth: 1, Signature: 1, SizeRatio: 0.9,
 			Containment: 0.95},
 		Evidence:  &ev,

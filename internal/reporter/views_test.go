@@ -23,7 +23,7 @@ var measuredViews = comparator.ConceptViews{
 
 func TestPrintConceptViewsLine(t *testing.T) {
 	var b strings.Builder
-	Print(&b, []analyzer.SimilarPair{viewsPair(measuredViews)}, Meta{})
+	Print(&b, []analyzer.SimilarPair{viewsPair(measuredViews)}, sampleUnits, Meta{})
 	out := b.String()
 	want := "  concept views: shape 0.00  corpus 0.00  feature 0.62  a-in-b 0.91  b-in-a 0.34 (taxonomy misses shared vocabulary)\n" +
 		"    shared vocabulary: sel:sql.Open, call:store.Get, id:que|ry\n" +
@@ -36,7 +36,7 @@ func TestPrintConceptViewsLine(t *testing.T) {
 func TestPrintConceptViewsOtherDirection(t *testing.T) {
 	v := comparator.ConceptViews{Shape: 0.67, Corpus: 0.5, Feature: 0.05, HasFeature: true, Disagree: true}
 	var b strings.Builder
-	Print(&b, []analyzer.SimilarPair{viewsPair(v)}, Meta{})
+	Print(&b, []analyzer.SimilarPair{viewsPair(v)}, sampleUnits, Meta{})
 	if !strings.Contains(b.String(), "feature 0.05  a-in-b 0.00  b-in-a 0.00 (taxonomy asserts kinship the vocabularies lack)\n") {
 		t.Errorf("text report missing the taxonomy-only clause:\n%s", b.String())
 	}
@@ -48,7 +48,7 @@ func TestPrintConceptViewsOtherDirection(t *testing.T) {
 func TestPrintConceptViewsAgreeingHasNoClause(t *testing.T) {
 	v := comparator.ConceptViews{Shape: 1, Corpus: 1, Feature: 1, AInB: 1, BInA: 1, HasFeature: true}
 	var b strings.Builder
-	Print(&b, []analyzer.SimilarPair{viewsPair(v)}, Meta{})
+	Print(&b, []analyzer.SimilarPair{viewsPair(v)}, sampleUnits, Meta{})
 	if !strings.Contains(b.String(), "  concept views: shape 1.00  corpus 1.00  feature 1.00  a-in-b 1.00  b-in-a 1.00\n") {
 		t.Errorf("agreeing views rendered with a clause:\n%s", b.String())
 	}
@@ -59,8 +59,8 @@ func TestPrintConceptViewsAgreeingHasNoClause(t *testing.T) {
 func TestPrintOmitsUnmeasuredViews(t *testing.T) {
 	v := comparator.ConceptViews{Shape: 0.67, Corpus: 0.5}
 	var b, md strings.Builder
-	Print(&b, []analyzer.SimilarPair{viewsPair(v)}, Meta{})
-	PrintMarkdown(&md, []analyzer.SimilarPair{viewsPair(v)}, Meta{})
+	Print(&b, []analyzer.SimilarPair{viewsPair(v)}, sampleUnits, Meta{})
+	PrintMarkdown(&md, []analyzer.SimilarPair{viewsPair(v)}, sampleUnits, Meta{})
 	for _, out := range []string{b.String(), md.String()} {
 		if strings.Contains(out, "oncept views") || strings.Contains(out, "hared vocabulary") {
 			t.Errorf("unmeasured views were rendered:\n%s", out)
@@ -73,7 +73,7 @@ func TestPrintOmitsUnmeasuredViews(t *testing.T) {
 
 func TestPrintMarkdownConceptViews(t *testing.T) {
 	var b strings.Builder
-	PrintMarkdown(&b, []analyzer.SimilarPair{viewsPair(measuredViews)}, Meta{})
+	PrintMarkdown(&b, []analyzer.SimilarPair{viewsPair(measuredViews)}, sampleUnits, Meta{})
 	out := b.String()
 	want := "**Concept views:** shape `0.00`, corpus `0.00`, feature `0.62`, a-in-b `0.91`, b-in-a `0.34` — taxonomy misses shared vocabulary\n\n" +
 		"**Shared vocabulary:** `sel:sql.Open`, `call:store.Get`, `id:que\\|ry`\n\n" +

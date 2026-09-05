@@ -140,8 +140,9 @@ func TestSnapshotWLBagRoundTrip(t *testing.T) {
 	liveWL := make(map[string]float64, len(res.Pairs))
 	unresolved := 0
 	for _, pr := range res.Pairs {
-		ka, oka := locToKey[snapshot.RelSlash(root, pr.A.File)+":"+strconv.Itoa(pr.A.StartLine)]
-		kb, okb := locToKey[snapshot.RelSlash(root, pr.B.File)+":"+strconv.Itoa(pr.B.StartLine)]
+		ua, ub := res.Units[pr.AIdx], res.Units[pr.BIdx]
+		ka, oka := locToKey[snapshot.RelSlash(root, ua.File)+":"+strconv.Itoa(ua.StartLine)]
+		kb, okb := locToKey[snapshot.RelSlash(root, ub.File)+":"+strconv.Itoa(ub.StartLine)]
 		if !oka || !okb {
 			unresolved++
 			continue

@@ -620,9 +620,29 @@ grounds that it is a per-unit slice with exactly one reader — retains **1.5MB,
 it away was dropped on that measurement. Measure the retained set before trading a field away for
 it.
 
-The largest single lever the numbers point at is `analyzer.SimilarPair`, which is **1 168 bytes**, of
-which `A, B parser.CodeUnit` by value is 976 (84%) — two whole unit copies per pair when `AIdx`/`BIdx`
-are already on the struct. That is a refactor of a widely-read type, not a tuning change.
+**That measurement was then acted on.** `analyzer.SimilarPair` was **1 168 bytes**, of which
+`A, B parser.CodeUnit` by value was 976 (84%) — two whole unit copies per pair, while `AIdx`/`BIdx`
+were already on the struct and `units[AIdx] == A` held by construction at every construction site.
+The fields are gone: the struct is **192 bytes**, and a consumer that renders a pair takes the units
+slice beside it (`reporter.Print`, the way `PrintFamilies` always did). Removing them rather than
+making them pointers was the deliberate choice — it turns every stale reader into a compile error
+instead of letting one keep a value that is no longer stored, and it leaves no aliasing invariant to
+maintain. The blast radius was ten production sites, eight of which already had `units` in scope.
+
+`RankKey` was the one reader inside `analyzer`, and only to ask whether both sides are test units,
+so it (and `SortForReport`/`SortForReportWith`, and `bench.RankKey`) now take the slice. **A nil or
+short `units` skips the test discount rather than panicking** — that is what a pair built without a
+corpus behind it did before, when its two zero-value `CodeUnit`s carried an empty `File` that is not
+a test file, and several rank tests depend on it.
+
+`filterByOverlap` was fixed in the same change: it sized the survivor slice at `len(pairs)` — the
+whole union, 40 203 pairs against 18 461 survivors — so half of it was live heap for the rest of the
+run. Counted first, then allocated exactly.
+
+Measured on moby: that slice **44.79MB -> 3.39MB**, live heap **317.6MB -> 257.8MB (-19%)**, peak RSS
+**712MB -> 642MB (-10%)**, `--format json` and stderr byte-identical on all seven rungs. What is
+left at the top is `gofront.toSyntax` 54MB (the canonical trees), `profileNotes` 37.6MB and
+`comparator.intersect` 29.3MB.
 
 That is the standing gap: `internal/bench/pipeline.go` omits culture, habitats and arenas
 because "they annotate, they never rank", which is right for ranking measurement and wrong for
@@ -681,7 +701,8 @@ profile ahead of parallelism in the optimisation order and found the `Explain` s
 - **ConceptDoc** (`internal/concepter/concepter.go`) — the architectural context the comparator
   scores. It is no longer rendered to text anywhere; `Format()` existed only to build embedding
   input and is gone.
-- **SimilarPair** (`internal/analyzer/similarity.go`) — two `CodeUnit`s plus `AIdx`/`BIdx`, `Score`,
+- **SimilarPair** (`internal/analyzer/similarity.go`) — `AIdx`/`BIdx` into the run's `units`
+  slice, `Score`,
   `Breakdown` (per-component code similarity), `Evidence` (**nil until the structural
   comparison stage**), and `Retrieval` (**nil for `FindSimilar`-produced pairs** — set by the
   pipeline from retriever candidates).

@@ -321,7 +321,7 @@ func overviewDuplication(ov *reporter.Overview, res Result) {
 		case reporter.MapPairs:
 			return 1
 		case reporter.MapEvidence:
-			return analyzer.RankKey(p, rank)
+			return analyzer.RankKey(p, rank, res.Units)
 		default:
 			if p.MergeWorthy() {
 				return 1
@@ -335,7 +335,7 @@ func overviewDuplication(ov *reporter.Overview, res Result) {
 		if wt <= 0 {
 			continue
 		}
-		a, b := packageOf(p.A), packageOf(p.B)
+		a, b := packageOf(res.Units[p.AIdx]), packageOf(res.Units[p.BIdx])
 		if a == "" || b == "" {
 			continue
 		}

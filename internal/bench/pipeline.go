@@ -232,7 +232,6 @@ func (r *Run) StagePairs() {
 			continue
 		}
 		pairs = append(pairs, analyzer.SimilarPair{
-			A: r.Units[c.AIdx], B: r.Units[c.BIdx],
 			AIdx: c.AIdx, BIdx: c.BIdx,
 			Score: c.Breakdown.Score, Breakdown: c.Breakdown,
 			Retrieval: &analyzer.Retrieval{
@@ -318,8 +317,8 @@ func (r *Run) RescoreWith(onto *ontology.Ontology, opt comparator.Options) {
 // RankKey is the corroborated-evidence ordering quantity SortForReport uses,
 // so a scorecard can print it. One definition lives in analyzer; this is a
 // call, not a copy, so the two cannot drift.
-func RankKey(p analyzer.SimilarPair) float64 {
-	return analyzer.RankKey(p, analyzer.DefaultRankOptions())
+func RankKey(r *Run, p analyzer.SimilarPair) float64 {
+	return analyzer.RankKey(p, analyzer.DefaultRankOptions(), r.Units)
 }
 
 // Reretrieve re-runs the retrieval-sensitive tail — retrieval, pair

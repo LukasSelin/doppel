@@ -108,7 +108,7 @@ func BenchmarkCorpus(b *testing.B) {
 			run.StageCompare()
 			b.Run("rank", func(b *testing.B) {
 				for b.Loop() {
-					analyzer.SortForReport(run.Pairs, 20, 2)
+					analyzer.SortForReport(run.Pairs, run.Units, 20, 2)
 				}
 				b.ReportMetric(np, "pairs")
 			})
@@ -118,7 +118,7 @@ func BenchmarkCorpus(b *testing.B) {
 			b.Run("analyze", func(b *testing.B) {
 				for b.Loop() {
 					r := Analyze(units, retriever.DefaultOptions())
-					analyzer.SortForReport(r.Pairs, 20, 2)
+					analyzer.SortForReport(r.Pairs, r.Units, 20, 2)
 				}
 				perFunc(b)
 			})

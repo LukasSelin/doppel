@@ -71,14 +71,12 @@ func TestFindSimilarMatchesRenamedCopy(t *testing.T) {
 		t.Fatalf("got %d pairs, want 1: %+v", len(pairs), pairs)
 	}
 	p := pairs[0]
-	if p.A.Name != "Sum" || p.B.Name != "Total" {
-		t.Errorf("matched %s/%s, want Sum/Total", p.A.Name, p.B.Name)
-	}
-	// Indices must address the same units the pair carries, since the caller
-	// uses them to look up parallel concept docs.
-	if units[p.AIdx].Name != p.A.Name || units[p.BIdx].Name != p.B.Name {
-		t.Errorf("indices %d/%d point at %s/%s, want %s/%s",
-			p.AIdx, p.BIdx, units[p.AIdx].Name, units[p.BIdx].Name, p.A.Name, p.B.Name)
+	// A pair names its units by index and carries nothing else about them, so
+	// this is both the identity assertion and the index assertion. The separate
+	// check that AIdx addressed the same unit the pair carried is gone with the
+	// fields it compared.
+	if units[p.AIdx].Name != "Sum" || units[p.BIdx].Name != "Total" {
+		t.Errorf("matched %s/%s, want Sum/Total", units[p.AIdx].Name, units[p.BIdx].Name)
 	}
 	if p.Breakdown.Score != p.Score {
 		t.Errorf("Breakdown.Score = %v, Score = %v; want equal", p.Breakdown.Score, p.Score)
@@ -92,15 +90,16 @@ func TestFindSimilarMinNodesExcludesTrivialAccessors(t *testing.T) {
 
 	withGuard := FindSimilar(units, 0.9, 0, 12)
 	for _, p := range withGuard {
-		if p.A.Name == "*Server.Addr" || p.B.Name == "*Server.Addr" {
-			t.Errorf("trivial accessor survived min-nodes=12: %s/%s", p.A.Name, p.B.Name)
+		a, b := units[p.AIdx].Name, units[p.BIdx].Name
+		if a == "*Server.Addr" || b == "*Server.Addr" {
+			t.Errorf("trivial accessor survived min-nodes=12: %s/%s", a, b)
 		}
 	}
 
 	withoutGuard := FindSimilar(units, 0.9, 0, 0)
 	var found bool
 	for _, p := range withoutGuard {
-		if p.A.Name == "*Server.Addr" && p.B.Name == "*Server.Host" {
+		if units[p.AIdx].Name == "*Server.Addr" && units[p.BIdx].Name == "*Server.Host" {
 			found = true
 		}
 	}

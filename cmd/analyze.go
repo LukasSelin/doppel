@@ -145,7 +145,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	// Final ranking: corroborated evidence — retrieval mass discounted by
 	// architectural corroboration and structural similarity — with a
 	// per-function diversity cap. The displayed scores stay unblended.
-	pairs, suppressed := analyzer.SortForReport(res.Pairs, topN, maxPerFunc)
+	pairs, suppressed := analyzer.SortForReport(res.Pairs, res.Units, topN, maxPerFunc)
 	if suppressed > 0 {
 		fmt.Fprintf(cmd.ErrOrStderr(), "  %d pairs suppressed by max-per-func=%d\n", suppressed, maxPerFunc)
 	}
@@ -170,7 +170,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		reporter.Print(cmd.OutOrStdout(), pairs, meta)
+		reporter.Print(cmd.OutOrStdout(), pairs, res.Units, meta)
 		reporter.PrintFamilies(cmd.OutOrStdout(), fams, famStats, res.Units, familiesN)
 	}
 
@@ -197,7 +197,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 				fmt.Fprintf(cmd.ErrOrStderr(), "  %d pairs' shared structure omitted to bound the page size\n", n)
 			}
 		} else {
-			reporter.PrintMarkdown(f, pairs, meta)
+			reporter.PrintMarkdown(f, pairs, res.Units, meta)
 			reporter.PrintMarkdownFamilies(f, fams, famStats, res.Units, familiesN)
 			fmt.Fprintf(cmd.ErrOrStderr(), "Markdown report written to %s\n", outputFile)
 		}
