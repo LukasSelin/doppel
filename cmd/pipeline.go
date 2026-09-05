@@ -226,7 +226,10 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 	}
 
 	fmt.Fprintf(progress, "Scanning %s ...\n", root)
-	var units []parser.CodeUnit
+	// The walk collects paths and parses none of them: parsing is the single
+	// largest stage in a run and every file is independent, so it is done
+	// afterwards across all cores. See parseAll for why the order survives.
+	var paths []string
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil // skip unreadable entries
@@ -246,17 +249,13 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 		if !sel.Admits(path) {
 			return nil
 		}
-		parsed, err := parser.Parse(path)
-		if err != nil {
-			fmt.Fprintf(progress, "  warn: %s: %v\n", path, err)
-			return nil
-		}
-		units = append(units, parsed...)
+		paths = append(paths, path)
 		return nil
 	})
 	if err != nil {
 		return res, fmt.Errorf("walk %s: %w", root, err)
 	}
+	units := parseAll(paths, progress)
 
 	// Population filters, applied before any corpus statistic exists: IC,
 	// dfs, culture, habitats, and arenas all model exactly the population

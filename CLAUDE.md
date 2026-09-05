@@ -93,7 +93,8 @@ cmd/            CLI commands (Cobra).
   overview.go   Queries the corpus model (culture, ontology, call graph) into reporter.Overview
   dashboard.go  Assembles dashboard.Payload — the semantic model the HTML page draws
   pipeline.go   index() + finishAnalyze(): the pipeline split into corpus-building prefix and reporting tail; filterByOverlap; snapshotOf
-  compare_parallel.go compareAll: the one parallel stage, an atomic block counter over forked comparators
+  compare_parallel.go compareAll: pair scoring across cores, an atomic block counter over forked comparators
+  parse_parallel.go   parseAll: file parsing across cores, results reassembled in path order
   timing.go     DOPPEL_TIMING=1: per-stage wall clock on the progress writer
   profile.go    --cpuprofile / --memprofile, hidden persistent flags on the root command
   query.go      doppel query: check a proposed function (a snippet on stdin) against the corpus, locality-weighted
@@ -411,13 +412,20 @@ of six producers rather than of the type), and `matchShared` onto per-goroutine 
 typed `slices.SortStableFunc` in place of `sort.SliceStable`, whose reflect swapper was itself an
 allocation per call. Then `compareAll` was parallelised — see *The one parallel stage*. On moby:
 comparison **1.74s -> 0.21s**, retrieval 2.54s -> 2.05s (split serves the concept channel too),
-calibration 0.80s -> 0.63s, allocation 3.26GB -> 2.78GB, and the run 11.8s -> 9.4s. Every rung of
-the pinned ladder stayed byte-identical on `--format json` at each step.
+calibration 0.80s -> 0.63s, allocation 3.26GB -> 2.78GB, and the run 11.8s -> 9.4s. Parallel
+parsing then took walk+parse 2.88s -> 0.47s and the run to **7.0s**, against 11.9s when the timing
+seam was first added. Every rung of the pinned ladder stayed byte-identical on `--format json` at
+each step, and on stderr as well once parsing moved.
 
-### The one parallel stage
+What is left, in order, is **retrieval 2.35s**, **culture+habitats 1.6-1.8s** and **lexicon
+0.93s** — none of them touched, and the first two are the ones `task bench` still does not
+model.
 
-`cmd/compare_parallel.go` is the only concurrency in the tool, and the constraint that decides
-its shape is the determinism guarantee: an unchanged tree must produce a byte-identical report.
+### The two parallel stages
+
+`cmd/compare_parallel.go` and `cmd/parse_parallel.go` are the only concurrency in the tool, and
+the constraint that decides the shape of both is the determinism guarantee: an unchanged tree
+must produce a byte-identical report.
 Scoring a pair reads two `ConceptDoc`s and writes one `Evidence` pointer at a known index — no
 accumulation, no shared counter, no order dependence — so results land in the slots the
 sequential loop would have filled and the scheduler cannot be observed. The one piece of mutable
@@ -434,8 +442,26 @@ per unit of work where the counter pays one atomic per 64 pairs. A channel is th
 a stream of unknown length; this is a slice whose length is known before the first goroutine
 starts. `blockSize` 64 is the middle of a plateau (8..128 all within noise; 4096 collapses to
 4.0x as the tail block strands a worker), not a tuned value, and `minPairsPerWorker` keeps conc's
-152 pairs sequential. Nothing else in the pipeline is parallel, and parse — the largest single
-stage at 2.9s — remains the obvious next candidate.
+152 pairs sequential.
+
+**Parsing is the same shape one layer earlier**, and the ordering constraint is sharper: the walk
+now collects paths and parses none of them, and `parseAll` fans the files out under the same
+atomic block counter. Everything downstream of it is positional — `docs[i]` describes `units[i]`,
+a pair carries `AIdx`/`BIdx` into that slice — so a result goes into a slot per path and the
+slices are concatenated in path order afterwards, which is what `filepath.WalkDir`'s lexical order
+already produced. **Parse warnings are collected and printed in path order too, not as they
+happen**: the progress writer is not safe for concurrent use, and a run's stderr is read by the
+examples wrapper, so reordering it would be a visible change with nothing behind it.
+`TestParseAllMatchesSequential` pins both orders against a sequential parse of the same paths,
+warnings included, using a directory named `bad.go` to reach the warn-and-skip path on every
+platform. `parser.Parse` builds its own `token.FileSet` and the frontend registry is written only
+by package init, so nothing else needed to change; verified under `-race`. On moby, parse **2.88s
+-> 0.47s**.
+
+One consequence for measurement: `internal/bench`'s `Load` does its own sequential walk, so
+`BenchmarkCorpus/parse` now times something the tool no longer does. It is still the right number
+for comparing parse cost across corpora, and the wrong one for predicting a run's wall clock —
+which is what `DOPPEL_TIMING` is for.
 
 That is the standing gap: `internal/bench/pipeline.go` omits culture, habitats and arenas
 because "they annotate, they never rank", which is right for ranking measurement and wrong for
