@@ -9,7 +9,7 @@ structured concurrency library; generics-heavy, one idea, written recently and a
 | Corpus | [conc](https://github.com/sourcegraph/conc) |
 | Pinned at | `v0.3.0` (`7b8c8f2875cb861bb61844c9bcaa1aed070adbd4`) |
 | Project since | 2023 |
-| doppel | `4214f9d` |
+| doppel | `e65f1c6` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -24,16 +24,16 @@ Scanning . ...
 Learning concept vocabulary...
 Lexicon: 6 concepts (1 seeded, 5 emergent), 171/407 features above 29 df, 43 functions unlabeled
 Generating concept documents...
-Culture: 4 concepts modeled, 1 associations, 1 unusual realizations
-Habitats: 4 modeled, 14 misfits; most uniform iter (norm 0.95), most diverse pool (norm 0.73)
-Conventions: strongest p.pool+multierror (0.81), loosest lock+unlock (0.38)
-Ecosystems: 39 profiled (38 dominance, 1 coalition, 0 conflict, 0 weak)
 Calibration: rate 0.01 declined (only 780 eligible shape null pairs (need 1000)); defaults kept
 Found 81 functions. Retrieving candidates...
 Retrieval: shape 26, concept 121, call 15 -> 155 unique pairs
   concept-only 75.5%  call-only 7.1%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 354
 Running structural comparison on 155 pairs...
   Concept views: 0 of 155 compared pairs disagree with the taxonomy (0 vocabulary the tree misses, 0 kinship the vocabularies lack)
+Culture: 4 concepts modeled, 1 associations, 1 unusual realizations
+Habitats: 4 modeled, 14 misfits; most uniform iter (norm 0.95), most diverse pool (norm 0.73)
+Conventions: strongest p.pool+multierror (0.81), loosest lock+unlock (0.38)
+Ecosystems: 39 profiled (38 dominance, 1 coalition, 0 conflict, 0 weak)
 Families: 1 over 6 components, 5 functions in a family
   6 pairs suppressed by max-per-func=2
 ```

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/LukasSelin/doppel/internal/parallel"
 	"github.com/LukasSelin/doppel/internal/parser"
 )
 
@@ -40,8 +41,8 @@ func TestParseAllMatchesSequential(t *testing.T) {
 	// parseAll is given paths in the order the walk would produce them.
 	sortPaths(paths)
 
-	if got := parseWorkers(len(paths)); got < 2 {
-		t.Skipf("parseWorkers = %d on this machine; the parallel path is not exercised", got)
+	if got := parallel.Workers(len(paths), minFilesPerWorker); got < 2 {
+		t.Skipf("%d workers on this machine; the parallel path is not exercised", got)
 	}
 
 	var wantWarn bytes.Buffer

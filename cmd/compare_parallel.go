@@ -1,13 +1,10 @@
 package cmd
 
 import (
-	"runtime"
-	"sync"
-	"sync/atomic"
-
 	"github.com/LukasSelin/doppel/internal/analyzer"
 	"github.com/LukasSelin/doppel/internal/comparator"
 	"github.com/LukasSelin/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/parallel"
 )
 
 // compareAll attaches structural evidence to every candidate pair, in parallel.
@@ -27,7 +24,9 @@ import (
 // # Why an atomic block counter, and not a channel or a static split
 //
 // All three were measured on moby (18 461 pairs, 24 threads, best of five —
-// TestCompareParallelShape, guard DOPPEL_BENCH_COMPARE):
+// TestCompareParallelShape, guard DOPPEL_BENCH_COMPARE). The fan-out itself is
+// parallel.BlocksWith, which carries that measurement's conclusion; what stays
+// here is why this stage may be parallel at all, and the two constants:
 //
 //	workers=8    static 0.117s (5.5x)   chan 0.097s (6.6x)   atomic 0.093s (7.0x)
 //	workers=16   static 0.084s (7.7x)   chan 0.066s (9.7x)   atomic 0.056s (11.5x)
@@ -46,41 +45,14 @@ import (
 // worker. Anywhere in 8..128 is within noise of the best; 64 is the middle of
 // that plateau rather than a tuned value.
 func compareAll(pairs []analyzer.SimilarPair, docs []concepter.ConceptDoc, comp *comparator.Comparator) {
-	if len(pairs) == 0 {
-		return
-	}
-	workers := compareWorkers(len(pairs))
-	if workers <= 1 {
-		c := comp
-		for i := range pairs {
+	parallel.BlocksWith(len(pairs), blockSize, minPairsPerWorker,
+		// One forked comparator per worker: shares the ontology, the IC and the
+		// interned vocabulary, owns its own scratch.
+		comp.Fork,
+		func(c *comparator.Comparator, i int) {
 			ev := c.Compare(docs[pairs[i].AIdx], docs[pairs[i].BIdx])
 			pairs[i].Evidence = &ev
-		}
-		return
-	}
-
-	var next atomic.Int64
-	var wg sync.WaitGroup
-	wg.Add(workers)
-	for w := 0; w < workers; w++ {
-		go func() {
-			defer wg.Done()
-			// One forked comparator per worker: shares the ontology, the IC
-			// and the interned vocabulary, owns its own scratch.
-			c := comp.Fork()
-			for {
-				lo := int(next.Add(blockSize)) - blockSize
-				if lo >= len(pairs) {
-					return
-				}
-				for i := lo; i < min(lo+blockSize, len(pairs)); i++ {
-					ev := c.Compare(docs[pairs[i].AIdx], docs[pairs[i].BIdx])
-					pairs[i].Evidence = &ev
-				}
-			}
-		}()
-	}
-	wg.Wait()
+		})
 }
 
 // blockSize is how many consecutive pairs a worker claims per atomic bump.
@@ -90,14 +62,3 @@ const blockSize = 64
 // fork costs are a larger share of the stage than the parallelism saves, and
 // conc (81 functions, 152 pairs) is a real corpus rather than a hypothetical.
 const minPairsPerWorker = 512
-
-func compareWorkers(n int) int {
-	w := runtime.GOMAXPROCS(0)
-	if byLoad := n / minPairsPerWorker; byLoad < w {
-		w = byLoad
-	}
-	if w < 1 {
-		return 1
-	}
-	return w
-}

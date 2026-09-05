@@ -3,10 +3,8 @@ package cmd
 import (
 	"fmt"
 	"io"
-	"runtime"
-	"sync"
-	"sync/atomic"
 
+	"github.com/LukasSelin/doppel/internal/parallel"
 	"github.com/LukasSelin/doppel/internal/parser"
 )
 
@@ -43,31 +41,9 @@ func parseAll(paths []string, progress io.Writer) []parser.CodeUnit {
 	}
 	results := make([]result, len(paths))
 
-	parse := func(i int) { results[i].units, results[i].err = parser.Parse(paths[i]) }
-	if workers := parseWorkers(len(paths)); workers <= 1 {
-		for i := range paths {
-			parse(i)
-		}
-	} else {
-		var next atomic.Int64
-		var wg sync.WaitGroup
-		wg.Add(workers)
-		for w := 0; w < workers; w++ {
-			go func() {
-				defer wg.Done()
-				for {
-					lo := int(next.Add(parseBlock)) - parseBlock
-					if lo >= len(paths) {
-						return
-					}
-					for i := lo; i < min(lo+parseBlock, len(paths)); i++ {
-						parse(i)
-					}
-				}
-			}()
-		}
-		wg.Wait()
-	}
+	parallel.Blocks(len(paths), parseBlock, minFilesPerWorker, func(i int) {
+		results[i].units, results[i].err = parser.Parse(paths[i])
+	})
 
 	n := 0
 	for i := range results {
@@ -96,14 +72,3 @@ const parseBlock = 4
 // minFilesPerWorker keeps a small tree sequential, where the goroutines would
 // cost more than the walk does.
 const minFilesPerWorker = 16
-
-func parseWorkers(n int) int {
-	w := runtime.GOMAXPROCS(0)
-	if byLoad := n / minFilesPerWorker; byLoad < w {
-		w = byLoad
-	}
-	if w < 1 {
-		return 1
-	}
-	return w
-}

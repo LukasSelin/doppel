@@ -93,7 +93,7 @@ cmd/            CLI commands (Cobra).
   overview.go   Queries the corpus model (culture, ontology, call graph) into reporter.Overview
   dashboard.go  Assembles dashboard.Payload — the semantic model the HTML page draws
   pipeline.go   index() + finishAnalyze(): the pipeline split into corpus-building prefix and reporting tail; filterByOverlap; snapshotOf
-  compare_parallel.go compareAll: pair scoring across cores, an atomic block counter over forked comparators
+  compare_parallel.go compareAll: pair scoring across cores, over forked comparators
   parse_parallel.go   parseAll: file parsing across cores, results reassembled in path order
   timing.go     DOPPEL_TIMING=1: per-stage wall clock on the progress writer
   profile.go    --cpuprofile / --memprofile, hidden persistent flags on the root command
@@ -125,6 +125,7 @@ internal/
   tagger/       The 14 seed rules: AST-signal matching → founding member sets for the lexicon
   lexicon/      Learns the corpus's own concepts: features.go (evidence channels), expand.go (seeded PMI expansion), emerge.go (clique clustering), name.go
   clique/       Deterministic maximal-clique enumeration and components, shared by family and lexicon
+  parallel/     Blocks / BlocksWith: the one fan-out primitive — an atomic block counter with per-worker state
   concepter/    ConceptDoc; callgraph.go (BuildCallGraph); role.go (ClassifyRole, role constants);
                 calltokens.go (the resolved-call token view retriever, culture and lexicon share)
   mapper/       Where enrichment actually happens: callers, role classification, aggregated concepts/packages
@@ -153,7 +154,7 @@ examples/       Committed real reports for each corpus rung, plus labels/ (commi
 scripts/        timeline.sh: walks a git history and analyses each revision at one pinned operating point. The only code in the repo that knows git exists, and deliberately outside the Go module
 ```
 
-Six helpers are deliberately shared rather than copied, because doppel found each
+Seven helpers are deliberately shared rather than copied, because doppel found each
 of them as an exact clone of itself: `parser.ShouldSkipDir` (the walk rule — `cmd` walks
 with it and `internal/bench` mirrored it by hand, which is how the harness could have
 silently measured a different corpus than the tool), `snapshot.RelSlash` (the path rule
@@ -162,8 +163,11 @@ silently measured a different corpus than the tool), `snapshot.RelSlash` (the pa
 fallback), `cmd.validateMode` (one check for `--tests` and `--generated`, parameterized
 by flag name), `internal/clique` (the Bron–Kerbosch enumerator `family` needed for the pair
 graph and `lexicon` needs for the feature graph, with the same non-transitivity argument),
-and `concepter.Graded` (the `[]parser.Concept` → `[]ontology.WeightedTerm` conversion both
-`comparator` and `retriever` need). Do not reintroduce a local copy of any of them.
+`concepter.Graded` (the `[]parser.Concept` → `[]ontology.WeightedTerm` conversion both
+`comparator` and `retriever` need), and `internal/parallel` (the atomic-block fan-out the parse,
+compare and arena stages all run — extracted at the third copy, and the only one of the seven
+that *had* to become a package, since `internal/culture` cannot import `cmd` where the first two
+live). Do not reintroduce a local copy of any of them.
 
 Dependency directions that must hold: `analyzer` imports `comparator` (for the `Evidence` field), so
 `comparator` must never import `analyzer`. `parser` imports `fingerprint`, so `fingerprint` must
@@ -417,15 +421,28 @@ parsing then took walk+parse 2.88s -> 0.47s and the run to **7.0s**, against 11.
 seam was first added. Every rung of the pinned ladder stayed byte-identical on `--format json` at
 each step, and on stderr as well once parsing moved.
 
-What is left, in order, is **retrieval 2.35s**, **culture+habitats 1.6-1.8s** and **lexicon
-0.93s** — none of them touched, and the first two are the ones `task bench` still does not
-model.
+Then the arena fan-out took `culture.Build` 1.52s -> 0.75s and overlapping it with calibration and
+retrieval took the run to **5.7s** — 11.9s when the timing seam was first added, and every step of
+it byte-identical on `--format json` across the ladder.
 
-### The two parallel stages
+What is left, in order, is **retrieval 2.24s**, **lexicon 0.96s** and **calibration 0.73s**.
+Retrieval is the largest and the hardest: its three channels accumulate into shared inverted
+indexes, so it is a real parallelisation rather than another fan-out. `culture.buildAssociations`
+(580ms, shared-map PMI accumulation) is the same shape one size smaller.
 
-`cmd/compare_parallel.go` and `cmd/parse_parallel.go` are the only concurrency in the tool, and
-the constraint that decides the shape of both is the determinism guarantee: an unchanged tree
-must produce a byte-identical report.
+### Concurrency: three fanned-out loops and one overlap
+
+Concurrency lives in four places — `parseAll`, `compareAll`, `culture.buildArenas` and
+`finishAnalyze`'s culture goroutine — and the constraint that decides the shape of every one of
+them is the determinism guarantee: an unchanged tree must produce a byte-identical report.
+
+`internal/parallel` is the fan-out the three loops share (`Blocks`, `BlocksWith`, plus `Workers`
+so a test can ask whether its fixture is large enough to exercise the parallel path at all). It
+imports nothing from this module and has **no opinion about ordering, and cannot be given one**:
+determinism in every caller comes from writing results at a fixed index and reading them back in
+index order afterwards, never from the order work completes in. A caller that wants to accumulate
+into shared state is using the wrong tool — which is what the arena loop had to be restructured
+around.
 Scoring a pair reads two `ConceptDoc`s and writes one `Evidence` pointer at a known index — no
 accumulation, no shared counter, no order dependence — so results land in the slots the
 sequential loop would have filled and the scheduler cannot be observed. The one piece of mutable
@@ -457,6 +474,44 @@ warnings included, using a directory named `bad.go` to reach the warn-and-skip p
 platform. `parser.Parse` builds its own `token.FileSet` and the frontend registry is written only
 by package init, so nothing else needed to change; verified under `-race`. On moby, parse **2.88s
 -> 0.47s**.
+
+**The concept arenas are the third loop**, and the one that shows what "no opinion about ordering"
+costs a caller. `culture.buildArenas` was 880ms of `culture.Build`'s 1.52s (measured with
+`go tool pprof -list`, against `buildAssociations` 580ms and prototypes and habitats at 30ms and
+20ms between them). Its body is already pure in the unit index, but two things stopped it being a
+drop-in fan-out: `m.arenas` is a `map[int]ArenaProfile`, and the five `Stats` counters are shared
+accumulators. So it splits into a parallel compute pass writing `profiles[i]`/`have[i]`, and a
+**sequential merge** walking `0..n-1` that fills the map and the counters. The map type is
+unchanged — `Model.ArenaProfile`'s "units with a non-empty candidate set only" semantics are
+load-bearing — and the counters are order-independent sums either way, so the merge is there to
+make that provable rather than argued. The one piece of per-unit state, the interaction-matrix
+scratch buffer, becomes per-worker. `TestArenaParallelMatchesSequential` compares a parallel build
+against one taken under `GOMAXPROCS(1)`; the pre-existing `TestArenaStatsAndDeterminism` cannot
+see any of this, because its twelve-unit fixture never clears the worker floor.
+
+**Culture then overlaps the retrieval chain**, which is the one piece of concurrency here that is
+not a fan-out. `culture.Build`'s result is not read until the pair-annotation loop, while
+calibration and retrieval — the two stages that follow it — are single-threaded and together cost
+more than it does, so `finishAnalyze` starts it on its own goroutine and joins immediately before
+annotation. It is safe because `units` and `docs` are read-only for the whole of `finishAnalyze`
+(the pipeline's only write to a unit is `units[i].Concepts = assignments[i]`, in `index()`), and
+because culture never touches `comp`, which calibration and the comparator share. **The join must
+stay unconditional**: an early return between the spawn and it would leak the goroutine and leave
+`res.Culture` nil.
+
+The handoff is a **buffered channel of capacity 1** — one value, one producer, one consumer, and
+the receive is the join. That is the case a channel is for, and it is not a reversal of the
+measurement above: what lost there was a channel per *work item* in a hot loop.
+
+Two consequences worth knowing. `DOPPEL_TIMING` reports this stage as `0.75s ran, 0.14s waited`
+(`markOverlapped`), because either number alone would mislead — the first is what the machine did,
+the second is what the wall clock contains, and printing only one would either stop the stage lines
+summing or hide real work. And culture's four stderr lines (`Culture:`, `Habitats:`,
+`Conventions:`, `Ecosystems:`) now print *after* the comparison lines instead of before the
+calibration line. Nothing asserts that order — `parseDiagnostics` uses per-line anchored regexes,
+`ci.yml` diffs only stdout and `-o` files, and hooks pass `io.Discard` — but it does move those
+lines inside the `## Run diagnostics` block of the seven committed examples, so `task examples`
+belongs in any change that touches it.
 
 One consequence for measurement: `internal/bench`'s `Load` does its own sequential walk, so
 `BenchmarkCorpus/parse` now times something the tool no longer does. It is still the right number

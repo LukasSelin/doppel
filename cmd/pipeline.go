@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"path/filepath"
 	"sort"
+	"time"
 
 	"github.com/LukasSelin/doppel/internal/analyzer"
 	"github.com/LukasSelin/doppel/internal/calibrate"
@@ -392,16 +393,31 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 	// Model the corpus's own conceptual practice: which concepts/roles/calls
 	// co-occur beyond chance, and how each concept is normally realized here.
 	// Root lets habitats roll up into subsystems (parent directories).
+	//
+	// It runs on its own goroutine because nothing between here and the pair
+	// annotation below reads it, while calibration and retrieval — the two
+	// stages it now runs beside — are single-threaded and together cost more
+	// than it does. Safe because units and docs are read-only for the whole of
+	// finishAnalyze (the pipeline's only write to a unit is in index(), where
+	// the lexicon assigns concepts), and because culture never touches comp,
+	// which is what calibration and the comparator share.
+	//
+	// A buffered channel rather than a WaitGroup and a shared variable: this is
+	// one value from one producer to one consumer, and the receive is the join.
+	// That is the case a channel is for, unlike the per-pair fan-out in
+	// compareAll, where a channel measured slower than an atomic counter.
+	type cultureResult struct {
+		model *culture.Model
+		ran   time.Duration
+	}
 	cultOpts := culture.DefaultOptions()
 	cultOpts.Root = res.Root
-	cult := culture.Build(units, docs, cg, cultOpts)
-	res.Culture = cult
-	cs := cult.Stats()
-	fmt.Fprintf(progress, "Culture: %d concepts modeled, %d associations, %d unusual realizations\n",
-		cs.ConceptsModeled, cs.AssociationCount, cs.UnusualRealizations)
-	printHabitatSummary(progress, cs)
-	printArenaSummary(progress, cs)
-	timer.mark("culture + habitats")
+	cultCh := make(chan cultureResult, 1)
+	go func() {
+		start := time.Now()
+		m := culture.Build(units, docs, cg, cultOpts)
+		cultCh <- cultureResult{model: m, ran: time.Since(start)}
+	}()
 
 	// Null calibration, when asked for: derive the code-shape and overlap
 	// thresholds from what random unrelated pairs score in this corpus. It
@@ -527,6 +543,19 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 		explainIdx = append(explainIdx, pairs[i].AIdx, pairs[i].BIdx)
 	}
 	labelKinds := analyzer.BuildLabelKinds(units, explainIdx)
+
+	// Join culture. Unconditional and before anything reads it: an early return
+	// between the spawn above and this point would leak the goroutine and leave
+	// res.Culture nil, so there must not be one.
+	cr := <-cultCh
+	cult := cr.model
+	res.Culture = cult
+	cs := cult.Stats()
+	fmt.Fprintf(progress, "Culture: %d concepts modeled, %d associations, %d unusual realizations\n",
+		cs.ConceptsModeled, cs.AssociationCount, cs.UnusualRealizations)
+	printHabitatSummary(progress, cs)
+	printArenaSummary(progress, cs)
+	timer.markOverlapped("culture + habitats", cr.ran)
 
 	// Annotate surviving pairs with unusual concept realizations and habitat
 	// misfits — positional lookup, like Evidence attachment; never name-keyed.

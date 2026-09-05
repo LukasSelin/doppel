@@ -67,3 +67,22 @@ func (t *stageTimer) total(label string) {
 	}
 	fmt.Fprintf(t.w, "  timing: %-22s %7.2fs\n", label, time.Since(t.start).Seconds())
 }
+
+// markOverlapped reports a stage that ran on its own goroutine alongside the
+// stages that came before it: ran is how long the work itself took, waited is
+// how much of that the run actually paid for at the join.
+//
+// Both numbers, because either alone would mislead. The stage's own cost is
+// what a reader compares against a sequential run, and the wait is what the
+// wall clock contains — so printing only the first would make the stage lines
+// stop summing to the total, and printing only the second would hide work the
+// machine really did.
+func (t *stageTimer) markOverlapped(stage string, ran time.Duration) {
+	if !t.on {
+		return
+	}
+	now := time.Now()
+	fmt.Fprintf(t.w, "  timing: %-22s %7.2fs ran, %.2fs waited  (total %6.2fs)\n",
+		stage, ran.Seconds(), now.Sub(t.last).Seconds(), now.Sub(t.start).Seconds())
+	t.last = now
+}

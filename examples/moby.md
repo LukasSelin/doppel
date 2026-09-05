@@ -9,7 +9,7 @@ container engine; a decade of accretion across daemon, API, and plugin layers
 | Corpus | [moby](https://github.com/moby/moby) |
 | Pinned at | `v28.5.2` (`89c5e8fd66634b6128fc4c0e6f1236e2540e46e0`) |
 | Project since | 2013 |
-| doppel | `4214f9d` |
+| doppel | `e65f1c6` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -24,10 +24,6 @@ Scanning . ...
 Learning concept vocabulary...
 Lexicon: 519 concepts (12 seeded, 507 emergent), 22469/57681 features above 2817 df, 721 functions unlabeled
 Generating concept documents...
-Culture: 488 concepts modeled, 3281 associations, 902 unusual realizations
-Habitats: 167 modeled, 71 misfits (94 excused by subsystem), 59 subsystems; most uniform checker (norm 0.97), most diverse suite (norm 0.58)
-Conventions: strongest nl.manager+nl.ns (0.98), loosest aSpace.allocated+netiputil.PrefixCompare (0.16)
-Ecosystems: 7325 profiled (4541 dominance, 2781 coalition, 0 conflict, 3 weak)
 Calibration: rate 0.01 over 20000 null pairs -> threshold 0.36, struct-min 0.31, family-min 0.36
 Found 7658 functions. Retrieving candidates...
 Retrieval: shape 9451, concept 23375, call 12470 -> 40225 unique pairs
@@ -36,6 +32,10 @@ Retrieval: shape 9451, concept 23375, call 12470 -> 40225 unique pairs
 Running structural comparison on 40203 pairs...
   Concept views: 3054 of 40203 compared pairs disagree with the taxonomy (400 vocabulary the tree misses, 2654 kinship the vocabularies lack)
   18461 pairs remain after struct-min=0.31 filter
+Culture: 488 concepts modeled, 3281 associations, 902 unusual realizations
+Habitats: 167 modeled, 71 misfits (94 excused by subsystem), 59 subsystems; most uniform checker (norm 0.97), most diverse suite (norm 0.58)
+Conventions: strongest nl.manager+nl.ns (0.98), loosest aSpace.allocated+netiputil.PrefixCompare (0.16)
+Ecosystems: 7325 profiled (4541 dominance, 2781 coalition, 0 conflict, 3 weak)
 Families: 784 over 850 components, 2236 functions in a family, 5827 edges completed
   3 component(s) skipped as too large or too dense: sizes [144 226 841]
 ```
