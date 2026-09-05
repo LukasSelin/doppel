@@ -667,34 +667,44 @@ Measured on moby: that slice **44.79MB -> 3.39MB**, live heap **317.6MB -> 257.8
 left at the top is `gofront.toSyntax` 54MB (the canonical trees), `profileNotes` 37.6MB and
 `comparator.intersect` 29.3MB.
 
-**Releasing the canonical trees was tried next and not adopted — and the reason is the
-measurement, not the code.** The idea was sound on its face: after `index()` the only consumer of
-`CodeUnit.Canonical` is the explain sentence's label table, so `analyze` could build that table
-over the whole corpus, nil every `Canonical`, and run the heavy half without them. It has to
-happen in `analyze` rather than in `finishAnalyze` (which starts culture on a goroutine, and
-culture passes `units[i]` **by value**, so writing any field of a unit while it runs is a data
-race) and rather than in `index()` (which is the whole of `doppel query` and `doppel fingerprint`,
-both of which want the trees). All of that works: the ladder stayed byte-identical, explain
+**Releasing the canonical trees was rejected, then re-measured, then adopted — and the reversal is
+the lesson.** After `index()` the only consumer of `CodeUnit.Canonical` is the explain sentence's
+label table, so `analyze` builds that table over the whole corpus and drops the trees, and the heavy
+half of the pipeline runs without them.
+
+Where it happens is forced from both sides. Not in `finishAnalyze`, which starts culture on its own
+goroutine — culture passes `units[i]` to `CallTokens` and `flowFeatures` **by value**, so writing any
+field of a unit while it runs is a data race whether or not culture reads that field. Not in
+`index()` either, which is the whole of `doppel query` and `doppel fingerprint`: both want the trees,
+and would pay for a table they never read. So it sits in `analyze`, between the two.
+
+It frees ~23MB of the ~51MB that `gofront.toSyntax` allocates, `Canonical` being one of the two trees
+it builds. **Measured with `DOPPEL_MEMSTATS`: live heap 249.9MB -> 225.3MB at the end of the run,
+-24.6MB from calibration onward, against a per-stage noise floor of 0.18-0.82MB** — thirty to a
+hundred and thirty times the floor. It costs +10.3MB of total allocation (+0.4%), the table now being
+built over every unit rather than the paired ones, and the ladder stays byte-identical, explain
 sentences included.
 
-It frees only **~23MB of the 51MB**, because `Canonical` is one of two trees `toSyntax` builds and
-the rest is not reachable through it, and live heap at the peak point did not move at all
-(240.66MB -> 240.79MB). Then the noise floor was measured, which is the part worth keeping: **the
-same binary dumping the same stage three times reads 129.6, 137.8 and 143.2MB — a 10% spread** —
-and peak RSS over six runs of one binary spans 624-755MB. Every difference the change produced sits
-inside that. It was reverted rather than kept, because the price was a new lifetime invariant, a
-`Result.LabelKinds` coupling, and a degraded sentence for the free `Explain` on tree-less units.
+**It was reverted once, on a measurement that was simply wrong.** The sampled heap profile put live
+heap at the peak point at 240.66MB before and 240.79MB after — no change — and peak RSS medians
+differed by less than the before-distribution's own spread, so the change looked like it bought
+nothing against a real price: a lifetime invariant on `Canonical`, a `Result.LabelKinds` coupling, and
+a degraded sentence for the free `Explain` on tree-less units. Re-run under exact counters, the same
+patch shows -24.6MB. The instrument, not the change, was the problem. Two rules follow:
 
-**Read every sampled heap number in this section against that floor.** Differences under ~15MB of
-live heap or ~60MB of peak RSS on moby are not measurements when they come from `-sample_index=
-inuse_space` or the working set — the `SimilarPair` result above survives it (44.79MB -> 3.39MB on
-one site, 1 168 -> 192 bytes on a struct, both far outside the noise), and the tree release did not.
+- **A footprint change is not decidable from a sampled profile.** Use `DOPPEL_MEMSTATS`.
+- **A negative result from a coarse instrument is a statement about the instrument.** Sharpening it
+  and re-asking is cheaper than it looks, and here it overturned the answer.
+
+The two prices are still paid, and they are the reason this is documented rather than merely done.
+`Canonical` is nil on every unit of a `Result` that came back from `analyze`, and non-nil on one from
+`index()` alone; and `analyzer.Explain`'s free form, handed two tree-less units with no table, says
+"structures differ; no canonical tree to name the difference" instead of falling through to the h=0
+tier, which would read an empty diff as "the same statement kinds" and be confidently wrong.
 
 **`DOPPEL_MEMSTATS` is the answer to that problem and the way to measure the next one**: exact
-counters instead of samples, a floor of 0.02MB rather than 13.6MB. The canonical-tree question is
-worth re-asking through it — 23MB was indistinguishable from noise in the old instrument and is 1000
-floors wide in the new one — but re-ask it by measuring, not by assuming the earlier verdict was an
-instrument artefact.
+counters instead of samples, a floor of 0.02MB rather than 13.6MB. Its first use was to re-open the
+canonical-tree question above, which the sampled profile had closed wrongly.
 
 That is the standing gap: `internal/bench/pipeline.go` omits culture, habitats and arenas
 because "they annotate, they never rank", which is right for ranking measurement and wrong for

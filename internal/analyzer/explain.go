@@ -181,6 +181,16 @@ const explainMaxKinds = 3
 func residual(a, b parser.CodeUnit, lk *LabelKinds) string {
 	kinds := lk.lookup()
 	if kinds == nil {
+		if a.Canonical == nil && b.Canonical == nil {
+			// Neither a table nor a tree to name the difference with. The
+			// pipeline releases the canonical trees once its corpus-wide table
+			// is built (see cmd.analyze), so a caller of the free Explain over
+			// units that have been through it lands here. Say only what is
+			// still true rather than falling through to the h=0 tier, which
+			// would read an empty diff as "the same statement kinds" and be
+			// confidently wrong.
+			return "structures differ; no canonical tree to name the difference"
+		}
 		kinds = labelKinds(a.Canonical, b.Canonical)
 	}
 
@@ -402,8 +412,17 @@ func (lk *LabelKinds) lookup() map[uint64]fingerprint.LowLabel {
 // are fixed orders; they differ only on a genuine hash collision between two
 // distinct (round, kind) pairs, which is the case neither form can name
 // correctly anyway.
+// A nil idx names every unit, which is what a caller that intends to release
+// the canonical trees afterwards wants: the table has to be complete before the
+// trees it was derived from can go.
 func BuildLabelKinds(units []parser.CodeUnit, idx []int) *LabelKinds {
 	lk := &LabelKinds{m: make(map[uint64]fingerprint.LowLabel)}
+	if idx == nil {
+		idx = make([]int, len(units))
+		for i := range idx {
+			idx[i] = i
+		}
+	}
 	seen := make(map[int]bool, len(idx))
 	ordered := append([]int(nil), idx...)
 	slices.Sort(ordered)

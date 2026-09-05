@@ -92,10 +92,16 @@ type Params struct {
 // (top-N and per-function diversity), and a snapshot taken for diffing wants
 // the pre-cap set while the report wants the capped one.
 type Result struct {
-	Root        string
-	Params      Params
-	Units       []parser.CodeUnit
-	Docs        []concepter.ConceptDoc
+	Root   string
+	Params Params
+	Units  []parser.CodeUnit
+	Docs   []concepter.ConceptDoc
+	// LabelKinds names the h<=1 WL labels of every unit, for the explain
+	// sentence. It is built once by analyze, which then releases the canonical
+	// trees it was derived from — so a Result with this set has Units whose
+	// Canonical is nil, and one without it (an index-only run: query, doppel
+	// fingerprint) has the trees and no table.
+	LabelKinds  *analyzer.LabelKinds
 	Graph       *concepter.Graph
 	Culture     *culture.Model
 	Calibration *calibrate.Result           // nil unless Params.Calibrate > 0
@@ -195,6 +201,25 @@ func analyze(root string, p Params, progress io.Writer) (Result, error) {
 	if err != nil || len(res.Units) == 0 {
 		return res, err
 	}
+
+	// The canonical trees are the largest thing a run holds — 54MB of a 240MB
+	// live heap on moby — and after this point exactly one consumer wants them:
+	// the explain sentence, which needs a label -> (round, kind) table derived
+	// from them. Build that table over the whole corpus here and drop the
+	// trees, so the heavy half of the pipeline runs without them.
+	//
+	// Here rather than inside finishAnalyze because finishAnalyze starts
+	// culture on its own goroutine, and culture passes units[i] to CallTokens
+	// and flowFeatures *by value* — writing a field of a unit while that runs
+	// is a data race whether or not culture ever reads the field. Here rather
+	// than inside index() because index() is the whole of `doppel query` and
+	// `doppel fingerprint`, which want the trees and would pay for a table they
+	// never read.
+	res.LabelKinds = analyzer.BuildLabelKinds(res.Units, nil)
+	for i := range res.Units {
+		res.Units[i].Canonical = nil
+	}
+
 	return finishAnalyze(res, p, progressOr(progress))
 }
 
@@ -553,11 +578,17 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 	// surviving pair, so the per-pair form re-walked one unit's canonical tree
 	// once for every pair it appeared in — measured at 797MB, 21% of a run's
 	// allocation, on moby.
-	explainIdx := make([]int, 0, 2*len(pairs))
-	for i := range pairs {
-		explainIdx = append(explainIdx, pairs[i].AIdx, pairs[i].BIdx)
+	// analyze builds this over the whole corpus before releasing the canonical
+	// trees; a caller that reached finishAnalyze without going through it still
+	// has the trees, so build the narrower table from the pairs at hand.
+	labelKinds := res.LabelKinds
+	if labelKinds == nil {
+		explainIdx := make([]int, 0, 2*len(pairs))
+		for i := range pairs {
+			explainIdx = append(explainIdx, pairs[i].AIdx, pairs[i].BIdx)
+		}
+		labelKinds = analyzer.BuildLabelKinds(units, explainIdx)
 	}
-	labelKinds := analyzer.BuildLabelKinds(units, explainIdx)
 
 	// Join culture. Unconditional and before anything reads it: an early return
 	// between the spawn above and this point would leak the goroutine and leave
