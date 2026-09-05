@@ -34,6 +34,7 @@ var (
 	calibrateRate float64
 	familiesN     int
 	familyMin     float64
+	mapMetric     string
 
 	outputFormat string
 )
@@ -69,6 +70,9 @@ var analyzeCmd = &cobra.Command{
 		default:
 			return fmt.Errorf("invalid --format %q: want %q or %q", outputFormat, formatText, formatJSON)
 		}
+		if _, err := reporter.ParseMapMetric(mapMetric); err != nil {
+			return err
+		}
 		if err := validateMode("tests", testsMode); err != nil {
 			return err
 		}
@@ -94,6 +98,7 @@ func init() {
 	analyzeCmd.Flags().Float64Var(&calibrateRate, "calibrate", defaultCalibrateRate, "Fraction of random unrelated pairs the thresholds may admit. Derives --threshold, --struct-min and --family-min from this corpus, so the operating point means the same thing at any size; 0 = use the fixed defaults")
 	analyzeCmd.Flags().StringVar(&outputFormat, "format", formatText, "Stdout format: text or json")
 	analyzeCmd.Flags().IntVar(&familiesN, "families", 5, "Near-duplicate families to show in the report (0 = no families section)")
+	analyzeCmd.Flags().StringVar(&mapMetric, "map-metric", string(reporter.DefaultMapMetric), "What the markdown report's package duplication map weighs an edge by: merge-worthy (doppel's own merge verdict), pairs (every surviving candidate), or evidence (summed corroborated evidence). Presentation only — no score, filter or baseline reads it.")
 	analyzeCmd.Flags().Float64Var(&familyMin, "family-min", 0.60, "Pin the code-shape between every two members of a family (0.0–1.0), turning off --calibrate.")
 	// Hidden, not removed: retrieval budgets and the report's diversity cap
 	// are implementation detail an end user has no basis to set. Every flag
@@ -151,7 +156,10 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	// to draw a diagram, and the terminal already gets these numbers on stderr.
 	meta := reporter.Meta{Threshold: threshold, TotalFuncs: len(res.Units), Debug: debugFlag}
 	if outputFile != "" {
-		meta.Overview = buildOverview(res, suppressed)
+		// Parsed in PreRunE, so this cannot fail here; the metric is a
+		// presentation choice and never reaches Params.
+		metric, _ := reporter.ParseMapMetric(mapMetric)
+		meta.Overview = buildOverview(res, suppressed, metric)
 	}
 
 	if outputFormat == formatJSON {

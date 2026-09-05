@@ -1516,6 +1516,23 @@ Rules that hold it together:
   at least one member, so "no function reached a concept this seed grew" and "this seed grew no
   concept" are the same condition; `TestSeedMapAbsenceRestsOnConceptsHavingMembers` pins that
   assumption rather than leaving it a coincidence.
+- **The duplication map is one picture read three ways, and it says which.** The edge weight
+  used to be a hard-wired count of merge-worthy pairs. That is still the default and still the
+  question the map was built to answer, but the verdict is a boolean over a continuum, so
+  `--map-metric` also offers `pairs` (every scored pair that survived filtering — the gate taken
+  off, for recall) and `evidence` (Σ `analyzer.RankKey` over those same pairs — the repo's one
+  definition of corroborated evidence, so a pair barely past the gate is not worth the same as an
+  exact clone). `reporter.MapMetric` owns the whole choice: `MapMetrics()` is the list the flag's
+  help, its validator and the tests all read, `Resolve()` is the zero-value rule in one place (an
+  unset or unknown metric draws the default, so an `Overview` built before the metric existed
+  renders byte-identically), and `Format` renders counts as integers and evidence to two decimals
+  so a label never claims a precision the number does not have. `PackageLink.Weight` is a
+  `float64` for the same reason, and `SelfDup` with it. **The prose names the metric on every
+  map**, because two maps drawn under different metrics are not comparable and nothing else on
+  the page would say so. `cmd/overview.go` decides what a pair contributes; `reporter` only
+  renders it — the same bridge the rest of the overview crosses. It is presentation, like `--top`
+  and `--families`: no score, filter or ranking key reads it, and it is deliberately not in
+  `Params`, so switching it cannot invalidate a baseline.
 - **Every diagram is bounded and says so.** Package diagrams cap at `maxOverviewNodes` (12 — moby
   has 168 habitats); family diagrams cap at 8 members, because the picture must draw every edge to
   show the clique property and 55 members is 1485 edges. The seed map needs no bound — it is a
@@ -1911,6 +1928,7 @@ or the `languages` config key restores the old population exactly.
   "calibrate": 0.01,
   "families": 5,
   "family-min": 0.60,
+  "map-metric": "merge-worthy",
   "hook-notify": "agent"
 }
 ```
@@ -1922,7 +1940,9 @@ Flag semantics after the retrieval redesign: `--threshold` floors code-shape for
 top-K; `--debug` adds retrieval provenance lines to the report; `--max-per-func` caps how many
 final-report pairs any one function may appear in (0 disables); `--families` bounds the report's
 family section (0 removes it) and `--family-min` is the code-shape every two members of a family
-must reach — both presentation, so neither is in `Params` and neither can invalidate a baseline; `--languages` picks which
+must reach; `--map-metric` (`merge-worthy` | `pairs` | `evidence`) picks what the markdown
+overview's package duplication map weighs an edge by — all three presentation, so none is in
+`Params` and none can invalidate a baseline; `--languages` picks which
 frontends are read (defaulting to all of them) and is corpus-defining, so it travels in `Params`
 and in `snapshot.Params` and a run reading Go alone is correctly incomparable to one reading Go
 and TypeScript; `--exclude` adds directory patterns to `parser.DefaultExcludes` (a `!` prefix

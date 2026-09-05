@@ -9,7 +9,7 @@ container engine; a decade of accretion across daemon, API, and plugin layers
 | Corpus | [moby](https://github.com/moby/moby) |
 | Pinned at | `v28.5.2` (`89c5e8fd66634b6128fc4c0e6f1236e2540e46e0`) |
 | Project since | 2013 |
-| doppel | `b0bd876` |
+| doppel | `4214f9d` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -700,7 +700,7 @@ Convention is how uniformly this corpus realizes a concept: `1.00` means every f
 
 ### Where the duplication is
 
-Merge-worthy pairs folded up to their packages. An edge means two packages keep solving the same problem separately; a count on a node means the repetition is inside one package.
+Merge-worthy pairs are folded up to their packages: only pairs doppel judges worth consolidating are counted. An edge means two packages keep solving the same problem separately; a count on a node means the repetition is inside one package. Weights are **merge-worthy pairs**.
 
 ```mermaid
 flowchart LR
@@ -732,7 +732,7 @@ flowchart LR
     p4 ---|"24"| p3
 ```
 
-_418 further package pairs are connected by merge-worthy duplication and are not drawn._
+_418 further package pairs are connected by duplication and are not drawn._
 
 ### How settled each package is
 

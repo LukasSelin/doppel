@@ -42,8 +42,8 @@ func sampleOverview() *Overview {
 		ArenaProfiled: 181, ArenaDominance: 181,
 		ShapePairs: 157, ConceptPairs: 51, CallPairs: 709, UnionPairs: 865,
 		OnlyCallPairs: 659, OnlyConceptPairs: 35,
-		Links:   []PackageLink{{A: "culture", B: "mapper", Pairs: 3}},
-		SelfDup: map[string]int{"culture": 18},
+		Links:   []PackageLink{{A: "culture", B: "mapper", Weight: 3}},
+		SelfDup: map[string]float64{"culture": 18},
 	}
 }
 
@@ -292,5 +292,76 @@ func TestSeedMapDrawsAbsentSeedsInRed(t *testing.T) {
 	}
 	if !strings.Contains(out, "class s2 hot") {
 		t.Errorf("an absent seed is not coloured:\n%s", out)
+	}
+}
+
+// The map is one picture read three ways, so the numbers on it must say which
+// reading they came from: a reader holding two reports must not be able to
+// compare an edge weight from one against an edge weight from the other
+// without noticing they are different quantities.
+func TestDuplicationMapMetricIsStated(t *testing.T) {
+	for _, tc := range []struct {
+		metric MapMetric
+		edge   string // the weight as it must appear on the edge
+		self   string // and on the node
+		noun   string
+	}{
+		{MapMergeWorthy, "3", "18", "merge-worthy pairs"},
+		{MapPairs, "3", "18", "candidate pairs"},
+		{MapEvidence, "3.00", "18.00", "corroborated evidence"},
+	} {
+		ov := sampleOverview()
+		ov.Metric = tc.metric
+
+		var b strings.Builder
+		PrintMarkdownOverview(&b, ov)
+		out := b.String()
+
+		if !strings.Contains(out, "Weights are **"+tc.noun+"**") {
+			t.Errorf("%s: metric not named in the prose:\n%s", tc.metric, out)
+		}
+		if !strings.Contains(out, `---|"`+tc.edge+`"|`) {
+			t.Errorf("%s: edge weight %q missing:\n%s", tc.metric, tc.edge, out)
+		}
+		if !strings.Contains(out, tc.self+" internal") {
+			t.Errorf("%s: self-duplication weight %q missing:\n%s", tc.metric, tc.self, out)
+		}
+	}
+}
+
+// An Overview built before the metric existed — or by a caller that never set
+// one — draws the map it always drew.
+func TestZeroMapMetricIsMergeWorthy(t *testing.T) {
+	var chosen, unset strings.Builder
+	ov := sampleOverview()
+	ov.Metric = MapMergeWorthy
+	PrintMarkdownOverview(&chosen, ov)
+	PrintMarkdownOverview(&unset, sampleOverview()) // Metric is the zero value
+	if chosen.String() != unset.String() {
+		t.Error("an unset metric drew a different map than the default")
+	}
+	if got := MapMetric("nonsense").Resolve(); got != DefaultMapMetric {
+		t.Errorf("unknown metric resolved to %q, want the default", got)
+	}
+}
+
+// A bad metric names the alternatives rather than silently drawing one.
+func TestParseMapMetric(t *testing.T) {
+	for _, m := range MapMetrics() {
+		if got, err := ParseMapMetric(string(m)); err != nil || got != m {
+			t.Errorf("ParseMapMetric(%q) = %q, %v", m, got, err)
+		}
+	}
+	if got, err := ParseMapMetric(""); err != nil || got != DefaultMapMetric {
+		t.Errorf(`ParseMapMetric("") = %q, %v; want the default`, got, err)
+	}
+	err := func() error { _, err := ParseMapMetric("mergeworthy"); return err }()
+	if err == nil {
+		t.Fatal("an unknown metric was accepted")
+	}
+	for _, m := range MapMetrics() {
+		if !strings.Contains(err.Error(), string(m)) {
+			t.Errorf("error %q does not name %q", err, m)
+		}
 	}
 }
