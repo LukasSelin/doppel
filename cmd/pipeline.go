@@ -605,6 +605,7 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 
 	// Annotate surviving pairs with unusual concept realizations and habitat
 	// misfits — positional lookup, like Evidence attachment; never name-keyed.
+	profiles := newProfileCache(cult, len(units))
 	for i := range pairs {
 		// Resolved once per pair: a SimilarPair names its units by index, and
 		// this loop is the one place that wants both of them whole.
@@ -614,7 +615,7 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 		pairs[i].Habitat = habitatNotes(cult, pairs[i].AIdx, pairs[i].BIdx, a.Package, b.Package)
 		pairs[i].Kind = analyzer.ClassifyPairWith(a, b, pairs[i].Score, forkFloor)
 		pairs[i].Explain = analyzer.ExplainWith(a, b, labelKinds)
-		pairs[i].Profile = profileNotes(cult, pairs[i].AIdx, pairs[i].BIdx,
+		pairs[i].Profile = profiles.pair(pairs[i].AIdx, pairs[i].BIdx,
 			parser.ConceptIDs(a.Concepts), parser.ConceptIDs(b.Concepts))
 	}
 	res.Pairs = pairs

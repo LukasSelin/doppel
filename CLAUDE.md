@@ -667,6 +667,20 @@ Measured on moby: that slice **44.79MB -> 3.39MB**, live heap **317.6MB -> 257.8
 left at the top is `gofront.toSyntax` 54MB (the canonical trees), `profileNotes` 37.6MB and
 `comparator.intersect` 29.3MB.
 
+**`profileNotes` was the third instance of one pattern, and naming the pattern is the point.** An
+arena equilibrium is a property of a *unit*; the annotation loop was copying one per *pair*, so moby
+built 36 922 sets of survivor and extinct masses over at most 7 658 distinct units. `profileCache`
+(`cmd/analyze.go`) builds each unit's note once and shares the mass slices — safe because the two
+renderers only range over them, and the annotation loop is sequential, which the type says out loud
+in case that loop is ever fanned out. Measured: live heap **225.3MB -> 200.3MB** (-25.0MB, against a
+0.14MB floor) and **46.7MB less allocated**, so it is cheaper on both axes at once.
+
+That is the same shape as `analyzer.BuildLabelKinds` (797MB, 21% of a run), `ontology.split` (306MB)
+and `concepter.Graded` before it: **per-unit work redone per pair**. Four sites, each found by a
+profile rather than by reading the code, and each invisible until the pair count made it large. When
+a footprint or allocation number here looks wrong, ask first whether something that belongs to a
+function is being recomputed for every pair that function appears in.
+
 **Releasing the canonical trees was rejected, then re-measured, then adopted — and the reversal is
 the lesson.** After `index()` the only consumer of `CodeUnit.Canonical` is the explain sentence's
 label table, so `analyze` builds that table over the whole corpus and drops the trees, and the heavy
