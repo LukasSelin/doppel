@@ -5,6 +5,7 @@ import (
 	"slices"
 	"sort"
 
+	"github.com/LukasSelin/doppel/internal/analyzer"
 	"github.com/LukasSelin/doppel/internal/comparator"
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/culture"
@@ -22,7 +23,7 @@ import (
 // now almost none of it reached the document. The querying lives here rather
 // than in reporter so that reporter never learns about culture or ontology; it
 // receives plain presorted rows.
-func buildOverview(res Result, suppressed int) *reporter.Overview {
+func buildOverview(res Result, suppressed int, metric reporter.MapMetric) *reporter.Overview {
 	if len(res.Units) == 0 {
 		return nil
 	}
@@ -32,7 +33,8 @@ func buildOverview(res Result, suppressed int) *reporter.Overview {
 		TestsMode:  res.Params.TestsMode,
 		Threshold:  res.Params.Threshold,
 		Suppressed: suppressed,
-		SelfDup:    map[string]int{},
+		Metric:     metric.Resolve(),
+		SelfDup:    map[string]float64{},
 
 		ShapePairs:       res.Retrieval.ShapePairs,
 		ConceptPairs:     res.Retrieval.ConceptPairs,
@@ -297,17 +299,40 @@ func overviewCulture(ov *reporter.Overview, res Result, pkgFuncs map[string]int)
 	ov.Habitats, ov.HabitatsMore = reporter.SortHabitats(rows)
 }
 
-// overviewDuplication folds merge-worthy pairs up to their packages.
+// overviewDuplication folds pairs up to their packages.
 //
 // The pair list answers "which two functions"; nothing answered "which parts of
 // this system keep growing the same code". A cross-package edge is the finding —
 // two packages independently solving one problem — where an intra-package count
 // is usually a family of deliberate siblings, so the two are counted separately
 // and rendered differently.
+//
+// What a pair contributes is ov.Metric's, and the three readings differ in what
+// they refuse to lose: the verdict (merge-worthy pairs), the recall (every
+// surviving pair), or the strength (summed corroborated evidence, so a pair
+// barely past the gate is not worth the same as an exact clone). It is a
+// presentation choice and reads nothing back into the run — res.Pairs is the
+// full filtered set under every metric, exactly as before.
 func overviewDuplication(ov *reporter.Overview, res Result) {
-	links := map[[2]string]int{}
+	m := ov.Metric.Resolve()
+	rank := analyzer.DefaultRankOptions()
+	weigh := func(p analyzer.SimilarPair) float64 {
+		switch m {
+		case reporter.MapPairs:
+			return 1
+		case reporter.MapEvidence:
+			return analyzer.RankKey(p, rank)
+		default:
+			if p.MergeWorthy() {
+				return 1
+			}
+			return 0
+		}
+	}
+	links := map[[2]string]float64{}
 	for _, p := range res.Pairs {
-		if !p.MergeWorthy() {
+		wt := weigh(p)
+		if wt <= 0 {
 			continue
 		}
 		a, b := packageOf(p.A), packageOf(p.B)
@@ -315,17 +340,17 @@ func overviewDuplication(ov *reporter.Overview, res Result) {
 			continue
 		}
 		if a == b {
-			ov.SelfDup[a]++
+			ov.SelfDup[a] += wt
 			continue
 		}
 		if a > b {
 			a, b = b, a
 		}
-		links[[2]string{a, b}]++
+		links[[2]string{a, b}] += wt
 	}
 	out := make([]reporter.PackageLink, 0, len(links))
-	for k, n := range links {
-		out = append(out, reporter.PackageLink{A: k[0], B: k[1], Pairs: n})
+	for k, w := range links {
+		out = append(out, reporter.PackageLink{A: k[0], B: k[1], Weight: w})
 	}
 	ov.Links, ov.LinksMore = reporter.SortLinks(out)
 }

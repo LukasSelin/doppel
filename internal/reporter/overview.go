@@ -3,7 +3,9 @@ package reporter
 import (
 	"fmt"
 	"io"
+	"math"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -71,9 +73,16 @@ type Overview struct {
 	ViewsFeatureOnly, ViewsTaxonomyOnly int
 	ViewsSpread                         float64
 
-	Links     []PackageLink // merge-worthy duplication between packages
+	// The duplication map. Metric names what an edge weighs — the default
+	// is merge-worthy pairs, the question the map was built to answer, and
+	// the zero value reads as that default so a caller written before the
+	// metric existed draws exactly the map it drew. Weights are whatever
+	// Metric counts, so a reader must not compare two maps drawn under
+	// different metrics.
+	Metric    MapMetric
+	Links     []PackageLink // duplication pressure between packages
 	LinksMore int
-	SelfDup   map[string]int // package -> merge-worthy pairs wholly inside it
+	SelfDup   map[string]float64 // package -> its own weight, wholly inside it
 
 	// Local practice: not what the corpus contains, but how it writes things.
 	Practice  []ConceptPractice // how each modeled concept is realized here
@@ -273,8 +282,114 @@ type HabitatRow struct {
 
 // PackageLink is duplication pressure between two packages.
 type PackageLink struct {
-	A, B  string // A < B
-	Pairs int    // merge-worthy pairs with one side in each
+	A, B   string  // A < B
+	Weight float64 // what Overview.Metric measures, with one side in each
+}
+
+// MapMetric names what the duplication map weighs a package by.
+//
+// The map answers "which parts of this system keep growing the same code",
+// and there is more than one defensible way to weigh that. Counting
+// merge-worthy pairs is the tool's own verdict and stays the default; the
+// other two exist because that verdict is a boolean over a continuum, so a
+// reader who wants recall counts every surviving pair, and one who wants
+// strength sums the corroborated evidence instead of treating a barely-past
+// -the-gate pair and an exact clone as one apiece.
+//
+// It is a presentation choice, like --top or --families: no score, filter or
+// ranking key reads it, and it is deliberately not in Params, so switching it
+// cannot invalidate a baseline.
+type MapMetric string
+
+// The metrics a reader may switch between.
+const (
+	// MapMergeWorthy counts pairs passing comparator.MergeWorthy — the
+	// tool's own "these two should probably be one function" verdict.
+	MapMergeWorthy MapMetric = "merge-worthy"
+	// MapPairs counts every pair that survived scoring and filtering,
+	// verdict or not: the same map with the gate taken off.
+	MapPairs MapMetric = "pairs"
+	// MapEvidence sums analyzer.RankKey over those same pairs — the one
+	// definition of corroborated evidence in this repo — so one strong
+	// finding can outweigh several weak ones.
+	MapEvidence MapMetric = "evidence"
+)
+
+// DefaultMapMetric is what a map is drawn by when nobody chose.
+const DefaultMapMetric = MapMergeWorthy
+
+// MapMetrics lists every metric, in the order a reader should meet them:
+// strictest first. It is what the flag's help text and its validator read, so
+// adding a metric cannot leave either behind.
+func MapMetrics() []MapMetric { return []MapMetric{MapMergeWorthy, MapPairs, MapEvidence} }
+
+// ParseMapMetric resolves a user-supplied name, naming every alternative when
+// it cannot. The empty string is the default rather than an error: a caller
+// that never set one is not making a mistake.
+func ParseMapMetric(s string) (MapMetric, error) {
+	if s == "" {
+		return DefaultMapMetric, nil
+	}
+	for _, m := range MapMetrics() {
+		if MapMetric(s) == m {
+			return m, nil
+		}
+	}
+	names := make([]string, 0, len(MapMetrics()))
+	for _, m := range MapMetrics() {
+		names = append(names, string(m))
+	}
+	return "", fmt.Errorf("invalid map metric %q: want %s", s, strings.Join(names, ", "))
+}
+
+// Resolve is the zero-value rule in one place: an unset or unknown metric
+// draws the default map rather than an empty one.
+func (m MapMetric) Resolve() MapMetric {
+	for _, k := range MapMetrics() {
+		if m == k {
+			return m
+		}
+	}
+	return DefaultMapMetric
+}
+
+// Counts reports whether this metric is a whole number of pairs. Evidence is
+// a sum of ranking keys and is not.
+func (m MapMetric) Counts() bool { return m.Resolve() != MapEvidence }
+
+// Noun names what a weight is, for a sentence.
+func (m MapMetric) Noun() string {
+	switch m.Resolve() {
+	case MapPairs:
+		return "candidate pairs"
+	case MapEvidence:
+		return "corroborated evidence"
+	default:
+		return "merge-worthy pairs"
+	}
+}
+
+// Describe is the one sentence the map's prose needs to be honest about what
+// its numbers are.
+func (m MapMetric) Describe() string {
+	switch m.Resolve() {
+	case MapPairs:
+		return "Every scored pair that survived filtering is folded up to its packages, merge-worthy or not — the widest view, and the one that says least about whether anything should be merged."
+	case MapEvidence:
+		return "Every surviving pair is folded up to its packages and weighed by its corroborated evidence — retrieval mass discounted by architectural overlap and code shape — so one strong finding outweighs several weak ones."
+	default:
+		return "Merge-worthy pairs are folded up to their packages: only pairs doppel judges worth consolidating are counted."
+	}
+}
+
+// Format renders a weight the way the metric was counted — integers for
+// counts, two decimals for a sum of evidence, so a label never claims a
+// precision the number does not have.
+func (m MapMetric) Format(v float64) string {
+	if m.Counts() {
+		return strconv.FormatInt(int64(math.Round(v)), 10)
+	}
+	return strconv.FormatFloat(v, 'f', 2, 64)
 }
 
 // maxOverviewNodes bounds every package-scoped diagram. Past a dozen or so
@@ -476,19 +591,25 @@ func conventionWord(v float64) string {
 	}
 }
 
-// overviewDuplication draws where the merge-worthy duplication actually sits.
+// overviewDuplication draws where the duplication actually sits.
 //
 // The pair list answers "which two functions"; nothing answers "which parts of
 // the system keep growing the same code". A cross-package edge is the finding —
 // two packages that both implement the same thing — while an intra-package
 // count is usually a family of siblings and much less interesting.
+//
+// What an edge weighs is ov.Metric's business, not this function's: the map is
+// one picture read three ways, and the prose names the reading so a number
+// here is never mistaken for a number drawn under another metric.
 func overviewDuplication(w io.Writer, ov *Overview) {
 	if len(ov.Links) == 0 && len(ov.SelfDup) == 0 {
 		return
 	}
+	m := ov.Metric.Resolve()
 	fmt.Fprintf(w, "### Where the duplication is\n\n")
-	fmt.Fprintf(w, "Merge-worthy pairs folded up to their packages. An edge means two packages keep "+
-		"solving the same problem separately; a count on a node means the repetition is inside one package.\n\n")
+	fmt.Fprintf(w, "%s An edge means two packages keep solving the same problem separately; a "+
+		"count on a node means the repetition is inside one package. Weights are **%s**.\n\n",
+		m.Describe(), m.Noun())
 
 	if len(ov.Links) > 0 {
 		fmt.Fprintf(w, "```mermaid\nflowchart LR\n")
@@ -506,18 +627,18 @@ func overviewDuplication(w io.Writer, ov *Overview) {
 			// the line break into a visible #lt;br/#gt;.
 			label := mermaidLabel(pkg)
 			if n := ov.SelfDup[pkg]; n > 0 {
-				label += fmt.Sprintf("<br/>%d internal", n)
+				label += fmt.Sprintf("<br/>%s internal", m.Format(n))
 			}
 			fmt.Fprintf(w, "    %s[\"%s\"]\n", v, label)
 			return v
 		}
 		for _, l := range ov.Links {
 			a, b := id(l.A), id(l.B)
-			fmt.Fprintf(w, "    %s ---|\"%d\"| %s\n", a, l.Pairs, b)
+			fmt.Fprintf(w, "    %s ---|\"%s\"| %s\n", a, m.Format(l.Weight), b)
 		}
 		fmt.Fprintf(w, "```\n\n")
 		if ov.LinksMore > 0 {
-			fmt.Fprintf(w, "_%d further package pairs are connected by merge-worthy duplication and are not drawn._\n\n", ov.LinksMore)
+			fmt.Fprintf(w, "_%d further package pairs are connected by duplication and are not drawn._\n\n", ov.LinksMore)
 		}
 	}
 }
@@ -646,8 +767,8 @@ func SortHabitats(rows []HabitatRow) ([]HabitatRow, int) {
 // SortLinks orders package duplication links by weight and bounds them.
 func SortLinks(links []PackageLink) ([]PackageLink, int) {
 	sort.SliceStable(links, func(i, j int) bool {
-		if links[i].Pairs != links[j].Pairs {
-			return links[i].Pairs > links[j].Pairs
+		if links[i].Weight != links[j].Weight {
+			return links[i].Weight > links[j].Weight
 		}
 		if links[i].A != links[j].A {
 			return links[i].A < links[j].A
