@@ -3297,7 +3297,25 @@ functions for exactly this reason, and the first version of them did not and fai
     lens separates merge from false positive best (0.95 against 0.44, where shape reads 0.80 against
     0.48 — two of the six merges are templates over different doc writers), vocab ranks false
     positives *above* refactors, and verbatim pushes them lowest. Three false positives and one
-    corpus: a direction, not a verdict.
+    corpus: a direction, not a verdict — and the direction did not survive more labels.
+  - `TestLensRank` (guard `DOPPEL_BENCH_LENSRANK=1`) is that verdict: it rewrites only the `wl`
+    component of code-shape from a lens (skeleton, ordered, their mean and max, skeleton gated by
+    the ordered gap), keeps retrieval and everything else the production run, and scores the labels.
+    Private labels come from `DOPPEL_BENCH_LENSES_LABELS` (a directory of `<name>.labels.json`,
+    matched to the `DOPPEL_BENCH_LENSES_EXTRA` roots by base name); `TestLenses` with
+    `DOPPEL_BENCH_LENSES_DUMP=<dir>` writes the candidate lists to label from — each corpus's top 20
+    *plus* the pairs the skeleton lens would promote, because labels drawn from the current top 20
+    alone could only ever confirm the ranking under test. **Measured on cobra plus three private
+    corpora (84 private labels): no lens beats production, and none is adopted.** Skeleton's cobra
+    gain (merge 5.3 → 4.5, fp 50.5 → 54.5) does not generalise — all 15 pairs it promotes on one
+    private corpus were judged false positives (one-line wrappers already delegating to a shared
+    helper), it pulls false positives *up* on another (fp 272 → 220), and pooled violations go 39 →
+    40. Ordered moves nothing anywhere: a mirror pair loses one assignment's labels, a 0.94, which
+    no rank notices. What the private labels *did* show is where the false positives come from: on
+    two of the three corpora most of the labelled top 20 are mirror and sibling methods on one
+    receiver (Get/Set/Delete, Encode/Decode, Read/Write, Min/Max) — pairs whose bodies differ but
+    whose shared callers, callees, package and receiver lift `OverlapScore`. That is the overlap
+    half of the rank key, not the fingerprint, and it is where the next measurement belongs.
   - `TestViewsLadder` and `TestViewsBlend` (guard `DOPPEL_BENCH_VIEWS=1`) are the concept-views
     measurement: the first prints, for every fetched rung, how often the shape and feature views
     disagree, in which direction, and the shape×feature quartile grid that judges

@@ -123,6 +123,10 @@ func TestLenses(t *testing.T) {
 			t.Logf("  %2d %s", i+1, profileLine(profile(p.AIdx, p.BIdx), wlPairName(run.Units, p)))
 		}
 
+		if dir := os.Getenv("DOPPEL_BENCH_LENSES_DUMP"); dir != "" {
+			dumpLabelCandidates(t, dir, tg.name, tg.root, run.Units, top, kept, profile)
+		}
+
 		if !labeled {
 			continue
 		}
@@ -242,4 +246,72 @@ func lensFuncs(units []parser.CodeUnit) ([]*syntax.Func, int) {
 		missing++
 	}
 	return out, missing
+}
+
+// dumpLabelCandidates writes the pairs worth a human verdict for one corpus
+// to <dir>/<name>.candidates.tsv: the report's top 20, and the compared pairs
+// the skeleton lens reads highest above the shape lens — the pairs a
+// skeleton-weighted ranking would promote. Labels drawn from the current top
+// 20 alone would be selected by the ranking under test, and could only ever
+// confirm it.
+func dumpLabelCandidates(t *testing.T, dir, name, root string, units []parser.CodeUnit,
+	top, compared []analyzer.SimilarPair, profile func(a, b int) fingerprint.LensProfile) {
+	t.Helper()
+	type row struct {
+		src  string
+		p    analyzer.SimilarPair
+		prof fingerprint.LensProfile
+	}
+	seen := map[[2]int]bool{}
+	var rows []row
+	add := func(src string, p analyzer.SimilarPair) {
+		k := [2]int{min(p.AIdx, p.BIdx), max(p.AIdx, p.BIdx)}
+		if seen[k] {
+			return
+		}
+		seen[k] = true
+		rows = append(rows, row{src, p, profile(p.AIdx, p.BIdx)})
+	}
+	for _, p := range top {
+		add("top20", p)
+	}
+	byLift := append([]analyzer.SimilarPair(nil), compared...)
+	lift := func(p analyzer.SimilarPair) float64 {
+		pr := profile(p.AIdx, p.BIdx)
+		return pr[fingerprint.LensSkeleton].Jaccard - pr[fingerprint.LensShape].Jaccard
+	}
+	sort.SliceStable(byLift, func(i, j int) bool { return lift(byLift[i]) > lift(byLift[j]) })
+	for i, n := 0, 0; i < len(byLift) && n < 15; i++ {
+		if lift(byLift[i]) < 0.15 {
+			break
+		}
+		before := len(rows)
+		add("skeleton+", byLift[i])
+		if len(rows) > before {
+			n++
+		}
+	}
+	loc := func(u parser.CodeUnit) string {
+		rel, err := filepath.Rel(root, u.File)
+		if err != nil {
+			rel = u.File
+		}
+		return fmt.Sprintf("%s:%d", filepath.ToSlash(rel), u.StartLine)
+	}
+	var b strings.Builder
+	b.WriteString("source\ta\tb\tlocA\tlocB\tskeleton\tshape\tordered\tvocab\tverbatim\tclass\n")
+	for _, r := range rows {
+		a, bb := units[r.p.AIdx], units[r.p.BIdx]
+		fmt.Fprintf(&b, "%s\t%s\t%s\t%s\t%s", r.src, qualifiedName(a), qualifiedName(bb), loc(a), loc(bb))
+		for _, s := range r.prof {
+			fmt.Fprintf(&b, "\t%.2f", s.Jaccard)
+		}
+		fmt.Fprintf(&b, "\t%s\n", r.prof.Class())
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, name+".candidates.tsv"), []byte(b.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
 }
