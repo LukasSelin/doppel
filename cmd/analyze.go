@@ -154,7 +154,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	// is how a new field ends up set on one surface and forgotten on the other.
 	// The overview rides on it and is markdown-only: the text report has no way
 	// to draw a diagram, and the terminal already gets these numbers on stderr.
-	meta := reporter.Meta{Threshold: threshold, TotalFuncs: len(res.Units), Debug: debugFlag}
+	meta := reportMeta(res, debugFlag)
 	if outputFile != "" {
 		// Parsed in PreRunE, so this cannot fail here; the metric is a
 		// presentation choice and never reaches Params.
@@ -434,6 +434,15 @@ func printArenaSummary(w io.Writer, s culture.Stats) {
 	}
 	fmt.Fprintf(w, "Ecosystems: %d profiled (%d dominance, %d coalition, %d conflict, %d weak)\n",
 		s.ArenaProfiled, s.ArenaDominance, s.ArenaCoalition, s.ArenaConflict, s.ArenaWeak)
+}
+
+// reportMeta is the header both renderers print. The threshold is the one the
+// run used — res.Params, which calibration rewrites — never the --threshold
+// flag variable, which under the default calibration is only the fallback
+// and would print 0.38 over a report admitted at some other floor. It is the
+// same value snapshot.Params records, so a report and its JSON cannot disagree.
+func reportMeta(res Result, debug bool) reporter.Meta {
+	return reporter.Meta{Threshold: res.Params.Threshold, TotalFuncs: len(res.Units), Debug: debug}
 }
 
 // printCalibration reports a null calibration: the derived thresholds, or

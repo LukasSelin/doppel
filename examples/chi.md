@@ -9,7 +9,7 @@ HTTP router; a narrow core with a middleware package beside it
 | Corpus | [chi](https://github.com/go-chi/chi) |
 | Pinned at | `v5.3.2` (`38939062c5df4d3e8814aad1a488983112627ced`) |
 | Project since | 2015 |
-| doppel | `4aa3b83` |
+| doppel | `d2d78d3` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -41,7 +41,7 @@ Families: 6 over 16 components, 28 functions in a family, 9 edges completed
 
 # Code Similarity Report
 
-**Functions analyzed:** 183 | **Threshold:** 0.38 | **Pairs found:** 10
+**Functions analyzed:** 183 | **Threshold:** 0.45 | **Pairs found:** 10
 
 ---
 
