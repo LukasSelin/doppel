@@ -63,40 +63,7 @@ func TestLensRank(t *testing.T) {
 	if os.Getenv("DOPPEL_BENCH_LENSRANK") != "1" {
 		t.Skip("set DOPPEL_BENCH_LENSRANK=1 to rank the labels under each lens")
 	}
-	type target struct {
-		name, root string
-		lf         LabelsFile
-	}
-	var targets []target
-	committed := committedLabels(t)
-	for _, c := range Corpora {
-		lf, ok := committed[c.Name]
-		if !ok || !Present(c) {
-			continue
-		}
-		root, err := Path(c)
-		if err != nil {
-			t.Fatal(err)
-		}
-		targets = append(targets, target{c.Name, root, lf})
-	}
-	if dir := os.Getenv("DOPPEL_BENCH_LENSES_LABELS"); dir != "" {
-		for _, root := range filepath.SplitList(os.Getenv("DOPPEL_BENCH_LENSES_EXTRA")) {
-			name := filepath.Base(root)
-			data, err := os.ReadFile(filepath.Join(dir, name+".labels.json"))
-			if err != nil {
-				continue
-			}
-			lf, err := ParseLabels(data)
-			if err != nil {
-				t.Fatalf("%s: %v", name, err)
-			}
-			targets = append(targets, target{name, root, lf})
-		}
-	}
-	if len(targets) == 0 {
-		t.Skip("no labeled corpus available")
-	}
+	targets := labeledTargets(t)
 
 	type pooled struct {
 		violations        int
@@ -190,4 +157,50 @@ func TestLensRank(t *testing.T) {
 		t.Logf("  %-24s merge %5s  refactor %5s  fp %5s  violations %d",
 			v.name, avg(pl.merge, pl.nMerge), avg(pl.ref, pl.nRef), avg(pl.fp, pl.nFP), pl.violations)
 	}
+}
+
+// labeledTarget is one corpus with a labels file: a committed review against
+// the fetched ladder, or a private one read from DOPPEL_BENCH_LENSES_LABELS.
+type labeledTarget struct {
+	name, root string
+	lf         LabelsFile
+}
+
+// labeledTargets collects every labeled corpus available to this run. The
+// private half is a directory of <name>.labels.json matched by base name
+// against the roots in DOPPEL_BENCH_LENSES_EXTRA, so no private name or path
+// ever lives in the repository. Skips the test when there is none.
+func labeledTargets(t *testing.T) []labeledTarget {
+	t.Helper()
+	var targets []labeledTarget
+	committed := committedLabels(t)
+	for _, c := range Corpora {
+		lf, ok := committed[c.Name]
+		if !ok || !Present(c) {
+			continue
+		}
+		root, err := Path(c)
+		if err != nil {
+			t.Fatal(err)
+		}
+		targets = append(targets, labeledTarget{c.Name, root, lf})
+	}
+	if dir := os.Getenv("DOPPEL_BENCH_LENSES_LABELS"); dir != "" {
+		for _, root := range filepath.SplitList(os.Getenv("DOPPEL_BENCH_LENSES_EXTRA")) {
+			name := filepath.Base(root)
+			data, err := os.ReadFile(filepath.Join(dir, name+".labels.json"))
+			if err != nil {
+				continue
+			}
+			lf, err := ParseLabels(data)
+			if err != nil {
+				t.Fatalf("%s: %v", name, err)
+			}
+			targets = append(targets, labeledTarget{name, root, lf})
+		}
+	}
+	if len(targets) == 0 {
+		t.Skip("no labeled corpus available")
+	}
+	return targets
 }

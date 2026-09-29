@@ -3311,11 +3311,27 @@ functions for exactly this reason, and the first version of them did not and fai
     private corpus were judged false positives (one-line wrappers already delegating to a shared
     helper), it pulls false positives *up* on another (fp 272 → 220), and pooled violations go 39 →
     40. Ordered moves nothing anywhere: a mirror pair loses one assignment's labels, a 0.94, which
-    no rank notices. What the private labels *did* show is where the false positives come from: on
-    two of the three corpora most of the labelled top 20 are mirror and sibling methods on one
-    receiver (Get/Set/Delete, Encode/Decode, Read/Write, Min/Max) — pairs whose bodies differ but
-    whose shared callers, callees, package and receiver lift `OverlapScore`. That is the overlap
-    half of the rank key, not the fingerprint, and it is where the next measurement belongs.
+    no rank notices. What the private labels *did* show is that on two of the three corpora most of
+    the labelled top 20 are false positives, overwhelmingly mirror and sibling methods on one
+    receiver (Get/Set/Delete, Encode/Decode, Read/Write, Min/Max).
+  - `TestOverlapRank` (guard `DOPPEL_BENCH_OVERLAPRANK=1`, same label sources) asks where those
+    false positives get their rank: every labelled pair's rank-key factors and twelve overlap
+    signals, class means, then the labels ranked with one overlap relation zeroed or the key
+    reshaped. **The obvious hypothesis — that shared receiver, package and callers lift sibling
+    methods through `OverlapScore` — is wrong.** False positives do not carry more overlap than
+    merges (per-corpus means 0.60 against 0.64, 0.61 against 0.49, 0.71 against 0.77), and zeroing
+    `bound_to`, `declared_in` or all three locality relations moves violations 39 → 37-39. `calls`
+    and `exhibits` are load-bearing: zeroing either costs the merges (pooled merge 10.5 → 15). What
+    separates the classes is **code-shape** (merge 0.77-1.00 against false-positive 0.50-0.60) and
+    trophic, and the key is only linear in shape, so retrieval mass and overlap outvote it.
+    Raising shape's power in the key is the one lever that moves every labelled corpus the right way
+    on merges and false positives: pooled violations 39 → 34 at shape², 31 at shape³, merge mean
+    10.5 → 8.5 → 7.4, false-positive mean 212.8 → 215.1 → 220.9. The price is the refactor class,
+    9.8 → 11.5 → 13.9, which by definition has differing bodies. **Not adopted**: three of the four
+    labelled corpora carry agent-drafted labels no human has reviewed yet, and trading refactor for
+    merge is a product decision rather than a measurement one. The seam it would need is a
+    `ShapePower` on `analyzer.RankOptions` beside `TrophicPower`; the test applies it by transforming
+    each pair's Score before ranking, so no production code moved.
   - `TestViewsLadder` and `TestViewsBlend` (guard `DOPPEL_BENCH_VIEWS=1`) are the concept-views
     measurement: the first prints, for every fetched rung, how often the shape and feature views
     disagree, in which direction, and the shape×feature quartile grid that judges
