@@ -207,6 +207,13 @@ func completeComponent(units []parser.CodeUnit, g *graph, comp []int,
 			if g.has(a, b) {
 				continue
 			}
+			// Completion repairs retrieval's budget, not its judgement: a
+			// pair the pipeline refuses (test against production, two
+			// build targets no build compiles together) must not come back
+			// in through a component that happens to contain both sides.
+			if !parser.SameBuildUnit(units[a], units[b]) {
+				continue
+			}
 			s := fingerprint.Similarity(units[a].Fingerprint, units[b].Fingerprint, wl).Score
 			if s >= min {
 				g.add(a, b, s, 0) // completion carries no retrieval evidence

@@ -9,7 +9,7 @@ container engine; a decade of accretion across daemon, API, and plugin layers
 | Corpus | [moby](https://github.com/moby/moby) |
 | Pinned at | `v28.5.2` (`89c5e8fd66634b6128fc4c0e6f1236e2540e46e0`) |
 | Project since | 2013 |
-| doppel | `e65f1c6` |
+| doppel | `95bc654` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -24,20 +24,21 @@ Scanning . ...
 Learning concept vocabulary...
 Lexicon: 519 concepts (12 seeded, 507 emergent), 22469/57681 features above 2817 df, 721 functions unlabeled
 Generating concept documents...
-Calibration: rate 0.01 over 20000 null pairs -> threshold 0.36, struct-min 0.31, family-min 0.36
+Calibration: rate 0.01 over 20000 null pairs -> threshold 0.36, struct-min 0.30, family-min 0.36
 Found 7658 functions. Retrieving candidates...
 Retrieval: shape 9451, concept 23375, call 12470 -> 40225 unique pairs
   concept-only 51.4%  call-only 22.4%  suppressed-shape functions: 11  large identity buckets: 2  surviving labels: 34380
   22 cross test/prod pairs dropped
-Running structural comparison on 40203 pairs...
-  Concept views: 3054 of 40203 compared pairs disagree with the taxonomy (400 vocabulary the tree misses, 2654 kinship the vocabularies lack)
-  18461 pairs remain after struct-min=0.31 filter
+  1788 cross build-target pairs dropped (no build compiles both files)
+Running structural comparison on 38415 pairs...
+  Concept views: 2893 of 38415 compared pairs disagree with the taxonomy (372 vocabulary the tree misses, 2521 kinship the vocabularies lack)
+  18545 pairs remain after struct-min=0.30 filter
 Culture: 488 concepts modeled, 3281 associations, 902 unusual realizations
 Habitats: 167 modeled, 71 misfits (94 excused by subsystem), 59 subsystems; most uniform checker (norm 0.97), most diverse suite (norm 0.58)
 Conventions: strongest nl.manager+nl.ns (0.98), loosest aSpace.allocated+netiputil.PrefixCompare (0.16)
 Ecosystems: 7325 profiled (4541 dominance, 2781 coalition, 0 conflict, 3 weak)
-Families: 784 over 850 components, 2236 functions in a family, 5827 edges completed
-  3 component(s) skipped as too large or too dense: sizes [144 226 841]
+Families: 866 over 818 components, 2209 functions in a family, 6581 edges completed
+  2 component(s) skipped as too large or too dense: sizes [144 1054]
 ```
 
 # Code Similarity Report
@@ -707,32 +708,31 @@ flowchart LR
     p0["ipvlan<br/>27 internal"]
     p1["macvlan<br/>22 internal"]
     p0 ---|"104"| p1
-    p2["container<br/>396 internal"]
+    p2["container<br/>386 internal"]
     p3["swarm<br/>127 internal"]
     p2 ---|"44"| p3
     p4["image<br/>43 internal"]
     p2 ---|"40"| p4
-    p5["plugin<br/>51 internal"]
+    p5["plugin<br/>50 internal"]
     p2 ---|"29"| p5
     p6["brmanager<br/>7 internal"]
-    p7["cnmallocator<br/>17 internal"]
+    p7["cnmallocator<br/>16 internal"]
     p6 ---|"27"| p7
     p8["diagnostic<br/>5 internal"]
-    p9["libnetwork<br/>308 internal"]
+    p9["libnetwork<br/>294 internal"]
     p8 ---|"27"| p9
-    p10["overlay<br/>45 internal"]
-    p1 ---|"27"| p10
-    p11["ivmanager<br/>3 internal"]
-    p6 ---|"25"| p11
-    p0 ---|"25"| p10
-    p12["main<br/>42 internal"]
-    p9 ---|"25"| p12
-    p13["mvmanager"]
-    p6 ---|"24"| p13
+    p10["ivmanager<br/>3 internal"]
+    p6 ---|"25"| p10
+    p11["main<br/>36 internal"]
+    p9 ---|"25"| p11
+    p12["mvmanager"]
+    p6 ---|"24"| p12
     p4 ---|"24"| p3
+    p7 ---|"23"| p10
+    p7 ---|"22"| p12
 ```
 
-_418 further package pairs are connected by duplication and are not drawn._
+_410 further package pairs are connected by duplication and are not drawn._
 
 ### How settled each package is
 
@@ -764,7 +764,7 @@ _155 further packages are modeled and not drawn._ Most uniform is `checker` (nor
 
 Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **40225 candidate pairs** (shape 9451, concept 23375, call 12470), of which 22% arrived on call evidence alone and 51% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
-The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **3054 of 40203** pairs the taxonomy and the vocabularies differ by at least 0.50: 400 where the vocabularies agree and the tree cannot see it, 2654 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
+The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **2893 of 38415** pairs the taxonomy and the vocabularies differ by at least 0.50: 372 where the vocabularies agree and the tree cannot see it, 2521 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 7325 functions reached an equilibrium: **4541** settled on a single concept, **2781** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -772,7 +772,7 @@ Each function is also an arena where its candidate concepts compete for its evid
 
 **Compression ratio:** `8.59`x — this corpus's canonical function bodies contain **570200 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **66390 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **7658 functions**, **7449** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.46` / `1.00` / `1.00`, and 78% of them (5792 of 7449) already clear this run's threshold of `0.36`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 209 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **7658 functions**, **7429** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.45` / `1.00` / `1.00`, and 76% of them (5654 of 7429) already clear this run's threshold of `0.36`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 229 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -1417,16 +1417,16 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 | Function | Concept | Typicality | Concept median | |
 |---|---|---:|---:|---|
-| `remote.*client.writeContent` <br/>`libcontainerd/remote/client.go:713` | `time.RFC3339+time.Now` | `0.10` | `0.73` | no near-duplicate |
 | `service.volumeToAPIType` <br/>`volume/service/convert.go:83` | `time.RFC3339+time.Now` | `0.14` | `0.73` | no near-duplicate |
 | `container.*View.transform` <br/>`container/view.go:297` | `IPAMConfig.IPv4Address+IPAMConfig.IPv6Address` | `0.18` | `0.77` | no near-duplicate |
 | `plugin.parseHeaders` <br/>`api/server/router/plugin/plugin_routes.go:20` | `registry.DecodeAuthConfig+registry.AuthHeader` | `0.09` | `0.65` | no near-duplicate |
+| `main.installConfigFlags` <br/>`cmd/dockerd/config_windows.go:9` | `BridgeConfig.Iface+conf.BridgeConfig` | `0.04` | `0.56` | no near-duplicate |
 | `httpstatus.FromError` <br/>`api/server/httpstatus/status.go:16` | `http.StatusConflict+http.StatusNotImplemented` | `0.04` | `0.55` | no near-duplicate |
 | `httputils.ParseForm` <br/>`api/server/httputils/httputils.go:100` | `registry.DecodeAuthConfig+registry.AuthHeader` | `0.14` | `0.65` | no near-duplicate |
 | `containerd.translateRegistryError` <br/>`daemon/containerd/registry_errors.go:16` | `http.StatusConflict+http.StatusNotImplemented` | `0.06` | `0.55` | no near-duplicate |
+| `environment.restoreDefaultBridge` <br/>`testutil/environment/protect_others.go:16` | `network.NetworkHost+network.NetworkNone` | `0.07` | `0.55` | no near-duplicate |
 | `plugins.IsNotFound` <br/>`pkg/plugins/errors.go:20` | `http.StatusConflict+http.StatusNotImplemented` | `0.09` | `0.55` | no near-duplicate |
 | `syslog.parseFacility` <br/>`daemon/logger/syslog/syslog.go:219` | `errors.Errorf+fluent` | `0.15` | `0.60` | no near-duplicate |
-| `etwlogs.registerETWProvider` <br/>`daemon/logger/etwlogs/etwlogs_windows.go:107` | `daemon.clusterProvider+fmt.Errorf` | `0.09` | `0.53` | no near-duplicate |
 
 _892 more unusual realizations not listed._
 
@@ -1884,7 +1884,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ## Families
 
-784 families, 2236 functions in a family, largest 50 members; 5827 edges scored here that retrieval never proposed
+866 families, 2209 functions in a family, largest 52 members; 6581 edges scored here that retrieval never proposed
 
 ### Family 1 — 11 members, every pair `>= 0.47` code-shape, evidence `27605`  (9 edges scored here)
 
@@ -1943,9 +1943,9 @@ _Not drawn: 11 members is 55 connections. Every one of them holds — that is wh
 
 _1 more members not listed._
 
-### Family 4 — 21 members, every pair `>= 0.38` code-shape, evidence `15491`  (136 edges scored here)
+### Family 4 — 20 members, every pair `>= 0.38` code-shape, evidence `14844`  (121 edges scored here)
 
-_Not drawn: 21 members is 210 connections. Every one of them holds — that is what makes this a family._
+_Not drawn: 20 members is 190 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Concepts |
 |---|---|---|---|
@@ -1953,14 +1953,14 @@ _Not drawn: 21 members is 210 connections. Every one of them holds — that is w
 | `cmd/dockerd/docker.go:103` | `main.main` | `()` | ctr.terminateInvoked+diagnostic.TableObj 0.46, fmt.Fprint+os.Exit 0.42 |
 | `contrib/apparmor/main.go:13` | `main.main` | `()` | Store.validateName+bytes.TrimSpace 0.58, ctr.terminateInvoked+diagnostic.TableObj 0.44 |
 | `daemon/logger/awslogs/cloudwatchlogs.go:116` | `awslogs.init` | `()` | Isolation.IsValid+PluginObj.PluginReference 0.65, ctr.terminateInvoked+diagnostic.TableObj 0.59 |
-| `daemon/logger/etwlogs/etwlogs_windows.go:52` | `etwlogs.init` | `()` | Isolation.IsValid+PluginObj.PluginReference 0.63, ctr.terminateInvoked+diagnostic.TableObj 0.62 |
 | `daemon/logger/fluentd/fluentd.go:68` | `fluentd.init` | `()` | Isolation.IsValid+PluginObj.PluginReference 0.72, ctr.terminateInvoked+diagnostic.TableObj 0.67, errors.Errorf+fluent 0.58 |
 | `daemon/logger/gcplogs/gcplogging.go:46` | `gcplogs.init` | `()` | Isolation.IsValid+PluginObj.PluginReference 0.71, ctr.terminateInvoked+diagnostic.TableObj 0.69 |
 | `daemon/logger/gelf/gelf.go:28` | `gelf.init` | `()` | Isolation.IsValid+PluginObj.PluginReference 0.74, ctr.terminateInvoked+diagnostic.TableObj 0.67 |
 | `daemon/logger/journald/journald.go:69` | `journald.init` | `()` | Isolation.IsValid+PluginObj.PluginReference 0.73, ctr.terminateInvoked+diagnostic.TableObj 0.68 |
 | `daemon/logger/jsonfilelog/jsonfilelog.go:37` | `jsonfilelog.init` | `()` | Isolation.IsValid+PluginObj.PluginReference 0.73, ctr.terminateInvoked+diagnostic.TableObj 0.69 |
+| `daemon/logger/local/local.go:55` | `local.init` | `()` | Isolation.IsValid+PluginObj.PluginReference 0.72, ctr.terminateInvoked+diagnostic.TableObj 0.67 |
 
-_11 more members not listed._
+_10 more members not listed._
 
 ### Family 5 — 13 members, every pair `>= 0.36` code-shape, evidence `14268`  (35 edges scored here)
 
@@ -1981,7 +1981,7 @@ _Not drawn: 13 members is 78 connections. Every one of them holds — that is wh
 
 _3 more members not listed._
 
-_779 more families not listed._
+_861 more families not listed._
 
-_3 component(s) too large or too dense to enumerate (sizes 144, 226, 841); their families are not reported._
+_2 component(s) too large or too dense to enumerate (sizes 144, 1054); their families are not reported._
 

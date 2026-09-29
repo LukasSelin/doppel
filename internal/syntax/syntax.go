@@ -322,11 +322,20 @@ type Import struct {
 // Package is whatever partitions functions into habitats for this language —
 // a package clause where one exists, and the containing directory where it
 // does not. Consumers treat it as an opaque key.
+//
+// Targets is the set of build targets the file compiles for, as a bitset
+// whose bit meanings belong to the frontend: two files from one language
+// whose sets are both non-zero and disjoint can never be in the same build,
+// so nothing in one can be merged with anything in the other. Zero means
+// unconstrained — every language without conditional compilation, and every
+// Go file without a GOOS/GOARCH suffix or build constraint — which is what
+// keeps the zero value honest for a frontend that never sets it.
 type File struct {
 	Path      string
 	Package   string
 	Lang      string
 	Imports   []Import
 	Generated bool
+	Targets   uint64
 	Funcs     []Func
 }

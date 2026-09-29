@@ -426,3 +426,11 @@ emits, `include` restores the unfiltered view.
 Because the filter runs before any corpus statistic exists, each mode's document frequencies,
 information content and culture models describe exactly the population its report describes —
 filtering at report time instead would be the worst of both.
+
+Platform-specific files stay in the population but are never paired across targets. A file named
+`kern_amd64.go` and one named `kern_arm64.go` — or one carrying `//go:build windows` and a
+`_linux.go` file — are never compiled into the same binary, so no one can merge them however
+alike they look. Doppel reads the same two things the toolchain reads, the GOOS/GOARCH filename
+suffix and the build constraint, and drops the pair. Tags that are not a platform (`purego`,
+`cgo`, custom tags) are assumed settable either way, so a split made only by one of those is
+still reported.

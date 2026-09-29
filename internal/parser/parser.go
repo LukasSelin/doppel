@@ -92,6 +92,7 @@ type CodeUnit struct {
 	Fingerprint  fingerprint.Fingerprint // deterministic static summary of the body
 	Signals      TagSignals              // AST-level evidence channels the tagger reads
 	Generated    bool                    // the file carries Go's "Code generated ... DO NOT EDIT." marker
+	Targets      uint64                  // build targets the file compiles for; 0 = unconstrained (see syntax.File.Targets)
 
 	// Canonical is the unit's body in the canonical shape its frontend
 	// normalizes to — syntax.Func.Canon, projected. nil when the
@@ -203,6 +204,7 @@ func unitsFrom(f syntax.File) []CodeUnit {
 			Fingerprint:  fingerprint.Build(&fn),
 			Signals:      extractSignals(fn, f),
 			Generated:    f.Generated,
+			Targets:      f.Targets,
 			Canonical:    fn.Shape(),
 			CanonRules:   fn.CanonRules,
 		})

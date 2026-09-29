@@ -511,15 +511,21 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 	timer.mark("retrieval")
 
 	pairs := make([]analyzer.SimilarPair, 0, len(cands))
-	crossDropped := 0
+	crossDropped, targetDropped := 0, 0
 	for _, c := range cands {
 		// A test and a production function are never merge candidates —
 		// different build units. Nor are two functions in different
 		// languages, one step further out: they do not compare on shape,
 		// and merging them is not a thing anyone could do. Only reachable
-		// under --tests include, or in a mixed-language corpus.
+		// under --tests include, or in a mixed-language corpus. Nor are two
+		// files no build compiles together (`_amd64.go` / `_arm64.go`),
+		// counted apart because that one fires on a default run.
 		if !parser.SameBuildUnit(units[c.AIdx], units[c.BIdx]) {
-			crossDropped++
+			if parser.CoBuildable(units[c.AIdx], units[c.BIdx]) {
+				crossDropped++
+			} else {
+				targetDropped++
+			}
 			continue
 		}
 		pairs = append(pairs, analyzer.SimilarPair{
@@ -541,6 +547,9 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 	}
 	if crossDropped > 0 {
 		fmt.Fprintf(progress, "  %d cross test/prod pairs dropped\n", crossDropped)
+	}
+	if targetDropped > 0 {
+		fmt.Fprintf(progress, "  %d cross build-target pairs dropped (no build compiles both files)\n", targetDropped)
 	}
 
 	// Attach structural evidence to every candidate pair.
