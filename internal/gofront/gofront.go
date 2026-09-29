@@ -74,6 +74,7 @@ func Parse(filename string, src []byte) (*syntax.File, error) {
 		// already declares, not a path or name heuristic.
 		Generated: ast.IsGenerated(f),
 		Imports:   goImports(f),
+		Targets:   Targets(filename, f),
 	}
 
 	for _, decl := range f.Decls {

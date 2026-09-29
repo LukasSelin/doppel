@@ -111,18 +111,37 @@ func IsTestUnit(u CodeUnit) bool {
 
 // SameBuildUnit reports whether two units could sensibly be merged into one.
 //
-// Two rules, one predicate. Test and production code are different build
+// Three rules, one predicate. Test and production code are different build
 // units, so a test helper and the function it exercises are never merge
 // candidates however alike they look. Two languages are the same thing again,
 // one step out: a Go function and a Python one cannot be merged, their
 // bodies do not compare on shape, and mixing them would make every corpus
 // statistic — IC, culture, habitats, the calibration null — a two-population
 // mixture describing neither.
+//
+// And two files that no build ever compiles together — `_amd64.go` against
+// `_arm64.go`, a `//go:build windows` file against a `_linux.go` one — are
+// different build units on the toolchain's own say-so. Per-architecture
+// kernels and per-OS shims are near-identical by necessity and cannot be
+// merged, and on a SIMD-heavy corpus they filled half the report. Unlike the
+// test rule this one does not pick a population: both sides stay in the
+// corpus and in every statistic, because both are code the repository
+// maintains. Only the pair is refused.
 func SameBuildUnit(a, b CodeUnit) bool {
 	if a.Lang != b.Lang {
 		return false
 	}
-	return IsTestUnit(a) == IsTestUnit(b)
+	if IsTestUnit(a) != IsTestUnit(b) {
+		return false
+	}
+	return CoBuildable(a, b)
+}
+
+// CoBuildable reports whether some build could compile both units: either is
+// unconstrained, or their target sets meet. It is the third rule of
+// SameBuildUnit, exported so a caller can count what it refused separately.
+func CoBuildable(a, b CodeUnit) bool {
+	return a.Targets == 0 || b.Targets == 0 || a.Targets&b.Targets != 0
 }
 
 // LangOf reports which language claims a path, and whether any does. It is

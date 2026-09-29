@@ -109,6 +109,7 @@ cmd/            CLI commands (Cobra).
 internal/
   syntax/       The language-neutral IR: Kind/Role/Node/Func/File and Inspect. Imports nothing from this module
   gofront/      The Go frontend: the only package that imports go/ast. gofront.go maps *ast.File → syntax.File and runs canon; syntax_map.go is the node-for-node mapper;
+                target.go is the file's GOOS/GOARCH target set (filename suffix + //go:build), which SameBuildUnit reads;
                 render.go re-derives one function's canonical tree with a go/printer render per node, for the --label view
   lexfront/     The language-agnostic frontend: spec.go is the per-language table, lexer.go tokenizes, segment.go finds functions, build.go builds the shallow tree
   parser/       frontend.go owns the Frontend interface, the extension registry, IsTestFile and SameBuildUnit; parser.go is the neutral syntax.File → CodeUnit projection;
@@ -2294,6 +2295,39 @@ test and production code are different build units, and so are two languages one
 out. It replaced the `_test.go` suffix check that had been copy-pasted into `cmd/analyze.go`,
 `internal/bench`, `internal/calibrate` and `internal/analyzer/rank.go` — a clone doppel would
 have flagged on itself, and four places to miss when a second language arrived.
+
+**Nor do pairs across build targets.** The third rule of `SameBuildUnit` (`parser.CoBuildable`)
+refuses two units whose files no build compiles together — `_amd64.go` against `_arm64.go`, a
+`//go:build windows` file against a `_linux.go` one, a `!amd64 && !arm64` fallback against
+either kernel. `syntax.File.Targets` carries it: a bitset whose bit meanings belong to the
+frontend, **zero meaning unconstrained**, so every `lexfront` language, every plain Go file and
+every hand-built fixture keeps the old answer through the zero value. `gofront/target.go` fills
+it from the two things `go/build` reads — the GOOS/GOARCH filename suffix (`goodOSArchFile`,
+including the android⇒linux, illumos⇒solaris and ios⇒darwin implications) and the
+`//go:build` line, falling back to `// +build` — as the set of `go tool dist list` ports the
+file can build for. `knownOS`/`knownArch`/`unixOS` mirror go/build's unexported syslist, and
+the port table is Go 1.25's; a file constrained to no listed port (a known arch with no port)
+gets a reserved off-list bit rather than reading as unconstrained.
+
+Three properties are deliberate. **It refuses the pair, never the population**: both files are
+code the repository maintains, so they stay in every corpus statistic — unlike `--tests`, which
+picks a population. **Non-platform tags are free and read permissively**: a port counts when
+*some* assignment of `purego`, `cgo`, `go1.N` or a custom tag satisfies the constraint there, so
+`amd64 && !purego` against `!amd64 || purego` both reach amd64 and are still paired. That is the
+only error available, and it is the old behaviour; the exact joint-satisfiability check would
+be per pair rather than per unit, and past eight free tags a constraint is treated as
+satisfiable everywhere. **It reaches every place `SameBuildUnit` does**: the pipeline's pair
+materialisation (a separate `cross build-target pairs dropped` stderr line, printed only when
+non-zero), the calibration null, the bench harness, and family edge completion — which never
+checked `SameBuildUnit` before, so completion could hand back a test/prod edge under
+`--tests include` as well.
+
+Why it exists: on a SIMD-heavy corpus the per-architecture twins were 14 of the top 30 pairs
+and all of the top five families, none of them mergeable. Measured on the ladder: moby drops
+1 788 cross-target candidates and prometheus 66 (one top-20 pair, `statfs_linux_386` against a
+darwin/freebsd-386 file, giving way to `addBuckets ↔ kahanAddBuckets`); moby's calibrated
+struct-min moves 0.31 → 0.30 because the null no longer samples unmergeable pairs; hugo, gin,
+cobra, chi and conc are byte-identical on `--format json` apart from the build string.
 
 **Scope is an extension allowlist, never a content heuristic.** A file is in the corpus because
 a frontend claims its extension and `--languages` admits that language. Prose, markdown, config

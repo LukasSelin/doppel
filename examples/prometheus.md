@@ -9,7 +9,7 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `e65f1c6` |
+| doppel | `95bc654` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -29,15 +29,16 @@ Found 5623 functions. Retrieving candidates...
 Retrieval: shape 8068, concept 17036, call 8171 -> 29105 unique pairs
   concept-only 50.7%  call-only 18.8%  suppressed-shape functions: 12  large identity buckets: 0  surviving labels: 30355
   123 cross test/prod pairs dropped
-Running structural comparison on 28982 pairs...
-  Concept views: 1736 of 28982 compared pairs disagree with the taxonomy (177 vocabulary the tree misses, 1559 kinship the vocabularies lack)
-  13079 pairs remain after struct-min=0.34 filter
+  66 cross build-target pairs dropped (no build compiles both files)
+Running structural comparison on 28916 pairs...
+  Concept views: 1736 of 28916 compared pairs disagree with the taxonomy (177 vocabulary the tree misses, 1559 kinship the vocabularies lack)
+  13027 pairs remain after struct-min=0.34 filter
 Culture: 360 concepts modeled, 2597 associations, 737 unusual realizations
 Habitats: 97 modeled, 115 misfits (58 excused by subsystem), 22 subsystems; most uniform graphite (norm 1.00), most diverse src (norm 0.65)
 Conventions: strongest b.Bytes+b.Len (0.98), loosest n.StartOrEnd+n.Func (0.13)
 Ecosystems: 5273 profiled (2739 dominance, 2495 coalition, 0 conflict, 39 weak)
-Families: 914 over 637 components, 2024 functions in a family, 7944 edges completed
-  2 component(s) skipped as too large or too dense: sizes [231 699]
+Families: 904 over 635 components, 1995 functions in a family, 7935 edges completed
+  2 component(s) skipped as too large or too dense: sizes [231 695]
 ```
 
 # Code Similarity Report
@@ -636,7 +637,7 @@ _85 further packages are modeled and not drawn._ Most uniform is `graphite` (nor
 
 Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **29105 candidate pairs** (shape 8068, concept 17036, call 8171), of which 19% arrived on call evidence alone and 51% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
-The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **1736 of 28982** pairs the taxonomy and the vocabularies differ by at least 0.50: 177 where the vocabularies agree and the tree cannot see it, 1559 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
+The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **1736 of 28916** pairs the taxonomy and the vocabularies differ by at least 0.50: 177 where the vocabularies agree and the tree cannot see it, 1559 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 5273 functions reached an equilibrium: **2739** settled on a single concept, **2495** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -644,7 +645,7 @@ Each function is also an arena where its candidate concepts compete for its evid
 
 **Compression ratio:** `8.93`x — this corpus's canonical function bodies contain **483640 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **54134 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **5623 functions**, **5376** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.51` / `1.00` / `1.00`, and 84% of them (4504 of 5376) already clear this run's threshold of `0.33`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 247 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **5623 functions**, **5372** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.51` / `1.00` / `1.00`, and 84% of them (4492 of 5372) already clear this run's threshold of `0.33`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 251 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -1634,7 +1635,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ## Families
 
-914 families, 2024 functions in a family, largest 74 members; 7944 edges scored here that retrieval never proposed
+904 families, 1995 functions in a family, largest 74 members; 7935 edges scored here that retrieval never proposed
 
 ### Family 1 — 73 members, every pair `>= 0.34` code-shape, evidence `50365`  (2205 edges scored here)
 
@@ -1731,7 +1732,7 @@ _Not drawn: 74 members is 2701 connections. Every one of them holds — that is 
 
 _64 more members not listed._
 
-_909 more families not listed._
+_899 more families not listed._
 
-_2 component(s) too large or too dense to enumerate (sizes 231, 699); their families are not reported._
+_2 component(s) too large or too dense to enumerate (sizes 231, 695); their families are not reported._
 

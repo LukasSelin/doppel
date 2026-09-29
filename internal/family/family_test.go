@@ -136,6 +136,29 @@ func TestCompletionDoesNotInventEdges(t *testing.T) {
 	}
 }
 
+// Completion repairs retrieval's budget, never its judgement. The amd64 and
+// arm64 kernels here are the same shape, and the pipeline refuses the pair
+// because no build compiles both; a generic caller paired with each must not
+// hand that edge back through the component.
+func TestCompletionRespectsBuildTargets(t *testing.T) {
+	u := units(3)
+	for i := range u {
+		u[i].Fingerprint = shape(7)
+	}
+	u[0].Targets = 1 << 0 // one build target
+	u[1].Targets = 1 << 1 // another, disjoint
+	pairs := []analyzer.SimilarPair{pair(0, 2, 1.0), pair(1, 2, 1.0)}
+
+	fams, stats := Build(u, pairs, nil, DefaultOptions())
+
+	if len(fams) != 0 {
+		t.Errorf("completion joined two build targets into %d families: %+v", len(fams), fams)
+	}
+	if stats.Completed != 0 {
+		t.Errorf("Stats.Completed = %d, want 0", stats.Completed)
+	}
+}
+
 // A function can sit in more than one maximal clique, and choosing between
 // them would be a judgement the tool cannot justify. Both are reported, and
 // the shared member is counted once.
