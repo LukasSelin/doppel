@@ -9,7 +9,7 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `95bc654` |
+| doppel | `7eb32b6` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -43,7 +43,7 @@ Families: 904 over 635 components, 1995 functions in a family, 7935 edges comple
 
 # Code Similarity Report
 
-**Functions analyzed:** 5623 | **Threshold:** 0.38 | **Pairs found:** 10
+**Functions analyzed:** 5623 | **Threshold:** 0.33 | **Pairs found:** 10
 
 ---
 

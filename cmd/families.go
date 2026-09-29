@@ -123,7 +123,7 @@ func runFamilies(cmd *cobra.Command, args []string) error {
 	}
 	if len(fams) == 0 {
 		fmt.Fprintf(cmd.OutOrStdout(), "\nNo families found among %d functions. Nothing here has three or more mutually similar members at code-shape >= %.2f.\n",
-			len(res.Units), familiesMin)
+			len(res.Units), o.Min)
 		return nil
 	}
 	// 0: a census lists everything it found.

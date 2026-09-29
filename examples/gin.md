@@ -9,7 +9,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `e65f1c6` |
+| doppel | `7eb32b6` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -40,7 +40,7 @@ Families: 35 over 58 components, 169 functions in a family, 211 edges completed
 
 # Code Similarity Report
 
-**Functions analyzed:** 497 | **Threshold:** 0.38 | **Pairs found:** 10
+**Functions analyzed:** 497 | **Threshold:** 0.41 | **Pairs found:** 10
 
 ---
 
