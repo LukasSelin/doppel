@@ -9,7 +9,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `e65f1c6` |
+| doppel | `4aa3b83` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -520,142 +520,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #3 — Code-shape: `0.6290`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `gin.go:581` | `gin.*Engine.RunUnix` | `(string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.58, http.Server+engine.Handler 0.47 |
-| **B** | `gin.go:645` | `gin.*Engine.RunListener` | `(net.Listener) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.61, http.Server+engine.Handler 0.51 |
-
-**Explain:** differs by two extra defer, one extra assign, one extra if, and 7 more kinds
-
-**Profile A:** `http.Server+engine.Handler` 1.00 (dominance)
-
-**Profile B:** `http.Server+engine.Handler` 1.00 (dominance)
-
-**Code similarity:** `wl 0.57  flow 0.94  nesting 0.99  sig 0.33  size 0.69`
-
-**Containment:** `0.84` — most of the smaller body's shape is inside the larger
-
-**Evidence:** `294.88` (shape 278.72, concept 3.89, call 12.27)
-
-**Trophic:** `0.85`
-
-**Shared structure:**
-
-- `5.67` — `depth-1 EXPRSTMT` ×2
-- `5.67` — `depth-0 CALL` ×2
-- `4.78` — `depth-3 UNARY`
-
-**Concept views:** shape `1.00`, corpus `0.93`, feature `0.94`, a-in-b `1.00`, b-in-a `0.94`
-
-**Shared vocabulary:** `id:and`, `id:listener`, `id:listen`
-
-**Structural overlap:** `0.72` (merge-worthy)
-
-- share 5 callees: [debugPrint, debugPrintError, engine.Handler, engine.isUnsafeTrustedProxies, server.Serve]
-- overlapping call-graph neighborhoods (1.00): 19 shared
-- share patterns: [delims.Left+delims.Right+engine.SetHTMLTemplate, http.Server+engine.Handler]
-- both are orchestrator functions
-- same package
-- callees do related work (1.00): [fmt.Fprintf+runtime, gin.debugPrint+atomic, gin.IsDebugging+gin.debugPrint, delims.Left+delims.Right+engine.SetHTMLTemplate]
-- same visibility
-- same receiver type: Engine
-- call into same packages: [gin]
-
----
-
-## Match #4 — Code-shape: `0.7507`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `gin.go:561` | `gin.*Engine.RunTLS` | `(string, string, string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.62, http.Server+engine.Handler 0.53 |
-| **B** | `gin.go:630` | `gin.*Engine.RunQUIC` | `(string, string, string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.63, http.Server+engine.Handler 0.53 |
-
-**Explain:** differs by one extra assign, two extra call, two extra key-value, and 4 more kinds
-
-**Profile A:** `http.Server+engine.Handler` 1.00 (dominance)
-
-**Profile B:** `http.Server+engine.Handler` 1.00 (dominance)
-
-**Code similarity:** `wl 0.58  flow 1.00  nesting 1.00  sig 1.00  size 0.79`
-
-**Containment:** `0.82`
-
-**Evidence:** `225.00` (shape 208.43, concept 4.30, call 12.27)
-
-**Trophic:** `0.86`
-
-**Shared structure:**
-
-- `5.67` — `depth-1 EXPRSTMT` ×2
-- `5.67` — `depth-0 CALL` ×2
-- `3.87` — `depth-3 CALL`
-
-**Concept views:** shape `1.00`, corpus `0.99`, feature `0.98`, a-in-b `1.00`, b-in-a `0.98`
-
-**Shared vocabulary:** `id:and`, `id:listener`, `id:listen`
-
-**Structural overlap:** `0.76` (merge-worthy)
-
-- share 4 callees: [debugPrint, debugPrintError, engine.Handler, engine.isUnsafeTrustedProxies]
-- overlapping call-graph neighborhoods (1.00): 19 shared
-- share patterns: [delims.Left+delims.Right+engine.SetHTMLTemplate, http.Server+engine.Handler]
-- both are orchestrator functions
-- same package
-- callees do related work (1.00): [fmt.Fprintf+runtime, gin.debugPrint+atomic, gin.IsDebugging+gin.debugPrint, delims.Left+delims.Right+engine.SetHTMLTemplate]
-- same visibility
-- same receiver type: Engine
-- call into same packages: [gin]
-
----
-
-## Match #5 — Code-shape: `0.6576`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `gin.go:288` | `gin.*Engine.LoadHTMLFiles` | `(...string)` | delims.Left+delims.Right 0.61, delims.Left+delims.Right+engine.SetHTMLTemplate 0.60 |
-| **B** | `gin.go:300` | `gin.*Engine.LoadHTMLFS` | `(http.FileSystem, ...string)` | delims.Left+delims.Right 0.60, delims.Left+delims.Right+engine.SetHTMLTemplate 0.59 |
-
-**Explain:** differs by two extra call, two extra key-value, one extra composite literal, and 2 more kinds
-
-**Profile A:** `delims.Left+delims.Right` 1.00 (dominance)
-
-**Profile B:** `delims.Left+delims.Right` 1.00 (dominance)
-
-**Code similarity:** `wl 0.55  flow 1.00  nesting 1.00  sig 0.50  size 0.87`
-
-**Containment:** `0.75`
-
-**Evidence:** `234.18` (shape 206.68, concept 3.79, call 23.71)
-
-**Trophic:** `0.84`
-
-**Shared structure:**
-
-- `5.98` — `depth-3 KV` ×2
-- `5.98` — `depth-2 KV` ×2
-- `5.82` — `depth-1 KV` ×2
-
-**Concept views:** shape `1.00`, corpus `0.98`, feature `0.98`, a-in-b `0.98`, b-in-a `1.00`
-
-**Shared vocabulary:** `call:binding.mapForm`, `call:gin.*Engine.SetHTMLTemplate`, `id:lazyinit`
-
-**Structural overlap:** `0.77` (merge-worthy)
-
-- share 6 callees: [Delims, Funcs, IsDebugging, engine.SetHTMLTemplate, template.Must, template.New]
-- overlapping call-graph neighborhoods (1.00): 11 shared
-- share patterns: [delims.Left+delims.Right, delims.Left+delims.Right+engine.SetHTMLTemplate]
-- both are orchestrator functions
-- same package
-- callees do related work (1.00): [gin.debugPrint+atomic, gin.IsDebugging+gin.debugPrint, tree.method+tree.root, writermem.WriteHeaderNow+c.writermem, delims.Left+delims.Right, delims.Left+delims.Right+engine.SetHTMLTemplate]
-- same visibility
-- same receiver type: Engine
-- call into same packages: [gin]
-
----
-
-## Match #6 — Code-shape: `0.9625`
+## Match #3 — Code-shape: `0.9625`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -700,7 +565,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #7 — Code-shape: `1.0000`
+## Match #4 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -744,7 +609,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #8 — Code-shape: `1.0000`
+## Match #5 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -790,7 +655,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #9 — Code-shape: `1.0000`
+## Match #6 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -836,7 +701,52 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #10 — Code-shape: `1.0000`
+## Match #7 — Code-shape: `0.7507`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `gin.go:561` | `gin.*Engine.RunTLS` | `(string, string, string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.62, http.Server+engine.Handler 0.53 |
+| **B** | `gin.go:630` | `gin.*Engine.RunQUIC` | `(string, string, string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.63, http.Server+engine.Handler 0.53 |
+
+**Explain:** differs by one extra assign, two extra call, two extra key-value, and 4 more kinds
+
+**Profile A:** `http.Server+engine.Handler` 1.00 (dominance)
+
+**Profile B:** `http.Server+engine.Handler` 1.00 (dominance)
+
+**Code similarity:** `wl 0.58  flow 1.00  nesting 1.00  sig 1.00  size 0.79`
+
+**Containment:** `0.82`
+
+**Evidence:** `225.00` (shape 208.43, concept 4.30, call 12.27)
+
+**Trophic:** `0.86`
+
+**Shared structure:**
+
+- `5.67` — `depth-1 EXPRSTMT` ×2
+- `5.67` — `depth-0 CALL` ×2
+- `3.87` — `depth-3 CALL`
+
+**Concept views:** shape `1.00`, corpus `0.99`, feature `0.98`, a-in-b `1.00`, b-in-a `0.98`
+
+**Shared vocabulary:** `id:and`, `id:listener`, `id:listen`
+
+**Structural overlap:** `0.76` (merge-worthy)
+
+- share 4 callees: [debugPrint, debugPrintError, engine.Handler, engine.isUnsafeTrustedProxies]
+- overlapping call-graph neighborhoods (1.00): 19 shared
+- share patterns: [delims.Left+delims.Right+engine.SetHTMLTemplate, http.Server+engine.Handler]
+- both are orchestrator functions
+- same package
+- callees do related work (1.00): [fmt.Fprintf+runtime, gin.debugPrint+atomic, gin.IsDebugging+gin.debugPrint, delims.Left+delims.Right+engine.SetHTMLTemplate]
+- same visibility
+- same receiver type: Engine
+- call into same packages: [gin]
+
+---
+
+## Match #8 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -879,6 +789,96 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - callees do related work (1.00): [w.WriteHeaderNow+w.ResponseWriter, writermem.WriteHeaderNow+c.writermem]
 - same visibility
 - both are methods, on TOML and YAML
+- call into same packages: [gin]
+
+---
+
+## Match #9 — Code-shape: `0.6290`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `gin.go:581` | `gin.*Engine.RunUnix` | `(string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.58, http.Server+engine.Handler 0.47 |
+| **B** | `gin.go:645` | `gin.*Engine.RunListener` | `(net.Listener) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.61, http.Server+engine.Handler 0.51 |
+
+**Explain:** differs by two extra defer, one extra assign, one extra if, and 7 more kinds
+
+**Profile A:** `http.Server+engine.Handler` 1.00 (dominance)
+
+**Profile B:** `http.Server+engine.Handler` 1.00 (dominance)
+
+**Code similarity:** `wl 0.57  flow 0.94  nesting 0.99  sig 0.33  size 0.69`
+
+**Containment:** `0.84` — most of the smaller body's shape is inside the larger
+
+**Evidence:** `294.88` (shape 278.72, concept 3.89, call 12.27)
+
+**Trophic:** `0.85`
+
+**Shared structure:**
+
+- `5.67` — `depth-1 EXPRSTMT` ×2
+- `5.67` — `depth-0 CALL` ×2
+- `4.78` — `depth-3 UNARY`
+
+**Concept views:** shape `1.00`, corpus `0.93`, feature `0.94`, a-in-b `1.00`, b-in-a `0.94`
+
+**Shared vocabulary:** `id:and`, `id:listener`, `id:listen`
+
+**Structural overlap:** `0.72` (merge-worthy)
+
+- share 5 callees: [debugPrint, debugPrintError, engine.Handler, engine.isUnsafeTrustedProxies, server.Serve]
+- overlapping call-graph neighborhoods (1.00): 19 shared
+- share patterns: [delims.Left+delims.Right+engine.SetHTMLTemplate, http.Server+engine.Handler]
+- both are orchestrator functions
+- same package
+- callees do related work (1.00): [fmt.Fprintf+runtime, gin.debugPrint+atomic, gin.IsDebugging+gin.debugPrint, delims.Left+delims.Right+engine.SetHTMLTemplate]
+- same visibility
+- same receiver type: Engine
+- call into same packages: [gin]
+
+---
+
+## Match #10 — Code-shape: `0.6576`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `gin.go:288` | `gin.*Engine.LoadHTMLFiles` | `(...string)` | delims.Left+delims.Right 0.61, delims.Left+delims.Right+engine.SetHTMLTemplate 0.60 |
+| **B** | `gin.go:300` | `gin.*Engine.LoadHTMLFS` | `(http.FileSystem, ...string)` | delims.Left+delims.Right 0.60, delims.Left+delims.Right+engine.SetHTMLTemplate 0.59 |
+
+**Explain:** differs by two extra call, two extra key-value, one extra composite literal, and 2 more kinds
+
+**Profile A:** `delims.Left+delims.Right` 1.00 (dominance)
+
+**Profile B:** `delims.Left+delims.Right` 1.00 (dominance)
+
+**Code similarity:** `wl 0.55  flow 1.00  nesting 1.00  sig 0.50  size 0.87`
+
+**Containment:** `0.75`
+
+**Evidence:** `234.18` (shape 206.68, concept 3.79, call 23.71)
+
+**Trophic:** `0.84`
+
+**Shared structure:**
+
+- `5.98` — `depth-3 KV` ×2
+- `5.98` — `depth-2 KV` ×2
+- `5.82` — `depth-1 KV` ×2
+
+**Concept views:** shape `1.00`, corpus `0.98`, feature `0.98`, a-in-b `0.98`, b-in-a `1.00`
+
+**Shared vocabulary:** `call:binding.mapForm`, `call:gin.*Engine.SetHTMLTemplate`, `id:lazyinit`
+
+**Structural overlap:** `0.77` (merge-worthy)
+
+- share 6 callees: [Delims, Funcs, IsDebugging, engine.SetHTMLTemplate, template.Must, template.New]
+- overlapping call-graph neighborhoods (1.00): 11 shared
+- share patterns: [delims.Left+delims.Right, delims.Left+delims.Right+engine.SetHTMLTemplate]
+- both are orchestrator functions
+- same package
+- callees do related work (1.00): [gin.debugPrint+atomic, gin.IsDebugging+gin.debugPrint, tree.method+tree.root, writermem.WriteHeaderNow+c.writermem, delims.Left+delims.Right, delims.Left+delims.Right+engine.SetHTMLTemplate]
+- same visibility
+- same receiver type: Engine
 - call into same packages: [gin]
 
 ---

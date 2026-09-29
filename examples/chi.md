@@ -9,7 +9,7 @@ HTTP router; a narrow core with a middleware package beside it
 | Corpus | [chi](https://github.com/go-chi/chi) |
 | Pinned at | `v5.3.2` (`38939062c5df4d3e8814aad1a488983112627ced`) |
 | Project since | 2015 |
-| doppel | `e65f1c6` |
+| doppel | `4aa3b83` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -36,7 +36,7 @@ Habitats: 2 modeled, 0 misfits; most uniform chi (norm 0.92), most diverse middl
 Conventions: strongest mx.handle+chi.*Mux.handle (0.89), loosest mx.inline+mx.handler (0.23)
 Ecosystems: 162 profiled (121 dominance, 41 coalition, 0 conflict, 0 weak)
 Families: 6 over 16 components, 28 functions in a family, 9 edges completed
-  1 pairs suppressed by max-per-func=2
+  3 pairs suppressed by max-per-func=2
 ```
 
 # Code Similarity Report
@@ -191,7 +191,7 @@ The concept signal on each compared pair is read three ways — what the taxonom
 
 Each function is also an arena where its candidate concepts compete for its evidence. 162 functions reached an equilibrium: **121** settled on a single concept, **41** on a coalition, **0** hold concepts this corpus says do not go together.
 
-_1 further pairs were held back so no single function fills the report._
+_3 further pairs were held back so no single function fills the report._
 
 ### Corpus metrics
 
@@ -365,96 +365,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #1 — Code-shape: `0.7890`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `tree.go:559` | `chi.*node.findEdge` | `(nodeTyp, byte) (*node)` | h.handler+n.endpoints 0.51 |
-| **B** | `tree.go:850` | `chi.nodes.findEdge` | `(byte) (*node)` | h.handler+n.endpoints 0.46 |
-
-**Explain:** differs by two extra case, one extra assign, one extra return, and 5 more kinds
-
-**Profile A:** `h.handler+n.endpoints` 1.00 (dominance)
-
-**Profile B:** `h.handler+n.endpoints` 1.00 (dominance)
-
-**Code similarity:** `wl 0.77  flow 0.96  nesting 0.74  sig 0.67  size 0.80`
-
-**Containment:** `0.97`
-
-**Evidence:** `422.29` (shape 421.12, concept 1.17, call 0.00)
-
-**Trophic:** `0.94`
-
-**Shared structure:**
-
-- `9.89` — `depth-3 SEL` ×3
-- `9.89` — `depth-2 SEL` ×3
-- `8.42` — `depth-3 BIN` ×2
-
-**Concept views:** shape `1.00`, corpus `0.89`, feature `0.89`, a-in-b `0.89`, b-in-a `1.00`
-
-**Shared vocabulary:** `call:chi.patNextSegment`, `id:catch`, `id:child`
-
-**Structural overlap:** `0.66` (merge-worthy)
-
-- share 1 callees: [len]
-- share patterns: [h.handler+n.endpoints]
-- both are leaf functions
-- same package
-- same visibility
-- both are methods, on *node and nodes
-
----
-
-## Match #2 — Code-shape: `0.6878`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `middleware/recoverer.go:132` | `middleware.prettyStack.decorateFuncCallLine` | `(string, bool, int) (string, error)` | buf.String+bytes.Buffer 0.47, cw.ResponseWriter+cw.writer 0.44 |
-| **B** | `middleware/recoverer.go:172` | `middleware.prettyStack.decorateSourceLine` | `(string, bool, int) (string, error)` | buf.String+bytes.Buffer 0.49, cw.ResponseWriter+cw.writer 0.45 |
-
-**Explain:** differs by four extra assign, one extra if, five extra binary, and 7 more kinds
-
-**Profile A:** `cw.ResponseWriter+cw.writer` 0.73, `buf.String+bytes.Buffer` 0.27 (dominance)
-
-**Profile B:** `cw.ResponseWriter+cw.writer` 0.73, `buf.String+bytes.Buffer` 0.27 (dominance)
-
-**Code similarity:** `wl 0.49  flow 1.00  nesting 0.90  sig 1.00  size 0.99`
-
-**Containment:** `0.67`
-
-**Evidence:** `516.80` (shape 499.09, concept 2.58, call 15.13)
-
-**Trophic:** `0.76`
-
-**Shared structure:**
-
-- `13.18` — `depth-1 EXPRSTMT` ×4
-- `13.18` — `depth-0 CALL` ×4
-- `11.84` — `depth-3 LIT` ×11
-
-**Concept views:** shape `1.00`, corpus `0.96`, feature `0.96`, a-in-b `1.00`, b-in-a `0.96`
-
-**Shared vocabulary:** `id:debug`, `id:green`, `id:magenta`
-
-**Structural overlap:** `0.94` (merge-worthy)
-
-- share 6 callees: [buf.String, cW, errors.New, string, strings.Index, strings.LastIndex]
-- share 1 callers: [middleware.prettyStack.decorateLine]
-- overlapping call-graph neighborhoods (1.00): 5 shared
-- share patterns: [buf.String+bytes.Buffer, cw.ResponseWriter+cw.writer]
-- both are leaf functions
-- same package
-- callers do related work (1.00): [strings.TrimSpace+space, fmt.Sprintf+r.Context]
-- same visibility
-- same receiver type: prettyStack
-- called from same packages: [middleware]
-- call into same packages: [middleware]
-
----
-
-## Match #3 — Code-shape: `0.8418`
+## Match #1 — Code-shape: `0.8418`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -502,49 +413,96 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #4 — Code-shape: `0.6090`
+## Match #2 — Code-shape: `0.7890`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
-| **A** | `middleware/content_encoding.go:10` | `middleware.AllowContentEncoding` | `(...string) (func(next http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+Header.Get 0.53, http.StatusUnsupportedMedia…+w.WriteHeader 0.51, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.50 |
-| **B** | `middleware/content_type.go:20` | `middleware.AllowContentType` | `(...string) (func(http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+Header.Get 0.51, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.49, http.StatusUnsupportedMedia…+w.WriteHeader 0.49 |
+| **A** | `tree.go:559` | `chi.*node.findEdge` | `(nodeTyp, byte) (*node)` | h.handler+n.endpoints 0.51 |
+| **B** | `tree.go:850` | `chi.nodes.findEdge` | `(byte) (*node)` | h.handler+n.endpoints 0.46 |
 
-**Explain:** differs by two extra assign, one extra range, two extra call, and 6 more kinds
+**Explain:** differs by two extra case, one extra assign, one extra return, and 5 more kinds
 
-**Profile A:** `http.StatusUnsupportedMedia…+Header.Get` 0.51, `http.StatusUnsupportedMedia…+w.WriteHeader` 0.46 (coalition)
+**Profile A:** `h.handler+n.endpoints` 1.00 (dominance)
 
-**Profile B:** `http.StatusUnsupportedMedia…+Header.Get` 0.86, `http.StatusUnsupportedMedia…+Header.Get+context.WithValue` 0.14 (dominance)
+**Profile B:** `h.handler+n.endpoints` 1.00 (dominance)
 
-**Code similarity:** `wl 0.52  flow 0.98  nesting 0.98  sig 0.33  size 0.98`
+**Code similarity:** `wl 0.77  flow 0.96  nesting 0.74  sig 0.67  size 0.80`
 
-**Containment:** `0.70`
+**Containment:** `0.97`
 
-**Evidence:** `370.75` (shape 357.89, concept 4.60, call 8.27)
+**Evidence:** `422.29` (shape 421.12, concept 1.17, call 0.00)
 
-**Trophic:** `0.79`
+**Trophic:** `0.94`
 
 **Shared structure:**
 
-- `7.61` — `depth-3 STRUCTTYPE` ×2
-- `7.61` — `depth-2 STRUCTTYPE` ×2
-- `7.61` — `depth-1 STRUCTTYPE` ×2
+- `9.89` — `depth-3 SEL` ×3
+- `9.89` — `depth-2 SEL` ×3
+- `8.42` — `depth-3 BIN` ×2
 
-**Concept views:** shape `1.00`, corpus `0.96`, feature `0.96`, a-in-b `0.96`, b-in-a `1.00`
+**Concept views:** shape `1.00`, corpus `0.89`, feature `0.89`, a-in-b `0.89`, b-in-a `1.00`
 
-**Shared vocabulary:** `id:media`, `id:unsupported`, `sel:http.StatusUnsupportedMediaType`
+**Shared vocabulary:** `call:chi.patNextSegment`, `id:catch`, `id:child`
 
-**Structural overlap:** `0.65` (merge-worthy)
+**Structural overlap:** `0.66` (merge-worthy)
 
-- share 7 callees: [http.HandlerFunc, len, make, next.ServeHTTP, strings.ToLower, strings.TrimSpace, w.WriteHeader]
-- share patterns: [http.StatusUnsupportedMedia…+Header.Get, http.StatusUnsupportedMedia…+Header.Get+context.WithValue, http.StatusUnsupportedMedia…+w.WriteHeader]
+- share 1 callees: [len]
+- share patterns: [h.handler+n.endpoints]
 - both are leaf functions
 - same package
 - same visibility
-- same receiver type: plain functions
+- both are methods, on *node and nodes
 
 ---
 
-## Match #5 — Code-shape: `0.6883`
+## Match #3 — Code-shape: `0.6878`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `middleware/recoverer.go:132` | `middleware.prettyStack.decorateFuncCallLine` | `(string, bool, int) (string, error)` | buf.String+bytes.Buffer 0.47, cw.ResponseWriter+cw.writer 0.44 |
+| **B** | `middleware/recoverer.go:172` | `middleware.prettyStack.decorateSourceLine` | `(string, bool, int) (string, error)` | buf.String+bytes.Buffer 0.49, cw.ResponseWriter+cw.writer 0.45 |
+
+**Explain:** differs by four extra assign, one extra if, five extra binary, and 7 more kinds
+
+**Profile A:** `cw.ResponseWriter+cw.writer` 0.73, `buf.String+bytes.Buffer` 0.27 (dominance)
+
+**Profile B:** `cw.ResponseWriter+cw.writer` 0.73, `buf.String+bytes.Buffer` 0.27 (dominance)
+
+**Code similarity:** `wl 0.49  flow 1.00  nesting 0.90  sig 1.00  size 0.99`
+
+**Containment:** `0.67`
+
+**Evidence:** `516.80` (shape 499.09, concept 2.58, call 15.13)
+
+**Trophic:** `0.76`
+
+**Shared structure:**
+
+- `13.18` — `depth-1 EXPRSTMT` ×4
+- `13.18` — `depth-0 CALL` ×4
+- `11.84` — `depth-3 LIT` ×11
+
+**Concept views:** shape `1.00`, corpus `0.96`, feature `0.96`, a-in-b `1.00`, b-in-a `0.96`
+
+**Shared vocabulary:** `id:debug`, `id:green`, `id:magenta`
+
+**Structural overlap:** `0.94` (merge-worthy)
+
+- share 6 callees: [buf.String, cW, errors.New, string, strings.Index, strings.LastIndex]
+- share 1 callers: [middleware.prettyStack.decorateLine]
+- overlapping call-graph neighborhoods (1.00): 5 shared
+- share patterns: [buf.String+bytes.Buffer, cw.ResponseWriter+cw.writer]
+- both are leaf functions
+- same package
+- callers do related work (1.00): [strings.TrimSpace+space, fmt.Sprintf+r.Context]
+- same visibility
+- same receiver type: prettyStack
+- called from same packages: [middleware]
+- call into same packages: [middleware]
+
+---
+
+## Match #4 — Code-shape: `0.6883`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -579,6 +537,48 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 - share 5 callees: [chi.RouteContext, http.HandlerFunc, len, next.ServeHTTP, r.Context]
 - share patterns: [URL.RawPath+chi.RouteContext, http.StatusUnsupportedMedia…+chi.RouteContext]
+- both are leaf functions
+- same package
+- same visibility
+- same receiver type: plain functions
+
+---
+
+## Match #5 — Code-shape: `0.6090`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `middleware/content_encoding.go:10` | `middleware.AllowContentEncoding` | `(...string) (func(next http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+Header.Get 0.53, http.StatusUnsupportedMedia…+w.WriteHeader 0.51, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.50 |
+| **B** | `middleware/content_type.go:20` | `middleware.AllowContentType` | `(...string) (func(http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+Header.Get 0.51, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.49, http.StatusUnsupportedMedia…+w.WriteHeader 0.49 |
+
+**Explain:** differs by two extra assign, one extra range, two extra call, and 6 more kinds
+
+**Profile A:** `http.StatusUnsupportedMedia…+Header.Get` 0.51, `http.StatusUnsupportedMedia…+w.WriteHeader` 0.46 (coalition)
+
+**Profile B:** `http.StatusUnsupportedMedia…+Header.Get` 0.86, `http.StatusUnsupportedMedia…+Header.Get+context.WithValue` 0.14 (dominance)
+
+**Code similarity:** `wl 0.52  flow 0.98  nesting 0.98  sig 0.33  size 0.98`
+
+**Containment:** `0.70`
+
+**Evidence:** `370.75` (shape 357.89, concept 4.60, call 8.27)
+
+**Trophic:** `0.79`
+
+**Shared structure:**
+
+- `7.61` — `depth-3 STRUCTTYPE` ×2
+- `7.61` — `depth-2 STRUCTTYPE` ×2
+- `7.61` — `depth-1 STRUCTTYPE` ×2
+
+**Concept views:** shape `1.00`, corpus `0.96`, feature `0.96`, a-in-b `0.96`, b-in-a `1.00`
+
+**Shared vocabulary:** `id:media`, `id:unsupported`, `sel:http.StatusUnsupportedMediaType`
+
+**Structural overlap:** `0.65` (merge-worthy)
+
+- share 7 callees: [http.HandlerFunc, len, make, next.ServeHTTP, strings.ToLower, strings.TrimSpace, w.WriteHeader]
+- share patterns: [http.StatusUnsupportedMedia…+Header.Get, http.StatusUnsupportedMedia…+Header.Get+context.WithValue, http.StatusUnsupportedMedia…+w.WriteHeader]
 - both are leaf functions
 - same package
 - same visibility
@@ -631,52 +631,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #7 — Code-shape: `0.5097`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `middleware/client_ip.go:92` | `middleware.ClientIPFromXFF` | `(...string) (func(http.Handler) http.Handler)` | netip.Addr+context.WithValue 0.53, context.WithValue+r.WithContext 0.50, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.48 |
-| **B** | `middleware/client_ip.go:149` | `middleware.ClientIPFromXFFTrustedProxies` | `(int) (func(http.Handler) http.Handler)` | context.WithValue+r.WithContext 0.54, netip.Addr+context.WithValue 0.54, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.51 |
-
-**Explain:** differs by one extra assign, one extra if, one extra increment, and 11 more kinds
-
-**Profile A:** `context.WithValue+r.WithContext` 0.43, `netip.Addr+context.WithValue` 0.43, `http.StatusUnsupportedMedia…+Header.Get+context.WithValue` 0.14 (coalition)
-
-**Profile B:** `context.WithValue+r.WithContext` 0.45, `netip.Addr+context.WithValue` 0.41, `http.StatusUnsupportedMedia…+Header.Get+context.WithValue` 0.15 (coalition)
-
-**Code similarity:** `wl 0.36  flow 0.97  nesting 0.98  sig 0.33  size 0.87`
-
-**Containment:** `0.56`
-
-**Evidence:** `309.67` (shape 291.69, concept 4.68, call 13.29)
-
-**Trophic:** `0.72`
-
-**Shared structure:**
-
-- `7.15` — `depth-0 FIELD` ×6
-- `6.59` — `depth-1 FIELDLIST` ×4
-- `5.72` — `depth-0 FIELDLIST` ×5
-
-**Concept views:** shape `1.00`, corpus `0.95`, feature `0.95`, a-in-b `1.00`, b-in-a `0.95`
-
-**Shared vocabulary:** `call:middleware.parseHeaderAddr`, `id:trusted`, `sel:netip.Addr`
-
-**Structural overlap:** `0.70` (merge-worthy)
-
-- share 7 callees: [context.WithValue, h.ServeHTTP, http.HandlerFunc, parseHeaderAddr, r.Context, r.WithContext, walkXFF]
-- overlapping call-graph neighborhoods (0.75): 3 shared
-- share patterns: [context.WithValue+r.WithContext, http.StatusUnsupportedMedia…+Header.Get+context.WithValue, netip.Addr+context.WithValue]
-- both are orchestrator functions
-- same package
-- callees do related work (1.00): [strings.TrimSpace+space, netip.Addr+context.WithValue]
-- same visibility
-- same receiver type: plain functions
-- call into same packages: [middleware]
-
----
-
-## Match #8 — Code-shape: `1.0000`
+## Match #7 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -720,7 +675,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #9 — Code-shape: `1.0000`
+## Match #8 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -764,7 +719,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #10 — Code-shape: `1.0000`
+## Match #9 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -805,6 +760,50 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - same package
 - same visibility
 - both are methods, on *flushHijackWriter and *httpFancyWriter
+
+---
+
+## Match #10 — Code-shape: `1.0000`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `middleware/wrap_writer.go:160` | `middleware.*hijackWriter.Hijack` | `() (net.Conn, *bufio.ReadWriter, error)` | b.ResponseWriter+b.discard 0.64 |
+| **B** | `middleware/wrap_writer.go:178` | `middleware.*flushHijackWriter.Hijack` | `() (net.Conn, *bufio.ReadWriter, error)` | b.ResponseWriter+b.discard 0.64 |
+
+**Kind:** interface implementations — both implement `Hijack() (net.Conn, *bufio.ReadWriter, error)` on `*hijackWriter` and `*flushHijackWriter`, in package `middleware`
+
+**Explain:** identical after rename
+
+**Profile A:** `b.ResponseWriter+b.discard` 1.00 (dominance)
+
+**Profile B:** `b.ResponseWriter+b.discard` 1.00 (dominance)
+
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Containment:** `1.00`
+
+**Evidence:** `56.64` (shape 55.21, concept 1.43, call 0.00)
+
+**Trophic:** `1.00`
+
+**Shared structure:**
+
+- `3.81` — `depth-3 BLOCK`
+- `3.81` — `depth-2 BLOCK`
+- `3.52` — `depth-3 RETURN`
+
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
+
+**Shared vocabulary:** `id:compress`, `id:encoders`, `id:pooled`
+
+**Structural overlap:** `0.68` (merge-worthy)
+
+- share 1 callees: [hj.Hijack]
+- share patterns: [b.ResponseWriter+b.discard]
+- both are leaf functions
+- same package
+- same visibility
+- both are methods, on *hijackWriter and *flushHijackWriter
 
 ---
 

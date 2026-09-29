@@ -73,7 +73,7 @@ broken-tool notice. Stages in execution order:
 6. **Candidate retrieval** — `retriever.Retrieve` runs three per-function top-K channels (WL-label IDF, concept IC, resolved-call IDF — see *Candidate retrieval* below), unions and dedupes them, and computes definitive per-pair evidence masses plus the exact `fingerprint.Breakdown` for every union pair. Retrieval stats go to stderr. `cmd` materializes the candidates into `analyzer.SimilarPair`s (with `Retrieval` set). `analyzer.FindSimilar` still exists as the simple library API but the pipeline no longer calls it.
 7. **Structural comparison** — a `comparator.Comparator` built over a corpus-weighted `ontology.Scorer` scores **every** candidate pair → `pair.Evidence`. Concept and role signals go through the ontology hierarchy, not string equality, and concept matching is weighted by information content computed from this run's tag counts — sharing a near-universal tag is weak evidence, sharing a rare one is strong.
 8. **Structural filter** — when `--struct-min > 0`, pairs below that overlap score are **dropped**. This is a selection stage, not just annotation.
-9. **Rank + report** — `analyzer.SortForReport` orders by corroborated evidence (`Total × OverlapScore × Score × TrophicSim²`, then code-shape, then `AIdx`/`BIdx`), applies the `--max-per-func` diversity cap greedily with backfill, and truncates to `--top`. `reporter.Print` to stdout always; `--output` additionally writes markdown, or the dashboard when the path ends `.html`. Both take a `reporter.Meta`; `--debug` adds per-pair retrieval provenance.
+9. **Rank + report** — `analyzer.SortForReport` orders by corroborated evidence (`Total × OverlapScore × Score² × TrophicSim²`, then code-shape, then `AIdx`/`BIdx`), applies the `--max-per-func` diversity cap greedily with backfill, and truncates to `--top`. `reporter.Print` to stdout always; `--output` additionally writes markdown, or the dashboard when the path ends `.html`. Both take a `reporter.Meta`; `--debug` adds per-pair retrieval provenance.
 
 `docs[i]` describes `units[i]`, and `SimilarPair` carries `AIdx`/`BIdx` into that slice. Evidence
 attachment is a positional lookup, deliberately — an earlier version keyed it on
@@ -226,7 +226,7 @@ as the sixth bar of the code-shape breakdown — and never enters ranking, filte
 `MergeWorthy`. See *Fingerprint scoring*.
 
 The report is **ranked by neither alone**: `analyzer.SortForReport` orders by **corroborated
-evidence** — `Retrieval.Total × Evidence.OverlapScore × Score × TrophicSim²`, with one further
+evidence** — `Retrieval.Total × Evidence.OverlapScore × Score² × TrophicSim²`, with one further
 linear factor `CallSim` (the call-channel Dice: the mutual fraction of the two functions'
 informative call energy) **when both sides live in `_test.go` files** — SUT-aware test
 discounting: two tests are related through what they exercise, not their driver skeleton.
@@ -238,7 +238,17 @@ family-skeleton siblings (a shared compose-send prologue with large unshared bod
 genuine family clones. Trophic² separates them: squared because the Dice, squared, approximates
 the product of the two per-side shared fractions — one discount per side that does its own
 thing. A linear trophic factor verifiably leaves a skeleton sibling within a fraction of a
-percent of a true clone; the golden benchmark pins the separation. This is a *ranking key only*
+percent of a true clone; the golden benchmark pins the separation. **Score is squared too**
+(`RankOptions.ShapePower` 2), for a different reason: code-shape is the one factor that separates
+labelled merges from labelled false positives, and linear it was outvoted by mass and overlap, so
+sibling and mirror methods on one receiver (Get/Set/Delete, Encode/Decode) — as much overlap as a
+real merge, bodies half alike — filled the top 20 of the private labelled corpora. Measured by
+`TestOverlapRank` across cobra and three private corpora: pooled violations 39 → 34, merge mean
+10.5 → 8.5, false-positive mean 212.8 → 215.1; cobra's merge mean 5.3 → 4.8 with its hard
+assertions green. The refactor class pays (9.8 → 11.5), because refactor pairs differ in body by
+definition, and that trade — merges before refactors — was chosen deliberately. 3 goes further both
+ways and was not taken. A `ShapePower` of 0 reads as linear, so an options literal that predates the
+field never drops shape from the key. This is a *ranking key only*
 — the displayed quantities stay unblended. A per-function diversity cap (`--max-per-func`, default 2) then bounds how many pairs
 any one function fills, greedily in rank order with backfill; a suppression count goes to stderr.
 `SortByEvidence` (plain `Retrieval.Total` ordering) remains the simple library API. The report
@@ -3323,15 +3333,13 @@ functions for exactly this reason, and the first version of them did not and fai
     `bound_to`, `declared_in` or all three locality relations moves violations 39 → 37-39. `calls`
     and `exhibits` are load-bearing: zeroing either costs the merges (pooled merge 10.5 → 15). What
     separates the classes is **code-shape** (merge 0.77-1.00 against false-positive 0.50-0.60) and
-    trophic, and the key is only linear in shape, so retrieval mass and overlap outvote it.
+    trophic, and the key was only linear in shape, so retrieval mass and overlap outvoted it.
     Raising shape's power in the key is the one lever that moves every labelled corpus the right way
     on merges and false positives: pooled violations 39 → 34 at shape², 31 at shape³, merge mean
-    10.5 → 8.5 → 7.4, false-positive mean 212.8 → 215.1 → 220.9. The price is the refactor class,
-    9.8 → 11.5 → 13.9, which by definition has differing bodies. **Not adopted**: three of the four
-    labelled corpora carry agent-drafted labels no human has reviewed yet, and trading refactor for
-    merge is a product decision rather than a measurement one. The seam it would need is a
-    `ShapePower` on `analyzer.RankOptions` beside `TrophicPower`; the test applies it by transforming
-    each pair's Score before ranking, so no production code moved.
+    10.5 → 8.5 → 7.4, false-positive mean 212.8 → 215.1 → 220.9, at a refactor cost of 9.8 → 11.5
+    → 13.9. **Shape² was adopted** as `analyzer.RankOptions.ShapePower` (see *Two scores*); the test
+    keeps a shape¹ row so the measurement that set it stays re-runnable. The labels behind it are
+    still largely agent-drafted, so re-run this when they have had a human review.
   - `TestViewsLadder` and `TestViewsBlend` (guard `DOPPEL_BENCH_VIEWS=1`) are the concept-views
     measurement: the first prints, for every fetched rung, how often the shape and feature views
     disagree, in which direction, and the shape×feature quartile grid that judges

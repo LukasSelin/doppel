@@ -39,9 +39,10 @@ func SortByEvidence(pairs []SimilarPair, topN int) []SimilarPair {
 }
 
 // SortForReport is the pipeline's final ranking: corroborated evidence.
-// The rank key is Retrieval.Total × Evidence.OverlapScore × Score ×
+// The rank key is Retrieval.Total × Evidence.OverlapScore × Score² ×
 // TrophicSim² — evidence mass discounted by architectural corroboration,
-// structural similarity, and squared trophic similarity. The first two
+// structural similarity, and squared trophic similarity (Score is squared
+// for the reason DefaultRankOptions gives). The first two
 // factors demote pairs whose mass comes from a verbose shared vocabulary
 // with no other agreement (the drawing-API failure mode); the squared
 // trophic factor separates genuine clone families from family-skeleton
@@ -73,11 +74,42 @@ func SortForReport(pairs []SimilarPair, units []parser.CodeUnit, topN, maxPerFun
 // per call, which is why they are an argument and not a global.
 type RankOptions struct {
 	TrophicPower     float64 // exponent on TrophicSim; 2 in production
+	ShapePower       float64 // exponent on the code-shape Score; 2 in production, 0 reads as 1
 	TestCallDiscount bool    // multiply test/test pairs by CallSim
 }
 
-// DefaultRankOptions is the shipped key: trophic squared, tests discounted.
-func DefaultRankOptions() RankOptions { return RankOptions{TrophicPower: 2, TestCallDiscount: true} }
+// DefaultRankOptions is the shipped key: code-shape and trophic squared,
+// tests discounted.
+//
+// ShapePower is 2 because code-shape is the factor that separates labelled
+// merges from labelled false positives, and a linear factor let retrieval
+// mass and overlap outvote it: sibling and mirror methods on one receiver
+// (Get/Set/Delete, Encode/Decode) carry as much overlap as a real merge and
+// reached the top 20 on bodies that are half alike. Measured over cobra and
+// three private corpora (TestOverlapRank): pooled violations 39 -> 34,
+// merge mean rank 10.5 -> 8.5, false-positive mean 212.8 -> 215.1, cobra's
+// hard assertions green. The price is the refactor class, 9.8 -> 11.5 —
+// pairs whose bodies differ by definition sink — and that trade, merges
+// before refactors, was chosen deliberately. 3 moves further both ways and
+// was not taken.
+func DefaultRankOptions() RankOptions {
+	return RankOptions{TrophicPower: 2, ShapePower: 2, TestCallDiscount: true}
+}
+
+// shapeFactor is the code-shape Score raised to the key's ShapePower. s*s
+// rather than math.Pow for the default, for the reason the trophic factor
+// gives. A zero power reads as linear — the key before the option existed —
+// so an options literal that predates the field never drops shape from the
+// key by omission.
+func shapeFactor(s, power float64) float64 {
+	switch power {
+	case 0, 1:
+		return s
+	case 2:
+		return s * s
+	}
+	return math.Pow(s, power)
+}
 
 // RankKey is the corroborated-evidence ordering quantity SortForReport uses,
 // exposed so a scorecard can print it and a sweep can vary it — there is one
@@ -102,7 +134,7 @@ func RankKey(p SimilarPair, o RankOptions, units []parser.CodeUnit) float64 {
 	} else {
 		trophic = math.Pow(t, o.TrophicPower)
 	}
-	k := p.Retrieval.Total * p.Score * trophic
+	k := p.Retrieval.Total * shapeFactor(p.Score, o.ShapePower) * trophic
 	if p.Evidence != nil {
 		k *= p.Evidence.OverlapScore
 	}

@@ -26,6 +26,7 @@ type overlapVariant struct {
 	name    string
 	weights map[ontology.TermID]float64 // nil = production weights
 	pair    func(p analyzer.SimilarPair) analyzer.SimilarPair
+	rank    func(*analyzer.RankOptions) // nil = DefaultRankOptions
 }
 
 func zeroed(rels ...ontology.TermID) map[ontology.TermID]float64 {
@@ -64,8 +65,8 @@ var overlapVariants = []overlapVariant{
 		}
 		return withOverlap(p, math.Sqrt(p.Evidence.OverlapScore))
 	}},
-	{name: "key shape^2", pair: func(p analyzer.SimilarPair) analyzer.SimilarPair { p.Score *= p.Score; return p }},
-	{name: "key shape^3", pair: func(p analyzer.SimilarPair) analyzer.SimilarPair { p.Score = p.Score * p.Score * p.Score; return p }},
+	{name: "key shape^1 (pre-ShapePower)", rank: func(o *analyzer.RankOptions) { o.ShapePower = 1 }},
+	{name: "key shape^3", rank: func(o *analyzer.RankOptions) { o.ShapePower = 3 }},
 }
 
 // TestOverlapRank asks where the labeled false positives get their rank. The
@@ -73,7 +74,8 @@ var overlapVariants = []overlapVariant{
 // factor of analyzer.RankKey (retrieval Total, OverlapScore, code-shape,
 // trophic) and the twelve overlap signals behind OverlapScore, then the mean
 // of each per label class. The second half ranks the labels under variants
-// that remove one overlap signal or reshape the key, and logs the scorecard
+// that remove one overlap signal or reshape the key — ShapePower included, so
+// the measurement that set it stays re-runnable — and logs the scorecard
 // and the labels that moved. Retrieval is untouched throughout. Asserts
 // nothing.
 //
@@ -120,7 +122,11 @@ func TestOverlapRank(t *testing.T) {
 					r.Pairs[i] = v.pair(p)
 				}
 			}
-			sc := Score(&r, tg.lf)
+			ro := analyzer.DefaultRankOptions()
+			if v.rank != nil {
+				v.rank(&ro)
+			}
+			sc := ScoreWith(&r, tg.lf, ro)
 			if v.weights != nil {
 				run.Rescore(base)
 			}

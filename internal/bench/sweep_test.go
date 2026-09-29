@@ -125,9 +125,19 @@ func sweepVariants() []sweepVariant {
 	rank := func(constant, variant string, ro analyzer.RankOptions) {
 		vs = append(vs, sweepVariant{constant, variant, func(lc *labeledCorpus) Scorecard { return ScoreWith(lc.run, lc.lf, ro) }})
 	}
-	rank("TrophicPower 2", "1", analyzer.RankOptions{TrophicPower: 1, TestCallDiscount: true})
-	rank("TrophicPower 2", "3", analyzer.RankOptions{TrophicPower: 3, TestCallDiscount: true})
-	rank("TestCallDiscount on", "off", analyzer.RankOptions{TrophicPower: 2, TestCallDiscount: false})
+	// Each row varies one field of the shipped key, so every row starts
+	// from DefaultRankOptions rather than a literal that would silently
+	// reset the fields it does not name.
+	ranked := func(edit func(*analyzer.RankOptions)) analyzer.RankOptions {
+		ro := analyzer.DefaultRankOptions()
+		edit(&ro)
+		return ro
+	}
+	rank("TrophicPower 2", "1", ranked(func(o *analyzer.RankOptions) { o.TrophicPower = 1 }))
+	rank("TrophicPower 2", "3", ranked(func(o *analyzer.RankOptions) { o.TrophicPower = 3 }))
+	rank("ShapePower 2", "1", ranked(func(o *analyzer.RankOptions) { o.ShapePower = 1 }))
+	rank("ShapePower 2", "3", ranked(func(o *analyzer.RankOptions) { o.ShapePower = 3 }))
+	rank("TestCallDiscount on", "off", ranked(func(o *analyzer.RankOptions) { o.TestCallDiscount = false }))
 	return vs
 }
 

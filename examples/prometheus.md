@@ -9,7 +9,7 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `95bc654` |
+| doppel | `4aa3b83` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -1187,55 +1187,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #1 — Code-shape: `0.7476`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `discovery/kubernetes/endpoints.go:63` | `kubernetes.NewEndpoints` | `(*slog.Logger, cache.SharedIndexInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, bool, bool, bool, *prometheus.CounterVec) (*Endpoints)` | c.EC2SDConfig+c.ECSSDConfig 0.62, FH.Schema+H.Schema 0.50 |
-| **B** | `discovery/kubernetes/endpointslice.go:62` | `kubernetes.NewEndpointSlice` | `(*slog.Logger, cache.SharedIndexInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, bool, bool, bool, *prometheus.CounterVec) (*EndpointSlice)` | c.EC2SDConfig+c.ECSSDConfig 0.65, FH.Schema+H.Schema 0.51 |
-
-**Explain:** differs by five extra if, four extra assign, one extra range, and 17 more kinds
-
-**Profile A:** `FH.Schema+H.Schema` 0.53, `c.EC2SDConfig+c.ECSSDConfig` 0.47 (coalition)
-
-**Profile B:** `FH.Schema+H.Schema` 0.51, `c.EC2SDConfig+c.ECSSDConfig` 0.49 (coalition)
-
-**Code similarity:** `wl 0.66  flow 0.99  nesting 1.00  sig 0.71  size 0.84`
-
-**Containment:** `0.86`
-
-**Evidence:** `2063.38` (shape 2031.82, concept 3.94, call 27.62)
-
-**Trophic:** `0.88`
-
-**Shared structure:**
-
-- `48.64` — `depth-2 KV` ×10
-- `48.64` — `depth-1 KV` ×10
-- `38.84` — `depth-3 ASSIGN` ×6
-
-**Concept views:** shape `1.00`, corpus `0.96`, feature `0.96`, a-in-b `1.00`, b-in-a `0.96`
-
-**Shared vocabulary:** `call:kubernetes.*clientAdapter.CoreV1`, `call:kubernetes.convertToService`, `call:scrape.isSeriesPartOfFamily`
-
-**Structural overlap:** `0.93` (merge-worthy)
-
-- share 20 callees: [AddEventHandler, Error, RoleService.String, convertToService, e.enqueue, e.enqueueNamespace, e.enqueueNode, eps.GetStore, eventCount.WithLabelValues, l.Error, namespacedName, nodeName, pod.GetStore, promslog.NewNopLogger, serviceUpdate, svc.GetStore, svcAddCount.Inc, svcDeleteCount.Inc, svcUpdateCount.Inc, workqueue.NewTypedWithConfig]
-- share 1 callers: [kubernetes.*Discovery.Run]
-- overlapping call-graph neighborhoods (0.99): 141 shared
-- share patterns: [FH.Schema+H.Schema, c.EC2SDConfig+c.ECSSDConfig]
-- both are orchestrator functions
-- same package
-- callers do related work (1.00): [c.EC2SDConfig+c.ECSSDConfig]
-- callees do related work (0.95): [c.ConvertClassicHistogramsT…+convertnhcb.GetHistogramMet…, appErrs.numDuplicates+appErrs.numExemplarOutOfOrd…, FH.Schema+H.Schema, c.EC2SDConfig+c.ECSSDConfig]
-- same visibility
-- same receiver type: plain functions
-- called from same packages: [kubernetes]
-- call into same packages: [discovery, kubernetes]
-
----
-
-## Match #2 — Code-shape: `0.9174`
+## Match #1 — Code-shape: `0.9174`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1282,136 +1234,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #3 — Code-shape: `0.8310`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `web/ui/mantine-ui/src/pages/AlertsPage.tsx:157` | `pages.AlertsPage` | `()` | formatTime+settingsSlice 0.44 |
-| **B** | `web/ui/mantine-ui/src/pages/RulesPage.tsx:101` | `pages.RulesPage` | `()` | ErrorBoundary+hooks 0.40, data.data+styles 0.25 |
-
-**Explain:** differs by one extra assign, 30 extra binary, 17 extra literal, and 5 more kinds
-
-**Profile A:** `formatTime+settingsSlice` 1.00 (dominance)
-
-**Profile B:** `ErrorBoundary+hooks` 0.60, `data.data+styles` 0.40 (coalition)
-
-**Code similarity:** `wl 0.72  flow 1.00  nesting 1.00  sig 1.00  size 0.92`
-
-**Containment:** `0.90`
-
-**Evidence:** `3204.38` (shape 3204.01, concept 0.37, call 0.00)
-
-**Trophic:** `0.89`
-
-**Shared structure:**
-
-- `61.13` — `depth-2 BIN` ×11
-- `61.13` — `depth-1 BIN` ×11
-- `61.13` — `depth-1 BIN` ×11
-
-**Concept views:** shape `0.25`, corpus `0.08`, feature `0.28`, a-in-b `0.70`, b-in-a `0.32`
-
-**Shared vocabulary:** `id:variant`, `lit:md`, `id:section`
-
-**Structural overlap:** `0.48` (merge-worthy)
-
-- share 23 callees: [Math.ceil, Math.max, Math.min, copy, criteria, currentPageGroups.map, e.stopPropagation, filter, humanizeDurationRelative, items.map, j.toString, now, rem, searchFilter.trim, setActivePage, setSearchFilter, setShowEmptyGroups, shownGroups.slice, useEffect, useMemo, useQueryParam, useSettings, withDefault]
-- related patterns: formatTime+settingsSlice ≈ ErrorBoundary+hooks (both data_transformation, 0.14)
-- both are leaf functions
-- same package
-- same visibility
-- same receiver type: plain functions
-
----
-
-## Match #4 — Code-shape: `0.7552`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `scrape/scrape.go:1589` | `scrape.*scrapeLoopAppender.append` | `([]byte, string, time.Time) (int, int, int, error)` | appErrs.numDuplicates+appErrs.numExemplarOutOfOrd… 0.41 |
-| **B** | `scrape/scrape_append_v2.go:90` | `scrape.*scrapeLoopAppenderV2.append` | `([]byte, string, time.Time) (int, int, int, error)` | — |
-
-**Kind:** diverged copy — `*scrapeLoopAppender.append` and `*scrapeLoopAppenderV2.append` share the stem `scrapeLoopAppender` in package `scrape`
-
-**Explain:** differs by nine extra assign, three extra case, one extra branch, and 15 more kinds
-
-**Profile A:** `b.nums+syms.nameTable+b.syms` 0.38, `b.base+b.del` 0.36, `b.nums+syms.nameTable` 0.26 (coalition)
-
-**Code similarity:** `wl 0.59  flow 1.00  nesting 0.99  sig 1.00  size 0.91`
-
-**Containment:** `0.78`
-
-**Evidence:** `3406.24` (shape 3295.55, concept 0.00, call 110.69)
-
-**Trophic:** `0.83`
-
-**Shared structure:**
-
-- `30.29` — `depth-3 IF` ×4
-- `27.52` — `depth-2 IF` ×4
-- `26.62` — `depth-3 BLOCK` ×4
-
-**Concept views:** shape `0.00`, corpus `0.00`, feature `0.00`, a-in-b `0.00`, b-in-a `0.00`
-
-**Structural overlap:** `0.56` (merge-worthy)
-
-- share 42 callees: [Debug, Error, Inc, Warn, addDropped, addRef, app.Append, append, errors.Is, fmt.Errorf, get, getDropped, isSeriesPartOfFamily, iterDone, len, lset.Get, lset.Has, lset.Hash, lset.IsEmpty, lset.IsValid, lset.String, make, p.Exemplar, p.Help, p.Histogram, p.Labels, p.Next, p.Series, p.StartTimestamp, p.Type, p.Unit, setHelp, setType, setUnit, sl.checkAddError, sl.sampleMutator, slices.SortFunc, string, textparse.New, timestamp.FromTime, trackStaleness, verifyLabelLimits]
-- overlapping call-graph neighborhoods (1.00): 1148 shared
-- both are orchestrator functions
-- same package
-- callees do related work (0.88): [promql.FPoint+labels.FromStrings, h.wbl+h.wal, r.labels+ts.Sub, c.ConvertClassicHistogramsT…+convertnhcb.GetHistogramMet…, h.updateMinMaxTime+ooo.oooMmappedChunks, appErrs.numDuplicates+appErrs.numExemplarOutOfOrd…, HTTPClientConfig.OAuth2+binary.Uvarint]
-- same visibility
-- both are methods, on *scrapeLoopAppender and *scrapeLoopAppenderV2
-- call into same packages: [discovery, labels, scrape, textparse, timestamp, tsdb]
-
----
-
-## Match #5 — Code-shape: `0.6053`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `tsdb/head_wal.go:81` | `tsdb.*Head.loadWAL` | `(*wlog.Reader, *labels.SymbolTable, map[chunks.HeadSeriesRef]chunks.HeadSeriesRef, map[chunks.HeadSeriesRef][]*mmappedChunk, map[chunks.HeadSeriesRef][]*mmappedChunk) (error)` | FH.Schema+H.Schema 0.48, Status.State+buf1.PutBE32int 0.46, Retention.Percentage+Retention.Size 0.46 |
-| **B** | `tsdb/head_wal.go:871` | `tsdb.*Head.loadWBL` | `(*wlog.Reader, *labels.SymbolTable, map[chunks.HeadSeriesRef]chunks.HeadSeriesRef, chunks.ChunkDiskMapperRef) (error)` | Status.State+buf1.PutBE32int 0.50, FH.Schema+H.Schema 0.49, Retention.Percentage+Retention.Size 0.46 |
-
-**Explain:** differs by 33 extra assign, 22 extra if, nine extra range, and 31 more kinds
-
-**Profile A:** `Retention.Percentage+Retention.Size` 0.67, `FH.Schema+H.Schema` 0.33 (dominance)
-
-**Profile B:** `FH.Schema+H.Schema` 0.64, `Retention.Percentage+Retention.Size` 0.36 (dominance)
-
-**Code similarity:** `wl 0.43  flow 0.99  nesting 0.99  sig 0.67  size 0.54`
-
-**Containment:** `0.84` — most of the smaller body's shape is inside the larger
-
-**Evidence:** `4730.35` (shape 4682.22, concept 4.76, call 43.37)
-
-**Trophic:** `0.69`
-
-**Shared structure:**
-
-- `55.67` — `depth-3 CALL` ×9
-- `55.67` — `depth-2 CALL` ×9
-- `39.94` — `depth-2 RANGE` ×6
-
-**Concept views:** shape `1.00`, corpus `0.97`, feature `0.96`, a-in-b `1.00`, b-in-a `0.97`
-
-**Shared vocabulary:** `call:github.com/gogo/protobuf/proto.NewBuffer`, `call:kubernetes.convertToService`, `call:tsdb.*CircularExemplarStorage.AddExemplar`
-
-**Structural overlap:** `0.69` (merge-worthy)
-
-- share 38 callees: [Get, Put, Warn, append, clear, close, closeAndDrain, counterAddNonZero, dec.FloatHistogramSamples, dec.HistogramSamples, dec.Samples, dec.Type, float64, fmt.Errorf, getByID, len, make, min, panic, r.Err, r.Next, r.Offset, r.Record, r.Segment, record.NewDecoder, reuseBuf, reuseHistogramBuf, setup, uint64, unknownHistogramRefs.Add, unknownHistogramRefs.Load, unknownSampleRefs.Add, unknownSampleRefs.Load, unknownSeriesRefs.count, unknownSeriesRefs.merge, wg.Add, wg.Done, wg.Wait]
-- overlapping call-graph neighborhoods (0.98): 1180 shared
-- share patterns: [FH.Schema+H.Schema, Retention.Percentage+Retention.Size, Status.State+buf1.PutBE32int]
-- both are orchestrator functions
-- same package
-- callees do related work (0.63): [r.rdr+r.writeIndex, time.Minute+rules, h.updateMinMaxTime+ooo.oooMmappedChunks, mc.maxTime+mc.minTime, strings.SplitSeq+profile, Retention.Percentage+Retention.Size]
-- same visibility
-- same receiver type: Head
-- call into same packages: [discovery, record, rules, tsdb, wlog]
-
----
-
-## Match #6 — Code-shape: `0.9000`
+## Match #2 — Code-shape: `0.9000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1459,7 +1282,97 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #7 — Code-shape: `0.8778`
+## Match #3 — Code-shape: `0.8310`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `web/ui/mantine-ui/src/pages/AlertsPage.tsx:157` | `pages.AlertsPage` | `()` | formatTime+settingsSlice 0.44 |
+| **B** | `web/ui/mantine-ui/src/pages/RulesPage.tsx:101` | `pages.RulesPage` | `()` | ErrorBoundary+hooks 0.40, data.data+styles 0.25 |
+
+**Explain:** differs by one extra assign, 30 extra binary, 17 extra literal, and 5 more kinds
+
+**Profile A:** `formatTime+settingsSlice` 1.00 (dominance)
+
+**Profile B:** `ErrorBoundary+hooks` 0.60, `data.data+styles` 0.40 (coalition)
+
+**Code similarity:** `wl 0.72  flow 1.00  nesting 1.00  sig 1.00  size 0.92`
+
+**Containment:** `0.90`
+
+**Evidence:** `3204.38` (shape 3204.01, concept 0.37, call 0.00)
+
+**Trophic:** `0.89`
+
+**Shared structure:**
+
+- `61.13` — `depth-2 BIN` ×11
+- `61.13` — `depth-1 BIN` ×11
+- `61.13` — `depth-1 BIN` ×11
+
+**Concept views:** shape `0.25`, corpus `0.08`, feature `0.28`, a-in-b `0.70`, b-in-a `0.32`
+
+**Shared vocabulary:** `id:variant`, `lit:md`, `id:section`
+
+**Structural overlap:** `0.48` (merge-worthy)
+
+- share 23 callees: [Math.ceil, Math.max, Math.min, copy, criteria, currentPageGroups.map, e.stopPropagation, filter, humanizeDurationRelative, items.map, j.toString, now, rem, searchFilter.trim, setActivePage, setSearchFilter, setShowEmptyGroups, shownGroups.slice, useEffect, useMemo, useQueryParam, useSettings, withDefault]
+- related patterns: formatTime+settingsSlice ≈ ErrorBoundary+hooks (both data_transformation, 0.14)
+- both are leaf functions
+- same package
+- same visibility
+- same receiver type: plain functions
+
+---
+
+## Match #4 — Code-shape: `0.7476`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `discovery/kubernetes/endpoints.go:63` | `kubernetes.NewEndpoints` | `(*slog.Logger, cache.SharedIndexInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, bool, bool, bool, *prometheus.CounterVec) (*Endpoints)` | c.EC2SDConfig+c.ECSSDConfig 0.62, FH.Schema+H.Schema 0.50 |
+| **B** | `discovery/kubernetes/endpointslice.go:62` | `kubernetes.NewEndpointSlice` | `(*slog.Logger, cache.SharedIndexInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, bool, bool, bool, *prometheus.CounterVec) (*EndpointSlice)` | c.EC2SDConfig+c.ECSSDConfig 0.65, FH.Schema+H.Schema 0.51 |
+
+**Explain:** differs by five extra if, four extra assign, one extra range, and 17 more kinds
+
+**Profile A:** `FH.Schema+H.Schema` 0.53, `c.EC2SDConfig+c.ECSSDConfig` 0.47 (coalition)
+
+**Profile B:** `FH.Schema+H.Schema` 0.51, `c.EC2SDConfig+c.ECSSDConfig` 0.49 (coalition)
+
+**Code similarity:** `wl 0.66  flow 0.99  nesting 1.00  sig 0.71  size 0.84`
+
+**Containment:** `0.86`
+
+**Evidence:** `2063.38` (shape 2031.82, concept 3.94, call 27.62)
+
+**Trophic:** `0.88`
+
+**Shared structure:**
+
+- `48.64` — `depth-2 KV` ×10
+- `48.64` — `depth-1 KV` ×10
+- `38.84` — `depth-3 ASSIGN` ×6
+
+**Concept views:** shape `1.00`, corpus `0.96`, feature `0.96`, a-in-b `1.00`, b-in-a `0.96`
+
+**Shared vocabulary:** `call:kubernetes.*clientAdapter.CoreV1`, `call:kubernetes.convertToService`, `call:scrape.isSeriesPartOfFamily`
+
+**Structural overlap:** `0.93` (merge-worthy)
+
+- share 20 callees: [AddEventHandler, Error, RoleService.String, convertToService, e.enqueue, e.enqueueNamespace, e.enqueueNode, eps.GetStore, eventCount.WithLabelValues, l.Error, namespacedName, nodeName, pod.GetStore, promslog.NewNopLogger, serviceUpdate, svc.GetStore, svcAddCount.Inc, svcDeleteCount.Inc, svcUpdateCount.Inc, workqueue.NewTypedWithConfig]
+- share 1 callers: [kubernetes.*Discovery.Run]
+- overlapping call-graph neighborhoods (0.99): 141 shared
+- share patterns: [FH.Schema+H.Schema, c.EC2SDConfig+c.ECSSDConfig]
+- both are orchestrator functions
+- same package
+- callers do related work (1.00): [c.EC2SDConfig+c.ECSSDConfig]
+- callees do related work (0.95): [c.ConvertClassicHistogramsT…+convertnhcb.GetHistogramMet…, appErrs.numDuplicates+appErrs.numExemplarOutOfOrd…, FH.Schema+H.Schema, c.EC2SDConfig+c.ECSSDConfig]
+- same visibility
+- same receiver type: plain functions
+- called from same packages: [kubernetes]
+- call into same packages: [discovery, kubernetes]
+
+---
+
+## Match #5 — Code-shape: `0.8778`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1499,7 +1412,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #8 — Code-shape: `0.9000`
+## Match #6 — Code-shape: `0.9000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1539,7 +1452,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #9 — Code-shape: `0.9247`
+## Match #7 — Code-shape: `0.9247`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1586,7 +1499,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #10 — Code-shape: `0.9244`
+## Match #8 — Code-shape: `0.9244`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1630,6 +1543,95 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - both are methods, on *ElasticacheDiscovery and *MSKDiscovery
 - called from same packages: [aws]
 - call into same packages: [aws]
+
+---
+
+## Match #9 — Code-shape: `0.9249`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `discovery/aws/elasticache.go:315` | `aws.*ElasticacheDiscovery.initElasticacheClient` | `(context.Context) (error)` | c.EC2SDConfig+c.ECSSDConfig 0.68, Status.State+buf1.PutBE32int 0.68, FH.Schema+H.Schema 0.61 |
+| **B** | `discovery/aws/rds.go:339` | `aws.*RDSDiscovery.initRdsClient` | `(context.Context) (error)` | Status.State+buf1.PutBE32int 0.69, c.EC2SDConfig+c.ECSSDConfig 0.68, FH.Schema+H.Schema 0.62 |
+
+**Explain:** differs by four extra call
+
+**Profile A:** `FH.Schema+H.Schema` 0.92, `c.EC2SDConfig+c.ECSSDConfig` 0.08 (dominance)
+
+**Profile B:** `c.EC2SDConfig+c.ECSSDConfig` 0.98 (dominance)
+
+**Code similarity:** `wl 0.87  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Containment:** `0.93`
+
+**Evidence:** `1212.93` (shape 1120.75, concept 6.72, call 85.46)
+
+**Trophic:** `0.98`
+
+**Shared structure:**
+
+- `32.59` — `depth-3 BIN` ×6
+- `32.59` — `depth-2 BIN` ×6
+- `14.80` — `depth-2 IF` ×3
+
+**Concept views:** shape `1.00`, corpus `0.99`, feature `0.99`, a-in-b `1.00`, b-in-a `0.99`
+
+**Shared vocabulary:** `call:kubernetes.*clientAdapter.CoreV1`, `call:kubernetes.convertToService`, `call:scrape.isSeriesPartOfFamily`
+
+**Structural overlap:** `0.77` (merge-worthy)
+
+- share 18 callees: [Error, append, aws.NewCredentialsCache, aws.String, awsConfig.LoadDefaultConfig, awsConfig.WithCredentialsProvider, awsConfig.WithHTTPClient, awsConfig.WithRegion, awsConfig.WithSharedConfigProfile, cancel, config.NewClientFromConfig, context.WithTimeout, credentials.NewStaticCredentialsProvider, fmt.Errorf, loadRegion, string, sts.NewFromConfig, stscreds.NewAssumeRoleProvider]
+- overlapping call-graph neighborhoods (0.40): 6 shared
+- share patterns: [FH.Schema+H.Schema, Status.State+buf1.PutBE32int, c.EC2SDConfig+c.ECSSDConfig]
+- both are orchestrator functions
+- same package
+- callers do related work (0.28): [Status.State+buf1.PutBE32int]
+- callees do related work (0.94): [FH.Schema+H.Schema, c.EC2SDConfig+c.ECSSDConfig, Status.State+buf1.PutBE32int]
+- same visibility
+- both are methods, on *ElasticacheDiscovery and *RDSDiscovery
+- called from same packages: [aws]
+- call into same packages: [aws]
+
+---
+
+## Match #10 — Code-shape: `0.7552`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `scrape/scrape.go:1589` | `scrape.*scrapeLoopAppender.append` | `([]byte, string, time.Time) (int, int, int, error)` | appErrs.numDuplicates+appErrs.numExemplarOutOfOrd… 0.41 |
+| **B** | `scrape/scrape_append_v2.go:90` | `scrape.*scrapeLoopAppenderV2.append` | `([]byte, string, time.Time) (int, int, int, error)` | — |
+
+**Kind:** diverged copy — `*scrapeLoopAppender.append` and `*scrapeLoopAppenderV2.append` share the stem `scrapeLoopAppender` in package `scrape`
+
+**Explain:** differs by nine extra assign, three extra case, one extra branch, and 15 more kinds
+
+**Profile A:** `b.nums+syms.nameTable+b.syms` 0.38, `b.base+b.del` 0.36, `b.nums+syms.nameTable` 0.26 (coalition)
+
+**Code similarity:** `wl 0.59  flow 1.00  nesting 0.99  sig 1.00  size 0.91`
+
+**Containment:** `0.78`
+
+**Evidence:** `3406.24` (shape 3295.55, concept 0.00, call 110.69)
+
+**Trophic:** `0.83`
+
+**Shared structure:**
+
+- `30.29` — `depth-3 IF` ×4
+- `27.52` — `depth-2 IF` ×4
+- `26.62` — `depth-3 BLOCK` ×4
+
+**Concept views:** shape `0.00`, corpus `0.00`, feature `0.00`, a-in-b `0.00`, b-in-a `0.00`
+
+**Structural overlap:** `0.56` (merge-worthy)
+
+- share 42 callees: [Debug, Error, Inc, Warn, addDropped, addRef, app.Append, append, errors.Is, fmt.Errorf, get, getDropped, isSeriesPartOfFamily, iterDone, len, lset.Get, lset.Has, lset.Hash, lset.IsEmpty, lset.IsValid, lset.String, make, p.Exemplar, p.Help, p.Histogram, p.Labels, p.Next, p.Series, p.StartTimestamp, p.Type, p.Unit, setHelp, setType, setUnit, sl.checkAddError, sl.sampleMutator, slices.SortFunc, string, textparse.New, timestamp.FromTime, trackStaleness, verifyLabelLimits]
+- overlapping call-graph neighborhoods (1.00): 1148 shared
+- both are orchestrator functions
+- same package
+- callees do related work (0.88): [promql.FPoint+labels.FromStrings, h.wbl+h.wal, r.labels+ts.Sub, c.ConvertClassicHistogramsT…+convertnhcb.GetHistogramMet…, h.updateMinMaxTime+ooo.oooMmappedChunks, appErrs.numDuplicates+appErrs.numExemplarOutOfOrd…, HTTPClientConfig.OAuth2+binary.Uvarint]
+- same visibility
+- both are methods, on *scrapeLoopAppender and *scrapeLoopAppenderV2
+- call into same packages: [discovery, labels, scrape, textparse, timestamp, tsdb]
 
 ---
 

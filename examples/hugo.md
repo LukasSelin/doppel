@@ -9,7 +9,7 @@ static site generator; a large monolith with heavy template and resource subsyst
 | Corpus | [hugo](https://github.com/gohugoio/hugo) |
 | Pinned at | `v0.165.0` (`76a5e1880ab46688155b02e99bab9be2a6134492`) |
 | Project since | 2013 |
-| doppel | `e65f1c6` |
+| doppel | `4aa3b83` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -1564,7 +1564,48 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #3 — Code-shape: `0.8293`
+## Match #3 — Code-shape: `0.8672`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `internal/warpc/genavif/avif.c:198` | `genavif.write_output_message` | `(?)` | options.compression+options.hint 0.51 |
+| **B** | `internal/warpc/genwebp/webp.c:477` | `genwebp.write_output_message` | `(?)` | options.compression+options.hint 0.49 |
+
+**Explain:** differs by 10 extra selector, seven extra call, five extra literal, and 3 more kinds
+
+**Profile A:** `options.compression+options.hint` 1.00 (dominance)
+
+**Profile B:** `options.compression+options.hint` 1.00 (dominance)
+
+**Code similarity:** `wl 0.78  flow 1.00  nesting 1.00  sig 1.00  size 0.82`
+
+**Containment:** `0.96`
+
+**Evidence:** `2073.78` (shape 2070.07, concept 3.71, call 0.00)
+
+**Trophic:** `0.90`
+
+**Shared structure:**
+
+- `57.55` — `depth-3 SEL` ×11
+- `57.55` — `depth-2 SEL` ×11
+- `50.25` — `depth-3 SEL` ×8
+
+**Concept views:** shape `1.00`, corpus `0.96`, feature `0.96`, a-in-b `0.96`, b-in-a `1.00`
+
+**Shared vocabulary:** `id:strncpy`, `sel:options.compression`, `sel:options.hint`
+
+**Structural overlap:** `0.59` (merge-worthy)
+
+- share 13 callees: [fflush, fprintf, json_array_append_number, json_free_serialized_string, json_object_set_number, json_object_set_string, json_object_set_value, json_serialize_to_string, json_value_free, json_value_get_array, json_value_get_object, json_value_init_array, json_value_init_object]
+- share patterns: [options.compression+options.hint]
+- both are leaf functions
+- same visibility
+- same receiver type: plain functions
+
+---
+
+## Match #4 — Code-shape: `0.8293`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1608,47 +1649,6 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - same visibility
 - same receiver type: state
 - call into same packages: [template]
-
----
-
-## Match #4 — Code-shape: `0.8672`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `internal/warpc/genavif/avif.c:198` | `genavif.write_output_message` | `(?)` | options.compression+options.hint 0.51 |
-| **B** | `internal/warpc/genwebp/webp.c:477` | `genwebp.write_output_message` | `(?)` | options.compression+options.hint 0.49 |
-
-**Explain:** differs by 10 extra selector, seven extra call, five extra literal, and 3 more kinds
-
-**Profile A:** `options.compression+options.hint` 1.00 (dominance)
-
-**Profile B:** `options.compression+options.hint` 1.00 (dominance)
-
-**Code similarity:** `wl 0.78  flow 1.00  nesting 1.00  sig 1.00  size 0.82`
-
-**Containment:** `0.96`
-
-**Evidence:** `2073.78` (shape 2070.07, concept 3.71, call 0.00)
-
-**Trophic:** `0.90`
-
-**Shared structure:**
-
-- `57.55` — `depth-3 SEL` ×11
-- `57.55` — `depth-2 SEL` ×11
-- `50.25` — `depth-3 SEL` ×8
-
-**Concept views:** shape `1.00`, corpus `0.96`, feature `0.96`, a-in-b `0.96`, b-in-a `1.00`
-
-**Shared vocabulary:** `id:strncpy`, `sel:options.compression`, `sel:options.hint`
-
-**Structural overlap:** `0.59` (merge-worthy)
-
-- share 13 callees: [fflush, fprintf, json_array_append_number, json_free_serialized_string, json_object_set_number, json_object_set_string, json_object_set_value, json_serialize_to_string, json_value_free, json_value_get_array, json_value_get_object, json_value_init_array, json_value_init_object]
-- share patterns: [options.compression+options.hint]
-- both are leaf functions
-- same visibility
-- same receiver type: plain functions
 
 ---
 
@@ -1784,59 +1784,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #8 — Code-shape: `0.7013`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `resources/image.go:82` | `resources.*imageResource.newExifInfoFn` | `() (func() (*meta.ExifInfo, error))` | ResourceSpec.FileCaches+c.isExpired 0.62, i.ReadSeekCloser+i.Format 0.51, Body.Close+api.OnLoadArgs 0.49 |
-| **B** | `resources/image.go:125` | `resources.*imageResource.newMetaInfoFn` | `() (func() (*meta.MetaInfo, error))` | ResourceSpec.FileCaches+c.isExpired 0.63, i.ReadSeekCloser+i.Format 0.52, Body.Close+api.OnLoadArgs 0.50 |
-
-**Explain:** differs by five extra call, three extra literal, one extra selector, and 2 more kinds
-
-**Profile A:** `ResourceSpec.FileCaches+c.isExpired` 1.00 (dominance)
-
-**Profile B:** `ResourceSpec.FileCaches+c.isExpired` 1.00 (dominance)
-
-**Code similarity:** `wl 0.75  flow 1.00  nesting 1.00  sig 0.00  size 0.96`
-
-**Containment:** `0.87`
-
-**Evidence:** `901.93` (shape 840.43, concept 7.38, call 54.12)
-
-**Trophic:** `0.98`
-
-**Shared structure:**
-
-- `18.44` — `depth-3 SEL` ×3
-- `18.44` — `depth-3 SEL` ×3
-- `18.44` — `depth-3 CALL` ×3
-
-**Culture:** A realizes `i.ReadSeekCloser+i.Format` atypically (typicality 0.18, concept median 0.43, convention 0.50)
-
-**Culture:** B realizes `i.ReadSeekCloser+i.Format` atypically (typicality 0.18, concept median 0.43, convention 0.50)
-
-**Concept views:** shape `1.00`, corpus `0.98`, feature `0.98`, a-in-b `1.00`, b-in-a `0.98`
-
-**Shared vocabulary:** `sel:i.ReadSeekCloser`, `sel:i.Format`, `sel:i.getSpec`
-
-**Structural overlap:** `0.93` (merge-worthy)
-
-- share 14 callees: [InternalResourceSourcePathBestEffort, ReadOrCreate, ToImageMetaImageFormatFormat, Warnf, enc.Encode, f.Close, i.Key, i.ReadSeekCloser, i.getSpec, io.ReadAll, json.NewEncoder, json.Unmarshal, sync.OnceValues, w.Close]
-- share 1 callers: [resources.newImageResource]
-- overlapping call-graph neighborhoods (0.55): 24 shared
-- share patterns: [Body.Close+api.OnLoadArgs, ResourceSpec.FileCaches+c.isExpired, i.ReadSeekCloser+i.Format]
-- both are orchestrator functions
-- same package
-- callers do related work (1.00): [i.WithSpec+i.baseResource, Proc.Cfg+Proc.Codec, i.ReadSeekCloser+i.Format]
-- callees do related work (0.74): [resources.InternalResourceT…+identity.FirstIdentity, i.getResourcePaths+i.hash, l.spec+mime, i.ReadSeekCloser+i.Format, c.hasBeenInitialized+call.done, ResourceSpec.FileCaches+c.isExpired, Proc.Cfg+Proc.Codec ≈ Body.Close+api.OnLoadArgs, fmt.Sprintf+hugo.deprecationLogLevelFro… ≈ image.Config+draw]
-- same visibility
-- same receiver type: imageResource
-- called from same packages: [resources]
-- call into same packages: [filecache, images, resources]
-
----
-
-## Match #9 — Code-shape: `0.9283`
+## Match #8 — Code-shape: `0.9283`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1882,40 +1830,86 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #10 — Code-shape: `0.7495`
+## Match #9 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
-| **A** | `tpl/math/init.go:26` | `math.init` | `()` | — |
-| **B** | `tpl/strings/init.go:25` | `strings.init` | `()` | — |
+| **A** | `resources/image.go:198` | `resources.*imageResource.getImageMetaInfoCacheTargetPath` | `() (string)` | i.getResourcePaths+i.hash 0.53, ResourceSpec.FileCaches+c.isExpired 0.52, i.ReadSeekCloser+i.Format 0.50 |
+| **B** | `resources/image.go:501` | `resources.*imageResource.getImageMetaCacheTargetPath` | `() (string)` | i.getResourcePaths+i.hash 0.54, ResourceSpec.FileCaches+c.isExpired 0.52, i.ReadSeekCloser+i.Format 0.50 |
 
-**Explain:** differs by four extra assign, one extra if, 28 extra literal, and 8 more kinds
+**Explain:** identical after rename
 
-**Code similarity:** `wl 0.61  flow 0.94  nesting 0.95  sig 1.00  size 0.92`
+**Profile A:** `i.ReadSeekCloser+i.Format` 0.90, `i.getResourcePaths+i.hash` 0.10 (dominance)
 
-**Containment:** `0.80`
+**Profile B:** `i.ReadSeekCloser+i.Format` 0.90, `i.getResourcePaths+i.hash` 0.10 (dominance)
 
-**Evidence:** `2418.95` (shape 2408.56, concept 0.00, call 10.39)
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 0.99`
 
-**Trophic:** `0.74`
+**Containment:** `1.00`
+
+**Evidence:** `478.63` (shape 435.26, concept 7.80, call 35.56)
+
+**Trophic:** `1.00`
 
 **Shared structure:**
 
-- `147.95` — `depth-1 EXPRSTMT` ×30
-- `147.95` — `depth-0 CALL` ×30
-- `142.86` — `depth-3 ARRAYTYPE` ×30
+- `7.53` — `depth-3 CALL`
+- `7.53` — `depth-3 ASSIGN`
+- `7.53` — `depth-3 CALL`
+
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
+
+**Shared vocabulary:** `sel:i.getResourcePaths`, `sel:i.hash`, `sel:i.ReadSeekCloser`
+
+**Structural overlap:** `0.88` (merge-worthy)
+
+- share 8 callees: [df.TargetPath, fmt.Sprintf, hashing.HashStringHex, i.getResourcePaths, i.getSpec, i.hash, i.size, paths.FileAndExt]
+- overlapping call-graph neighborhoods (0.92): 23 shared
+- share patterns: [ResourceSpec.FileCaches+c.isExpired, i.ReadSeekCloser+i.Format, i.getResourcePaths+i.hash]
+- both are orchestrator functions
+- same package
+- callers do related work (0.98): [i.ReadSeekCloser+i.Format, Body.Close+api.OnLoadArgs, ResourceSpec.FileCaches+c.isExpired]
+- callees do related work (1.00): [paths.fileAndExt+unicode, strconv.FormatUint+tpl, paths.TargetPath+l.paths, hashing.HashUint64+hashing, spec.Cfg+Cfg.BaseURL, path.Split+path.Join, l.spec+mime, fw.Close+helpers.OpenFilesForWriting]
+- same visibility
+- same receiver type: imageResource
+- called from same packages: [resources]
+- call into same packages: [hashing, paths, resources]
+
+---
+
+## Match #10 — Code-shape: `1.0000`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `internal/warpc/js/greet.bundle.js:1` | `js.w` | `(?)` | — |
+| **B** | `internal/warpc/js/renderkatex.bundle.js:1` | `js.Wt` | `(?)` | — |
+
+**Explain:** identical structure, no normalization needed
+
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Containment:** `1.00`
+
+**Evidence:** `856.14` (shape 856.14, concept 0.00, call 0.00)
+
+**Trophic:** `1.00`
+
+**Shared structure:**
+
+- `18.44` — `depth-3 NODE` ×3
+- `18.44` — `depth-2 NODE` ×3
+- `18.44` — `depth-1 NODE` ×3
 
 **Concept views:** shape `0.00`, corpus `0.00`, feature `0.00`, a-in-b `0.00`, b-in-a `0.00`
 
-**Structural overlap:** `0.51` (merge-worthy)
+**Structural overlap:** `0.47` (merge-worthy)
 
-- share 3 callees: [New, internal.AddTemplateFuncsNamespace, ns.AddMethodMapping]
-- overlapping call-graph neighborhoods (0.97): 32 shared
-- both are orchestrator functions
-- callees do related work (0.67): [buf.WriteString+buf.Bytes, d.Name+fs, openapi3+resources, strings.ReplaceAll+hugofs.FileMetaInfo, p.Path+hugofs.FileMetaInfo, fw.Close+helpers.OpenFilesForWriting]
+- share 9 callees: [Error, JSON.parse, TextDecoder, Uint8Array, console.log, decode, includes, r, readSync]
+- both are leaf functions
+- same package
 - same visibility
 - same receiver type: plain functions
-- call into same packages: [internal]
+- call into same packages: [js]
 
 ---
 

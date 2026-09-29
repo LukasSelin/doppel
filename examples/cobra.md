@@ -9,7 +9,7 @@ CLI framework; one dominant type with a long method set, plus shell-completion g
 | Corpus | [cobra](https://github.com/spf13/cobra) |
 | Pinned at | `v1.10.2` (`88b30ab89da2d0d0abb153818746c5a2d30eccec`) |
 | Project since | 2015 |
-| doppel | `e65f1c6` |
+| doppel | `4aa3b83` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -395,55 +395,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #1 — Code-shape: `0.6492`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `doc/md_docs.go:57` | `doc.GenMarkdownCustom` | `(*cobra.Command, io.Writer, func(string) string) (error)` | c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand 0.60, c.DisableAutoGenTag+cmd.VisitParents 0.53, c.DisableAutoGenTag+child.IsAdditionalHelpTopic… 0.53 |
-| **B** | `doc/rest_docs.go:62` | `doc.GenReSTCustom` | `(*cobra.Command, io.Writer, func(string, string) string) (error)` | c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand 0.59, c.DisableAutoGenTag+child.IsAdditionalHelpTopic… 0.53, c.DisableAutoGenTag+cmd.VisitParents+cobra.Command 0.44 |
-
-**Explain:** differs by two extra assign, 11 extra call, 10 extra literal, and 4 more kinds
-
-**Profile A:** `c.DisableAutoGenTag+child.IsAdditionalHelpTopic…` 1.00 (dominance)
-
-**Profile B:** `c.DisableAutoGenTag+child.IsAdditionalHelpTopic…` 1.00 (dominance)
-
-**Code similarity:** `wl 0.52  flow 1.00  nesting 1.00  sig 0.60  size 0.86`
-
-**Containment:** `0.74`
-
-**Evidence:** `1001.03` (shape 938.74, concept 4.32, call 57.97)
-
-**Trophic:** `0.82`
-
-**Shared structure:**
-
-- `25.57` — `depth-1 EXPRSTMT` ×8
-- `22.71` — `depth-0 CALL` ×8
-- `18.84` — `depth-0 BIN` ×10
-
-**Concept views:** shape `0.83`, corpus `0.76`, feature `0.97`, a-in-b `0.98`, b-in-a `0.99`
-
-**Shared vocabulary:** `lit:2-Jan-2006`, `sel:c.DisableAutoGenTag`, `sel:child.IsAdditionalHelpTopicCommand`
-
-**Structural overlap:** `0.80` (merge-worthy)
-
-- share 25 callees: [Format, buf.WriteString, buf.WriteTo, byName, child.IsAdditionalHelpTopicCommand, child.IsAvailableCommand, child.Name, cmd.CommandPath, cmd.Commands, cmd.HasParent, cmd.InitDefaultHelpCmd, cmd.InitDefaultHelpFlag, cmd.Parent, cmd.Runnable, cmd.UseLine, cmd.VisitParents, fmt.Fprintf, hasSeeAlso, len, linkHandler, new, parent.CommandPath, sort.Sort, strings.ReplaceAll, time.Now]
-- overlapping call-graph neighborhoods (0.95): 87 shared
-- share patterns: [c.DisableAutoGenTag+child.IsAdditionalHelpTopic…, c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand]
-- related patterns: c.DisableAutoGenTag+cmd.VisitParents ≈ c.DisableAutoGenTag+cmd.VisitParents+cobra.Command (both io_operation, 0.22)
-- both are passthrough functions
-- same package
-- callers do related work (0.67): [io.WriteString+filepath.Join]
-- callees do related work (0.99): [c.DisableAutoGenTag+child.IsAdditionalHelpTopic…, flags.HasAvailableFlags+cmd.InheritedFlags, c.Deprecated+c.Runnable, c.AddCommand+c.Find, c.Parent+c.HasParent, c.PrintErrln+c.Parent, c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand, c.AddCommand+c.Find+c.RemoveCommand]
-- same visibility
-- same receiver type: plain functions
-- called from same packages: [doc]
-- call into same packages: [cobra, doc]
-
----
-
-## Match #2 — Code-shape: `1.0000`
+## Match #1 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -488,7 +440,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #3 — Code-shape: `1.0000`
+## Match #2 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -533,7 +485,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #4 — Code-shape: `1.0000`
+## Match #3 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -575,6 +527,54 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - same visibility
 - same receiver type: Command
 - call into same packages: [cobra]
+
+---
+
+## Match #4 — Code-shape: `0.6492`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `doc/md_docs.go:57` | `doc.GenMarkdownCustom` | `(*cobra.Command, io.Writer, func(string) string) (error)` | c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand 0.60, c.DisableAutoGenTag+cmd.VisitParents 0.53, c.DisableAutoGenTag+child.IsAdditionalHelpTopic… 0.53 |
+| **B** | `doc/rest_docs.go:62` | `doc.GenReSTCustom` | `(*cobra.Command, io.Writer, func(string, string) string) (error)` | c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand 0.59, c.DisableAutoGenTag+child.IsAdditionalHelpTopic… 0.53, c.DisableAutoGenTag+cmd.VisitParents+cobra.Command 0.44 |
+
+**Explain:** differs by two extra assign, 11 extra call, 10 extra literal, and 4 more kinds
+
+**Profile A:** `c.DisableAutoGenTag+child.IsAdditionalHelpTopic…` 1.00 (dominance)
+
+**Profile B:** `c.DisableAutoGenTag+child.IsAdditionalHelpTopic…` 1.00 (dominance)
+
+**Code similarity:** `wl 0.52  flow 1.00  nesting 1.00  sig 0.60  size 0.86`
+
+**Containment:** `0.74`
+
+**Evidence:** `1001.03` (shape 938.74, concept 4.32, call 57.97)
+
+**Trophic:** `0.82`
+
+**Shared structure:**
+
+- `25.57` — `depth-1 EXPRSTMT` ×8
+- `22.71` — `depth-0 CALL` ×8
+- `18.84` — `depth-0 BIN` ×10
+
+**Concept views:** shape `0.83`, corpus `0.76`, feature `0.97`, a-in-b `0.98`, b-in-a `0.99`
+
+**Shared vocabulary:** `lit:2-Jan-2006`, `sel:c.DisableAutoGenTag`, `sel:child.IsAdditionalHelpTopicCommand`
+
+**Structural overlap:** `0.80` (merge-worthy)
+
+- share 25 callees: [Format, buf.WriteString, buf.WriteTo, byName, child.IsAdditionalHelpTopicCommand, child.IsAvailableCommand, child.Name, cmd.CommandPath, cmd.Commands, cmd.HasParent, cmd.InitDefaultHelpCmd, cmd.InitDefaultHelpFlag, cmd.Parent, cmd.Runnable, cmd.UseLine, cmd.VisitParents, fmt.Fprintf, hasSeeAlso, len, linkHandler, new, parent.CommandPath, sort.Sort, strings.ReplaceAll, time.Now]
+- overlapping call-graph neighborhoods (0.95): 87 shared
+- share patterns: [c.DisableAutoGenTag+child.IsAdditionalHelpTopic…, c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand]
+- related patterns: c.DisableAutoGenTag+cmd.VisitParents ≈ c.DisableAutoGenTag+cmd.VisitParents+cobra.Command (both io_operation, 0.22)
+- both are passthrough functions
+- same package
+- callers do related work (0.67): [io.WriteString+filepath.Join]
+- callees do related work (0.99): [c.DisableAutoGenTag+child.IsAdditionalHelpTopic…, flags.HasAvailableFlags+cmd.InheritedFlags, c.Deprecated+c.Runnable, c.AddCommand+c.Find, c.Parent+c.HasParent, c.PrintErrln+c.Parent, c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand, c.AddCommand+c.Find+c.RemoveCommand]
+- same visibility
+- same receiver type: plain functions
+- called from same packages: [doc]
+- call into same packages: [cobra, doc]
 
 ---
 
@@ -671,47 +671,49 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #7 — Code-shape: `0.6023`
+## Match #7 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
-| **A** | `command.go:674` | `cobra.stripFlags` | `([]string, *Command) ([]string)` | subCmd.Name+strings.HasPrefix 0.57, c.AddCommand+c.RemoveCommand 0.53 |
-| **B** | `command.go:715` | `cobra.*Command.argsMinusFirstX` | `([]string, string) ([]string)` | subCmd.Name+strings.HasPrefix 0.55, c.AddCommand+c.RemoveCommand 0.52 |
+| **A** | `command.go:1688` | `cobra.*Command.Flags` | `() (*flag.FlagSet)` | f.Annotations+c.flagErrorBuf 0.61, f.Name+flag.ContinueOnError 0.59, f.Name+flag.ContinueOnError+flag.NewFlagSet 0.56 |
+| **B** | `command.go:1775` | `cobra.*Command.PersistentFlags` | `() (*flag.FlagSet)` | f.Annotations+c.flagErrorBuf 0.61, f.Name+flag.ContinueOnError 0.59, f.Name+flag.ContinueOnError+flag.NewFlagSet 0.56 |
 
-**Explain:** differs by two extra assign, two extra increment, one extra branch, and 6 more kinds
+**Explain:** identical after rename, commutative-reorder
 
-**Profile A:** `subCmd.Name+strings.HasPrefix` 1.00 (dominance)
+**Profile A:** `f.Name+flag.ContinueOnError+flag.NewFlagSet` 0.97 (dominance)
 
-**Profile B:** `subCmd.Name+strings.HasPrefix` 1.00 (dominance)
+**Profile B:** `f.Name+flag.ContinueOnError+flag.NewFlagSet` 0.97 (dominance)
 
-**Code similarity:** `wl 0.47  flow 0.98  nesting 0.97  sig 0.50  size 0.94`
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Containment:** `0.66`
+**Containment:** `1.00`
 
-**Evidence:** `513.15` (shape 488.74, concept 3.11, call 21.31)
+**Evidence:** `160.57` (shape 144.50, concept 5.88, call 10.19)
 
-**Trophic:** `0.76`
+**Trophic:** `1.00`
 
 **Shared structure:**
 
-- `13.40` — `depth-0 CASE` ×4
-- `11.78` — `depth-0 SLICE` ×4
-- `11.27` — `depth-3 CALL` ×3
+- `4.50` — `depth-3 BIN` ×2
+- `4.50` — `depth-2 BIN` ×2
+- `4.45` — `depth-3 BLOCK`
 
-**Concept views:** shape `1.00`, corpus `0.98`, feature `0.98`, a-in-b `0.98`, b-in-a `1.00`
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
 
-**Shared vocabulary:** `call:cobra.CompletionWithDesc`, `call:cobra.hasNoOptDefVal`, `call:cobra.shortHasNoOptDefVal`
+**Shared vocabulary:** `lit:Failed`, `sel:f.Annotations`, `id:normalize`
 
-**Structural overlap:** `0.88` (merge-worthy)
+**Structural overlap:** `0.85` (merge-worthy)
 
-- share 8 callees: [append, c.Flags, c.mergePersistentFlags, hasNoOptDefVal, len, shortHasNoOptDefVal, strings.Contains, strings.HasPrefix]
-- share 1 callers: [cobra.*Command.Find]
-- overlapping call-graph neighborhoods (1.00): 42 shared
-- share patterns: [c.AddCommand+c.RemoveCommand, subCmd.Name+strings.HasPrefix]
-- both are orchestrator functions
+- share 4 callees: [SetOutput, c.DisplayName, flag.NewFlagSet, new]
+- share 3 callers: [cobra.*Command.LocalFlags, cobra.*Command.SetGlobalNormalizationFunc, cobra.*Command.mergePersistentFlags]
+- overlapping call-graph neighborhoods (0.42): 43 shared
+- share patterns: [f.Annotations+c.flagErrorBuf, f.Name+flag.ContinueOnError, f.Name+flag.ContinueOnError+flag.NewFlagSet]
+- both are passthrough functions
 - same package
-- callees do related work (1.00): [f.Name+flag.ContinueOnError+flag.NewFlagSet, c.PersistentFlags+c.parentsPflags, f.Name+flag.ContinueOnError, subCmd.Name+strings.HasPrefix, f.Annotations+c.flagErrorBuf]
+- callers do related work (0.49): [c.PersistentFlags+c.parentsPflags, f.Name+flag.ContinueOnError, f.Annotations+c.flagErrorBuf, c.DisableFlagParsing+sort.Strings, c.AddCommand+c.Find ≈ cmd.Name+c.commands, c.AddCommand+c.Find+c.RemoveCommand ≈ f.Name+flag.ContinueOnError+flag.NewFlagSet]
+- callees do related work (1.00): [c.DisableAutoGenTag+cmd.VisitParents, f.Annotations+c.flagErrorBuf, cmd.Name+c.commands]
 - same visibility
+- same receiver type: Command
 - called from same packages: [cobra]
 - call into same packages: [cobra]
 
