@@ -309,8 +309,48 @@ const (
 )
 
 // WLOptions configures WLBagWith. The zero value is the production bag.
+//
+// Every field's zero value is the production recurrence, so a lens is
+// described by what it changes. The fields are independent: each one moves
+// what label_0 or the refinement step keeps, and a lens (see Lens) is a named
+// combination of them over a chosen tree.
 type WLOptions struct {
 	Roles WLRoles
+
+	// DropCallees labels every call as a bare CALL. Production keeps the
+	// callee name because the name a function calls is intent; dropping it
+	// leaves the control and data skeleton alone, so two bodies that walk
+	// the same structure over different APIs agree.
+	DropCallees bool
+
+	// KeepNames labels identifiers and selector fields by their text, and
+	// literals by their value as well as their kind. Production collapses
+	// all three (see wlLabel0); keeping them turns the bag from a structural
+	// key into a vocabulary one. Over a canonical tree the bound identifiers
+	// are already positional (x0, x1, …), so what this adds there is the free
+	// vocabulary — types, fields, package qualifiers, constants.
+	KeepNames bool
+}
+
+// wlLabel0With is wlLabel0 under a lens's label_0 options. wlLabel0 itself
+// stays the production vocabulary, because Cons, LowLabels and LabelChains
+// share it and none of them is lens-aware.
+func wlLabel0With(n *syntax.Node, opt WLOptions) (LabelKind, string) {
+	kind, name := wlLabel0(n)
+	if opt.DropCallees && kind == KindCall {
+		name = ""
+	}
+	if opt.KeepNames {
+		switch kind {
+		case KindIdent, KindSelector:
+			name = n.Label
+		case KindLit:
+			// Kind and value with a separator no token contains, so INT
+			// "1" and STRING "1" stay apart.
+			name = n.Label + "\x00" + n.Text
+		}
+	}
+	return kind, name
 }
 
 // directedRole reports whether a child in role r is kept apart under mode.
@@ -357,7 +397,7 @@ func WLBagWith(root *syntax.Node, opt WLOptions) []LabelCount {
 
 	syntax.Inspect(root, func(n *syntax.Node) bool {
 		if n != nil {
-			kind, name := wlLabel0(n)
+			kind, name := wlLabel0With(n, opt)
 			frames = append(frames, wlFrame{
 				label0: wlKind(kind.String(), name),
 				kind:   kind,

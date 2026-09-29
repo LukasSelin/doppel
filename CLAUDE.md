@@ -120,7 +120,8 @@ internal/
   fingerprint/  Token shingles + control-flow histogram + signature types over the neutral IR; the code-similarity score
                 wl.go is the WL label bag; wlexplain.go names its shallow labels for reports;
                 wlsource.go maps a label back to its nodes (LabelChains, the per-node label vectors; Outline, the hashed extent);
-                cons.go hash-conses the canonical forest; wlcodec.go encodes bags for the snapshot
+                cons.go hash-conses the canonical forest; wlcodec.go encodes bags for the snapshot;
+                lens.go reads one tree under five lenses (skeleton, shape, ordered, vocab, verbatim) — measured only
   ontology/     The formal vocabulary: entity kinds, typed relations, concept taxonomy, roles, axioms;
                 vocabulary.go is the corpus-derived side table of what each learned concept is made of,
                 and the feature view of concept relatedness that reads it
@@ -3281,6 +3282,22 @@ functions for exactly this reason, and the first version of them did not and fai
     rejects**: it reads refactor 13.7 → 12.2 (better) against fp 47.0 → 42.0 (worse), and two of
     the three hard assertions are on the false-positive side, so it trades the corroborated
     quantity for the uncorroborated one in the same direction the ablation shows WL is carrying.
+  - `TestLenses` (guard `DOPPEL_BENCH_LENSES=1`, `DOPPEL_BENCH_LENSES_EXTRA` for further roots) reads
+    every compared pair under the five `fingerprint.Lens`es — skeleton (callee names dropped), shape
+    (the production bag), ordered (the role-aware `WLRolesAssign` recurrence), vocab (names and
+    literal values kept on the canonical tree), verbatim (the same on the body as written) — each
+    scored against its own `LabelWeights`, and logs the exact-agreement classes
+    (`LensProfile.Class`: verbatim, renamed, inverse, parameterized, template), the per-lens reading
+    of the top 20, and per-label-class mean Jaccard where labels exist. Nothing in production reads
+    a lens other than shape, and like the concept views none may be blended into a score without a
+    measurement against the labels. **First measurement:** the classes land where they should —
+    zarr's `ShuffleCodec.EncodeBytes ↔ DecodeBytes`, its #1 pair, is the one `inverse` (exact shape,
+    ordered 0.94); gin's `decodeToml/YAML/XML` and cobra's `MarkFlags*` read `parameterized`; moby's
+    `ipvlan/macvlan` forks split into verbatim and parameterized. On cobra's 18 labels the skeleton
+    lens separates merge from false positive best (0.95 against 0.44, where shape reads 0.80 against
+    0.48 — two of the six merges are templates over different doc writers), vocab ranks false
+    positives *above* refactors, and verbatim pushes them lowest. Three false positives and one
+    corpus: a direction, not a verdict.
   - `TestViewsLadder` and `TestViewsBlend` (guard `DOPPEL_BENCH_VIEWS=1`) are the concept-views
     measurement: the first prints, for every fetched rung, how often the shape and feature views
     disagree, in which direction, and the shape×feature quartile grid that judges
