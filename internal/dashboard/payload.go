@@ -174,7 +174,7 @@ type Edge struct {
 	Rank    float64 `json:"rank"`
 
 	Channels []string `json:"channels,omitempty"`
-	Kind     string   `json:"kind,omitempty"`     // "interface implementations", "diverged copy"
+	Kind     string   `json:"kind,omitempty"`     // one of the analyzer.Kind* strings, e.g. "diverged copy"
 	KindNote string   `json:"kindNote,omitempty"` // the rendered clause
 	Merge    bool     `json:"merge"`
 	Cross    bool     `json:"cross"` // the two sides live in different packages

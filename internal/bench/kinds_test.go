@@ -71,6 +71,7 @@ type kindSignals struct {
 	entry                       bool // both are main/init/run
 	separateBinaries            bool // both in package main, different directories
 	sameFile                    bool
+	prodKind                    string // analyzer.ClassifyPairIn's kind, "" when none
 }
 
 // opposites are the word pairs whose presence, with everything else in the
@@ -155,6 +156,7 @@ type kindRun struct {
 	run  *Run
 	bags [][][]fingerprint.LabelCount
 	idfs []*fingerprint.LabelIDF
+	thin [][]fingerprint.LabelCount // analyzer.BuildThinVocab, what production reads
 }
 
 func loadKindRun(t *testing.T, s labeledSpec) *kindRun {
@@ -176,6 +178,7 @@ func loadKindRun(t *testing.T, s labeledSpec) *kindRun {
 		}
 		kr.idfs[li] = fingerprint.LabelWeights(kr.bags[li])
 	}
+	kr.thin = analyzer.BuildThinVocab(run.Units)
 	return kr
 }
 
@@ -211,6 +214,12 @@ func (kr *kindRun) signals(p analyzer.SimilarPair) kindSignals {
 	s.separateBinaries = a.Package == "main" && b.Package == "main" &&
 		filepath.Dir(a.File) != filepath.Dir(b.File)
 	s.sameFile = a.File == b.File
+	if k := analyzer.ClassifyPairIn(a, b, p.Score, analyzer.ForkShapeFloor, analyzer.PairContext{
+		ResolvedA: da.ResolvedCallees, ResolvedB: db.ResolvedCallees,
+		VocabA: kr.thin[p.AIdx], VocabB: kr.thin[p.BIdx],
+	}); k != nil {
+		s.prodKind = k.Kind
+	}
 	return s
 }
 
@@ -277,6 +286,12 @@ func kindFlags() []kindFlag {
 		{"sibling: same receiver, opposite names", func(s kindSignals) bool { return s.sameReceiver && s.antonym }},
 		{"thin & names differ: <=30, helper, vocab<0.8", thinNamesDiffer},
 		{"combined: sibling | callee J<0.25 | thin&vocab<0.8", combinedKinds},
+		{"production: " + analyzer.KindMirror, func(s kindSignals) bool { return s.prodKind == analyzer.KindMirror }},
+		{"production: " + analyzer.KindThinWrappers, func(s kindSignals) bool { return s.prodKind == analyzer.KindThinWrappers }},
+		{"production: " + analyzer.KindDifferentCalls, func(s kindSignals) bool { return s.prodKind == analyzer.KindDifferentCalls }},
+		{"production: any of the three", func(s kindSignals) bool {
+			return s.prodKind == analyzer.KindMirror || s.prodKind == analyzer.KindThinWrappers || s.prodKind == analyzer.KindDifferentCalls
+		}},
 	}
 }
 
@@ -318,6 +333,12 @@ func TestKindLenses(t *testing.T) {
 		t.Logf("[%s] %d functions, %d compared pairs, %d of %d labels compared", kr.name,
 			len(kr.run.Units), len(kr.run.Pairs), len(lp), len(s.lf.Labels))
 		all = append(all, lp...)
+	}
+
+	for _, lp := range all {
+		if lp.sig.prodKind != "" && lp.label.Class != "false_positive" {
+			t.Logf("production kind %q on a %s label: %s / %s — %s", lp.sig.prodKind, lp.label.Class, lp.label.A, lp.label.B, lp.label.Note)
+		}
 	}
 
 	buckets := map[string][]labelledPair{}

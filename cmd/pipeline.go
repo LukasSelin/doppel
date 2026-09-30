@@ -101,7 +101,11 @@ type Result struct {
 	// trees it was derived from — so a Result with this set has Units whose
 	// Canonical is nil, and one without it (an index-only run: query, doppel
 	// fingerprint) has the trees and no table.
-	LabelKinds  *analyzer.LabelKinds
+	LabelKinds *analyzer.LabelKinds
+	// ThinVocab is each small unit's vocab-lens bag, for the thin-wrappers
+	// pair kind; nil entries for every other unit. Built beside LabelKinds and
+	// for the same reason: it reads the canonical trees analyze releases.
+	ThinVocab   [][]fingerprint.LabelCount
 	Graph       *concepter.Graph
 	Culture     *culture.Model
 	Calibration *calibrate.Result           // nil unless Params.Calibrate > 0
@@ -216,6 +220,7 @@ func analyze(root string, p Params, progress io.Writer) (Result, error) {
 	// `doppel fingerprint`, which want the trees and would pay for a table they
 	// never read.
 	res.LabelKinds = analyzer.BuildLabelKinds(res.Units, nil)
+	res.ThinVocab = analyzer.BuildThinVocab(res.Units)
 	for i := range res.Units {
 		res.Units[i].Canonical = nil
 	}
@@ -598,6 +603,10 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 		}
 		labelKinds = analyzer.BuildLabelKinds(units, explainIdx)
 	}
+	thinVocab := res.ThinVocab
+	if thinVocab == nil {
+		thinVocab = analyzer.BuildThinVocab(units)
+	}
 
 	// Join culture. Unconditional and before anything reads it: an early return
 	// between the spawn above and this point would leak the goroutine and leave
@@ -622,7 +631,10 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 		pairs[i].Culture = cultureNotes(cult, pairs[i].AIdx, pairs[i].BIdx,
 			parser.ConceptIDs(a.Concepts), parser.ConceptIDs(b.Concepts))
 		pairs[i].Habitat = habitatNotes(cult, pairs[i].AIdx, pairs[i].BIdx, a.Package, b.Package)
-		pairs[i].Kind = analyzer.ClassifyPairWith(a, b, pairs[i].Score, forkFloor)
+		pairs[i].Kind = analyzer.ClassifyPairIn(a, b, pairs[i].Score, forkFloor, analyzer.PairContext{
+			ResolvedA: docs[pairs[i].AIdx].ResolvedCallees, ResolvedB: docs[pairs[i].BIdx].ResolvedCallees,
+			VocabA: thinVocab[pairs[i].AIdx], VocabB: thinVocab[pairs[i].BIdx],
+		})
 		pairs[i].Explain = analyzer.ExplainWith(a, b, labelKinds)
 		pairs[i].Profile = profiles.pair(pairs[i].AIdx, pairs[i].BIdx,
 			parser.ConceptIDs(a.Concepts), parser.ConceptIDs(b.Concepts))
