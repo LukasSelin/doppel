@@ -207,6 +207,7 @@ type wlFrame struct {
 	label0 uint64
 	kind   LabelKind
 	start  int
+	node   *syntax.Node // read only under a role-aware WLOptions
 }
 
 // labelAcc is one label's accumulator during the walk: how many times it has
@@ -275,9 +276,120 @@ func WLBagOf(root *syntax.Node) []LabelCount {
 // canonical body (the snapshot round-trip, the corpus statistics) does not
 // have to fabricate a syntax.Func to reach it.
 func wlBagOf(root *syntax.Node) []LabelCount {
+	return WLBagWith(root, WLOptions{})
+}
+
+// WLRoles picks which child slots a refinement step keeps apart. It is a
+// measurement seam, not an operating point: production builds every bag
+// under WLRolesNone, and nothing outside internal/bench sets another value.
+//
+// The recurrence sorts a node's children, so sibling order never reaches a
+// label — which is what makes two blocks with reordered statements agree. It
+// also makes `dst[f(i)] = src[g(i)]` and `dst[g(i)] = src[f(i)]` the same
+// label, because identifiers collapse to ID and the two sides of the
+// assignment are then an unordered pair: a gather and its scatter, an encoder
+// and its decoder, score as exact clones. A role-aware variant folds a
+// child's slot into its contribution before the sort, so the multiset
+// becomes a multiset of (slot, child) and the two sides stop commuting.
+type WLRoles uint8
+
+const (
+	// WLRolesNone is the production recurrence: children are a multiset.
+	WLRolesNone WLRoles = iota
+	// WLRolesAssign keeps the directional slots only: an assignment's
+	// left and right sides, and a send's channel and value. The narrowest
+	// change that separates a read from a write.
+	WLRolesAssign
+	// WLRolesDirected adds every slot whose order carries meaning: a
+	// binary expression's operands (canon already orders the commutative
+	// ones, so those still agree), an index expression's base and index, a
+	// call's function and each argument by position, and key against value.
+	// Block and body statement lists stay unordered.
+	WLRolesDirected
+)
+
+// WLOptions configures WLBagWith. The zero value is the production bag.
+//
+// Every field's zero value is the production recurrence, so a lens is
+// described by what it changes. The fields are independent: each one moves
+// what label_0 or the refinement step keeps, and a lens (see Lens) is a named
+// combination of them over a chosen tree.
+type WLOptions struct {
+	Roles WLRoles
+
+	// DropCallees labels every call as a bare CALL. Production keeps the
+	// callee name because the name a function calls is intent; dropping it
+	// leaves the control and data skeleton alone, so two bodies that walk
+	// the same structure over different APIs agree.
+	DropCallees bool
+
+	// KeepNames labels identifiers and selector fields by their text, and
+	// literals by their value as well as their kind. Production collapses
+	// all three (see wlLabel0); keeping them turns the bag from a structural
+	// key into a vocabulary one. Over a canonical tree the bound identifiers
+	// are already positional (x0, x1, …), so what this adds there is the free
+	// vocabulary — types, fields, package qualifiers, constants.
+	KeepNames bool
+}
+
+// wlLabel0With is wlLabel0 under a lens's label_0 options. wlLabel0 itself
+// stays the production vocabulary, because Cons, LowLabels and LabelChains
+// share it and none of them is lens-aware.
+func wlLabel0With(n *syntax.Node, opt WLOptions) (LabelKind, string) {
+	kind, name := wlLabel0(n)
+	if opt.DropCallees && kind == KindCall {
+		name = ""
+	}
+	if opt.KeepNames {
+		switch kind {
+		case KindIdent, KindSelector:
+			name = n.Label
+		case KindLit:
+			// Kind and value with a separator no token contains, so INT
+			// "1" and STRING "1" stay apart.
+			name = n.Label + "\x00" + n.Text
+		}
+	}
+	return kind, name
+}
+
+// directedRole reports whether a child in role r is kept apart under mode.
+func directedRole(mode WLRoles, r syntax.Role) bool {
+	switch mode {
+	case WLRolesAssign:
+		return r == syntax.RoleLhs || r == syntax.RoleRhs || r == syntax.RoleChan ||
+			r == syntax.RoleValue
+	case WLRolesDirected:
+		switch r {
+		case syntax.RoleLhs, syntax.RoleRhs, syntax.RoleChan, syntax.RoleValue,
+			syntax.RoleX, syntax.RoleY, syntax.RoleIndex, syntax.RoleFun,
+			syntax.RoleArg, syntax.RoleKey:
+			return true
+		}
+	}
+	return false
+}
+
+// wlSlot folds a slot into one child's label. The ordinal separates the
+// first argument from the second; for every other slot it is 0. A leading
+// marker byte no round uses keeps a slotted contribution from colliding with
+// a plain label by construction rather than by luck.
+func wlSlot(r syntax.Role, ordinal int, child uint64) uint64 {
+	h := fnvByte(fnvOffset64, 0xFE)
+	h = fnvByte(h, byte(r))
+	h = fnvU64(h, uint64(ordinal))
+	return fnvU64(h, child)
+}
+
+// WLBagWith is WLBagOf under explicit options. WLOptions{} is byte-identical
+// to WLBagOf; see WLRoles for what the others change and why they exist.
+func WLBagWith(root *syntax.Node, opt WLOptions) []LabelCount {
 	if root == nil {
 		return nil
 	}
+	roles := opt.Roles != WLRolesNone
+	var slots []syntax.Role
+	var ordinals []int
 	bag := make(map[uint64]*labelAcc)
 	var frames []wlFrame
 	var kids []wlLabels
@@ -285,11 +397,12 @@ func wlBagOf(root *syntax.Node) []LabelCount {
 
 	syntax.Inspect(root, func(n *syntax.Node) bool {
 		if n != nil {
-			kind, name := wlLabel0(n)
+			kind, name := wlLabel0With(n, opt)
 			frames = append(frames, wlFrame{
 				label0: wlKind(kind.String(), name),
 				kind:   kind,
 				start:  len(kids),
+				node:   n,
 			})
 			return true
 		}
@@ -308,10 +421,32 @@ func wlBagOf(root *syntax.Node) []LabelCount {
 		var lab wlLabels
 		lab[0] = fr.label0
 		children := kids[fr.start:]
+		if roles {
+			// children[i] is the i-th non-nil entry of Kids: Inspect
+			// visits Kids in order and pushes nothing for a nil node.
+			slots, ordinals = slots[:0], ordinals[:0]
+			args := 0
+			for _, k := range fr.node.Kids {
+				if k.Node == nil {
+					continue
+				}
+				ord := 0
+				if k.Role == syntax.RoleArg {
+					ord = args
+					args++
+				}
+				slots = append(slots, k.Role)
+				ordinals = append(ordinals, ord)
+			}
+		}
 		for h := 1; h <= wlRounds; h++ {
 			buf = buf[:0]
 			for i := range children {
-				buf = append(buf, children[i][h-1])
+				c := children[i][h-1]
+				if roles && i < len(slots) && directedRole(opt.Roles, slots[i]) {
+					c = wlSlot(slots[i], ordinals[i], c)
+				}
+				buf = append(buf, c)
 			}
 			// Sorted, so sibling order never reaches a label: the
 			// recurrence is over a multiset of children, not a sequence.
