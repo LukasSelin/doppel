@@ -241,7 +241,7 @@ func TestSortByEvidenceTruncates(t *testing.T) {
 }
 
 // One rank key: SortForReport and RankKey(DefaultRankOptions) must agree,
-// and the default trophic term must be the exact t*t form.
+// and the default trophic and shape terms must be the exact x*x form.
 func TestRankKeyMatchesSortForReport(t *testing.T) {
 	mk := func(a, b int, total, score, trophic, overlap float64) SimilarPair {
 		ev := comparator.StructuralEvidence{OverlapScore: overlap}
@@ -251,9 +251,9 @@ func TestRankKeyMatchesSortForReport(t *testing.T) {
 	pairs := []SimilarPair{mk(0, 1, 10, 0.9, 0.5, 0.4), mk(1, 2, 8, 0.95, 0.9, 0.6), mk(2, 3, 30, 0.7, 0.3, 0.5), mk(0, 3, 30, 0.7, 0.3, 0.5)}
 	for _, p := range pairs {
 		t2 := p.Retrieval.TrophicSim * p.Retrieval.TrophicSim
-		want := p.Retrieval.Total * p.Score * t2 * p.Evidence.OverlapScore
+		want := p.Retrieval.Total * (p.Score * p.Score) * t2 * p.Evidence.OverlapScore
 		if got := RankKey(p, DefaultRankOptions(), nil); got != want {
-			t.Errorf("RankKey = %v, want %v (exact t*t form)", got, want)
+			t.Errorf("RankKey = %v, want %v (exact t*t and s*s form)", got, want)
 		}
 	}
 	a, _ := SortForReport(append([]SimilarPair(nil), pairs...), nil, 0, 0)
@@ -265,8 +265,20 @@ func TestRankKeyMatchesSortForReport(t *testing.T) {
 	}
 	// A different power reorders: with power 1 the high-trophic pair no
 	// longer out-keys the high-mass one by as much.
-	if k1, k2 := RankKey(pairs[1], RankOptions{TrophicPower: 1, TestCallDiscount: true}, nil), RankKey(pairs[1], DefaultRankOptions(), nil); k1 <= k2 {
+	if k1, k2 := RankKey(pairs[1], RankOptions{TrophicPower: 1, ShapePower: 2, TestCallDiscount: true}, nil), RankKey(pairs[1], DefaultRankOptions(), nil); k1 <= k2 {
 		t.Errorf("power 1 should key higher than power 2 for trophic < 1: %v vs %v", k1, k2)
+	}
+	// ShapePower 0 is the linear key the option replaced, never shape^0: a
+	// literal written before the field existed must not drop shape by omission.
+	lin := RankOptions{TrophicPower: 2, ShapePower: 1, TestCallDiscount: true}
+	zero := RankOptions{TrophicPower: 2, TestCallDiscount: true}
+	for _, p := range pairs {
+		if RankKey(p, zero, nil) != RankKey(p, lin, nil) {
+			t.Error("ShapePower 0 must key exactly like ShapePower 1")
+		}
+		if RankKey(p, lin, nil) <= RankKey(p, DefaultRankOptions(), nil) {
+			t.Error("a linear shape factor must key higher than a squared one for Score < 1")
+		}
 	}
 	if RankKey(SimilarPair{}, DefaultRankOptions(), nil) != 0 {
 		t.Error("nil Retrieval must key 0")

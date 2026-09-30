@@ -9,7 +9,7 @@ structured concurrency library; generics-heavy, one idea, written recently and a
 | Corpus | [conc](https://github.com/sourcegraph/conc) |
 | Pinned at | `v0.3.0` (`7b8c8f2875cb861bb61844c9bcaa1aed070adbd4`) |
 | Project since | 2023 |
-| doppel | `e65f1c6` |
+| doppel | `4aa3b83` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -401,47 +401,7 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 ---
 
-## Match #5 — Code-shape: `0.4657`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `iter/map.go:27` | `iter.Mapper[T, R].Map` | `([]T, func(*T) R) ([]R)` | — |
-| **B** | `iter/map.go:48` | `iter.Mapper[T, R].MapErr` | `([]T, func(*T) (R, error)) ([]R, error)` | lock+unlock 0.53 |
-
-**Explain:** differs by two extra assign, two extra declaration, one extra if, and 8 more kinds
-
-**Profile B:** `lock+unlock` 1.00 (dominance)
-
-**Code similarity:** `wl 0.33  flow 0.82  nesting 0.89  sig 0.40  size 0.50`
-
-**Containment:** `0.73` — most of the smaller body's shape is inside the larger
-
-**Evidence:** `147.72` (shape 144.02, concept 0.00, call 3.70)
-
-**Trophic:** `0.71`
-
-**Shared structure:**
-
-- `3.79` — `depth-3 INDEX` ×2
-- `3.79` — `depth-2 INDEX` ×2
-- `3.79` — `depth-1 INDEX` ×2
-
-**Concept views:** shape `0.00`, corpus `0.00`, feature `0.00`, a-in-b `0.00`, b-in-a `0.00`
-
-**Structural overlap:** `0.54` (merge-worthy)
-
-- share 4 callees: [ForEachIdx, f, len, make]
-- overlapping call-graph neighborhoods (1.00): 1 shared
-- both are leaf functions
-- same package
-- callees do related work (1.00): [fmt+debug]
-- same visibility
-- same receiver type: Mapper[T, R]
-- call into same packages: [iter]
-
----
-
-## Match #6 — Code-shape: `0.9000`
+## Match #5 — Code-shape: `0.9000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -478,7 +438,7 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 ---
 
-## Match #7 — Code-shape: `0.9000`
+## Match #6 — Code-shape: `0.9000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -513,7 +473,7 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 ---
 
-## Match #8 — Code-shape: `0.9000`
+## Match #7 — Code-shape: `0.9000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -550,7 +510,7 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 ---
 
-## Match #9 — Code-shape: `0.9000`
+## Match #8 — Code-shape: `0.9000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -582,6 +542,46 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 - same package
 - same visibility
 - both are methods, on *ResultErrorPool[T] and *ResultPool[T]
+
+---
+
+## Match #9 — Code-shape: `0.4657`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `iter/map.go:27` | `iter.Mapper[T, R].Map` | `([]T, func(*T) R) ([]R)` | — |
+| **B** | `iter/map.go:48` | `iter.Mapper[T, R].MapErr` | `([]T, func(*T) (R, error)) ([]R, error)` | lock+unlock 0.53 |
+
+**Explain:** differs by two extra assign, two extra declaration, one extra if, and 8 more kinds
+
+**Profile B:** `lock+unlock` 1.00 (dominance)
+
+**Code similarity:** `wl 0.33  flow 0.82  nesting 0.89  sig 0.40  size 0.50`
+
+**Containment:** `0.73` — most of the smaller body's shape is inside the larger
+
+**Evidence:** `147.72` (shape 144.02, concept 0.00, call 3.70)
+
+**Trophic:** `0.71`
+
+**Shared structure:**
+
+- `3.79` — `depth-3 INDEX` ×2
+- `3.79` — `depth-2 INDEX` ×2
+- `3.79` — `depth-1 INDEX` ×2
+
+**Concept views:** shape `0.00`, corpus `0.00`, feature `0.00`, a-in-b `0.00`, b-in-a `0.00`
+
+**Structural overlap:** `0.54` (merge-worthy)
+
+- share 4 callees: [ForEachIdx, f, len, make]
+- overlapping call-graph neighborhoods (1.00): 1 shared
+- both are leaf functions
+- same package
+- callees do related work (1.00): [fmt+debug]
+- same visibility
+- same receiver type: Mapper[T, R]
+- call into same packages: [iter]
 
 ---
 

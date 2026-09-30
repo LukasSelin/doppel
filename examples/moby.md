@@ -9,7 +9,7 @@ container engine; a decade of accretion across daemon, API, and plugin layers
 | Corpus | [moby](https://github.com/moby/moby) |
 | Pinned at | `v28.5.2` (`89c5e8fd66634b6128fc4c0e6f1236e2540e46e0`) |
 | Project since | 2013 |
-| doppel | `7eb32b6` |
+| doppel | `d2d78d3` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -1517,49 +1517,49 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #3 — Code-shape: `0.7909`
+## Match #3 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
-| **A** | `libnetwork/drivers/ipvlan/ipvlan_joinleave.go:33` | `ipvlan.*driver.Join` | `(context.Context, string, string, string, driverapi.JoinInfo, map[string]interface{}, map[string]interface{}) (error)` | jinfo.AddStaticRoute+iNames.SetNames 0.51, endpoint.srcName+netutils.GenerateIfaceName 0.50 |
-| **B** | `libnetwork/drivers/macvlan/macvlan_joinleave.go:21` | `macvlan.*driver.Join` | `(context.Context, string, string, string, driverapi.JoinInfo, map[string]interface{}, map[string]interface{}) (error)` | jinfo.AddStaticRoute+iNames.SetNames 0.52, endpoint.srcName+netutils.GenerateIfaceName 0.52 |
+| **A** | `libnetwork/drivers/ipvlan/ipvlan_store.go:254` | `ipvlan.*endpoint.UnmarshalJSON` | `([]byte) (error)` | Task.Runtime+c.callWithRetry 0.66 |
+| **B** | `libnetwork/drivers/macvlan/macvlan_store.go:248` | `macvlan.*endpoint.UnmarshalJSON` | `([]byte) (error)` | Task.Runtime+c.callWithRetry 0.66 |
 
-**Kind:** interface implementations — both implement `Join(context.Context, string, string, string, driverapi.JoinInfo, map[string]interface{}, map[string]interface{}) (error)` on `*driver` and `*driver`, sibling packages `ipvlan` and `macvlan`
+**Kind:** interface implementations — both implement `UnmarshalJSON([]byte) (error)` on `*endpoint` and `*endpoint`, sibling packages `ipvlan` and `macvlan`
 
-**Explain:** differs by six extra if, four extra assign, four extra return, and 9 more kinds
+**Explain:** identical after rename, commutative-reorder
 
-**Profile A:** `jinfo.AddStaticRoute+iNames.SetNames` 0.68, `endpoint.srcName+netutils.GenerateIfaceName` 0.32 (dominance)
+**Profile A:** `Task.Runtime+c.callWithRetry` 1.00 (dominance)
 
-**Profile B:** `jinfo.AddStaticRoute+iNames.SetNames` 0.68, `endpoint.srcName+netutils.GenerateIfaceName` 0.32 (dominance)
+**Profile B:** `Task.Runtime+c.callWithRetry` 1.00 (dominance)
 
-**Code similarity:** `wl 0.66  flow 1.00  nesting 0.85  sig 1.00  size 0.76`
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Containment:** `0.92` — most of the smaller body's shape is inside the larger
+**Containment:** `1.00`
 
-**Evidence:** `1380.62` (shape 1315.06, concept 7.60, call 57.96)
+**Evidence:** `690.18` (shape 669.16, concept 2.60, call 18.42)
 
-**Trophic:** `0.87`
+**Trophic:** `1.00`
 
 **Shared structure:**
 
-- `21.74` — `depth-3 CALL` ×4
-- `21.42` — `depth-3 BIN` ×4
-- `20.47` — `depth-3 IF` ×4
+- `21.68` — `depth-3 BLOCK` ×3
+- `21.68` — `depth-3 RETURN` ×3
+- `21.68` — `depth-3 CALL` ×3
 
-**Concept views:** shape `1.00`, corpus `0.96`, feature `0.97`, a-in-b `1.00`, b-in-a `0.97`
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
 
-**Shared vocabulary:** `sel:jinfo.AddStaticRoute`, `call:netutils.GenerateIfaceName`, `sel:endpoint.srcName`
+**Shared vocabulary:** `call:metadata.*v2MetadataService.diffIDKey`, `call:metadata.*v2MetadataService.diffIDNamespace`, `call:plugins.*Client.callWithRetry`
 
-**Structural overlap:** `0.68` (merge-worthy)
+**Structural overlap:** `0.72` (merge-worthy)
 
-- share 26 callees: [Debugf, Start, String, attribute.String, d.getNetwork, d.storeUpdate, fmt.Errorf, iNames.SetNames, jinfo.DisableGatewayService, jinfo.InterfaceName, jinfo.SetGateway, jinfo.SetGatewayIPv6, len, log.G, n.endpoint, n.getSubnetforIPv4, n.getSubnetforIPv6, net.ParseCIDR, netlabel.GetIfname, netutils.GenerateIfaceName, ns.NlHandle, otel.Tracer, span.End, trace.WithAttributes, v4gw.String, v6gw.String]
-- overlapping call-graph neighborhoods (0.98): 134 shared
-- share patterns: [endpoint.srcName+netutils.GenerateIfaceName, jinfo.AddStaticRoute+iNames.SetNames]
+- share 5 callees: [fmt.Errorf, json.Unmarshal, net.ParseMAC, types.InternalErrorf, types.ParseCIDR]
+- overlapping call-graph neighborhoods (1.00): 26 shared
+- share patterns: [Task.Runtime+c.callWithRetry]
 - both are orchestrator functions
-- callees do related work (1.00): [endpoint.srcName+netutils.GenerateIfaceName, epi.dstName+epi.routes, epi.dstName+epi.routes+epi.v4PoolID, parentLink.Attrs+netlink.LinkAttrs, link.Attrs+n.nlHandle, nlh.LinkAdd+parentLink.Attrs, parentLink.Attrs+netlink.Bridge, Config.OpenStdin+Config.StdinOnce]
+- callees do related work (1.00): [nw.IPAM+Driver.Options, p.HostPortEnd+p.HostIP+p.HostPort, time.RFC3339+time.Now, ipam.RequestAddress+ipamapi.ErrNoAvailableIPs, http.StatusConflict+http.StatusNotImplemented, C.__u32+C.int]
 - same visibility
-- same receiver type: driver
-- call into same packages: [libnetwork, netlabel, netutils, ns, tailfile]
+- same receiver type: endpoint
+- call into same packages: [types]
 
 ---
 
@@ -1658,49 +1658,94 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
-| **A** | `libnetwork/drivers/ipvlan/ipvlan_store.go:254` | `ipvlan.*endpoint.UnmarshalJSON` | `([]byte) (error)` | Task.Runtime+c.callWithRetry 0.66 |
-| **B** | `libnetwork/drivers/macvlan/macvlan_store.go:248` | `macvlan.*endpoint.UnmarshalJSON` | `([]byte) (error)` | Task.Runtime+c.callWithRetry 0.66 |
-
-**Kind:** interface implementations — both implement `UnmarshalJSON([]byte) (error)` on `*endpoint` and `*endpoint`, sibling packages `ipvlan` and `macvlan`
+| **A** | `libnetwork/drivers/ipvlan/ipvlan_setup.go:96` | `ipvlan.createVlanLink` | `(string) (error)` | parentLink.Attrs+netlink.Bridge 0.58, nlh.LinkAdd+parentLink.Attrs 0.52, parentLink.Attrs+netlink.LinkAttrs 0.50 |
+| **B** | `libnetwork/drivers/macvlan/macvlan_setup.go:76` | `macvlan.createVlanLink` | `(string) (error)` | parentLink.Attrs+netlink.Bridge 0.58, nlh.LinkAdd+parentLink.Attrs 0.52, parentLink.Attrs+netlink.LinkAttrs 0.50 |
 
 **Explain:** identical after rename, commutative-reorder
 
-**Profile A:** `Task.Runtime+c.callWithRetry` 1.00 (dominance)
+**Profile A:** `parentLink.Attrs+netlink.LinkAttrs` 0.42, `parentLink.Attrs+netlink.Bridge` 0.38, `nlh.LinkAdd+parentLink.Attrs` 0.21 (coalition)
 
-**Profile B:** `Task.Runtime+c.callWithRetry` 1.00 (dominance)
+**Profile B:** `parentLink.Attrs+netlink.LinkAttrs` 0.42, `parentLink.Attrs+netlink.Bridge` 0.38, `nlh.LinkAdd+parentLink.Attrs` 0.21 (coalition)
 
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `1.00`
 
-**Evidence:** `690.18` (shape 669.16, concept 2.60, call 18.42)
+**Evidence:** `600.51` (shape 574.01, concept 10.66, call 15.84)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `21.68` — `depth-3 BLOCK` ×3
-- `21.68` — `depth-3 RETURN` ×3
-- `21.68` — `depth-3 CALL` ×3
+- `16.18` — `depth-3 SEL` ×3
+- `16.18` — `depth-2 SEL` ×3
+- `16.18` — `depth-1 SEL` ×3
 
 **Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
 
-**Shared vocabulary:** `call:metadata.*v2MetadataService.diffIDKey`, `call:metadata.*v2MetadataService.diffIDNamespace`, `call:plugins.*Client.callWithRetry`
+**Shared vocabulary:** `sel:parentLink.Attrs`, `sel:netlink.Bridge`, `sel:nlh.LinkAdd`
 
-**Structural overlap:** `0.72` (merge-worthy)
+**Structural overlap:** `0.76` (merge-worthy)
 
-- share 5 callees: [fmt.Errorf, json.Unmarshal, net.ParseMAC, types.InternalErrorf, types.ParseCIDR]
-- overlapping call-graph neighborhoods (1.00): 26 shared
-- share patterns: [Task.Runtime+c.callWithRetry]
+- share 11 callees: [Debugf, LinkAdd, LinkByName, LinkSetUp, context.TODO, fmt.Errorf, log.G, ns.NlHandle, parentLink.Attrs, parseVlan, strings.Contains]
+- overlapping call-graph neighborhoods (0.96): 73 shared
+- share patterns: [nlh.LinkAdd+parentLink.Attrs, parentLink.Attrs+netlink.Bridge, parentLink.Attrs+netlink.LinkAttrs]
 - both are orchestrator functions
-- callees do related work (1.00): [nw.IPAM+Driver.Options, p.HostPortEnd+p.HostIP+p.HostPort, time.RFC3339+time.Now, ipam.RequestAddress+ipamapi.ErrNoAvailableIPs, http.StatusConflict+http.StatusNotImplemented, C.__u32+C.int]
+- callers do related work (0.94): [d.getNetworks+nw.config]
+- callees do related work (1.00): [containerimage+exptypes, nlHandle.LinkByName+n.nlHandle, n.path+netns.GetFromPath, nlh.AddrAdd+netlink.FAMILY_V4, Healthcheck.Retries+c.callWithRetry, img.RawJSON+img.OS, c.cache+client.PruneInfo]
 - same visibility
-- same receiver type: endpoint
-- call into same packages: [types]
+- same receiver type: plain functions
+- call into same packages: [mobyexporter, nlwrap, ns]
 
 ---
 
-## Match #7 — Code-shape: `0.8769`
+## Match #7 — Code-shape: `0.7909`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `libnetwork/drivers/ipvlan/ipvlan_joinleave.go:33` | `ipvlan.*driver.Join` | `(context.Context, string, string, string, driverapi.JoinInfo, map[string]interface{}, map[string]interface{}) (error)` | jinfo.AddStaticRoute+iNames.SetNames 0.51, endpoint.srcName+netutils.GenerateIfaceName 0.50 |
+| **B** | `libnetwork/drivers/macvlan/macvlan_joinleave.go:21` | `macvlan.*driver.Join` | `(context.Context, string, string, string, driverapi.JoinInfo, map[string]interface{}, map[string]interface{}) (error)` | jinfo.AddStaticRoute+iNames.SetNames 0.52, endpoint.srcName+netutils.GenerateIfaceName 0.52 |
+
+**Kind:** interface implementations — both implement `Join(context.Context, string, string, string, driverapi.JoinInfo, map[string]interface{}, map[string]interface{}) (error)` on `*driver` and `*driver`, sibling packages `ipvlan` and `macvlan`
+
+**Explain:** differs by six extra if, four extra assign, four extra return, and 9 more kinds
+
+**Profile A:** `jinfo.AddStaticRoute+iNames.SetNames` 0.68, `endpoint.srcName+netutils.GenerateIfaceName` 0.32 (dominance)
+
+**Profile B:** `jinfo.AddStaticRoute+iNames.SetNames` 0.68, `endpoint.srcName+netutils.GenerateIfaceName` 0.32 (dominance)
+
+**Code similarity:** `wl 0.66  flow 1.00  nesting 0.85  sig 1.00  size 0.76`
+
+**Containment:** `0.92` — most of the smaller body's shape is inside the larger
+
+**Evidence:** `1380.62` (shape 1315.06, concept 7.60, call 57.96)
+
+**Trophic:** `0.87`
+
+**Shared structure:**
+
+- `21.74` — `depth-3 CALL` ×4
+- `21.42` — `depth-3 BIN` ×4
+- `20.47` — `depth-3 IF` ×4
+
+**Concept views:** shape `1.00`, corpus `0.96`, feature `0.97`, a-in-b `1.00`, b-in-a `0.97`
+
+**Shared vocabulary:** `sel:jinfo.AddStaticRoute`, `call:netutils.GenerateIfaceName`, `sel:endpoint.srcName`
+
+**Structural overlap:** `0.68` (merge-worthy)
+
+- share 26 callees: [Debugf, Start, String, attribute.String, d.getNetwork, d.storeUpdate, fmt.Errorf, iNames.SetNames, jinfo.DisableGatewayService, jinfo.InterfaceName, jinfo.SetGateway, jinfo.SetGatewayIPv6, len, log.G, n.endpoint, n.getSubnetforIPv4, n.getSubnetforIPv6, net.ParseCIDR, netlabel.GetIfname, netutils.GenerateIfaceName, ns.NlHandle, otel.Tracer, span.End, trace.WithAttributes, v4gw.String, v6gw.String]
+- overlapping call-graph neighborhoods (0.98): 134 shared
+- share patterns: [endpoint.srcName+netutils.GenerateIfaceName, jinfo.AddStaticRoute+iNames.SetNames]
+- both are orchestrator functions
+- callees do related work (1.00): [endpoint.srcName+netutils.GenerateIfaceName, epi.dstName+epi.routes, epi.dstName+epi.routes+epi.v4PoolID, parentLink.Attrs+netlink.LinkAttrs, link.Attrs+n.nlHandle, nlh.LinkAdd+parentLink.Attrs, parentLink.Attrs+netlink.Bridge, Config.OpenStdin+Config.StdinOnce]
+- same visibility
+- same receiver type: driver
+- call into same packages: [libnetwork, netlabel, netutils, ns, tailfile]
+
+---
+
+## Match #8 — Code-shape: `0.8769`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1747,138 +1792,94 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #8 — Code-shape: `1.0000`
+## Match #9 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
-| **A** | `libnetwork/drivers/ipvlan/ipvlan_setup.go:96` | `ipvlan.createVlanLink` | `(string) (error)` | parentLink.Attrs+netlink.Bridge 0.58, nlh.LinkAdd+parentLink.Attrs 0.52, parentLink.Attrs+netlink.LinkAttrs 0.50 |
-| **B** | `libnetwork/drivers/macvlan/macvlan_setup.go:76` | `macvlan.createVlanLink` | `(string) (error)` | parentLink.Attrs+netlink.Bridge 0.58, nlh.LinkAdd+parentLink.Attrs 0.52, parentLink.Attrs+netlink.LinkAttrs 0.50 |
+| **A** | `integration/plugin/logging/cmd/dummy/main.go:9` | `main.main` | `()` | Store.validateName+bytes.TrimSpace 0.53, ctr.terminateInvoked+diagnostic.TableObj 0.51, server.Serve+http.NewServeMux 0.50 |
+| **B** | `integration/plugin/volumes/cmd/dummy/main.go:9` | `main.main` | `()` | Store.validateName+bytes.TrimSpace 0.53, ctr.terminateInvoked+diagnostic.TableObj 0.51, server.Serve+http.NewServeMux 0.50 |
 
 **Explain:** identical after rename, commutative-reorder
 
-**Profile A:** `parentLink.Attrs+netlink.LinkAttrs` 0.42, `parentLink.Attrs+netlink.Bridge` 0.38, `nlh.LinkAdd+parentLink.Attrs` 0.21 (coalition)
+**Profile A:** `server.Serve+http.NewServeMux` 1.00 (dominance)
 
-**Profile B:** `parentLink.Attrs+netlink.LinkAttrs` 0.42, `parentLink.Attrs+netlink.Bridge` 0.38, `nlh.LinkAdd+parentLink.Attrs` 0.21 (coalition)
+**Profile B:** `server.Serve+http.NewServeMux` 1.00 (dominance)
 
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `1.00`
 
-**Evidence:** `600.51` (shape 574.01, concept 10.66, call 15.84)
+**Evidence:** `487.43` (shape 319.02, concept 7.90, call 160.52)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `16.18` — `depth-3 SEL` ×3
-- `16.18` — `depth-2 SEL` ×3
-- `16.18` — `depth-1 SEL` ×3
+- `7.92` — `depth-3 BLOCK`
+- `7.92` — `depth-2 BLOCK`
+- `7.51` — `depth-3 COMPOSITE`
 
 **Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
 
-**Shared vocabulary:** `sel:parentLink.Attrs`, `sel:netlink.Bridge`, `sel:nlh.LinkAdd`
+**Shared vocabulary:** `lit:/run/docker/plugins/plugin.sock`, `sel:server.Serve`, `call:net.Listen`
 
-**Structural overlap:** `0.76` (merge-worthy)
+**Structural overlap:** `0.81` (merge-worthy)
 
-- share 11 callees: [Debugf, LinkAdd, LinkByName, LinkSetUp, context.TODO, fmt.Errorf, log.G, ns.NlHandle, parentLink.Attrs, parseVlan, strings.Contains]
-- overlapping call-graph neighborhoods (0.96): 73 shared
-- share patterns: [nlh.LinkAdd+parentLink.Attrs, parentLink.Attrs+netlink.Bridge, parentLink.Attrs+netlink.LinkAttrs]
+- share 6 callees: [String, http.NewServeMux, l.Addr, net.Listen, panic, server.Serve]
+- overlapping call-graph neighborhoods (1.00): 146 shared
+- share patterns: [Store.validateName+bytes.TrimSpace, ctr.terminateInvoked+diagnostic.TableObj, server.Serve+http.NewServeMux]
 - both are orchestrator functions
-- callers do related work (0.94): [d.getNetworks+nw.config]
-- callees do related work (1.00): [containerimage+exptypes, nlHandle.LinkByName+n.nlHandle, n.path+netns.GetFromPath, nlh.AddrAdd+netlink.FAMILY_V4, Healthcheck.Retries+c.callWithRetry, img.RawJSON+img.OS, c.cache+client.PruneInfo]
+- same package
+- callees do related work (1.00): [log.FatalLevel+log.PanicLevel, format+unicode, rm.hijacked+rm.rw, os.NewFile+sctp, fmt.Fprint+os.Exit, resp.Status+http.NewRequestWithContext, fmt.Fprintln+fmt.Fprintf, Config.OpenStdin+Config.StdinOnce]
 - same visibility
 - same receiver type: plain functions
-- call into same packages: [mobyexporter, nlwrap, ns]
+- call into same packages: [authorization, dbclient, dbserver, diagnostic, main, reexec, trap, v2]
 
 ---
 
-## Match #9 — Code-shape: `0.6869`
+## Match #10 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
-| **A** | `libnetwork/service_linux.go:84` | `libnetwork.*Network.addLBBackend` | `(net.IP, *loadBalancer)` | net.CIDRMask+sb.getGatewayEndpoint 0.51 |
-| **B** | `libnetwork/service_linux.go:175` | `libnetwork.*Network.rmLBBackend` | `(net.IP, *loadBalancer, bool, bool)` | net.CIDRMask+sb.getGatewayEndpoint 0.53 |
+| **A** | `libnetwork/drivers/ipvlan/ipvlan_endpoint.go:62` | `ipvlan.*driver.DeleteEndpoint` | `(string, string) (error)` | Isolation.IsValid+PluginObj.PluginReference 0.57 |
+| **B** | `libnetwork/drivers/macvlan/macvlan_endpoint.go:67` | `macvlan.*driver.DeleteEndpoint` | `(string, string) (error)` | Isolation.IsValid+PluginObj.PluginReference 0.56 |
 
-**Explain:** differs by four extra return, three extra assign, two extra if, and 11 more kinds
+**Kind:** interface implementations — both implement `DeleteEndpoint(string, string) (error)` on `*driver` and `*driver`, sibling packages `ipvlan` and `macvlan`
 
-**Profile A:** `net.CIDRMask+sb.getGatewayEndpoint` 1.00 (dominance)
+**Explain:** identical after rename, commutative-reorder
 
-**Profile B:** `net.CIDRMask+sb.getGatewayEndpoint` 1.00 (dominance)
+**Profile A:** `parentLink.Attrs+netlink.LinkAttrs` 0.40, `parentLink.Attrs+netlink.Bridge` 0.33, `nlh.LinkAdd+parentLink.Attrs` 0.27 (coalition)
 
-**Code similarity:** `wl 0.58  flow 0.96  nesting 0.96  sig 0.67  size 0.99`
+**Profile B:** `parentLink.Attrs+netlink.LinkAttrs` 0.40, `parentLink.Attrs+netlink.Bridge` 0.33, `nlh.LinkAdd+parentLink.Attrs` 0.27 (coalition)
 
-**Containment:** `0.73`
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
-**Evidence:** `1191.27` (shape 1124.15, concept 3.34, call 63.78)
+**Containment:** `1.00`
 
-**Trophic:** `0.86`
+**Evidence:** `553.52` (shape 541.13, concept 2.02, call 10.37)
 
-**Shared structure:**
-
-- `30.24` — `depth-3 CALL` ×5
-- `30.24` — `depth-2 CALL` ×5
-- `29.52` — `depth-1 CALL` ×5
-
-**Concept views:** shape `1.00`, corpus `0.96`, feature `0.96`, a-in-b `1.00`, b-in-a `0.96`
-
-**Shared vocabulary:** `id:dsr`, `call:net.CIDRMask`, `sel:net.CIDRMask`
-
-**Structural overlap:** `0.76` (merge-worthy)
-
-- share 24 callees: [Address, Debugf, Errorf, context.TODO, ep.ID, ep.Iface, ep.Name, errors.Is, findIfaceDstName, gwEP.Iface, i.Close, ipvs.New, len, log.G, n.ID, n.Name, n.findLBEndpointSandbox, net.CIDRMask, programIngress, sb.ContainerID, sb.ID, sb.Key, sb.configureFWMark, sb.getGatewayEndpoint]
-- overlapping call-graph neighborhoods (1.00): 657 shared
-- share patterns: [net.CIDRMask+sb.getGatewayEndpoint]
-- both are orchestrator functions
-- same package
-- callees do related work (0.91): [runtime.SetFinalizer+j.j, sb.controller+sb.containerID, ep.endpointInGWNetwork+sb.Endpoints, iPort.Protocol+iPort.PublishedPort, sb.containerID+sb.Endpoints, sb.controller+sb.containerID+sb.Endpoints, Config.OpenStdin+Config.StdinOnce, nlHandle.LinkByName+n.nlHandle ≈ net.CIDRMask+sb.getGatewayEndpoint]
-- same visibility
-- same receiver type: Network
-- call into same packages: [libnetwork, osl, sdjournal]
-
----
-
-## Match #10 — Code-shape: `0.8284`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `libnetwork/networkdb/networkdbdiagnostic.go:225` | `networkdb.*NetworkDB.dbDeleteEntry` | `(http.ResponseWriter, *http.Request)` | ctr.terminateInvoked+diagnostic.TableObj 0.70 |
-| **B** | `libnetwork/networkdb/networkdbdiagnostic.go:262` | `networkdb.*NetworkDB.dbGetEntry` | `(http.ResponseWriter, *http.Request)` | ctr.terminateInvoked+diagnostic.TableObj 0.68 |
-
-**Explain:** differs by three extra assign, one extra declaration, one extra if, and 10 more kinds
-
-**Profile A:** `ctr.terminateInvoked+diagnostic.TableObj` 1.00 (dominance)
-
-**Profile B:** `ctr.terminateInvoked+diagnostic.TableObj` 1.00 (dominance)
-
-**Code similarity:** `wl 0.72  flow 0.98  nesting 0.98  sig 1.00  size 0.82`
-
-**Containment:** `0.93`
-
-**Evidence:** `872.05` (shape 824.78, concept 2.88, call 44.39)
-
-**Trophic:** `0.89`
+**Trophic:** `1.00`
 
 **Shared structure:**
 
-- `19.25` — `depth-3 ASSIGN` ×3
-- `19.25` — `depth-2 ASSIGN` ×3
-- `18.38` — `depth-3 BIN` ×3
+- `10.79` — `depth-3 SEL` ×2
+- `10.79` — `depth-2 SEL` ×2
+- `10.79` — `depth-1 SEL` ×2
 
-**Concept views:** shape `1.00`, corpus `0.98`, feature `0.98`, a-in-b `0.98`, b-in-a `1.00`
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
 
-**Shared vocabulary:** `call:loggertest.makeTestMessages`, `call:loggertest.readAll`, `call:overlayutils.NeedsUserXAttr`
+**Shared vocabulary:** `call:bitmap.*Bitmap.validateOrdinal`, `call:client.*Client.ContainerList`, `call:client.*Client.ImageList`
 
-**Structural overlap:** `0.74` (merge-worthy)
+**Structural overlap:** `0.71` (merge-worthy)
 
-- share 18 callees: [Error, String, WithFields, caller.Name, context.TODO, diagnostic.CommandSucceed, diagnostic.DebugHTTPForm, diagnostic.FailCommand, diagnostic.HTTPReply, diagnostic.ParseHTTPFormOptions, diagnostic.WrongCommand, fmt.Sprintf, len, log.G, logger.Error, logger.Info, logger.WithError, r.ParseForm]
-- overlapping call-graph neighborhoods (0.78): 25 shared
-- share patterns: [ctr.terminateInvoked+diagnostic.TableObj]
+- share 13 callees: [LinkByName, LinkDel, Warnf, WithError, context.TODO, d.network, d.storeDelete, fmt.Errorf, log.G, n.deleteEndpoint, n.endpoint, ns.NlHandle, validateID]
+- overlapping call-graph neighborhoods (0.97): 59 shared
+- share patterns: [Isolation.IsValid+PluginObj.PluginReference]
 - both are orchestrator functions
-- same package
-- callees do related work (0.85): [log.FatalLevel+log.PanicLevel, c.newNS+unix.Gettid, fmt.Fprint+os.Exit, fmt.Fprintln+fmt.Fprintf, c.Name+log.Fields, ctr.terminateInvoked+diagnostic.TableObj, Config.OpenStdin+Config.StdinOnce]
+- callees do related work (1.00): [d.deleteNetwork+Pool.String, addr.Mask+d.advertiseAddress, netlabel.ExposedPorts+netlabel.PortMap, nlHandle.LinkByName+n.nlHandle, n.path+netns.GetFromPath, nlh.AddrAdd+netlink.FAMILY_V4, Healthcheck.Retries+c.callWithRetry]
 - same visibility
-- same receiver type: NetworkDB
-- call into same packages: [caller, diagnostic, networkdb]
+- same receiver type: driver
+- call into same packages: [nlwrap, ns]
 
 ---
 
