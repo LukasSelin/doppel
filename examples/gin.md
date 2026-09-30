@@ -9,7 +9,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `d2d78d3` |
+| doppel | `3f98e5e` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -526,6 +526,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 |---|---|---|---|---|
 | **A** | `routergroup.go:147` | `gin.*RouterGroup.Any` | `(string, ...HandlerFunc) (IRoutes)` | group.calculateAbsolutePath+group.engine 0.53 |
 | **B** | `routergroup.go:156` | `gin.*RouterGroup.Match` | `([]string, string, ...HandlerFunc) (IRoutes)` | group.calculateAbsolutePath+group.engine 0.53 |
+
+**Kind:** thin wrappers — both are small bodies delegating to `gin.*RouterGroup.handle` and `gin.*RouterGroup.returnObj` and naming different things, in package `gin`
 
 **Explain:** identical after rename
 
