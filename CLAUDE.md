@@ -3289,6 +3289,17 @@ functions for exactly this reason, and the first version of them did not and fai
     `Run.RescoreWith`, and logs which one the stated selection rule picks. Both assert nothing;
     see *Concept views* for the measured result. Like every bench variant they reweight and
     restore `lc.onto`, the run's own learned vocabulary, never `ontology.Default()`.
+  - `TestGroupedDisplay` (guard `DOPPEL_BENCH_GROUP="<corpus>=<labels>[=<family-min>];…"`) measures
+    showing a pair under the row of its family's best-ranked pair instead of on its own row — a
+    display change that leaves every rank and score alone. **Measured on the doppel, strata, zarr
+    and gowl self-review labels, at each repo's calibrated family-min, and not adopted.** Grouping
+    by any family moves labelled true matches into the first 20 rows (doppel 12 → 19) but almost
+    all of them arrive as *children* under another pair's row; false-positive heads in the first
+    20 rows fall by at most one per repo, because `--max-per-func` already keeps a family from
+    filling the top, and 1–3 true matches per repo end up under a false-positive head — the
+    failure mode a family row invites, since a quarter of families mix verdicts. Tight rules
+    (min edge ≥ 0.90, or ≥ 0.9 × mean) group only pairs far below row 20 and change nothing a
+    reader scans first. Grouping shortens a long list by 15–30%; it is not a false-positive lever.
   - `TestSweep` (guard `DOPPEL_BENCH_SWEEP=1`) is the sensitivity sweep: each hand-set constant
     varied one at a time (±50% or the natural alternatives), only the stages it reaches re-run,
     and the labeled rankings reported with a verdict — `inert` (no label moved), `moves`,
