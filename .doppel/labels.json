@@ -13,6 +13,11 @@
     {"a": "gofront.anySame", "b": "gofront.anyStmtSame", "class": "merge", "note": "Identical loops over []ast.Expr vs []ast.Stmt; one generic anySame[T ast.Node] replaces both."},
     {"a": "fingerprint.ConsStats.Ratio", "b": "reporter.CorpusMetrics.Ratio", "class": "merge", "note": "The same compression-ratio definition (TotalNodes/UniqueSubtrees with zero guard) on two mirror structs; one definition should serve both."},
     {"a": "cmd.compressionOf", "b": "reporter.CorpusMetrics.Ratio", "class": "merge", "note": "Third copy of the same compression-ratio formula; cmd should reuse the one definition."},
+    {"a": "assets.el", "aFile": "internal/dashboard/assets/app.js", "b": "assets.el", "bFile": "internal/dashboard/assets/timeline.js", "class": "merge", "note": "byte-identical DOM helper; a shared script inlined into both pages (as app.css already is) removes the copy"},
+    {"a": "assets.clear", "aFile": "internal/dashboard/assets/app.js", "b": "assets.clear", "bFile": "internal/dashboard/assets/timeline.js", "class": "merge", "note": "byte-identical"},
+    {"a": "assets.fixed", "aFile": "internal/dashboard/assets/app.js", "b": "assets.fixed", "bFile": "internal/dashboard/assets/timeline.js", "class": "merge", "note": "byte-identical"},
+    {"a": "assets.comma", "aFile": "internal/dashboard/assets/app.js", "b": "assets.comma", "bFile": "internal/dashboard/assets/timeline.js", "class": "merge", "note": "identical except timeline guards null/undefined; keep the guarded one"},
+    {"a": "assets.fact", "aFile": "internal/dashboard/assets/app.js", "b": "assets.fact", "bFile": "internal/dashboard/assets/timeline.js", "class": "merge", "note": "identical fact-tile builder"},
     {"a": "fingerprint.DecodeWLBag", "b": "fingerprint.DecodeWLBagIndexed", "class": "refactor", "note": "Same delta-uvarint (label,count) stream decoder; the indexed form only adds a dictionary lookup, so a shared stream reader serves both."},
     {"a": "cmd.*stageTimer.mark", "b": "cmd.*stageTimer.markOverlapped", "class": "refactor", "note": "Identical heap/mem/on-check prologue and last-update epilogue; only the printed timing line differs."},
     {"a": "retriever.Retrieve", "b": "retriever.Probe", "class": "refactor", "note": "Retrieve and Probe share the whole index build, admit bookkeeping and stats; only admitPairs vs admitFor(probeIdx) differs."},
@@ -21,6 +26,10 @@
     {"a": "fingerprint.DecodeWLBag", "b": "fingerprint.DecodeLabelDict", "class": "refactor", "note": "Same base64 + delta-uvarint decode loop and error shape; differs only in whether a count varint follows each delta."},
     {"a": "fingerprint.wlBagOf", "b": "fingerprint.LabelChains", "class": "refactor", "note": "Both re-implement the WL frame push/pop and per-round hash recurrence; a shared traversal would remove drift risk between bag and chains."},
     {"a": "fingerprint.EncodeLabelDict", "b": "fingerprint.EncodeWLBagIndexed", "class": "refactor", "note": "Same delta-uvarint stream writer; indexed bag adds dictionary lookup and a count per entry."},
+    {"a": "cmd.init", "aFile": "cmd/families.go", "b": "cmd.init", "bFile": "cmd/query.go", "class": "refactor", "note": "the corpus flags (threshold, min-nodes, channel-k, languages, exclude, tests, generated, config) are registered twice with verbatim help text; one registerCorpusFlags helper would own them"},
+    {"a": "cmd.init", "aFile": "cmd/analyze.go", "b": "cmd.init", "bFile": "cmd/families.go", "class": "refactor", "note": "same corpus-flag block as families, plus analyze-only flags; the shared block is the refactor"},
+    {"a": "cmd.init", "aFile": "cmd/analyze.go", "b": "cmd.init", "bFile": "cmd/query.go", "class": "refactor", "note": "third pairing of the duplicated corpus-flag registration"},
+    {"a": "assets.show", "aFile": "internal/dashboard/assets/app.js", "b": "assets.show", "bFile": "internal/dashboard/assets/timeline.js", "class": "refactor", "note": "same tab switch; defaults differ and app.js redraws the map on entry, so share the core and keep the hook"},
     {"a": "reporter.Print", "b": "reporter.PrintMarkdown", "class": "false_positive", "kind": "skeleton", "note": "Text vs markdown renderers of the same pair list; same field walk but every line's format differs."},
     {"a": "reporter.PrintFamilies", "b": "reporter.PrintMarkdownFamilies", "class": "false_positive", "kind": "skeleton", "note": "Text vs markdown family census; shared truncation walk, markdown adds a diagram and table rows."},
     {"a": "identity.*matcher.detectSplits", "b": "identity.*matcher.detectMerges", "class": "false_positive", "kind": "mirror", "note": "Split and merge detection are the same rule run old->new vs new->old over opposite indices."},
@@ -48,6 +57,11 @@
     {"a": "analyzer.familyFork", "b": "analyzer.familyInterfaceImpl", "class": "false_positive", "kind": "skeleton", "note": "Shared all-pairs loop around different pairwise rules (Fork vs InterfaceImpl) and different note payloads."},
     {"a": "assets.renderChanges", "b": "assets.renderTracks", "class": "false_positive", "kind": "skeleton", "note": "Shared filter/empty-note/list scaffold rendering entirely different rows (changes vs track grids)."},
     {"a": "gofront.printType", "b": "gofront.renderNode", "class": "false_positive", "kind": "vocabulary", "note": "Both call printer.Fprint but post-process differently (whitespace collapse vs dedent); tiny shared boilerplate."},
-    {"a": "identity.MarkdownDelta", "b": "identity.Print", "class": "false_positive", "kind": "skeleton", "note": "Markdown delta vs text result renderers; per-class walk shared, already using Lines, formats differ."}
+    {"a": "identity.MarkdownDelta", "b": "identity.Print", "class": "false_positive", "kind": "skeleton", "note": "Markdown delta vs text result renderers; per-class walk shared, already using Lines, formats differ."},
+    {"a": "cmd.init", "aFile": "cmd/diff.go", "b": "cmd.init", "bFile": "cmd/ontology.go", "class": "false_positive", "kind": "entrypoint", "note": "no flag in common; only the Flags().XVar + AddCommand idiom is shared"},
+    {"a": "cmd.init", "aFile": "cmd/fingerprint.go", "b": "cmd.init", "bFile": "cmd/timeline.go", "class": "false_positive", "kind": "entrypoint", "note": "timeline registers output/format/labels/target, fingerprint the corpus flags; nothing to share"},
+    {"a": "cmd.init", "aFile": "cmd/diff.go", "b": "cmd.init", "bFile": "cmd/timeline.go", "class": "false_positive", "kind": "entrypoint", "note": "different flag sets under the same registration idiom"},
+    {"a": "assets.renderColophon", "aFile": "internal/dashboard/assets/app.js", "b": "assets.renderColophon", "bFile": "internal/dashboard/assets/timeline.js", "class": "false_positive", "kind": "skeleton", "note": "both push prose sentences and join them; the prose is the payload and differs entirely"},
+    {"a": "assets.readHash", "aFile": "internal/dashboard/assets/app.js", "b": "assets.readHash", "bFile": "internal/dashboard/assets/timeline.js", "class": "false_positive", "kind": "skeleton", "note": "each parses its own page routes; only the location.hash read is shared"}
   ]
 }

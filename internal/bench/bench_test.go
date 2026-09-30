@@ -128,6 +128,7 @@ func scoreLabels(t *testing.T, corpus string, lf LabelsFile) {
 	t.Logf("corpus %s (population %s): %d functions", lf.Corpus, lf.Population, len(units))
 
 	run := Analyze(units, retriever.DefaultOptions())
+	run.Root = corpus
 	sc := Score(run, lf)
 	logScorecard(t, sc)
 
@@ -158,11 +159,11 @@ func logScorecard(t *testing.T, sc Scorecard) {
 	t.Logf("ranked %d pairs (%d suppressed by max-per-func=2)", sc.Ranked, sc.Suppressed)
 	for _, r := range sc.Results {
 		if r.Rank > 0 {
-			t.Logf("%-14s rank %-6d key %8.1f  %s / %s  — %s%s",
-				r.Label.Class, r.Rank, r.Key, r.Label.A, r.Label.B, kindPrefix(r.Label), r.Label.Note)
+			t.Logf("%-14s rank %-6d key %8.1f  %s  — %s%s",
+				r.Label.Class, r.Rank, r.Key, r.Label.Pair(), kindPrefix(r.Label), r.Label.Note)
 		} else {
-			t.Logf("%-14s %-11s          %s / %s  — %s%s",
-				r.Label.Class, r.Absent, r.Label.A, r.Label.B, kindPrefix(r.Label), r.Label.Note)
+			t.Logf("%-14s %-11s          %s  — %s%s",
+				r.Label.Class, r.Absent, r.Label.Pair(), kindPrefix(r.Label), r.Label.Note)
 		}
 	}
 	for _, class := range []string{"merge", "refactor", "false_positive"} {

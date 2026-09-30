@@ -84,6 +84,7 @@ func TestGenerateBaseline(t *testing.T) {
 			t.Fatalf("%s: corpus yielded no functions", name)
 		}
 		run := Analyze(units, retriever.DefaultOptions())
+		run.Root = corpusDir
 		sc := Score(run, lf)
 		t.Run(name, func(t *testing.T) { logScorecard(t, sc) })
 

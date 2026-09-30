@@ -209,6 +209,7 @@ func TestLexiconMembershipLabels(t *testing.T) {
 			// concepts into the next one's corpus statistics.
 			units := append([]parser.CodeUnit(nil), lc.run.Units...)
 			run := AnalyzeLexicon(units, retriever.DefaultOptions(), v.opt(lexicon.DefaultOptions()))
+			run.Root = lc.run.Root
 			sc := Score(run, lc.lf)
 			on, off := gateFlips(lc.run, run)
 			t.Logf("[%s] %-14s union %5d  concept %5d  %s  violations %d  gate +%d/-%d",

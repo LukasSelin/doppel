@@ -108,6 +108,13 @@ type Run struct {
 	Stats     retriever.Stats
 	Pairs     []analyzer.SimilarPair
 
+	// Root is the corpus directory Units were loaded from. Scoring reads it
+	// to turn each unit's File into the root-relative path a label's aFile
+	// and bFile name. Callers that Load a corpus set it; a Run built from
+	// units alone leaves it empty and matches a pinned file as a trailing
+	// path instead.
+	Root string
+
 	// LexOpt overrides the lexicon settings StageTag builds under. Nil is
 	// lexicon.DefaultOptions(), which is what production runs — it is the
 	// membership seam, the same shape Onto is for the vocabulary.
