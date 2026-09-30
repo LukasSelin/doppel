@@ -48,6 +48,7 @@ func loadLabeledCorpora(t *testing.T) []labeledCorpus {
 		}
 		t.Logf("%s: %d functions, %d labels", name, len(units), len(lf.Labels))
 		run := Analyze(units, retriever.DefaultOptions())
+		run.Root = corpus
 		out = append(out, labeledCorpus{name: name, run: run, lf: lf, onto: run.Onto})
 	}
 

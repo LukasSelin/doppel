@@ -24,6 +24,11 @@ func TestLabelsFileWellFormed(t *testing.T) {
 	if lf, err := ParseLabels([]byte(withPop)); err != nil || lf.Population != "exclude" {
 		t.Fatalf("population field mishandled: %v (%+v)", err, lf.Population)
 	}
+	withKind := `{"corpus":"example","reviewed":"2026-01-01","labels":[
+		{"a":"alpha.Encode","b":"alpha.Decode","class":"false_positive","kind":"mirror","note":"inverse"}]}`
+	if lf, err := ParseLabels([]byte(withKind)); err != nil || lf.Labels[0].Kind != "mirror" {
+		t.Fatalf("kind field mishandled: %v", err)
+	}
 	if lf, _ := ParseLabels([]byte(good)); lf.Population != "include" {
 		t.Errorf("empty population should default to include, got %q", lf.Population)
 	}
@@ -32,6 +37,8 @@ func TestLabelsFileWellFormed(t *testing.T) {
 		`{"corpus":"x","reviewed":"2026-01-01","labels":[{"a":"a.F","b":"b.G","class":"merge","note":""},{"a":"b.G","b":"a.F","class":"merge","note":"dup reversed"}]}`,
 		`{"corpus":"x","labels":[]}`,
 		`{"corpus":"x","reviewed":"2026-01-01","population":"sometimes","labels":[{"a":"a.F","b":"b.G","class":"merge","note":""}]}`,
+		`{"corpus":"x","reviewed":"2026-01-01","labels":[{"a":"a.F","b":"b.G","class":"merge","kind":"mirror","note":"kind on a merge"}]}`,
+		`{"corpus":"x","reviewed":"2026-01-01","labels":[{"a":"a.F","b":"b.G","class":"false_positive","kind":"lookalike","note":"unknown kind"}]}`,
 	}
 	for i, src := range bad {
 		if _, err := ParseLabels([]byte(src)); err == nil {
@@ -121,6 +128,7 @@ func scoreLabels(t *testing.T, corpus string, lf LabelsFile) {
 	t.Logf("corpus %s (population %s): %d functions", lf.Corpus, lf.Population, len(units))
 
 	run := Analyze(units, retriever.DefaultOptions())
+	run.Root = corpus
 	sc := Score(run, lf)
 	logScorecard(t, sc)
 
@@ -137,17 +145,25 @@ func scoreLabels(t *testing.T, corpus string, lf LabelsFile) {
 	}
 }
 
+// kindPrefix renders a false positive's kind ahead of its note.
+func kindPrefix(l Label) string {
+	if l.Kind == "" {
+		return ""
+	}
+	return "[" + l.Kind + "] "
+}
+
 // logScorecard prints one Scorecard the way scoreLabels always has.
 func logScorecard(t *testing.T, sc Scorecard) {
 	t.Helper()
 	t.Logf("ranked %d pairs (%d suppressed by max-per-func=2)", sc.Ranked, sc.Suppressed)
 	for _, r := range sc.Results {
 		if r.Rank > 0 {
-			t.Logf("%-14s rank %-6d key %8.1f  %s / %s  — %s",
-				r.Label.Class, r.Rank, r.Key, r.Label.A, r.Label.B, r.Label.Note)
+			t.Logf("%-14s rank %-6d key %8.1f  %s  — %s%s",
+				r.Label.Class, r.Rank, r.Key, r.Label.Pair(), kindPrefix(r.Label), r.Label.Note)
 		} else {
-			t.Logf("%-14s %-11s          %s / %s  — %s",
-				r.Label.Class, r.Absent, r.Label.A, r.Label.B, r.Label.Note)
+			t.Logf("%-14s %-11s          %s  — %s%s",
+				r.Label.Class, r.Absent, r.Label.Pair(), kindPrefix(r.Label), r.Label.Note)
 		}
 	}
 	for _, class := range []string{"merge", "refactor", "false_positive"} {
@@ -155,6 +171,12 @@ func logScorecard(t *testing.T, sc Scorecard) {
 			continue
 		}
 		t.Logf("mean rank %s: %.1f over %d present", class, sc.MeanRank[class], sc.Present[class])
+	}
+	for _, kind := range FPKinds {
+		if sc.KindPresent[kind] == 0 {
+			continue
+		}
+		t.Logf("  false_positive/%s: mean rank %.1f over %d present", kind, sc.KindMeanRank[kind], sc.KindPresent[kind])
 	}
 	t.Logf("aggregates: fp_in_top20=%d merge_present=%d/%d merge_in_top50=%d",
 		len(sc.FPInTop20), sc.MergePresent, sc.MergeTotal, sc.MergeInTop50)

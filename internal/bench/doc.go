@@ -12,13 +12,21 @@
 //	  "population": "include" | "exclude" | "only",   // which --tests view the labels describe; default include
 //	  "labels": [
 //	    {"a": "pkg.FuncA", "b": "pkg.*Recv.FuncB",
+//	     "aFile": "pkg/a.go", "bFile": "pkg/b.go",  // optional; required when a == b
 //	     "class": "merge" | "refactor" | "false_positive",
+//	     "kind": "mirror" | "entrypoint" | ...,   // optional, false_positive only; see FPKinds
 //	     "note": "short rationale"}
 //	  ]
 //	}
 //
 // Pair identity is the unordered qualified-name pair, names rendered exactly
-// as the reporter shows them (Package + "." + Name, receiver stars kept).
+// as the reporter shows them (Package + "." + Name, receiver stars kept). A
+// side may also name its file — slash-separated, relative to the corpus root,
+// as the report prints it — which pins it to the unit declared there. That is
+// optional wherever the name is unique, and required on both sides when the
+// two names are equal: two init functions in one package, or one helper
+// copied between two scripts, are otherwise indistinguishable.
+//
 // scoreLabels runs the pipeline's ranking-relevant stages as a library over
 // the declared population (cross test/prod pairs are dropped like the pipeline
 // does), ranks with the production defaults, and scores the labeled pairs:

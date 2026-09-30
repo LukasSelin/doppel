@@ -2,8 +2,10 @@ package bench
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/LukasSelin/doppel/internal/analyzer"
+	"github.com/LukasSelin/doppel/internal/snapshot"
 )
 
 // Absence reasons a labeled pair can carry instead of a rank.
@@ -36,6 +38,10 @@ type Scorecard struct {
 	MeanRank map[string]float64
 	Present  map[string]int
 
+	// Per-kind aggregates over present false positives that carry a Kind.
+	KindMeanRank map[string]float64
+	KindPresent  map[string]int
+
 	MergeTotal   int
 	MergePresent int
 	MergeInTop50 int
@@ -58,45 +64,56 @@ func Score(run *Run, lf LabelsFile) Scorecard {
 func ScoreWith(run *Run, lf LabelsFile, ro analyzer.RankOptions) Scorecard {
 	pairs := run.Pairs
 
-	retrieved := make(map[string]bool, len(pairs))
+	// Candidates are indexed by their unordered name pair, each list in the
+	// order it was built, so a label naming files can pick the unit it means
+	// out of several that share a qualified name — and one naming none keeps
+	// the old rule, the first (best-ranked) pair under those names.
+	retrieved := make(map[string][]scoredPair, len(pairs))
 	for _, p := range pairs {
-		retrieved[pairKey(qualifiedName(run.Units[p.AIdx]), qualifiedName(run.Units[p.BIdx]))] = true
+		sp := run.scoredPair(p)
+		retrieved[sp.key] = append(retrieved[sp.key], sp)
 	}
 
 	kept, suppressed := analyzer.SortForReportWith(pairs, run.Units, 0, 2, ro)
 
-	rankOf := make(map[string]int, len(kept))
-	keyOf := make(map[string]float64, len(kept))
+	ranked := make(map[string][]scoredPair, len(kept))
 	for i, p := range kept {
-		k := pairKey(qualifiedName(run.Units[p.AIdx]), qualifiedName(run.Units[p.BIdx]))
-		if _, ok := rankOf[k]; !ok {
-			rankOf[k] = i + 1
-			keyOf[k] = analyzer.RankKey(p, ro, run.Units)
-		}
+		sp := run.scoredPair(p)
+		sp.rank = i + 1
+		sp.rankKey = analyzer.RankKey(p, ro, run.Units)
+		ranked[sp.key] = append(ranked[sp.key], sp)
 	}
 
 	sc := Scorecard{
-		Functions:  len(run.Units),
-		Ranked:     len(kept),
-		Suppressed: suppressed,
-		MeanRank:   map[string]float64{},
-		Present:    map[string]int{},
+		Functions:    len(run.Units),
+		Ranked:       len(kept),
+		Suppressed:   suppressed,
+		MeanRank:     map[string]float64{},
+		Present:      map[string]int{},
+		KindMeanRank: map[string]float64{},
+		KindPresent:  map[string]int{},
 	}
 	classSum := map[string]int{}
+	kindSum := map[string]int{}
 
 	var worstMerge int
 	for _, l := range lf.Labels {
 		k := pairKey(l.A, l.B)
 		r := LabelResult{Label: l}
-		if rank, ok := rankOf[k]; ok {
+		if sp, ok := firstMatch(ranked[k], l, run.Root); ok {
+			rank := sp.rank
 			r.Rank = rank
-			r.Key = keyOf[k]
+			r.Key = sp.rankKey
 			sc.Present[l.Class]++
 			classSum[l.Class] += rank
+			if l.Kind != "" {
+				sc.KindPresent[l.Kind]++
+				kindSum[l.Kind] += rank
+			}
 			if l.Class == "merge" && rank > worstMerge {
 				worstMerge = rank
 			}
-		} else if retrieved[k] {
+		} else if _, ok := firstMatch(retrieved[k], l, run.Root); ok {
 			r.Absent = AbsentSuppressed
 		} else {
 			r.Absent = AbsentNotRetrieved
@@ -112,16 +129,19 @@ func ScoreWith(run *Run, lf LabelsFile, ro analyzer.RankOptions) Scorecard {
 					sc.MergeInTop50++
 				}
 			} else if r.Absent == AbsentNotRetrieved {
-				sc.MergeMissing = append(sc.MergeMissing, l.A+" / "+l.B)
+				sc.MergeMissing = append(sc.MergeMissing, l.Pair())
 			}
 		case "false_positive":
 			if r.Rank > 0 && r.Rank <= 20 {
-				sc.FPInTop20 = append(sc.FPInTop20, fmt.Sprintf("%s / %s (rank %d)", l.A, l.B, r.Rank))
+				sc.FPInTop20 = append(sc.FPInTop20, fmt.Sprintf("%s (rank %d)", l.Pair(), r.Rank))
 			}
 		}
 	}
 	for class, n := range sc.Present {
 		sc.MeanRank[class] = float64(classSum[class]) / float64(n)
+	}
+	for kind, n := range sc.KindPresent {
+		sc.KindMeanRank[kind] = float64(kindSum[kind]) / float64(n)
 	}
 
 	// The FP-above-merge check needs the worst merge rank, so it runs after
@@ -132,8 +152,54 @@ func ScoreWith(run *Run, lf LabelsFile, ro analyzer.RankOptions) Scorecard {
 		}
 		if worstMerge > 0 && r.Rank < worstMerge {
 			sc.FPAboveMerge = append(sc.FPAboveMerge,
-				fmt.Sprintf("%s / %s (rank %d, worst merge %d)", r.Label.A, r.Label.B, r.Rank, worstMerge))
+				fmt.Sprintf("%s (rank %d, worst merge %d)", r.Label.Pair(), r.Rank, worstMerge))
 		}
 	}
 	return sc
+}
+
+// scoredPair is one candidate pair as the labels see it: its two sides' names
+// and corpus-relative files, and — once ranked — its rank and rank key.
+type scoredPair struct {
+	key          string // pairKey of the two names
+	nameA, nameB string
+	fileA, fileB string
+	rank         int
+	rankKey      float64
+}
+
+func (r *Run) scoredPair(p analyzer.SimilarPair) scoredPair {
+	a, b := r.Units[p.AIdx], r.Units[p.BIdx]
+	return scoredPair{
+		key:   pairKey(qualifiedName(a), qualifiedName(b)),
+		nameA: qualifiedName(a), nameB: qualifiedName(b),
+		fileA: snapshot.RelSlash(r.Root, a.File), fileB: snapshot.RelSlash(r.Root, b.File),
+	}
+}
+
+// firstMatch is the first candidate under the label's names whose sides agree
+// with every file the label pins, in either orientation.
+func firstMatch(cands []scoredPair, l Label, root string) (scoredPair, bool) {
+	for _, c := range cands {
+		if sideMatches(c.nameA, c.fileA, l.A, l.AFile, root) && sideMatches(c.nameB, c.fileB, l.B, l.BFile, root) ||
+			sideMatches(c.nameA, c.fileA, l.B, l.BFile, root) && sideMatches(c.nameB, c.fileB, l.A, l.AFile, root) {
+			return c, true
+		}
+	}
+	return scoredPair{}, false
+}
+
+// sideMatches reports whether a unit named name in file is the side a label
+// names. With the corpus root known, a pinned file must equal the unit's
+// root-relative path. Without one (a Run built from units, not from Load) the
+// unit's path is whatever the loader recorded, so a pinned file matches it as
+// a whole trailing path — never a partial path segment.
+func sideMatches(name, file, wantName, wantFile, root string) bool {
+	if name != wantName {
+		return false
+	}
+	if wantFile == "" || file == wantFile {
+		return true
+	}
+	return root == "" && strings.HasSuffix(file, "/"+wantFile)
 }
