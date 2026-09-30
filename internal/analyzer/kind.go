@@ -46,13 +46,15 @@ const (
 
 // KindNote is one pair's (or family's) kind with the facts the label renders.
 type KindNote struct {
-	Kind      string   // KindInterfaceImpl or KindFork
+	Kind      string   // one of the Kind* constants
 	Method    string   // interface-impl: the shared method name; fork: the shared stem
 	Signature string   // interface-impl: the identical signature text
-	Receivers []string // interface-impl: the receiver types as written, member order
-	Names     []string // fork: the differing unit names, member order
+	Receivers []string // interface-impl: the receiver types as written; mirror: the one receiver
+	Names     []string // fork: the differing unit names; mirror: the two method names
 	Packages  []string // distinct package names, member order
 	Relation  string   // RelationSamePackage, RelationSiblings or RelationUnrelated
+	Shared    []string // thin wrappers: the resolved helpers both call, sorted
+	Overlap   float64  // different calls: the callee Jaccard
 }
 
 // ClassifyPair labels a pair, or returns nil. Fork is tried first: when both

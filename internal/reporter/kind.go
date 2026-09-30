@@ -34,6 +34,12 @@ func kindClause(k *analyzer.KindNote, family bool, md bool) string {
 			return fmt.Sprintf("diverged copies sharing the stem %s %s", code(k.Method), where)
 		}
 		return fmt.Sprintf("%s — %s share the stem %s %s", k.Kind, joinAnd(k.Names, code), code(k.Method), where)
+	case analyzer.KindMirror:
+		return fmt.Sprintf("%s — %s on %s are one operation run in opposite directions", k.Kind, joinAnd(k.Names, code), code(k.Receivers[0]))
+	case analyzer.KindThinWrappers:
+		return fmt.Sprintf("%s — both are small bodies delegating to %s and naming different things, %s", k.Kind, joinAnd(k.Shared, code), where)
+	case analyzer.KindDifferentCalls:
+		return fmt.Sprintf("%s — the bodies share a shape but only %.0f%% of their calls, %s", k.Kind, 100*k.Overlap, where)
 	}
 	return k.Kind
 }
@@ -48,6 +54,11 @@ func kindWhere(k *analyzer.KindNote, code func(string) string) string {
 		}
 	case analyzer.RelationSiblings:
 		return "sibling packages " + joinAnd(k.Packages, code)
+	}
+	if len(k.Packages) == 1 {
+		// One package clause in two unrelated directories: two package
+		// mains, most often, which "packages main" would misread as one.
+		return "package " + code(k.Packages[0]) + " in two directories"
 	}
 	return "packages " + joinAnd(k.Packages, code)
 }

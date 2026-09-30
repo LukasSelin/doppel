@@ -135,7 +135,7 @@ internal/
   retriever/    Multi-channel candidate retrieval: shape.go / concept.go / calls.go inverted indexes, retriever.go union + evidence
                 admit.go is the per-unit admission fan-out the three channels share; memo.go the sharded pair memo that let them run at all
   culture/      Corpus-culture model: ecology.go (PMI), prototype.go (prototypes + typicality), habitat.go (fit), convention.go
-  analyzer/     SimilarPair + Retrieval types; FindSimilar (library API); rank.go: SortForReport (the report's ranking) and SortByEvidence (the plain-Total library one); kind.go + stem.go (pair kinds); explain.go (rule-attributed pair sentences)
+  analyzer/     SimilarPair + Retrieval types; FindSimilar (library API); rank.go: SortForReport (the report's ranking) and SortByEvidence (the plain-Total library one); kind.go + stem.go (pair kinds), lenskind.go (the mirror, thin-wrapper and different-calls kinds); explain.go (rule-attributed pair sentences)
   comparator/   Weighted structural overlap scoring (12 signals → 0.0–1.0 composite); options.go is the
                 exhibits blend — how the concept views combine into that one slot
   family/       Near-duplicate families: components + edge completion + maximal cliques over the pair graph
@@ -1803,6 +1803,34 @@ rules land where intended: hugo's `evalCall`/`evalField` pairs read `diverged co
 `WithContext`/`Wait`, gin's `Render`, chi's `Flush` and moby's 11-member `UnmarshalJSON` family read
 `interface implementations`.
 
+**Three more kinds read what a naming rule alone cannot** (`internal/analyzer/lenskind.go`), each the
+production form of a signal `TestKindLenses` measured, and each tried after the two above, in this
+order:
+
+- **`mirror operations`** — two methods on one receiver in one package whose names differ in exactly
+  one word, and that word is an opposite (`EncodeBytes`/`DecodeBytes`, `Get`/`Delete`,
+  `SuperClassesOf`/`SubClassesOf`). One idea run in opposite directions: a reason to keep two
+  functions, not to merge them. The opposite-word table is fixed and short, and a word must be
+  whole — `Get`/`GetRange` is not a mirror.
+- **`thin wrappers`** — both bodies at most `ThinNodes` (30) nodes, both call at least one shared
+  resolved helper, and their vocab-lens bags (the canonical tree with names and literal values
+  kept, `BuildThinVocab`) overlap below `ThinVocabCeiling` (0.8, uniform weights). The
+  consolidation has already happened; what is left is the call site. The vocab guard is what spares
+  a real clone, which reads 1.00 there. `BuildThinVocab` reads `CodeUnit.Canonical`, so `analyze`
+  builds it beside `LabelKinds` before the trees are released, and only for bodies small enough to
+  qualify.
+- **`different calls`** — distinct-callee Jaccard below `CallOverlapFloor` (0.25): a shared shape
+  whose work is elsewhere. Two bodies that call nothing are not labelled.
+
+Measured on the four self-review label sets: the three together label 62 of 168 false positives
+(16 of 25 mirrors, 31 of 44 accessor families, 6 of 20 wrappers, 6 of 20 vocabulary pairs) and one
+of 68 true matches — gowl's `labelAxiom`/`commentAxiom`, a merge the rule calls thin wrappers because
+that is literally what the two bodies are. On cobra they label none of the 17 labelled pairs. The
+naming kinds carry the same kind of miss: `interface implementations` lands on one merge and one
+refactor in the same labels. As a ranking discount the same rules failed the held-out check (see
+`TestKindLenses`), which is why they are kinds: a label a reader can overrule, never a rank.
+`ClassifyFamily` does not apply them.
+
 ## Pair explanations
 
 `analyzer.Explain` puts one sentence on **every** reported pair, saying what canonicalization did
@@ -3367,9 +3395,9 @@ functions for exactly this reason, and the first version of them did not and fai
     adoption rule, and the thresholds were read off the same labels they were scored on. The lens
     `inverse` class fires on 1 of 25 mirrors, matching `TestLensRank`. The largest class, `skeleton`
     (48 of 168 false positives), is separated by nothing: its signals are a refactor's, which is what
-    a skeleton is. What would change the verdict is labels drawn independently of these thresholds;
-    until then the three flags belong in the report as pair kinds, the way `interface
-    implementations` and `diverged copy` do — annotation, never rank.
+    a skeleton is. What would change the verdict is labels drawn independently of these thresholds.
+    The three flags **shipped as pair kinds** instead (see *Pair kinds*); the test's `production:`
+    rows score `analyzer.ClassifyPairIn` itself, so the kinds and the measurement cannot drift.
   - `TestGroupedDisplay` (guard `DOPPEL_BENCH_GROUP="<corpus>=<labels>[=<family-min>];…"`) measures
     showing a pair under the row of its family's best-ranked pair instead of on its own row — a
     display change that leaves every rank and score alone. **Measured on the doppel, strata, zarr
