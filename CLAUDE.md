@@ -3348,6 +3348,28 @@ functions for exactly this reason, and the first version of them did not and fai
     `Run.RescoreWith`, and logs which one the stated selection rule picks. Both assert nothing;
     see *Concept views* for the measured result. Like every bench variant they reweight and
     restore `lc.onto`, the run's own learned vocabulary, never `ontology.Default()`.
+  - `TestKindLenses` (guard `DOPPEL_BENCH_KINDS="<corpus>=<labels>[=<family-min>];…"`) measures
+    per-kind false-positive signals: the five fingerprint lenses beside the facts they cannot see —
+    opposite words in otherwise equal names (Encode/Decode, Get/Delete, Min/Max), a shared receiver,
+    callee and caller Jaccard, node counts, a shared resolved helper, entry-point names and
+    `package main` in different directories. It prints each signal's median per label class, each
+    candidate flag's firing rate per false-positive kind, and the labels ranked with a flagged pair's
+    retrieval mass discounted. **Measured on the four self-review label sets (236 labels) and held
+    out on cobra; detectors, not adopted as a ranking change.** Three flags fire on no merge or
+    refactor at all: same receiver with opposite names (17 of 25 mirrors), callee Jaccard below 0.25
+    (12 false positives, mostly vocabulary), and a body of at most 30 nodes sharing a resolved helper
+    whose names differ under the vocab lens (33 of 44 accessor families, 8 of 20 wrappers; the
+    vocab guard is what spares merges, which read vocab 1.00 against 0.49). OR'd and discounted to a
+    quarter they take the pooled violations 141 → 105 and false positives in the top 20 43 → 39 at no
+    merge cost, and help doppel and zarr clearly, strata slightly, gowl not at all. **Held out on
+    cobra they fire on none of its 17 labelled pairs and pull its false positives 14 ranks up (52.5 →
+    38.5)**, by demoting unlabelled pairs above them — which fails the false-positive side of the
+    adoption rule, and the thresholds were read off the same labels they were scored on. The lens
+    `inverse` class fires on 1 of 25 mirrors, matching `TestLensRank`. The largest class, `skeleton`
+    (48 of 168 false positives), is separated by nothing: its signals are a refactor's, which is what
+    a skeleton is. What would change the verdict is labels drawn independently of these thresholds;
+    until then the three flags belong in the report as pair kinds, the way `interface
+    implementations` and `diverged copy` do — annotation, never rank.
   - `TestGroupedDisplay` (guard `DOPPEL_BENCH_GROUP="<corpus>=<labels>[=<family-min>];…"`) measures
     showing a pair under the row of its family's best-ranked pair instead of on its own row — a
     display change that leaves every rank and score alone. **Measured on the doppel, strata, zarr
