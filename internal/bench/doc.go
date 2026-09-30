@@ -13,6 +13,7 @@
 //	  "labels": [
 //	    {"a": "pkg.FuncA", "b": "pkg.*Recv.FuncB",
 //	     "class": "merge" | "refactor" | "false_positive",
+//	     "kind": "mirror" | "entrypoint" | ...,   // optional, false_positive only; see FPKinds
 //	     "note": "short rationale"}
 //	  ]
 //	}

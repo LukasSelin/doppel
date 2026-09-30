@@ -3,6 +3,7 @@ package bench
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 )
 
 // Label is one human verdict on a ranked pair. See doc.go for the file format.
@@ -10,7 +11,25 @@ type Label struct {
 	A     string `json:"a"`
 	B     string `json:"b"`
 	Class string `json:"class"`
-	Note  string `json:"note"`
+	// Kind says why a false positive is not worth acting on (FPKinds). It is
+	// optional, allowed only on false_positive labels, and never ranks or
+	// asserts: it lets a scorecard report mean rank per failure mode, which
+	// is what a change aimed at one mode has to be measured against.
+	Kind string `json:"kind,omitempty"`
+	Note string `json:"note"`
+}
+
+// FPKinds is the closed vocabulary of Label.Kind, in the order a scorecard
+// logs it.
+var FPKinds = []string{
+	"mirror",            // inverse operations: encode/decode, read/write, min/max
+	"entrypoint",        // main/init/run boilerplate, flag registration
+	"separate-programs", // two binaries with no shared home to merge into
+	"skeleton",          // shared driver scaffold around different payloads
+	"already-factored",  // thin wrappers already delegating to one helper
+	"accessor-family",   // parallel trivial accessors/builders across types
+	"vocabulary",        // shared calls or vocabulary, unrelated logic
+	"other",
 }
 
 // LabelsFile is one reviewed corpus's worth of labels.
@@ -54,6 +73,14 @@ func ParseLabels(data []byte) (LabelsFile, error) {
 		case "merge", "refactor", "false_positive":
 		default:
 			return lf, fmt.Errorf("label %d: invalid class %q", i, l.Class)
+		}
+		if l.Kind != "" {
+			if l.Class != "false_positive" {
+				return lf, fmt.Errorf("label %d: kind %q on a %s label; kind describes false positives only", i, l.Kind, l.Class)
+			}
+			if !slices.Contains(FPKinds, l.Kind) {
+				return lf, fmt.Errorf("label %d: invalid kind %q", i, l.Kind)
+			}
 		}
 		if l.A == "" || l.B == "" {
 			return lf, fmt.Errorf("label %d: empty qualified name", i)

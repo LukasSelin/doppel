@@ -36,6 +36,10 @@ type Scorecard struct {
 	MeanRank map[string]float64
 	Present  map[string]int
 
+	// Per-kind aggregates over present false positives that carry a Kind.
+	KindMeanRank map[string]float64
+	KindPresent  map[string]int
+
 	MergeTotal   int
 	MergePresent int
 	MergeInTop50 int
@@ -76,13 +80,16 @@ func ScoreWith(run *Run, lf LabelsFile, ro analyzer.RankOptions) Scorecard {
 	}
 
 	sc := Scorecard{
-		Functions:  len(run.Units),
-		Ranked:     len(kept),
-		Suppressed: suppressed,
-		MeanRank:   map[string]float64{},
-		Present:    map[string]int{},
+		Functions:    len(run.Units),
+		Ranked:       len(kept),
+		Suppressed:   suppressed,
+		MeanRank:     map[string]float64{},
+		Present:      map[string]int{},
+		KindMeanRank: map[string]float64{},
+		KindPresent:  map[string]int{},
 	}
 	classSum := map[string]int{}
+	kindSum := map[string]int{}
 
 	var worstMerge int
 	for _, l := range lf.Labels {
@@ -93,6 +100,10 @@ func ScoreWith(run *Run, lf LabelsFile, ro analyzer.RankOptions) Scorecard {
 			r.Key = keyOf[k]
 			sc.Present[l.Class]++
 			classSum[l.Class] += rank
+			if l.Kind != "" {
+				sc.KindPresent[l.Kind]++
+				kindSum[l.Kind] += rank
+			}
 			if l.Class == "merge" && rank > worstMerge {
 				worstMerge = rank
 			}
@@ -122,6 +133,9 @@ func ScoreWith(run *Run, lf LabelsFile, ro analyzer.RankOptions) Scorecard {
 	}
 	for class, n := range sc.Present {
 		sc.MeanRank[class] = float64(classSum[class]) / float64(n)
+	}
+	for kind, n := range sc.KindPresent {
+		sc.KindMeanRank[kind] = float64(kindSum[kind]) / float64(n)
 	}
 
 	// The FP-above-merge check needs the worst merge rank, so it runs after
