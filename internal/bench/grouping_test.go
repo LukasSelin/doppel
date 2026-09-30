@@ -3,7 +3,6 @@ package bench
 import (
 	"fmt"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/LukasSelin/doppel/internal/analyzer"
@@ -224,26 +223,8 @@ func TestGroupedDisplay(t *testing.T) {
 	if spec == "" {
 		t.Skip("set DOPPEL_BENCH_GROUP=<corpus>=<labels>;... to measure grouped display")
 	}
-	for _, item := range strings.Split(spec, ";") {
-		parts := strings.Split(item, "=")
-		if len(parts) < 2 || len(parts) > 3 {
-			t.Fatalf("bad entry %q", item)
-		}
-		corpus, labelsPath := parts[0], parts[1]
-		fo := family.DefaultOptions()
-		if len(parts) == 3 {
-			if _, err := fmt.Sscanf(parts[2], "%g", &fo.Min); err != nil {
-				t.Fatalf("bad family-min in %q: %v", item, err)
-			}
-		}
-		data, err := os.ReadFile(labelsPath)
-		if err != nil {
-			t.Fatal(err)
-		}
-		lf, err := ParseLabels(data)
-		if err != nil {
-			t.Fatal(err)
-		}
+	for _, ls := range parseLabeledSpecs(t, spec) {
+		corpus, lf, fo := ls.root, ls.lf, ls.family
 		units, err := Load(corpus, Population(lf.Population))
 		if err != nil {
 			t.Fatal(err)
