@@ -2663,6 +2663,17 @@ to rewrite on every turn:
   registered frontend set, and a baseline already refuses across builds. `Params.Equal` gained
   `sameStrings`, the slice comparison `Languages` had inline, rather than a second copy of it.
 
+  **`Schema` 12 is a meaning bump, like 3.** `Unit.Key` was documented as corpus-unique and was
+  not: `@file` disambiguates a name across files, but two same-named declarations in *one* file
+  — `init`, which Go allows repeatedly, and functions the lexical frontend finds in a bundled
+  script — shared a key. hugo had 31 such keys (one is the two `init`s in
+  `config/configLoader.go`, the rest mostly a minified KaTeX bundle) and prometheus 8. The second
+  and later declarations of a name in a file now take an ordinal in declaration order
+  (`config.init@config/configLoader.go#2`); the first keeps the plain `@file` key, so no key that
+  was already unique moved — measured: the other five rungs are byte-identical, and hugo and
+  prometheus differ only in those keys. A schema-11 baseline holds the collapsed key, so against
+  it every such function would read as added by a session that never touched it.
+
   `Schema` 5 (shape line) was the same kind of bump as 3, one step further: `Pair.Score` changed metric (token shingles → corpus-weighted WL
   Jaccard) *and* became corpus-relative, so a schema-4 baseline and a schema-5 run would disagree
   about pairs nobody edited. It also added `Containment`, which earns its bytes the way rule four

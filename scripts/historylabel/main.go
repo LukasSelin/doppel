@@ -164,8 +164,22 @@ func run(repoDir, snapPath, pin, until, handPath, outPath, corpus string, weak b
 		return pair{a, b}
 	}
 	pairs := map[pair]bool{}
+	sameSite := 0
 	for _, p := range snap.Pairs {
+		// Two declarations of one name in one file (init, which Go allows
+		// repeatedly) are distinct snapshot keys but one side to the bench
+		// labels format, which names a side by package.Name and file — and
+		// one function to the history walk, which follows a name through a
+		// file. Neither could say which init a verdict is about.
+		ua, ub := byKey[p.A], byKey[p.B]
+		if p.A == p.B || ua.pkg == ub.pkg && ua.name == ub.name && ua.file == ub.file {
+			sameSite++
+			continue
+		}
 		pairs[norm(p.A, p.B)] = true
+	}
+	if sameSite > 0 {
+		fmt.Fprintf(os.Stderr, "%d pairs between same-named functions in one file skipped: no label can tell their sides apart\n", sameSite)
 	}
 	handBy := map[pair]handLabel{}
 	for _, l := range hand.Labels {
