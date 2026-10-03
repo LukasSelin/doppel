@@ -95,6 +95,52 @@ type history struct {
 	pin     *commit // last commit at or before the pin
 	pinSHA  string
 	lives   map[string]*life
+
+	// deltaFuncs counts, per exact edit delta, how many function edits in the
+	// whole walk made it. A delta made more than maxFamily times is a
+	// campaign — klog.Infof -> klog.ErrorS, dropping a pointer helper — run
+	// across many functions in many commits, which the per-commit family
+	// check cannot see.
+	deltaFuncs map[string]int
+	deltaKeys  map[[2]*fn]string
+}
+
+// deltaKey is an edit's delta as one canonical string, memoized per edit.
+func (h *history) deltaKey(e edit) string {
+	k := [2]*fn{e.old, e.new}
+	if s, ok := h.deltaKeys[k]; ok {
+		return s
+	}
+	d := delta(e)
+	parts := make([]string, 0, len(d))
+	for t, n := range d {
+		parts = append(parts, fmt.Sprintf("%s#%d", t, n))
+	}
+	sort.Strings(parts)
+	s := strings.Join(parts, "\x1f")
+	h.deltaKeys[k] = s
+	return s
+}
+
+// campaign reports whether e's exact change was made to more than
+// maxFamily functions across the history.
+func (h *history) campaign(e edit) bool {
+	return h.deltaFuncs[h.deltaKey(e)] > maxFamily
+}
+
+// sameCampaign reports whether two commits are one change rolled out piece
+// by piece: their subjects agree once a leading "area: " prefix is dropped
+// ("controller/job: Improve goroutine mgmt" against
+// "controller/cronjob: Improve goroutine mgmt").
+func sameCampaign(a, b *commit) bool {
+	strip := func(s string) string {
+		if i := strings.LastIndex(s, ": "); i >= 0 {
+			s = s[i+2:]
+		}
+		return strings.ToLower(strings.TrimSpace(s))
+	}
+	sa := strip(a.subject)
+	return sa != "" && sa == strip(b.subject)
 }
 
 // walk replays every non-merge commit touching a tracked directory, oldest
@@ -173,6 +219,14 @@ func (h *history) walk(pin, until string, dirs []string) error {
 			}
 		}
 		c.sweep = modified > sweepFuncs || mechanicalSubject.MatchString(c.subject)
+	}
+	h.deltaFuncs, h.deltaKeys = map[string]int{}, map[[2]*fn]string{}
+	for _, c := range h.commits {
+		for _, e := range c.edits {
+			if size(delta(e)) >= minDelta {
+				h.deltaFuncs[h.deltaKey(e)]++
+			}
+		}
 	}
 	return nil
 }
@@ -444,7 +498,7 @@ func (h *history) judge(a, b *life) verdict {
 		if !ok || !e.modified() || !f.modified() || e.c.sweep {
 			continue
 		}
-		if p := parallel(e, f); p >= parallelFloor && family(e) <= maxFamily {
+		if p := parallel(e, f); p >= parallelFloor && family(e) <= maxFamily && !h.campaign(e) {
 			add("co-change", fmt.Sprintf("both edited alike (%.2f): %s", p, e.c.subject), e.c)
 			used[e.c] = true
 		}
@@ -454,14 +508,15 @@ func (h *history) judge(a, b *life) verdict {
 	// in a later commit.
 	lagged := func(x, y *life, ey map[*commit]edit) {
 		for _, e := range x.edits {
-			if !e.modified() || e.c.sweep || used[e.c] || family(e) > maxFamily {
+			if !e.modified() || e.c.sweep || used[e.c] || family(e) > maxFamily || h.campaign(e) {
 				continue
 			}
 			if _, both := ey[e.c]; both || h.state(y, e.c.parent) == nil {
 				continue
 			}
 			for _, f := range y.edits {
-				if f.c.idx <= e.c.idx || !f.modified() || f.c.sweep || used[f.c] || family(f) > maxFamily {
+				if f.c.idx <= e.c.idx || !f.modified() || f.c.sweep || used[f.c] || family(f) > maxFamily ||
+					h.campaign(f) || sameCampaign(e.c, f.c) {
 					continue
 				}
 				if p := parallel(e, f); p >= parallelFloor {
@@ -527,6 +582,18 @@ func (h *history) judge(a, b *life) verdict {
 			if helper == nil {
 				continue
 			}
+			// A helper many functions adopt at once is a shared snippet —
+			// a trace field, a log line — not a sign that any two of them
+			// are one function.
+			adopters := 0
+			for _, x := range e.c.edits {
+				if mentions(x.new, bare) > mentions(x.old, bare) {
+					adopters++
+				}
+			}
+			if adopters > maxFamily {
+				continue
+			}
 			ht := counts(helper.Tokens())
 			moved := func(x edit) bool {
 				if mentions(x.new, bare) <= mentions(x.old, bare) {
@@ -571,18 +638,46 @@ func (h *history) judge(a, b *life) verdict {
 			if err != nil {
 				continue
 			}
-			lostX, gainY := false, false
+			// The claim needs a call site actually rewritten: a removed line
+			// calling X that reappears, otherwise verbatim, calling Y. "Lost
+			// a call to X somewhere, gained a call to Y somewhere" is true
+			// of most large commits by coincidence. And X declared again
+			// anywhere in the commit was moved, not consolidated.
+			// Two methods sharing a name (both MarshalCheckpoint) cannot be
+			// told apart in call text — the rewrite would be the identity —
+			// so the evidence is not available for them.
+			if x.bare() == y.bare() {
+				continue
+			}
+			xc, yc := x.bare()+"(", y.bare()+"("
+			added := map[string]bool{}
+			var removed []string
+			movedX := false
 			for _, l := range strings.Split(diff, "\n") {
 				switch {
 				case strings.HasPrefix(l, "---"), strings.HasPrefix(l, "+++"):
-				case strings.HasPrefix(l, "-") && strings.Contains(l, x.bare()+"("):
-					lostX = true
-				case strings.HasPrefix(l, "+") && strings.Contains(l, y.bare()+"("):
-					gainY = true
+				case strings.HasPrefix(l, "+"):
+					t := strings.TrimSpace(l[1:])
+					added[t] = true
+					if strings.HasPrefix(t, "func ") && strings.Contains(t, " "+xc) || strings.HasPrefix(t, "func "+xc) {
+						movedX = true
+					}
+				case strings.HasPrefix(l, "-") && strings.Contains(l, xc):
+					removed = append(removed, strings.TrimSpace(l[1:]))
 				}
 			}
-			if lostX && gainY {
-				add("consolidated", fmt.Sprintf("%s removed, its calls now go to %s: %s", x.key, y.key, e.c.subject), e.c)
+			redirected := 0
+			for _, r := range removed {
+				if strings.HasPrefix(r, "func ") {
+					continue
+				}
+				if added[strings.ReplaceAll(r, xc, yc)] {
+					redirected++
+				}
+			}
+			if redirected > 0 && !movedX {
+				add("consolidated", fmt.Sprintf("%s removed, %d call site(s) rewritten to %s: %s",
+					x.key, redirected, y.key, e.c.subject), e.c)
 			}
 		}
 	}

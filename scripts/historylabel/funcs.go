@@ -117,8 +117,11 @@ func recvName(e ast.Expr) string {
 // command_notwin.go) each declare their own.
 type table map[string][]*fn
 
-// lookup finds a function by name, preferring the copy in file when the name
-// is declared more than once.
+// lookup finds a function by name, preferring the copy in file. When file
+// holds no copy it falls back only to a name declared exactly once — a
+// function whose file was renamed — and never for init or main, which every
+// file may declare: on kubernetes, a fixture file's own init fell back to its
+// neighbour's and read as forty-two "synced" edits that never happened.
 func (t table) lookup(name, file string) *fn {
 	fs := t[name]
 	if len(fs) == 0 {
@@ -129,7 +132,10 @@ func (t table) lookup(name, file string) *fn {
 			return f
 		}
 	}
-	return fs[0]
+	if file == "" || len(fs) == 1 && name != "init" && name != "main" {
+		return fs[0]
+	}
+	return nil
 }
 
 // names is the table's function names, sorted.
