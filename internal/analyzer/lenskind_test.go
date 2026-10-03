@@ -25,6 +25,15 @@ func TestMirror(t *testing.T) {
 		{methodUnit("zarr", "*T", "EncodeBytes"), methodUnit("zarr", "*T", "DecodeArray"), false},
 		{methodUnit("zarr", "*T", "Get"), methodUnit("zarr", "*T", "GetRange"), false},
 		{parser.CodeUnit{Package: "p", Name: "encode"}, parser.CodeUnit{Package: "p", Name: "decode"}, false}, // plain functions
+		// Lifecycle verbs: an operation and the one that undoes it.
+		{methodUnit("bridge", "*driver", "CreateEndpoint"), methodUnit("bridge", "*driver", "DeleteEndpoint"), true},
+		{methodUnit("plugin", "*pluginRouter", "pullPlugin"), methodUnit("plugin", "*pluginRouter", "pushPlugin"), true},
+		{methodUnit("libnetwork", "*Endpoint", "sbJoin"), methodUnit("libnetwork", "*Endpoint", "sbLeave"), true},
+		{methodUnit("hugolib", "pageTree", "IsAncestor"), methodUnit("hugolib", "pageTree", "IsDescendant"), true},
+		{methodUnit("fs", "*T", "Mount"), methodUnit("fs", "*T", "Unmount"), true},
+		// One resource's verbs, not one operation run backwards.
+		{methodUnit("cluster", "*Cluster", "CreateService"), methodUnit("cluster", "*Cluster", "UpdateService"), false},
+		{methodUnit("daemon", "*Daemon", "ContainerRestart"), methodUnit("daemon", "*Daemon", "ContainerStop"), false},
 	}
 	for _, c := range cases {
 		if got := Mirror(c.a, c.b) != nil; got != c.want {

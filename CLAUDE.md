@@ -1813,8 +1813,16 @@ order:
 - **`mirror operations`** — two methods on one receiver in one package whose names differ in exactly
   one word, and that word is an opposite (`EncodeBytes`/`DecodeBytes`, `Get`/`Delete`,
   `SuperClassesOf`/`SubClassesOf`). One idea run in opposite directions: a reason to keep two
-  functions, not to merge them. The opposite-word table is fixed and short, and a word must be
-  whole — `Get`/`GetRange` is not a mirror.
+  functions, not to merge them. The opposite-word table is fixed, and a word must be whole —
+  `Get`/`GetRange` is not a mirror. It also carries **lifecycle verbs**, an operation and the
+  one that undoes it (`CreateEndpoint`/`DeleteEndpoint`, `Mount`/`Unmount`, `Join`/`Leave`,
+  `Commit`/`Rollback`, `IsAncestor`/`IsDescendant`), added because the history labels found
+  those pairs co-changing with the table unable to name them. Only true inverses: `Create`/
+  `Update` and `Restart`/`Stop` are one resource's verbs and stay out. Measured over the
+  ladder's compared pairs: mirror firings moby 71 → 187, prometheus 42 → 53, hugo 43 → 48,
+  the four small rungs unchanged; every new firing sampled is a real inverse pair, none of
+  cobra's 17 hand labels is touched, and 13 history-labelled pairs (moby 12, hugo 1) are newly
+  named — 10 coupled, 3 refactor. Like every kind it annotates and never ranks.
 - **`thin wrappers`** — both bodies at most `ThinNodes` (30) nodes, both call at least one shared
   resolved helper, and their vocab-lens bags (the canonical tree with names and literal values
   kept, `BuildThinVocab`) overlap below `ThinVocabCeiling` (0.8, uniform weights). The

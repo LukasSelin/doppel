@@ -81,6 +81,24 @@ func init() {
 		{"assemble", "split"}, {"compress", "decompress"}, {"serialize", "deserialize"},
 		{"inc", "dec"}, {"up", "down"}, {"left", "right"}, {"first", "last"}, {"prev", "next"},
 		{"before", "after"}, {"in", "out"}, {"import", "export"}, {"send", "receive"}, {"send", "recv"},
+		// Lifecycle verbs: a resource brought into being, into use or into a
+		// place, and the operation that undoes it. History labels across the
+		// ladder found these co-changing on one receiver (CreateEndpoint and
+		// DeleteEndpoint, pullPlugin and pushPlugin, sbJoin and sbLeave)
+		// with the table unable to name them. Only true inverses belong
+		// here: Create/Update and Restart/Stop are one resource's verbs,
+		// not one operation run backwards.
+		{"create", "delete"}, {"create", "destroy"}, {"create", "remove"}, {"add", "delete"},
+		{"insert", "delete"}, {"insert", "remove"}, {"attach", "detach"}, {"mount", "unmount"},
+		{"activate", "deactivate"}, {"register", "unregister"}, {"register", "deregister"},
+		{"subscribe", "unsubscribe"}, {"connect", "disconnect"}, {"install", "uninstall"},
+		{"join", "leave"}, {"pull", "push"}, {"bind", "unbind"}, {"link", "unlink"},
+		{"grant", "revoke"}, {"pause", "resume"}, {"pause", "unpause"}, {"suspend", "resume"},
+		{"freeze", "unfreeze"}, {"freeze", "thaw"}, {"show", "hide"}, {"wrap", "unwrap"},
+		{"pack", "unpack"}, {"upload", "download"}, {"enter", "exit"}, {"setup", "teardown"},
+		{"commit", "rollback"}, {"increment", "decrement"}, {"expand", "collapse"},
+		{"encrypt", "decrypt"}, {"upgrade", "downgrade"}, {"allocate", "free"},
+		{"ancestor", "descendant"}, {"ancestors", "descendants"},
 	} {
 		opposites[p[0]+" "+p[1]] = p[1]
 		opposites[p[1]+" "+p[0]] = p[0]
