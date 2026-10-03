@@ -26,6 +26,9 @@ const (
 	// renameSim: a function removed while a body at least this alike is added
 	// in the same commit was renamed, not consolidated.
 	renameSim = 0.8
+	// replacedSim: a removal whose commit also adds a body at least this
+	// alike was replaced by that new function, whatever its calls now say.
+	replacedSim = 0.5
 	// copySim: a function born while its partner already existed, at least
 	// this alike, began as a copy.
 	copySim = 0.6
@@ -54,7 +57,7 @@ var fixSubject = regexp.MustCompile(`(?i)\b(fix(es|ed)?|bug|correct(s|ed)?|typo|
 // copy of a pattern, duplicated or not, so its parallel edits are evidence
 // about the pattern and never about a pair. Counting functions alone does not
 // catch these — a lint pass over one package can touch fewer than sweepFuncs.
-var mechanicalSubject = regexp.MustCompile(`(?i)\b(lint|golangci|gofmt|gofumpt|vet|staticcheck|modernize|autofix(es)?|replace[sd]?|rename[sd]?|deprecat\w*|cleanup|clean up|typos?|spelling|whitespace|style|cosmetics?|revert(s|ed)?)\b`)
+var mechanicalSubject = regexp.MustCompile(`(?i)\b(lint|golangci|gofmt|gofumpt|vet|staticcheck|modernize|autofix(es)?|replace[sd]?|rename[sd]?|deprecat\w*|cleanup|clean up|typos?|spelling|whitespace|style|cosmetics?|revert(s|ed)?|simplif\w*|import[- ]alias(es)?|GA|graduat\w*|promot(e|es|ed|ing))\b`)
 
 type commit struct {
 	sha, parent, subject string
@@ -371,6 +374,17 @@ func lostTokens(e edit) map[string]int {
 	return out
 }
 
+// added counts the tokens an edit added to the body.
+func added(e edit) int {
+	n := 0
+	for k, v := range delta(e) {
+		if strings.HasPrefix(k, "+") {
+			n += v
+		}
+	}
+	return n
+}
+
 // family counts the functions the edit's commit changed the same way,
 // the edit's own function included.
 func family(e edit) int {
@@ -449,13 +463,19 @@ func mentions(f *fn, name string) int {
 const (
 	vConsolidated = "consolidated" // one side removed, its callers sent to the other
 	vExtracted    = "extracted"    // both sides rewritten to call one new helper
-	vSynced       = "synced"       // the same change applied to both, together or later
+	vSynced       = "synced"       // the same change applied to both in one commit
+	vLagged       = "lagged"       // the same change applied to one, later to the other
 	vUnpropagated = "unpropagated" // a fix to one side whose old code the other still carries
 	vDiverged     = "diverged"     // edited independently and grew apart (weak)
 	vNone         = ""             // history says nothing
 )
 
-var verdictOrder = []string{vConsolidated, vExtracted, vSynced, vUnpropagated, vDiverged}
+// A lagged sync is its own verdict, below synced, because it measured far
+// weaker: on a kubernetes sample two of eight lagged-only pairs were real,
+// against five of ten co-changes. Spread over years and commits, "the same
+// change later" is mostly a rollout reaching an unrelated function. It is
+// reported and corroborates a co-change; on its own it labels nothing.
+var verdictOrder = []string{vConsolidated, vExtracted, vSynced, vLagged, vUnpropagated, vDiverged}
 
 type evidence struct {
 	Kind    string   `json:"kind"`
@@ -496,6 +516,12 @@ func (h *history) judge(a, b *life) verdict {
 	for _, e := range a.edits {
 		f, ok := eb[e.c]
 		if !ok || !e.modified() || !f.modified() || e.c.sweep {
+			continue
+		}
+		// Each side must gain something: deleting the same feature-gate check or
+		// dropped API version from two functions is a cleanup reaching both,
+		// not a change the two had to share.
+		if added(e) == 0 || added(f) == 0 {
 			continue
 		}
 		if p := parallel(e, f); p >= parallelFloor && family(e) <= maxFamily && !h.campaign(e) {
@@ -627,7 +653,11 @@ func (h *history) judge(a, b *life) verdict {
 			renamed := false
 			for _, hn := range h.addedIn(e.c, x.dir) {
 				t, _, _ := h.ts.at(e.c.sha, x.dir)
-				if g := t.lookup(hn, ""); g != nil && sim(e.old, g) >= renameSim {
+				// replacedSim, not renameSim: here a looser likeness is enough
+				// to doubt the claim — kubernetes replaced deletedEvents with a
+				// new addedAndDeletedEvents, and a rewritten test line merely
+				// happened to match an addedEvents call.
+				if g := t.lookup(hn, ""); g != nil && sim(e.old, g) >= replacedSim {
 					renamed = true
 				}
 			}
@@ -650,7 +680,7 @@ func (h *history) judge(a, b *life) verdict {
 				continue
 			}
 			xc, yc := x.bare()+"(", y.bare()+"("
-			added := map[string]bool{}
+			addedLines := map[string]bool{}
 			var removed []string
 			movedX := false
 			for _, l := range strings.Split(diff, "\n") {
@@ -658,8 +688,16 @@ func (h *history) judge(a, b *life) verdict {
 				case strings.HasPrefix(l, "---"), strings.HasPrefix(l, "+++"):
 				case strings.HasPrefix(l, "+"):
 					t := strings.TrimSpace(l[1:])
-					added[t] = true
+					addedLines[t] = true
 					if strings.HasPrefix(t, "func ") && strings.Contains(t, " "+xc) || strings.HasPrefix(t, "func "+xc) {
+						movedX = true
+					}
+					// A function named like Y declared in this very commit
+					// makes the rewritten call ambiguous: kubernetes turned
+					// util.registerMetrics into a new util.RegisterMetrics,
+					// and the call matched an unrelated package's
+					// RegisterMetrics.
+					if strings.HasPrefix(t, "func ") && strings.Contains(t, " "+yc) || strings.HasPrefix(t, "func "+yc) {
 						movedX = true
 					}
 				case strings.HasPrefix(l, "-") && strings.Contains(l, xc):
@@ -671,7 +709,7 @@ func (h *history) judge(a, b *life) verdict {
 				if strings.HasPrefix(r, "func ") {
 					continue
 				}
-				if added[strings.ReplaceAll(r, xc, yc)] {
+				if addedLines[strings.ReplaceAll(r, xc, yc)] {
 					redirected++
 				}
 			}
@@ -721,8 +759,10 @@ func (h *history) judge(a, b *life) verdict {
 
 func kindVerdict(kind string) string {
 	switch kind {
-	case "co-change", "lagged-sync":
+	case "co-change":
 		return vSynced
+	case "lagged-sync":
+		return vLagged
 	case "unpropagated-fix":
 		return vUnpropagated
 	}

@@ -3223,20 +3223,30 @@ functions for exactly this reason, and the first version of them did not and fai
   - **History labels** (`scripts/historylabel`, `task history-labels`) are the second label source,
     and the only one doppel's own numbers cannot have produced: a hand review judges two bodies,
     history records what maintainers did with them. Over the candidate pairs at the pin it replays
-    every non-merge commit and reads `consolidated` (one side removed, its calls sent to the
-    other → merge), `synced` (the same change landed on both, together or later) and `extracted`
-    (code moved out of both into one new helper) → refactor, `diverged` → false_positive only under
-    `-w`, and `unpropagated` (a fix to one side whose old lines the other still carries) → no label,
-    because history cannot say which side was wrong — on cobra it was the fixed side, a bad copy.
-    Lint, rename, revert and cosmetic commits, sweeps over more than 10 functions, and changes
-    applied alike to more than 4 functions in one commit are not evidence: they are parallel by
-    construction. Output is the bench labels format plus an `evidence` list naming commits, so
-    `DOPPEL_BENCH_LABELS` scores it unchanged. **Measured on cobra: it decided 2 of the 18
-    hand-labelled pairs, agreeing on both** — the hand-labelled merges were written once and barely
-    edited, so history is silent on them. It covers a different region: pairs maintainers had to
-    keep in step (26 labels on cobra, 30 on gin, 8 on chi). Treat its output as proposed labels to
-    review, never as a committed review; a co-change proves coupling, not mergeability, and
-    accessor families co-change too.
+    every non-merge commit and reads `consolidated` (one side removed and a call site rewritten
+    verbatim from it to the other → merge), `synced` (the same change, adding code, landed on both
+    in one commit) and `extracted` (code moved out of both into one new helper) → refactor,
+    `diverged` → false_positive only under `-w`. Two verdicts are reported and never labelled:
+    `lagged` (the same change reached the other side in a later commit — measured at about 2 of 8
+    real on kubernetes, where a rollout reaches unrelated functions over years) and `unpropagated`
+    (a fix to one side whose old lines the other still carries — history cannot say which side was
+    wrong; on cobra it was the fixed side, a bad copy). Not evidence, being parallel by
+    construction: lint/rename/revert/cosmetic/GA-promotion commits, sweeps over more than 10
+    functions, a change applied alike to more than 4 functions in one commit, and an exact edit
+    delta made to more than 4 functions anywhere in the history (a campaign: `klog.Infof` →
+    `ErrorS`). Output is the bench labels format plus an `evidence` list naming commits, so
+    `DOPPEL_BENCH_LABELS` scores it unchanged; `-r <url> -p <pin>` runs it outside the ladder.
+    **Measured on cobra: it decided 2 of the 18 hand-labelled pairs, agreeing on both** — the
+    hand-labelled merges were written once and barely edited, so history is silent on them. It
+    covers a different region: pairs maintainers had to keep in step (22 labels on cobra, 27 on
+    gin, 8 on chi). **On kubernetes** (v1.31.0 pin, 95 893 candidate pairs, 41 544 commits, ~17
+    minutes, ~4GB) it emits 1 816 labels; a hand-checked sample read extracted 8 of 8 plausible and
+    synced about 11 of 15, the misses being call-site campaigns after an API change. No
+    consolidation survived — the four candidates an earlier rule accepted were a rename, a
+    replacement and two coincidental line matches. Every rule above was added because kubernetes
+    produced its false evidence; cobra, gin and chi are too small to show any of it. Treat the
+    output as proposed labels to review, never as a committed review; a co-change proves coupling,
+    not mergeability, and accessor families co-change too.
   - `Corpora` (corpora.go) pins seven public Go repos at release tags, ordered old-and-complex
     to new-and-narrow (moby 8003 funcs → conc 81). Only coordinates are committed; `Fetch`
     shallow-clones into `Root()` (`$DOPPEL_CORPORA`, else user cache) and verifies HEAD against

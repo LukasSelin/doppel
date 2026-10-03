@@ -82,6 +82,7 @@ type outFile struct {
 //	    code moved out of both, shows a shared *part*; it cannot say whether
 //	    the rest of the two bodies is the same function
 //	diverged -> false_positive, only under -weak
+//	lagged -> nothing: reported only, see verdictOrder
 //	unpropagated -> nothing: reported for review, never a label. History says
 //	    one side was fixed and the other still has the old code, but not
 //	    which side was wrong — on cobra the fixed side was the one that had
