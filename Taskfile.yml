@@ -121,6 +121,14 @@ tasks:
       - cmd: open {{.OUT}}
         platforms: [darwin]
 
+  history-labels:
+    desc: "Derive golden labels for a ladder corpus from its git history and report agreement with the hand review (CORPUS=cobra OUT=<path>; default beside the history clone)"
+    vars:
+      CORPUS: '{{.CORPUS | default "cobra"}}'
+    cmds:
+      # Like timeline: the git walk lives outside the module, never in the tool.
+      - ./scripts/history-labels.sh -c {{.CORPUS}} {{if .OUT}}-o {{.OUT}}{{end}}
+
   pages:
     desc: Build the published site into _site/, exactly as the Pages workflow does
     vars:

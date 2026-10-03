@@ -155,7 +155,9 @@ internal/
                 render.go inlines either into its shell; both share vendor/ and app.css
   bench/        Measurement harness: golden-ranking scorer, the pinned public corpus ladder, per-stage benchmarks, example generator
 examples/       Committed real reports for each corpus rung, plus labels/ (committed golden reviews) — see examples/README.md
-scripts/        timeline.sh: walks a git history and analyses each revision at one pinned operating point. The only code in the repo that knows git exists, and deliberately outside the Go module
+scripts/        timeline.sh: walks a git history and analyses each revision at one pinned operating point.
+                history-labels.sh + historylabel/ (its own Go module): derives golden labels from what maintainers did to each pair in git history.
+                The only code in the repo that knows git exists, and deliberately outside the doppel module
 ```
 
 Seven helpers are deliberately shared rather than copied, because doppel found each
@@ -280,6 +282,7 @@ task dashboard-dev # the same, reading assets off disk (DOPPEL_DASHBOARD_ASSETS)
 task snapshot      # analyze . --format json
 task baseline      # the T0 record: golden scorecard + example checksums -> examples/baseline.json
 task ablate        # zero each fingerprint blend component in turn and re-score the labels
+task history-labels CORPUS=cobra  # derive labels from git history; report agreement with the hand review
 ```
 
 `task dashboard` is the one task that is not a single command — it renders and then opens the
@@ -3020,7 +3023,8 @@ every claim is corpus-relative rather than history-relative — so `doppel timel
 nothing. Argument order **is** series order, which needs no timestamp inside a `Snapshot` (there is
 none, by the schema's third rule) and no sorting the tool could not justify. `scripts/timeline.sh`
 walks `git rev-list`, materializes each revision in a detached worktree, analyses it, and calls the
-command; `task timeline` wraps it. That script is the only thing in the repo that knows git exists.
+command; `task timeline` wraps it. That script and `scripts/historylabel` are the only things in the
+repo that know git exists.
 
 ### One operating point for the whole series
 
@@ -3216,6 +3220,41 @@ functions for exactly this reason, and the first version of them did not and fai
     against the matching rung of the public ladder, skipping corpora that are not fetched. The
     public/private split is the whole point: the committed reviews make the benchmark
     reproducible by anyone, the env-driven one keeps the private corpus private.
+  - **History labels** (`scripts/historylabel`, `task history-labels`) are the second label source,
+    and the only one doppel's own numbers cannot have produced: a hand review judges two bodies,
+    history records what maintainers did with them. Over the candidate pairs at the pin it replays
+    every non-merge commit and reads `consolidated` (one side removed and a call site rewritten
+    verbatim from it to the other → merge), `synced` (the same change, adding code, landed on both
+    in at least `-min-cochanges` (2) separate commits) and `extracted` (code moved out of both into
+    one new helper) → refactor, `diverged` → false_positive only under `-w`. Three verdicts are
+    reported and never labelled: `synced-once` (one shared change — on moby real about 3 times in
+    15, against about 11 in 12 for pairs sharing two or more: one shared edit is mostly a
+    code-health pass that happened to reach both, and no subject list keeps up with how those are
+    worded), `lagged` (the same change reached the other side in a later commit — about 2 of 8 on
+    kubernetes, where a rollout reaches unrelated functions over years) and `unpropagated` (a fix to
+    one side whose old lines the other still carries — history cannot say which side was wrong; on
+    cobra it was the fixed side, a bad copy). Not evidence for a parallel edit: sweeps over more
+    than 10 functions, a change applied alike to more than 4 functions in one commit, an exact edit
+    delta made to more than 4 functions anywhere in the history (a campaign: `klog.Infof` →
+    `ErrorS`), and commits whose subject says a tool, a move or a refactor made them. Extraction and
+    consolidation ignore the subject — they demand code moved or a call site rewritten, and
+    "Refactor: extract selectSeriesSet" is exactly the extraction it names. Output is the bench
+    labels format plus an `evidence` list naming commits, so `DOPPEL_BENCH_LABELS` scores it
+    unchanged; `-r <url> -p <pin>` runs it outside the ladder.
+
+    **Measured over the whole ladder and kubernetes** (labels emitted, all refactor): cobra 4, chi
+    8, conc 0, gin 14, hugo 22, prometheus 116, moby 100, kubernetes (v1.31.0 pin, 95 867 pairs,
+    41 544 commits, ~17 minutes, ~4GB) 459. Hand-checked samples read extracted 8 of 8 plausible on
+    each of prometheus, moby and kubernetes, and synced about 9 of 10 on kubernetes and 11 of 12 on
+    moby. **No consolidation survived anywhere**: every candidate an earlier rule accepted was a
+    rename, a replacement, a move or a coincidental line match, so history is a source of refactor
+    labels, not merge labels. **On cobra it now decides 0 of the 18 hand-labelled pairs** — the two
+    it agreed with under `-min-cochanges 1` each share a single change, and the hand-labelled merges
+    were written once and barely edited. It covers a different region from a hand review: pairs
+    maintainers had to keep in step. Every exclusion above was added because kubernetes or moby
+    produced the false evidence; the small rungs are too small to show any of it. Treat the output
+    as proposed labels to review, never as a committed review; a co-change proves coupling, not
+    mergeability, and accessor families and mirror pairs (Create/Update) co-change too.
   - `Corpora` (corpora.go) pins seven public Go repos at release tags, ordered old-and-complex
     to new-and-narrow (moby 8003 funcs → conc 81). Only coordinates are committed; `Fetch`
     shallow-clones into `Root()` (`$DOPPEL_CORPORA`, else user cache) and verifies HEAD against
