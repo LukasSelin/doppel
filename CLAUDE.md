@@ -155,7 +155,9 @@ internal/
                 render.go inlines either into its shell; both share vendor/ and app.css
   bench/        Measurement harness: golden-ranking scorer, the pinned public corpus ladder, per-stage benchmarks, example generator
 examples/       Committed real reports for each corpus rung, plus labels/ (committed golden reviews) — see examples/README.md
-scripts/        timeline.sh: walks a git history and analyses each revision at one pinned operating point. The only code in the repo that knows git exists, and deliberately outside the Go module
+scripts/        timeline.sh: walks a git history and analyses each revision at one pinned operating point.
+                history-labels.sh + historylabel/ (its own Go module): derives golden labels from what maintainers did to each pair in git history.
+                The only code in the repo that knows git exists, and deliberately outside the doppel module
 ```
 
 Seven helpers are deliberately shared rather than copied, because doppel found each
@@ -280,6 +282,7 @@ task dashboard-dev # the same, reading assets off disk (DOPPEL_DASHBOARD_ASSETS)
 task snapshot      # analyze . --format json
 task baseline      # the T0 record: golden scorecard + example checksums -> examples/baseline.json
 task ablate        # zero each fingerprint blend component in turn and re-score the labels
+task history-labels CORPUS=cobra  # derive labels from git history; report agreement with the hand review
 ```
 
 `task dashboard` is the one task that is not a single command — it renders and then opens the
@@ -3020,7 +3023,8 @@ every claim is corpus-relative rather than history-relative — so `doppel timel
 nothing. Argument order **is** series order, which needs no timestamp inside a `Snapshot` (there is
 none, by the schema's third rule) and no sorting the tool could not justify. `scripts/timeline.sh`
 walks `git rev-list`, materializes each revision in a detached worktree, analyses it, and calls the
-command; `task timeline` wraps it. That script is the only thing in the repo that knows git exists.
+command; `task timeline` wraps it. That script and `scripts/historylabel` are the only things in the
+repo that know git exists.
 
 ### One operating point for the whole series
 
@@ -3216,6 +3220,23 @@ functions for exactly this reason, and the first version of them did not and fai
     against the matching rung of the public ladder, skipping corpora that are not fetched. The
     public/private split is the whole point: the committed reviews make the benchmark
     reproducible by anyone, the env-driven one keeps the private corpus private.
+  - **History labels** (`scripts/historylabel`, `task history-labels`) are the second label source,
+    and the only one doppel's own numbers cannot have produced: a hand review judges two bodies,
+    history records what maintainers did with them. Over the candidate pairs at the pin it replays
+    every non-merge commit and reads `consolidated` (one side removed, its calls sent to the
+    other → merge), `synced` (the same change landed on both, together or later) and `extracted`
+    (code moved out of both into one new helper) → refactor, `diverged` → false_positive only under
+    `-w`, and `unpropagated` (a fix to one side whose old lines the other still carries) → no label,
+    because history cannot say which side was wrong — on cobra it was the fixed side, a bad copy.
+    Lint, rename, revert and cosmetic commits, sweeps over more than 10 functions, and changes
+    applied alike to more than 4 functions in one commit are not evidence: they are parallel by
+    construction. Output is the bench labels format plus an `evidence` list naming commits, so
+    `DOPPEL_BENCH_LABELS` scores it unchanged. **Measured on cobra: it decided 2 of the 18
+    hand-labelled pairs, agreeing on both** — the hand-labelled merges were written once and barely
+    edited, so history is silent on them. It covers a different region: pairs maintainers had to
+    keep in step (26 labels on cobra, 30 on gin, 8 on chi). Treat its output as proposed labels to
+    review, never as a committed review; a co-change proves coupling, not mergeability, and
+    accessor families co-change too.
   - `Corpora` (corpora.go) pins seven public Go repos at release tags, ordered old-and-complex
     to new-and-narrow (moby 8003 funcs → conc 81). Only coordinates are committed; `Fetch`
     shallow-clones into `Root()` (`$DOPPEL_CORPORA`, else user cache) and verifies HEAD against
