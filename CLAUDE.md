@@ -1813,8 +1813,16 @@ order:
 - **`mirror operations`** — two methods on one receiver in one package whose names differ in exactly
   one word, and that word is an opposite (`EncodeBytes`/`DecodeBytes`, `Get`/`Delete`,
   `SuperClassesOf`/`SubClassesOf`). One idea run in opposite directions: a reason to keep two
-  functions, not to merge them. The opposite-word table is fixed and short, and a word must be
-  whole — `Get`/`GetRange` is not a mirror.
+  functions, not to merge them. The opposite-word table is fixed, and a word must be whole —
+  `Get`/`GetRange` is not a mirror. It also carries **lifecycle verbs**, an operation and the
+  one that undoes it (`CreateEndpoint`/`DeleteEndpoint`, `Mount`/`Unmount`, `Join`/`Leave`,
+  `Commit`/`Rollback`, `IsAncestor`/`IsDescendant`), added because the history labels found
+  those pairs co-changing with the table unable to name them. Only true inverses: `Create`/
+  `Update` and `Restart`/`Stop` are one resource's verbs and stay out. Measured over the
+  ladder's compared pairs: mirror firings moby 71 → 187, prometheus 42 → 53, hugo 43 → 48,
+  the four small rungs unchanged; every new firing sampled is a real inverse pair, none of
+  cobra's 17 hand labels is touched, and 13 history-labelled pairs (moby 12, hugo 1) are newly
+  named — 10 coupled, 3 refactor. Like every kind it annotates and never ranks.
 - **`thin wrappers`** — both bodies at most `ThinNodes` (30) nodes, both call at least one shared
   resolved helper, and their vocab-lens bags (the canonical tree with names and literal values
   kept, `BuildThinVocab`) overlap below `ThinVocabCeiling` (0.8, uniform weights). The
@@ -2663,6 +2671,17 @@ to rewrite on every turn:
   registered frontend set, and a baseline already refuses across builds. `Params.Equal` gained
   `sameStrings`, the slice comparison `Languages` had inline, rather than a second copy of it.
 
+  **`Schema` 12 is a meaning bump, like 3.** `Unit.Key` was documented as corpus-unique and was
+  not: `@file` disambiguates a name across files, but two same-named declarations in *one* file
+  — `init`, which Go allows repeatedly, and functions the lexical frontend finds in a bundled
+  script — shared a key. hugo had 31 such keys (one is the two `init`s in
+  `config/configLoader.go`, the rest mostly a minified KaTeX bundle) and prometheus 8. The second
+  and later declarations of a name in a file now take an ordinal in declaration order
+  (`config.init@config/configLoader.go#2`); the first keeps the plain `@file` key, so no key that
+  was already unique moved — measured: the other five rungs are byte-identical, and hugo and
+  prometheus differ only in those keys. A schema-11 baseline holds the collapsed key, so against
+  it every such function would read as added by a session that never touched it.
+
   `Schema` 5 (shape line) was the same kind of bump as 3, one step further: `Pair.Score` changed metric (token shingles → corpus-weighted WL
   Jaccard) *and* became corpus-relative, so a schema-4 baseline and a schema-5 run would disagree
   about pairs nobody edited. It also added `Containment`, which earns its bytes the way rule four
@@ -3224,9 +3243,15 @@ functions for exactly this reason, and the first version of them did not and fai
     and the only one doppel's own numbers cannot have produced: a hand review judges two bodies,
     history records what maintainers did with them. Over the candidate pairs at the pin it replays
     every non-merge commit and reads `consolidated` (one side removed and a call site rewritten
-    verbatim from it to the other → merge), `synced` (the same change, adding code, landed on both
-    in at least `-min-cochanges` (2) separate commits) and `extracted` (code moved out of both into
-    one new helper) → refactor, `diverged` → false_positive only under `-w`. Three verdicts are
+    verbatim from it to the other → merge), `extracted` (code moved out of both into one new
+    helper) → refactor, `synced` (the same change, adding code, landed on both in at least
+    `-min-cochanges` (2) separate commits) → **coupled**, `diverged` → false_positive only under
+    `-w`. `coupled` is a bench class of its own (`bench.Classes`) because a co-change proves the two
+    are kept in step and nothing about merging them: mirror and lifecycle pairs (Create/Delete,
+    Encode/Decode) co-change exactly as clones do, and the hand reviews call those false positives,
+    so labelling them refactor put the two label sources in contradiction. The scorecard gives
+    coupled a mean rank and no assertion, and the agreement report marks it `~` rather than
+    counting it for or against a hand verdict. Three verdicts are
     reported and never labelled: `synced-once` (one shared change — on moby real about 3 times in
     15, against about 11 in 12 for pairs sharing two or more: one shared edit is mostly a
     code-health pass that happened to reach both, and no subject list keeps up with how those are
@@ -3240,15 +3265,24 @@ functions for exactly this reason, and the first version of them did not and fai
     consolidation ignore the subject — they demand code moved or a call site rewritten, and
     "Refactor: extract selectSeriesSet" is exactly the extraction it names. Output is the bench
     labels format plus an `evidence` list naming commits, so `DOPPEL_BENCH_LABELS` scores it
-    unchanged; `-r <url> -p <pin>` runs it outside the ladder.
+    unchanged; `-r <url> -p <pin>` runs it outside the ladder. Pairs between two same-named
+    functions in one file (two `init`s, or functions in a bundled script) are skipped and counted on
+    stderr — hugo 157, prometheus 6: the labels format names a side by name and file, and the walk
+    follows a name through a file, so neither could say which one a verdict is about. hugo's 22nd
+    label was one of them, its two sides one key until schema 12.
 
-    **Measured over the whole ladder and kubernetes** (labels emitted, all refactor): cobra 4, chi
-    8, conc 0, gin 14, hugo 22, prometheus 116, moby 100, kubernetes (v1.31.0 pin, 95 867 pairs,
-    41 544 commits, ~17 minutes, ~4GB) 459. Hand-checked samples read extracted 8 of 8 plausible on
+    **Measured over the whole ladder and kubernetes** (labels emitted, refactor + coupled): cobra
+    0 + 4, chi 6 + 2, conc 0, gin 7 + 7, hugo 9 + 12, prometheus 43 + 73, moby 33 + 67; kubernetes
+    (v1.31.0 pin, 95 867 pairs, 41 544 commits, ~17 minutes, ~4GB) 459 before the split, not re-run.
+    Ranked, coupled pairs sit *higher* than refactor ones on every rung with both (moby mean 689
+    against 1 684, prometheus 623 against 1 359, hugo 399 against 1 072): a pair maintainers
+    pulled a helper out of shares a part, not a body, and the shape-squared key buries exactly
+    that. On the large rungs both classes sit deep: recall is fine (2 of ~260 never retrieved) and
+    ranking is not. Hand-checked samples read extracted 8 of 8 plausible on
     each of prometheus, moby and kubernetes, and synced about 9 of 10 on kubernetes and 11 of 12 on
     moby. **No consolidation survived anywhere**: every candidate an earlier rule accepted was a
     rename, a replacement, a move or a coincidental line match, so history is a source of refactor
-    labels, not merge labels. **On cobra it now decides 0 of the 18 hand-labelled pairs** — the two
+    and coupled labels, not merge labels. **On cobra it now decides 0 of the 18 hand-labelled pairs** — the two
     it agreed with under `-min-cochanges 1` each share a single change, and the hand-labelled merges
     were written once and barely edited. It covers a different region from a hand review: pairs
     maintainers had to keep in step. Every exclusion above was added because kubernetes or moby

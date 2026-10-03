@@ -36,6 +36,7 @@ import (
 	"math"
 	"path/filepath"
 	"sort"
+	"strconv"
 
 	"github.com/LukasSelin/doppel/internal/analyzer"
 	"github.com/LukasSelin/doppel/internal/canon"
@@ -172,7 +173,15 @@ import (
 // blocklist is not recorded and deliberately: it is a property of the doppel
 // build, like the set of registered frontends, and a baseline already refuses
 // to compare across builds.
-const Schema = 11
+//
+// 12 changes no field: it changes what Unit.Key asserts, like 3 did for
+// MergeWorthy. Keys were meant to be corpus-unique and were not — two
+// same-named declarations in one file (init, or functions the lexical
+// frontend finds in a bundled script) shared one `@file` key. The second and
+// later now carry an ordinal (`@file#2`). A schema-11 baseline holds the
+// collapsed key, so against it every such function would read as newly added
+// by a session that never touched it; refusing is the honest answer.
+const Schema = 12
 
 // Snapshot is one full analysis run.
 //
@@ -602,16 +611,31 @@ func labelDict(units []parser.CodeUnit) []uint64 {
 // in a package, and two directories may share a package name. Colliding names
 // get their file appended, which keeps the key stable when code moves within a
 // file — the common edit — and unambiguous when it does not.
+//
+// The file is not total either: init may be declared more than once in one
+// file. The second and later declarations of a name in a file take an ordinal
+// in declaration order (`app.init@app/a.go#2`). The first keeps the plain
+// `@file` key, so every key that was already unique is unchanged; the ordinal
+// moves only when an earlier same-named declaration in that file is added or
+// removed, which is as stable as a name that carries no other identity can be.
 func unitKeys(units []parser.CodeUnit, root string) []string {
 	counts := make(map[string]int, len(units))
 	for _, u := range units {
 		counts[concepter.QualifiedName(u)]++
 	}
+	// units arrive in walk order, files in path order and each file's
+	// declarations in source order, so the index order is declaration order.
+	seen := make(map[string]int)
 	keys := make([]string, len(units))
 	for i, u := range units {
 		qn := concepter.QualifiedName(u)
 		if counts[qn] > 1 {
-			keys[i] = qn + "@" + RelSlash(root, u.File)
+			k := qn + "@" + RelSlash(root, u.File)
+			seen[k]++
+			if n := seen[k]; n > 1 {
+				k += "#" + strconv.Itoa(n)
+			}
+			keys[i] = k
 			continue
 		}
 		keys[i] = qn

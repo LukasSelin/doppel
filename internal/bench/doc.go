@@ -13,7 +13,7 @@
 //	  "labels": [
 //	    {"a": "pkg.FuncA", "b": "pkg.*Recv.FuncB",
 //	     "aFile": "pkg/a.go", "bFile": "pkg/b.go",  // optional; required when a == b
-//	     "class": "merge" | "refactor" | "false_positive",
+//	     "class": "merge" | "refactor" | "false_positive" | "coupled",
 //	     "kind": "mirror" | "entrypoint" | ...,   // optional, false_positive only; see FPKinds
 //	     "note": "short rationale"}
 //	  ]
@@ -33,7 +33,9 @@
 // each gets a rank or an absence reason, and three hard assertions check that
 // merge findings are retrieved, that no false positive outranks a merge, and
 // that no false positive sits in the top 20. Everything else is a logged
-// scorecard. A partial review is fine — only labeled pairs are scored, so a
+// scorecard — including coupled, a class that claims two functions are kept
+// in step and makes no claim about merging them, so it has a mean rank and no
+// assertion. A partial review is fine — only labeled pairs are scored, so a
 // pair whose verdict is genuinely contested is better left out than guessed.
 //
 // Two tests call it:

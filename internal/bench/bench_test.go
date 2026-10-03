@@ -166,7 +166,7 @@ func logScorecard(t *testing.T, sc Scorecard) {
 				r.Label.Class, r.Absent, r.Label.Pair(), kindPrefix(r.Label), r.Label.Note)
 		}
 	}
-	for _, class := range []string{"merge", "refactor", "false_positive"} {
+	for _, class := range Classes {
 		if sc.Present[class] == 0 {
 			continue
 		}

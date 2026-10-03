@@ -10,7 +10,7 @@ import (
 // classOrder is the fixed class ordering logScorecard already prints in, used
 // here too so a CorpusBaseline's Classes slice never depends on Scorecard's
 // map iteration order.
-var classOrder = []string{"merge", "refactor", "false_positive"}
+var classOrder = Classes
 
 // ClassScore is one label class's aggregate outcome against a ranking — the
 // two parallel maps Scorecard.MeanRank/Present carry, flattened into one

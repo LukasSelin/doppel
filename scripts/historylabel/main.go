@@ -72,15 +72,21 @@ type outFile struct {
 	Labels     []outLabel `json:"labels"`
 }
 
-// classOf maps a verdict onto the benchmark's three classes. Stated once and
-// not tuned against the hand labels — that would make the agreement number
-// below a measurement of the tuning.
+// classOf maps a verdict onto the benchmark's classes. Stated once and not
+// tuned against the hand labels — that would make the agreement number below
+// a measurement of the tuning.
 //
 //	consolidated -> merge: the maintainers replaced one with the other, the
 //	    only evidence that the whole bodies were one thing
-//	synced, extracted -> refactor: a change that had to land in both, or
-//	    code moved out of both, shows a shared *part*; it cannot say whether
-//	    the rest of the two bodies is the same function
+//	extracted -> refactor: code moved out of both into one helper is the
+//	    refactor itself, done; it shows a shared *part*, not that the rest of
+//	    the two bodies is the same function
+//	synced -> coupled: a change that had to land in both, in separate
+//	    commits, proves the two are kept in step and nothing about whether
+//	    they should be one. Mirror and lifecycle pairs (Create/Delete,
+//	    Encode/Decode) co-change exactly as clones do, and a hand review
+//	    calls those false positives, so a co-change cannot be a refactor
+//	    claim without contradicting it
 //	diverged -> false_positive, only under -weak
 //	lagged, synced-once -> nothing: reported only, see verdictOrder
 //	unpropagated -> nothing: reported for review, never a label. History says
@@ -91,8 +97,10 @@ func classOf(v string, weak bool) string {
 	switch v {
 	case vConsolidated:
 		return "merge"
-	case vSynced, vExtracted:
+	case vExtracted:
 		return "refactor"
+	case vSynced:
+		return "coupled"
 	case vDiverged:
 		if weak {
 			return "false_positive"
@@ -164,8 +172,22 @@ func run(repoDir, snapPath, pin, until, handPath, outPath, corpus string, weak b
 		return pair{a, b}
 	}
 	pairs := map[pair]bool{}
+	sameSite := 0
 	for _, p := range snap.Pairs {
+		// Two declarations of one name in one file (init, which Go allows
+		// repeatedly) are distinct snapshot keys but one side to the bench
+		// labels format, which names a side by package.Name and file — and
+		// one function to the history walk, which follows a name through a
+		// file. Neither could say which init a verdict is about.
+		ua, ub := byKey[p.A], byKey[p.B]
+		if p.A == p.B || ua.pkg == ub.pkg && ua.name == ub.name && ua.file == ub.file {
+			sameSite++
+			continue
+		}
 		pairs[norm(p.A, p.B)] = true
+	}
+	if sameSite > 0 {
+		fmt.Fprintf(os.Stderr, "%d pairs between same-named functions in one file skipped: no label can tell their sides apart\n", sameSite)
 	}
 	handBy := map[pair]handLabel{}
 	for _, l := range hand.Labels {

@@ -85,5 +85,5 @@ LABELS=()
 [ -f "$HAND" ] && LABELS=(-labels "$HAND")
 
 "$WORK/historylabel" -repo "$HIST" -snapshot "$WORK/pin.json" -pin "$PIN" -until "$UNTIL" \
-  "${LABELS[@]}" -out "$OUT" $WEAK
+  "${LABELS[@]}" -corpus "$CORPUS" -out "$OUT" $WEAK
 echo "wrote $OUT" >&2

@@ -41,7 +41,7 @@ func report[P comparable](w io.Writer, keys []P, verdicts map[P]verdict, hand ma
 	type row struct{ class, line string }
 	var rows []row
 	confusion := map[string]map[string]int{}
-	agreeAct, decidedAct, agreeClass := 0, 0, 0
+	agreeAct, decidedAct, agreeClass, coupled := 0, 0, 0, 0
 	for _, p := range hk {
 		l, v := hand[p], verdicts[p]
 		got := classOf(v.Verdict, weak)
@@ -54,7 +54,13 @@ func report[P comparable](w io.Writer, keys []P, verdicts map[P]verdict, hand ma
 		}
 		confusion[l.Class][vn]++
 		mark := " "
-		if got != "" {
+		if got == "coupled" {
+			// coupled claims the two are kept in step, not whether they
+			// should be merged, so it neither agrees nor disagrees with a
+			// hand verdict on mergeability.
+			mark = "~"
+			coupled++
+		} else if got != "" {
 			decidedAct++
 			if (got == "false_positive") == (l.Class == "false_positive") {
 				agreeAct++
