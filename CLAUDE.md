@@ -3235,9 +3235,15 @@ functions for exactly this reason, and the first version of them did not and fai
     and the only one doppel's own numbers cannot have produced: a hand review judges two bodies,
     history records what maintainers did with them. Over the candidate pairs at the pin it replays
     every non-merge commit and reads `consolidated` (one side removed and a call site rewritten
-    verbatim from it to the other → merge), `synced` (the same change, adding code, landed on both
-    in at least `-min-cochanges` (2) separate commits) and `extracted` (code moved out of both into
-    one new helper) → refactor, `diverged` → false_positive only under `-w`. Three verdicts are
+    verbatim from it to the other → merge), `extracted` (code moved out of both into one new
+    helper) → refactor, `synced` (the same change, adding code, landed on both in at least
+    `-min-cochanges` (2) separate commits) → **coupled**, `diverged` → false_positive only under
+    `-w`. `coupled` is a bench class of its own (`bench.Classes`) because a co-change proves the two
+    are kept in step and nothing about merging them: mirror and lifecycle pairs (Create/Delete,
+    Encode/Decode) co-change exactly as clones do, and the hand reviews call those false positives,
+    so labelling them refactor put the two label sources in contradiction. The scorecard gives
+    coupled a mean rank and no assertion, and the agreement report marks it `~` rather than
+    counting it for or against a hand verdict. Three verdicts are
     reported and never labelled: `synced-once` (one shared change — on moby real about 3 times in
     15, against about 11 in 12 for pairs sharing two or more: one shared edit is mostly a
     code-health pass that happened to reach both, and no subject list keeps up with how those are
@@ -3257,13 +3263,18 @@ functions for exactly this reason, and the first version of them did not and fai
     follows a name through a file, so neither could say which one a verdict is about. hugo's 22nd
     label was one of them, its two sides one key until schema 12.
 
-    **Measured over the whole ladder and kubernetes** (labels emitted, all refactor): cobra 4, chi
-    8, conc 0, gin 14, hugo 21, prometheus 116, moby 100, kubernetes (v1.31.0 pin, 95 867 pairs,
-    41 544 commits, ~17 minutes, ~4GB) 459. Hand-checked samples read extracted 8 of 8 plausible on
+    **Measured over the whole ladder and kubernetes** (labels emitted, refactor + coupled): cobra
+    0 + 4, chi 6 + 2, conc 0, gin 7 + 7, hugo 9 + 12, prometheus 43 + 73, moby 33 + 67; kubernetes
+    (v1.31.0 pin, 95 867 pairs, 41 544 commits, ~17 minutes, ~4GB) 459 before the split, not re-run.
+    Ranked, coupled pairs sit *higher* than refactor ones on every rung with both (moby mean 689
+    against 1 684, prometheus 623 against 1 359, hugo 399 against 1 072): a pair maintainers
+    pulled a helper out of shares a part, not a body, and the shape-squared key buries exactly
+    that. On the large rungs both classes sit deep: recall is fine (2 of ~260 never retrieved) and
+    ranking is not. Hand-checked samples read extracted 8 of 8 plausible on
     each of prometheus, moby and kubernetes, and synced about 9 of 10 on kubernetes and 11 of 12 on
     moby. **No consolidation survived anywhere**: every candidate an earlier rule accepted was a
     rename, a replacement, a move or a coincidental line match, so history is a source of refactor
-    labels, not merge labels. **On cobra it now decides 0 of the 18 hand-labelled pairs** — the two
+    and coupled labels, not merge labels. **On cobra it now decides 0 of the 18 hand-labelled pairs** — the two
     it agreed with under `-min-cochanges 1` each share a single change, and the hand-labelled merges
     were written once and barely edited. It covers a different region from a hand review: pairs
     maintainers had to keep in step. Every exclusion above was added because kubernetes or moby

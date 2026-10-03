@@ -28,6 +28,18 @@ type Label struct {
 	Note string `json:"note"`
 }
 
+// Classes is the closed vocabulary of Label.Class, in the order a scorecard
+// logs it.
+//
+// merge, refactor and false_positive are verdicts on what to do with a pair.
+// coupled is not: it says the two are kept in step — the same change landed
+// in both, in separate commits — and nothing about whether they should be one
+// function, so it is scored for rank and never asserted on. It is what the
+// history labeller emits for a co-change, because mirror and lifecycle pairs
+// (Create/Delete, Encode/Decode) co-change exactly as clones do, and a hand
+// review calls those false positives.
+var Classes = []string{"merge", "refactor", "false_positive", "coupled"}
+
 // FPKinds is the closed vocabulary of Label.Kind, in the order a scorecard
 // logs it.
 var FPKinds = []string{
@@ -99,9 +111,7 @@ func ParseLabels(data []byte) (LabelsFile, error) {
 	}
 	seen := map[string]bool{}
 	for i, l := range lf.Labels {
-		switch l.Class {
-		case "merge", "refactor", "false_positive":
-		default:
+		if !slices.Contains(Classes, l.Class) {
 			return lf, fmt.Errorf("label %d: invalid class %q", i, l.Class)
 		}
 		if l.Kind != "" {
