@@ -57,13 +57,19 @@ var fixSubject = regexp.MustCompile(`(?i)\b(fix(es|ed)?|bug|correct(s|ed)?|typo|
 // copy of a pattern, duplicated or not, so its parallel edits are evidence
 // about the pattern and never about a pair. Counting functions alone does not
 // catch these — a lint pass over one package can touch fewer than sweepFuncs.
-var mechanicalSubject = regexp.MustCompile(`(?i)\b(lint|golangci|gofmt|gofumpt|vet|staticcheck|modernize|autofix(es)?|replace[sd]?|rename[sd]?|deprecat\w*|cleanup|clean up|typos?|spelling|whitespace|style|cosmetics?|revert(s|ed)?|simplif\w*|import[- ]alias(es)?|GA|graduat\w*|promot(e|es|ed|ing))\b`)
+var mechanicalSubject = regexp.MustCompile(`(?i)\b(\w*lint|golangci|gofmt|gofumpt|\w*vet|staticcheck|modernize|autofix(es)?|replace[sd]?|rename[sd]?|deprecat\w*|cleanup|clean up|typos?|spelling|whitespace|style|cosmetics?|revert(s|ed)?|simplif\w*|import[- ]alias(es)?|GA|graduat\w*|promot(e|es|ed|ing)|` +
+	// Internal restructuring: on moby nearly every co-change these
+	// subjects carried swapped an identifier or a package path in each
+	// function it touched — "migrate to moby/sys/user", "un-export Transfer
+	// interface", "addressing some nits".
+	`chore|refactor\w*|optimi[sz]\w*|mov(e|es|ed|ing)|migrat\w*|un-?export\w*|internali[sz]\w*|nits?|dependenc(y|ies))\b`)
 
 type commit struct {
 	sha, parent, subject string
 	idx                  int
-	post                 bool // after the pin
-	sweep                bool
+	post                 bool     // after the pin
+	sweep                bool     // modified more than sweepFuncs functions
+	mechanical           bool     // its subject says a tool, a move or a refactor made it
 	edits                []edit   // every function this commit modified, tracked or not
 	dirs                 []string // tracked directories this commit touched
 }
@@ -76,6 +82,15 @@ type edit struct {
 }
 
 func (e edit) modified() bool { return e.old != nil && e.new != nil }
+
+// noisy reports a commit whose parallel edits say nothing about a pair:
+// either it touched too much, or its subject says the edits are mechanical.
+// Parallel-edit evidence (synced, lagged, unpropagated) refuses both.
+// Extraction and consolidation refuse only the sweep: they demand code
+// moved into a helper or a call site rewritten, which a refactor subject
+// does not explain away — prometheus's "Refactor: extract selectSeriesSet"
+// is exactly the extraction it names.
+func (c *commit) noisy() bool { return c.sweep || c.mechanical }
 
 // life is one tracked function's history, under its name at the pin. A rename
 // ends it: what the function was called before is not followed.
@@ -221,7 +236,8 @@ func (h *history) walk(pin, until string, dirs []string) error {
 				l.edits = append(l.edits, edit{c: c, old: o, new: n})
 			}
 		}
-		c.sweep = modified > sweepFuncs || mechanicalSubject.MatchString(c.subject)
+		c.sweep = modified > sweepFuncs
+		c.mechanical = mechanicalSubject.MatchString(c.subject)
 	}
 	h.deltaFuncs, h.deltaKeys = map[string]int{}, map[[2]*fn]string{}
 	for _, c := range h.commits {
@@ -463,7 +479,7 @@ func mentions(f *fn, name string) int {
 const (
 	vConsolidated = "consolidated" // one side removed, its callers sent to the other
 	vExtracted    = "extracted"    // both sides rewritten to call one new helper
-	vSynced       = "synced"       // the same change applied to both in one commit
+	vSynced       = "synced"       // the same change applied to both, in minCochanges separate commits
 	vLagged       = "lagged"       // the same change applied to one, later to the other
 	vUnpropagated = "unpropagated" // a fix to one side whose old code the other still carries
 	vDiverged     = "diverged"     // edited independently and grew apart (weak)
@@ -475,7 +491,21 @@ const (
 // against five of ten co-changes. Spread over years and commits, "the same
 // change later" is mostly a rollout reaching an unrelated function. It is
 // reported and corroborates a co-change; on its own it labels nothing.
-var verdictOrder = []string{vConsolidated, vExtracted, vSynced, vLagged, vUnpropagated, vDiverged}
+var verdictOrder = []string{vConsolidated, vExtracted, vSynced, vSyncedOnce, vLagged, vUnpropagated, vDiverged}
+
+// vSyncedOnce is a pair the same change reached in only one commit, below
+// minCochanges. Reported, never labelled, for the reason lagged is: one
+// shared edit is too often a code-health pass that happened to reach both
+// ("return early where possible", "switch to Go 1.19 atomics"), and no
+// subject list keeps up with how those are worded. Sampled on moby, single
+// co-changes were real about 3 times in 15 and pairs sharing two or more
+// separate changes about 11 in 12 — maintenance done twice by hand is the
+// signal; one shared edit is mostly coincidence.
+const vSyncedOnce = "synced-once"
+
+// minCochanges is how many separate commits must apply the same change to
+// both sides before the pair is labelled synced (the -min-cochanges flag).
+var minCochanges = 2
 
 type evidence struct {
 	Kind    string   `json:"kind"`
@@ -515,7 +545,7 @@ func (h *history) judge(a, b *life) verdict {
 	// Co-change: both sides edited in one commit, the same way.
 	for _, e := range a.edits {
 		f, ok := eb[e.c]
-		if !ok || !e.modified() || !f.modified() || e.c.sweep {
+		if !ok || !e.modified() || !f.modified() || e.c.noisy() {
 			continue
 		}
 		// Each side must gain something: deleting the same feature-gate check or
@@ -534,14 +564,14 @@ func (h *history) judge(a, b *life) verdict {
 	// in a later commit.
 	lagged := func(x, y *life, ey map[*commit]edit) {
 		for _, e := range x.edits {
-			if !e.modified() || e.c.sweep || used[e.c] || family(e) > maxFamily || h.campaign(e) {
+			if !e.modified() || e.c.noisy() || used[e.c] || family(e) > maxFamily || h.campaign(e) {
 				continue
 			}
 			if _, both := ey[e.c]; both || h.state(y, e.c.parent) == nil {
 				continue
 			}
 			for _, f := range y.edits {
-				if f.c.idx <= e.c.idx || !f.modified() || f.c.sweep || used[f.c] || family(f) > maxFamily ||
+				if f.c.idx <= e.c.idx || !f.modified() || f.c.noisy() || used[f.c] || family(f) > maxFamily ||
 					h.campaign(f) || sameCampaign(e.c, f.c) {
 					continue
 				}
@@ -561,7 +591,7 @@ func (h *history) judge(a, b *life) verdict {
 	// side that the other carried then and still carries at the pin.
 	unprop := func(x, y *life, ey map[*commit]edit) {
 		for _, e := range x.edits {
-			if !e.modified() || e.c.sweep || used[e.c] || e.c.post || !fixSubject.MatchString(e.c.subject) {
+			if !e.modified() || e.c.noisy() || used[e.c] || e.c.post || !fixSubject.MatchString(e.c.subject) {
 				continue
 			}
 			if _, both := ey[e.c]; both {
@@ -746,9 +776,19 @@ func (h *history) judge(a, b *life) verdict {
 		}
 	}
 
+	syncs := map[string]bool{}
+	for _, e := range v.Evidence {
+		if e.Kind == "co-change" {
+			syncs[e.Commits[0]] = true
+		}
+	}
 	for _, want := range verdictOrder {
 		for _, e := range v.Evidence {
-			if kindVerdict(e.Kind) == want {
+			got := kindVerdict(e.Kind)
+			if got == vSynced && len(syncs) < minCochanges {
+				got = vSyncedOnce
+			}
+			if got == want {
 				v.Verdict = want
 				return v
 			}

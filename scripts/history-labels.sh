@@ -57,7 +57,9 @@ fi
 if [ ! -d "$HIST/.git" ]; then
   echo "cloning full history of $CORPUS into $HIST" >&2
   mkdir -p "$HIST_ROOT"
-  git clone -q "$REPO_URL" "$HIST"
+  # --no-checkout: the labeller reads objects, never the working tree, and a
+  # checkout is where Windows fails — moby's testdata paths exceed MAX_PATH.
+  git clone -q --no-checkout "$REPO_URL" "$HIST"
 else
   git -C "$HIST" fetch -q origin
 fi
@@ -74,7 +76,7 @@ trap cleanup EXIT
 go build -C "$MODULE" -o "$WORK/doppel" .
 go build -C "$MODULE/scripts/historylabel" -o "$WORK/historylabel" .
 
-git -C "$HIST" worktree add --detach -q "$WT" "$PIN"
+git -C "$HIST" -c core.longpaths=true worktree add --detach -q "$WT" "$PIN"
 # --top 0 --max-per-func 0: the full candidate set, not the ranked report.
 (cd "$WT" && "$WORK/doppel" analyze . --format json --top 0 --max-per-func 0 > "$WORK/pin.json" 2>/dev/null)
 

@@ -82,7 +82,7 @@ type outFile struct {
 //	    code moved out of both, shows a shared *part*; it cannot say whether
 //	    the rest of the two bodies is the same function
 //	diverged -> false_positive, only under -weak
-//	lagged -> nothing: reported only, see verdictOrder
+//	lagged, synced-once -> nothing: reported only, see verdictOrder
 //	unpropagated -> nothing: reported for review, never a label. History says
 //	    one side was fixed and the other still has the old code, but not
 //	    which side was wrong — on cobra the fixed side was the one that had
@@ -110,6 +110,7 @@ func main() {
 	outPath := flag.String("out", "", "write history labels here (bench labels format)")
 	corpus := flag.String("corpus", "", "corpus name for the output file (default: the hand labels' corpus)")
 	weak := flag.Bool("weak", false, "emit diverged pairs as false_positive")
+	flag.IntVar(&minCochanges, "min-cochanges", minCochanges, "separate commits that must apply the same change to both sides before a pair is labelled synced")
 	flag.Parse()
 	if *repoDir == "" || *snapPath == "" || *pin == "" {
 		flag.Usage()

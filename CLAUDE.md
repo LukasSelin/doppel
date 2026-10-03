@@ -3225,28 +3225,36 @@ functions for exactly this reason, and the first version of them did not and fai
     history records what maintainers did with them. Over the candidate pairs at the pin it replays
     every non-merge commit and reads `consolidated` (one side removed and a call site rewritten
     verbatim from it to the other → merge), `synced` (the same change, adding code, landed on both
-    in one commit) and `extracted` (code moved out of both into one new helper) → refactor,
-    `diverged` → false_positive only under `-w`. Two verdicts are reported and never labelled:
-    `lagged` (the same change reached the other side in a later commit — measured at about 2 of 8
-    real on kubernetes, where a rollout reaches unrelated functions over years) and `unpropagated`
-    (a fix to one side whose old lines the other still carries — history cannot say which side was
-    wrong; on cobra it was the fixed side, a bad copy). Not evidence, being parallel by
-    construction: lint/rename/revert/cosmetic/GA-promotion commits, sweeps over more than 10
-    functions, a change applied alike to more than 4 functions in one commit, and an exact edit
+    in at least `-min-cochanges` (2) separate commits) and `extracted` (code moved out of both into
+    one new helper) → refactor, `diverged` → false_positive only under `-w`. Three verdicts are
+    reported and never labelled: `synced-once` (one shared change — on moby real about 3 times in
+    15, against about 11 in 12 for pairs sharing two or more: one shared edit is mostly a
+    code-health pass that happened to reach both, and no subject list keeps up with how those are
+    worded), `lagged` (the same change reached the other side in a later commit — about 2 of 8 on
+    kubernetes, where a rollout reaches unrelated functions over years) and `unpropagated` (a fix to
+    one side whose old lines the other still carries — history cannot say which side was wrong; on
+    cobra it was the fixed side, a bad copy). Not evidence for a parallel edit: sweeps over more
+    than 10 functions, a change applied alike to more than 4 functions in one commit, an exact edit
     delta made to more than 4 functions anywhere in the history (a campaign: `klog.Infof` →
-    `ErrorS`). Output is the bench labels format plus an `evidence` list naming commits, so
-    `DOPPEL_BENCH_LABELS` scores it unchanged; `-r <url> -p <pin>` runs it outside the ladder.
-    **Measured on cobra: it decided 2 of the 18 hand-labelled pairs, agreeing on both** — the
-    hand-labelled merges were written once and barely edited, so history is silent on them. It
-    covers a different region: pairs maintainers had to keep in step (22 labels on cobra, 27 on
-    gin, 8 on chi). **On kubernetes** (v1.31.0 pin, 95 893 candidate pairs, 41 544 commits, ~17
-    minutes, ~4GB) it emits 1 816 labels; a hand-checked sample read extracted 8 of 8 plausible and
-    synced about 11 of 15, the misses being call-site campaigns after an API change. No
-    consolidation survived — the four candidates an earlier rule accepted were a rename, a
-    replacement and two coincidental line matches. Every rule above was added because kubernetes
-    produced its false evidence; cobra, gin and chi are too small to show any of it. Treat the
-    output as proposed labels to review, never as a committed review; a co-change proves coupling,
-    not mergeability, and accessor families co-change too.
+    `ErrorS`), and commits whose subject says a tool, a move or a refactor made them. Extraction and
+    consolidation ignore the subject — they demand code moved or a call site rewritten, and
+    "Refactor: extract selectSeriesSet" is exactly the extraction it names. Output is the bench
+    labels format plus an `evidence` list naming commits, so `DOPPEL_BENCH_LABELS` scores it
+    unchanged; `-r <url> -p <pin>` runs it outside the ladder.
+
+    **Measured over the whole ladder and kubernetes** (labels emitted, all refactor): cobra 4, chi
+    8, conc 0, gin 14, hugo 22, prometheus 116, moby 100, kubernetes (v1.31.0 pin, 95 867 pairs,
+    41 544 commits, ~17 minutes, ~4GB) 459. Hand-checked samples read extracted 8 of 8 plausible on
+    each of prometheus, moby and kubernetes, and synced about 9 of 10 on kubernetes and 11 of 12 on
+    moby. **No consolidation survived anywhere**: every candidate an earlier rule accepted was a
+    rename, a replacement, a move or a coincidental line match, so history is a source of refactor
+    labels, not merge labels. **On cobra it now decides 0 of the 18 hand-labelled pairs** — the two
+    it agreed with under `-min-cochanges 1` each share a single change, and the hand-labelled merges
+    were written once and barely edited. It covers a different region from a hand review: pairs
+    maintainers had to keep in step. Every exclusion above was added because kubernetes or moby
+    produced the false evidence; the small rungs are too small to show any of it. Treat the output
+    as proposed labels to review, never as a committed review; a co-change proves coupling, not
+    mergeability, and accessor families and mirror pairs (Create/Update) co-change too.
   - `Corpora` (corpora.go) pins seven public Go repos at release tags, ordered old-and-complex
     to new-and-narrow (moby 8003 funcs → conc 81). Only coordinates are committed; `Fetch`
     shallow-clones into `Root()` (`$DOPPEL_CORPORA`, else user cache) and verifies HEAD against
