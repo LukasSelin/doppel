@@ -3251,10 +3251,14 @@ functions for exactly this reason, and the first version of them did not and fai
     consolidation ignore the subject — they demand code moved or a call site rewritten, and
     "Refactor: extract selectSeriesSet" is exactly the extraction it names. Output is the bench
     labels format plus an `evidence` list naming commits, so `DOPPEL_BENCH_LABELS` scores it
-    unchanged; `-r <url> -p <pin>` runs it outside the ladder.
+    unchanged; `-r <url> -p <pin>` runs it outside the ladder. Pairs between two same-named
+    functions in one file (two `init`s, or functions in a bundled script) are skipped and counted on
+    stderr — hugo 157, prometheus 6: the labels format names a side by name and file, and the walk
+    follows a name through a file, so neither could say which one a verdict is about. hugo's 22nd
+    label was one of them, its two sides one key until schema 12.
 
     **Measured over the whole ladder and kubernetes** (labels emitted, all refactor): cobra 4, chi
-    8, conc 0, gin 14, hugo 22, prometheus 116, moby 100, kubernetes (v1.31.0 pin, 95 867 pairs,
+    8, conc 0, gin 14, hugo 21, prometheus 116, moby 100, kubernetes (v1.31.0 pin, 95 867 pairs,
     41 544 commits, ~17 minutes, ~4GB) 459. Hand-checked samples read extracted 8 of 8 plausible on
     each of prometheus, moby and kubernetes, and synced about 9 of 10 on kubernetes and 11 of 12 on
     moby. **No consolidation survived anywhere**: every candidate an earlier rule accepted was a
