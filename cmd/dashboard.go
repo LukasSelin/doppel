@@ -10,6 +10,7 @@ import (
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/dashboard"
 	"github.com/LukasSelin/doppel/internal/family"
+	"github.com/LukasSelin/doppel/internal/fingerprint"
 	"github.com/LukasSelin/doppel/internal/parser"
 	"github.com/LukasSelin/doppel/internal/reporter"
 	"github.com/LukasSelin/doppel/internal/snapshot"
@@ -31,6 +32,7 @@ import (
 const (
 	maxBodyBytes   = 3 << 20
 	maxDetailBytes = 2 << 20
+	maxFlowBytes   = 1 << 20
 )
 
 // round4 trims a score to four decimal places.
@@ -71,12 +73,14 @@ func buildDashboard(res Result, ov *reporter.Overview, fams []family.Family,
 	p.Families = dashboardFamilies(res, fams)
 
 	detailDropped := boundEdgeDetail(p.Edges)
+	flowDropped := inlineFlowAlignments(p.Edges, res.Units)
 	bodies, bodiesDropped := dashboardBodies(res, p.Edges)
 	p.Bodies = bodies
 
 	p.Facts = dashboardFacts(res, ov, famStats, fams, len(p.Edges), len(reported), suppressed)
 	p.Facts.BodiesOmitted = bodiesDropped
 	p.Facts.DetailOmitted = detailDropped
+	p.Facts.FlowOmitted = flowDropped
 	return p
 }
 
@@ -109,6 +113,53 @@ func boundEdgeDetail(edges []dashboard.Edge) int {
 			continue
 		}
 		spent += cost
+	}
+	return dropped
+}
+
+// inlineFlowAlignments writes the step-by-step flow alignment onto the
+// best-ranked edges until maxFlowBytes is spent, and counts the rest.
+//
+// The alignment is computed here rather than carried on the pair: it is
+// quadratic in memory (fingerprint.FlowAlign keeps the whole matrix to trace
+// back through), and only a page a reader opens one pair at a time has a use
+// for it. Edges arrive rank-descending, so the bound keeps exactly the pairs
+// someone is most likely to open — the same rule as the other two budgets.
+func inlineFlowAlignments(edges []dashboard.Edge, units []parser.CodeUnit) int {
+	spent, dropped := 0, 0
+	for i := range edges {
+		e := &edges[i]
+		if e.Flow[0] < 0 {
+			continue
+		}
+		fa, fb := units[e.A].Fingerprint, units[e.B].Fingerprint
+		if len(fa.Steps)+len(fb.Steps) == 0 {
+			continue
+		}
+		// Priced before it is built: a row is at most both steps plus a few
+		// bytes of JSON, so a pair over budget never pays for its alignment.
+		cost := 0
+		for _, s := range fa.Steps {
+			cost += len(s.Name) + 16
+		}
+		for _, s := range fb.Steps {
+			cost += len(s.Name) + 16
+		}
+		if spent+cost > maxFlowBytes {
+			dropped++
+			continue
+		}
+		spent += cost
+		for _, r := range fingerprint.FlowAlign(fa, fb) {
+			row := dashboard.FlowRow{M: r.Match}
+			if r.A >= 0 {
+				row.A = fa.Steps[r.A].String()
+			}
+			if r.B >= 0 {
+				row.B = fb.Steps[r.B].String()
+			}
+			e.FlowAlign = append(e.FlowAlign, row)
+		}
 	}
 	return dropped
 }
@@ -299,6 +350,17 @@ func dashboardEdges(res Result) []dashboard.Edge {
 			},
 		}
 		e.Views = [5]float64{0, 0, -1, -1, -1}
+		e.Flow = [2]float64{-1, -1}
+		if f := pair.Flow; f != nil {
+			e.Flow = [2]float64{round4(f.Steps), round4(f.Types)}
+			// Counts in this edge's A-then-B order, which may be the pair's
+			// reverse; the alignment is symmetric, so only the lengths swap.
+			la, lb := f.LenA, f.LenB
+			if a != pair.AIdx {
+				la, lb = lb, la
+			}
+			e.FlowCounts = [4]int{f.Same, f.Retargeted, la, lb}
+		}
 		if pair.Evidence != nil {
 			e.Overlap = round4(pair.Evidence.OverlapScore)
 			e.Reasons = pair.Evidence.Reasons

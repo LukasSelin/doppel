@@ -121,6 +121,15 @@ type Fingerprint struct {
 	// snapshot.Digest — the digest answers "did this body change", which is
 	// a question about the code as written, not about its canonical shape.
 	WL []LabelCount
+
+	// Steps is the body's logic as a sequence — branches, loops, returns,
+	// calls, constructions and assertions in traversal order over the same
+	// canonical shape WL reads — and Touched is the set of types the function
+	// names in its signature or constructs or asserts in its body. Both feed
+	// only the flow view (FlowSimilarity), which is reported and never scored;
+	// see flow.go. Neither is hashed into snapshot.Digest.
+	Steps   []FlowStep
+	Touched []string
 }
 
 // Breakdown is the per-component result of comparing two Fingerprints.
@@ -157,13 +166,17 @@ func Build(fn *syntax.Func) Fingerprint {
 		return Fingerprint{}
 	}
 	tokens, flow, depth, nodes := walk(fn.Body)
+	types := typeStrings(fn)
+	steps := flowSteps(fn.Shape())
 	return Fingerprint{
 		Shingles: shingle(tokens),
 		Flow:     flow,
 		Depth:    depth,
-		Types:    typeStrings(fn),
+		Types:    types,
 		Nodes:    nodes,
 		WL:       WLBag(fn),
+		Steps:    steps,
+		Touched:  touchedTypes(types, steps),
 	}
 }
 

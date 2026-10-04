@@ -40,6 +40,12 @@ type SimilarPair struct {
 	// has not annotated; like every other note on this struct it never
 	// reaches a score, a ranking key or a filter.
 	Explain string
+
+	// Flow is the flow view: the two bodies' logic aligned as step
+	// sequences, and the types each touches — see fingerprint.FlowSimilarity.
+	// nil for a pair the pipeline has not annotated. Reported, never scored:
+	// no ranking key, filter or verdict reads it.
+	Flow *fingerprint.FlowScore
 }
 
 // MergeWorthy is the whole merge verdict, and SimilarPair is the only type

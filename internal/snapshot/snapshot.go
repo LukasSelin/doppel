@@ -172,7 +172,15 @@ import (
 // blocklist is not recorded and deliberately: it is a property of the doppel
 // build, like the set of registered frontends, and a baseline already refuses
 // to compare across builds.
-const Schema = 11
+//
+// 12 adds the flow view to Pair: FlowSteps (the order-preserving alignment of
+// the two bodies' logic as step sequences) and FlowTypes (the Jaccard over the
+// types each touches). Annotations in the sense Containment is — reported,
+// rounded to two decimals like the views, never diffed — and -1 when a pair
+// was never annotated. Unlike the views they are not corpus-relative: both are
+// properties of the two bodies alone. The bump is a shape bump; nothing a
+// schema-11 snapshot stores changed meaning.
+const Schema = 12
 
 // Snapshot is one full analysis run.
 //
@@ -416,6 +424,11 @@ type Pair struct {
 	ViewAInB      float64 `json:"viewAInB"`      // how much of A's vocabulary B's concepts carry
 	ViewBInA      float64 `json:"viewBInA"`      // and the other way
 	ViewsDisagree bool    `json:"viewsDisagree"` // |feature − shape| crossed the comparator's spread
+
+	// The flow view (schema 12) — see fingerprint.FlowSimilarity. -1 when the
+	// pair was never annotated.
+	FlowSteps float64 `json:"flowSteps"` // alignment of the two step sequences
+	FlowTypes float64 `json:"flowTypes"` // Jaccard over the types each touches
 }
 
 // Build assembles a Snapshot from one pipeline run.
@@ -479,7 +492,10 @@ func Build(units []parser.CodeUnit, docs []concepter.ConceptDoc, pairs []analyze
 			a, b = b, a
 		}
 		rec := Pair{A: a, B: b, Score: pr.Score, Containment: pr.Breakdown.Containment, Explain: pr.Explain,
-			ViewFeature: -1, ViewAInB: -1, ViewBInA: -1}
+			ViewFeature: -1, ViewAInB: -1, ViewBInA: -1, FlowSteps: -1, FlowTypes: -1}
+		if pr.Flow != nil {
+			rec.FlowSteps, rec.FlowTypes = round2(pr.Flow.Steps), round2(pr.Flow.Types)
+		}
 		if pr.Evidence != nil {
 			rec.Overlap = pr.Evidence.OverlapScore
 			rec.MergeWorthy = pr.MergeWorthy()

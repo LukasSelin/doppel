@@ -636,6 +636,8 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 			VocabA: thinVocab[pairs[i].AIdx], VocabB: thinVocab[pairs[i].BIdx],
 		})
 		pairs[i].Explain = analyzer.ExplainWith(a, b, labelKinds)
+		flow := fingerprint.FlowSimilarity(a.Fingerprint, b.Fingerprint)
+		pairs[i].Flow = &flow
 		pairs[i].Profile = profiles.pair(pairs[i].AIdx, pairs[i].BIdx,
 			parser.ConceptIDs(a.Concepts), parser.ConceptIDs(b.Concepts))
 	}

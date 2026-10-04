@@ -121,7 +121,8 @@ internal/
                 wl.go is the WL label bag; wlexplain.go names its shallow labels for reports;
                 wlsource.go maps a label back to its nodes (LabelChains, the per-node label vectors; Outline, the hashed extent);
                 cons.go hash-conses the canonical forest; wlcodec.go encodes bags for the snapshot;
-                lens.go reads one tree under five lenses (skeleton, shape, ordered, vocab, verbatim) — measured only
+                lens.go reads one tree under five lenses (skeleton, shape, ordered, vocab, verbatim) — measured only;
+                flow.go is the flow view: a body's logic as an ordered step sequence, aligned pair-wise — reported only
   ontology/     The formal vocabulary: entity kinds, typed relations, concept taxonomy, roles, axioms;
                 vocabulary.go is the corpus-derived side table of what each learned concept is made of,
                 and the feature view of concept relatedness that reads it
@@ -147,7 +148,8 @@ internal/
                 (impact.go: ConceptDigest, ImpactDigest, AgentDigest; scope.go: ScopeDigest, AdviceDigest)
                 fingerprint.go is the fingerprint view: the whole weighted bag of one function, or the
                 shared / only-A / only-B partition of two, whose masses reproduce the WL Jaccard exactly;
-                labelsource.go is its --label half, the node(s) behind one hash
+                labelsource.go is its --label half, the node(s) behind one hash;
+                flow.go renders the flow view's line and, under --debug, its step-by-step alignment
                 overview.go + mermaid.go render the corpus model into the markdown report only
   dashboard/    The two HTML pages: payload.go + assets/(shell.html, app.js, app.css) is the
                 single-run dashboard (--output *.html); timeline.go + assets/(timeline.html,
@@ -1181,6 +1183,43 @@ functions) past the 1 000-pair minimum, which declines calibration there entirel
 `--max-per-func`) but still parses and still has its config key; `cmd.defaultMinNodes` is the one
 definition.
 
+### The flow view
+
+Every quantity above is **order-free** — a label multiset, two histograms, a type set — so
+"validate, fetch, map" and "fetch, map, validate" read alike on all of them.
+`fingerprint/flow.go` reads the same canonical tree as a **sequence**: one `FlowStep` per
+branch, loop, return, call (callee name, receiver dropped), composite literal (its type) and
+type assertion. Constructs that open a region (if, loop, switch, select, func literal, defer,
+go) are steps where they are entered; everything that *does* something is a step after its
+operands, so `cmd.Flags().StringVar(…)` is `Flags` then `StringVar` and `return f(x)` is the
+call then the return. `Fingerprint.Steps` and `Fingerprint.Touched` (the signature's types plus
+every type constructed or asserted) are built in `Build`, before `analyze` releases the
+canonical trees, and are hashed into nothing.
+
+`FlowSimilarity` aligns two sequences — an order-preserving weighted LCS where an identical
+step weighs 1 and the same kind against a different target (`call Get` / `call Delete`)
+weighs ½ — and reports `Steps = 2·S/(|A|+|B|)`, the same/retargeted counts, and `Types`, the
+Jaccard over the touched sets. Linear memory, integer arithmetic, ties broken toward more
+identical steps so the counts are symmetric; sequences cap at `MaxFlowSteps` (512) and say so.
+`FlowAlign` is the same alignment written out row by row, quadratic in memory, so only bounded
+surfaces call it.
+
+It is the **fourth reported quantity** and the rule is containment's: gated by no flag, blended
+into nothing, never in ranking, filtering or `MergeWorthy`. The pipeline sets
+`SimilarPair.Flow` in the pair-annotation loop; it reaches text (`flow:`, plus the aligned rows
+under `--debug`), markdown, `--format json` (`flowSteps`/`flowTypes`, snapshot Schema 12) and
+the dashboard's **Logic flow** panel. Measured on moby: pair annotation +0.06s, live heap
++6.4MB, `--format json` unchanged apart from the two fields.
+
+**It was measured as a ranking signal and not adopted** (`TestFlowRank`, see *Development*).
+Ordered flow separates merges from false positives about as well as code-shape and never
+better, and inside the band where shape is already high it separates nothing shape does not.
+The false positives that reach the top of the list — mirrors, accessor families,
+already-factored helpers — have the *same* logic by construction (steps 0.90–1.00); every
+labelled merge aligns at 0.89 or above, a necessary condition the key already enforces through
+shape². What the view adds is legibility: the alignment shows *where* two bodies differ, and on
+a mirror pair that is a single retargeted row.
+
 ### Comparator weights
 
 Each weight lives on its relation term in `internal/ontology/relations.go`, not as a constant in the
@@ -2186,7 +2225,14 @@ never learns about `culture`, and `cmd` queries the model.
   them as bars from the same bar-row idiom the code-shape components use, says in a note which
   way a disagreement runs, and blends nothing — `Overlap` is still one number, and the page does
   not recompute how its concept half was read. Payload `Schema` went 1 → 2 for it.
-- **The dashboard is not fed by `--format json`.** It has its own `dashboard.Payload` (`Schema` 2,
+- **The flow view has its own panel too.** `Edge.Flow` is `[steps, types]` (`-1` when the
+  pair was never annotated), `Edge.FlowCounts` is `[same, retargeted, steps in A, steps in B]`
+  in the edge's own endpoint order, and `Edge.FlowAlign` is the aligned rows. The rows are
+  per-pair detail, computed by `inlineFlowAlignments` in rank order under their own budget
+  (`maxFlowBytes`, 1 MB, `Facts.FlowOmitted` counting the rest) rather than carried on the pair,
+  because `FlowAlign` is quadratic. The page swaps the columns when the selected function is
+  the edge's B side, so the clicked function stays on the left. Payload `Schema` 2 → 3.
+- **The dashboard is not fed by `--format json`.** It has its own `dashboard.Payload` (`Schema` 3,
   independent of `snapshot.Schema`), marshalled by Go and inlined into the page at render time.
   That is worth knowing before assuming the snapshot and the page must agree: they share no type,
   and a field added to one reaches the other only if somebody adds it there too. It also means the
@@ -2659,6 +2705,12 @@ to rewrite on every turn:
   `DefaultExcludes` is deliberately not recorded: it is a property of the build, like the
   registered frontend set, and a baseline already refuses across builds. `Params.Equal` gained
   `sameStrings`, the slice comparison `Languages` had inline, rather than a second copy of it.
+
+  **`Schema` 12 is a shape bump**: `Pair.FlowSteps` and `Pair.FlowTypes`, the flow view (see
+  *The flow view*), rounded to two decimals and `-1` on a pair never annotated. Annotations in
+  the sense `Containment` is — reported, never diffed. Unlike the concept views they are not
+  corpus-relative (both are properties of the two bodies alone), so nothing a schema-11
+  snapshot stores changed meaning.
 
   `Schema` 5 (shape line) was the same kind of bump as 3, one step further: `Pair.Score` changed metric (token shingles → corpus-weighted WL
   Jaccard) *and* became corpus-relative, so a schema-4 baseline and a schema-5 run would disagree
@@ -3376,6 +3428,17 @@ functions for exactly this reason, and the first version of them did not and fai
     `Run.RescoreWith`, and logs which one the stated selection rule picks. Both assert nothing;
     see *Concept views* for the measured result. Like every bench variant they reweight and
     restore `lc.onto`, the run's own learned vocabulary, never `ontology.Default()`.
+  - `TestFlowRank` (guard `DOPPEL_BENCH_FLOW=1`, private labels as `TestLensRank`, plus
+    `DOPPEL_BENCH_FLOW_SPECS="<corpus>=<labels>;…"` for this repository's own
+    `.doppel/labels.json`) measures the flow view against the labels: per-class and
+    per-false-positive-kind means of shape, steps, exact (steps with retargets counted at zero)
+    and types; pooled AUCs overall and inside the shape ≥ 0.75 band; and the scorecard with the
+    rank key multiplied by, or demoted on, each flow quantity. **Measured on five corpora (160
+    labelled pairs) and not adopted**: pooled AUC merge-vs-FP shape 0.916, steps 0.902, exact
+    0.905, types 0.683; in the high-shape band steps reads 0.644/0.518 against shape's
+    0.644/0.536. Production's 67 pooled violations fall only by pushing merges down with
+    everything else (x steps·types 44 at merge mean 142.6 → 289.4, cobra 4.8 → 66.5); a floor
+    fitted to the labels at 0.85 gives 66. The test's doc comment carries the full table.
   - `TestKindLenses` (guard `DOPPEL_BENCH_KINDS="<corpus>=<labels>[=<family-min>];…"`) measures
     per-kind false-positive signals: the five fingerprint lenses beside the facts they cannot see —
     opposite words in otherwise equal names (Encode/Decode, Get/Delete, Min/Max), a shared receiver,

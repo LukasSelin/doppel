@@ -69,6 +69,14 @@ func Print(w io.Writer, pairs []analyzer.SimilarPair, units []parser.CodeUnit, m
 		// rather than contributing to it.
 		fmt.Fprintf(w, "  containment: %.2f%s\n",
 			p.Breakdown.Containment, containmentClause(p.Breakdown))
+		// The flow view sits with the code-shape numbers it complements: every
+		// one of those ignores order, and this is the line that does not.
+		if line := flowViewLine(p.Flow); line != "" {
+			fmt.Fprintf(w, "  %s\n", line)
+			if meta.Debug {
+				printFlowAlignment(w, "    ", units[p.AIdx].Fingerprint, units[p.BIdx].Fingerprint)
+			}
+		}
 		if p.Retrieval != nil {
 			fmt.Fprintf(w, "  evidence: %.2f  (shape %.2f  concept %.2f  call %.2f)\n",
 				p.Retrieval.Total, p.Retrieval.Shape, p.Retrieval.Concept, p.Retrieval.Call)
@@ -165,6 +173,14 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, units []parser.Cod
 		fmt.Fprintf(w, "**Code similarity:** `%s`\n\n", breakdownLine(p.Breakdown))
 		fmt.Fprintf(w, "**Containment:** `%.2f`%s\n\n",
 			p.Breakdown.Containment, containmentClause(p.Breakdown))
+		if line := flowViewLine(p.Flow); line != "" {
+			fmt.Fprintf(w, "**Flow:** `%s`\n\n", strings.TrimPrefix(line, "flow: "))
+			if meta.Debug {
+				fmt.Fprintf(w, "```text\n")
+				printFlowAlignment(w, "", units[p.AIdx].Fingerprint, units[p.BIdx].Fingerprint)
+				fmt.Fprintf(w, "```\n\n")
+			}
+		}
 
 		if p.Retrieval != nil {
 			fmt.Fprintf(w, "**Evidence:** `%.2f` (shape %.2f, concept %.2f, call %.2f)\n\n",

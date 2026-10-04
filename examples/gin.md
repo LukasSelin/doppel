@@ -9,7 +9,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `3f98e5e` |
+| doppel | `075fc2e` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -447,6 +447,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
+**Flow:** `steps 1.00 (12 same of 12 and 12)  types 1.00`
+
 **Evidence:** `425.00` (shape 389.58, concept 2.16, call 33.26)
 
 **Trophic:** `1.00`
@@ -491,6 +493,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 0.63  flow 1.00  nesting 1.00  sig 0.33  size 0.87`
 
 **Containment:** `0.85`
+
+**Flow:** `steps 0.81 (10 same, 1 retargeted of 14 and 12)  types 0.50`
 
 **Evidence:** `286.89` (shape 270.53, concept 4.09, call 12.27)
 
@@ -539,6 +543,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
+**Flow:** `steps 1.00 (4 same of 4 and 4)  types 0.75`
+
 **Evidence:** `104.12` (shape 93.99, concept 1.90, call 8.23)
 
 **Trophic:** `1.00`
@@ -584,6 +590,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
+**Flow:** `steps 1.00 (6 same of 6 and 6)  types 1.00`
+
 **Evidence:** `103.59` (shape 100.67, concept 2.93, call 0.00)
 
 **Trophic:** `1.00`
@@ -627,6 +635,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `1.00`
+
+**Flow:** `steps 1.00 (6 same of 6 and 6)  types 1.00`
 
 **Evidence:** `103.59` (shape 100.67, concept 2.93, call 0.00)
 
@@ -674,6 +684,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
+**Flow:** `steps 1.00 (6 same of 6 and 6)  types 1.00`
+
 **Evidence:** `103.59` (shape 100.67, concept 2.93, call 0.00)
 
 **Trophic:** `1.00`
@@ -719,6 +731,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 0.58  flow 1.00  nesting 1.00  sig 1.00  size 0.79`
 
 **Containment:** `0.82`
+
+**Flow:** `steps 0.91 (10 same, 1 retargeted of 12 and 11)  types 0.67`
 
 **Evidence:** `225.00` (shape 208.43, concept 4.30, call 12.27)
 
@@ -767,6 +781,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
+**Flow:** `steps 1.00 (6 same of 6 and 6)  types 1.00`
+
 **Evidence:** `95.66` (shape 89.18, concept 2.76, call 3.72)
 
 **Trophic:** `1.00`
@@ -812,6 +828,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.84` — most of the smaller body's shape is inside the larger
 
+**Flow:** `steps 0.75 (12 same of 19 and 13)  types 0.50`
+
 **Evidence:** `294.88` (shape 278.72, concept 3.89, call 12.27)
 
 **Trophic:** `0.85`
@@ -856,6 +874,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 0.55  flow 1.00  nesting 1.00  sig 0.50  size 0.87`
 
 **Containment:** `0.75`
+
+**Flow:** `steps 0.90 (9 same, 1 retargeted of 10 and 11)  types 0.50`
 
 **Evidence:** `234.18` (shape 206.68, concept 3.79, call 23.71)
 

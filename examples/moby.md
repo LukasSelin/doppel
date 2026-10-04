@@ -9,7 +9,7 @@ container engine; a decade of accretion across daemon, API, and plugin layers
 | Corpus | [moby](https://github.com/moby/moby) |
 | Pinned at | `v28.5.2` (`89c5e8fd66634b6128fc4c0e6f1236e2540e46e0`) |
 | Project since | 2013 |
-| doppel | `d2d78d3` |
+| doppel | `075fc2e` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -1451,6 +1451,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.93`
 
+**Flow:** `steps 0.94 (36 same, 1 retargeted of 39 and 39)  types 1.00`
+
 **Evidence:** `1160.17` (shape 1112.94, concept 2.83, call 44.39)
 
 **Trophic:** `0.94`
@@ -1491,6 +1493,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 0.94  flow 1.00  nesting 1.00  sig 1.00  size 0.98`
 
 **Containment:** `0.98`
+
+**Flow:** `steps 1.00 (15 same of 15 and 15)  types 1.00`
 
 **Evidence:** `1165.38` (shape 1158.52, concept 0.00, call 6.86)
 
@@ -1535,6 +1539,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `1.00`
+
+**Flow:** `steps 1.00 (29 same of 29 and 29)  types 1.00`
 
 **Evidence:** `690.18` (shape 669.16, concept 2.60, call 18.42)
 
@@ -1582,6 +1588,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.92`
 
+**Flow:** `steps 0.98 (40 same of 41 and 41)  types 1.00`
+
 **Evidence:** `871.95` (shape 857.96, concept 3.63, call 10.37)
 
 **Trophic:** `1.00`
@@ -1625,6 +1633,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 0.86  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `0.92`
+
+**Flow:** `steps 0.98 (26 same, 1 retargeted of 27 and 27)  types 1.00`
 
 **Evidence:** `717.51` (shape 670.19, concept 2.92, call 44.39)
 
@@ -1670,6 +1680,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `1.00`
+
+**Flow:** `steps 1.00 (32 same of 32 and 32)  types 1.00`
 
 **Evidence:** `600.51` (shape 574.01, concept 10.66, call 15.84)
 
@@ -1718,6 +1730,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.92` — most of the smaller body's shape is inside the larger
 
+**Flow:** `steps 0.87 (86 same, 1 retargeted of 111 and 87)  types 1.00`
+
 **Evidence:** `1380.62` (shape 1315.06, concept 7.60, call 57.96)
 
 **Trophic:** `0.87`
@@ -1761,6 +1775,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 0.79  flow 1.00  nesting 1.00  sig 1.00  size 0.99`
 
 **Containment:** `0.89`
+
+**Flow:** `steps 0.98 (24 same, 1 retargeted of 25 and 25)  types 1.00`
 
 **Evidence:** `636.75` (shape 603.18, concept 1.97, call 31.60)
 
@@ -1809,6 +1825,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
+**Flow:** `steps 1.00 (8 same of 8 and 8)  types 1.00`
+
 **Evidence:** `487.43` (shape 319.02, concept 7.90, call 160.52)
 
 **Trophic:** `1.00`
@@ -1855,6 +1873,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `1.00`
+
+**Flow:** `steps 1.00 (28 same of 28 and 28)  types 1.00`
 
 **Evidence:** `553.52` (shape 541.13, concept 2.02, call 10.37)
 

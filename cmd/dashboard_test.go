@@ -327,3 +327,40 @@ func TestIsHTMLPath(t *testing.T) {
 }
 
 func familyStatsZero() family.Stats { return family.Stats{} }
+
+// The flow view reaches the page as two numbers and counts on every edge, and
+// as the step-by-step alignment on edges inside the budget, oriented A-then-B
+// by the edge's own endpoints whichever way the pair was stored.
+func TestDashboardCarriesFlow(t *testing.T) {
+	res := sampleResult()
+	res.Units[0].Fingerprint.Steps = []fingerprint.FlowStep{{Op: fingerprint.FlowCall, Name: "Get"}, {Op: fingerprint.FlowReturn}}
+	res.Units[1].Fingerprint.Steps = []fingerprint.FlowStep{{Op: fingerprint.FlowCall, Name: "Delete"}}
+	top := &res.Pairs[1] // units 0 and 1, the top-ranked edge
+	top.AIdx, top.BIdx = 1, 0
+	fs := fingerprint.FlowSimilarity(res.Units[1].Fingerprint, res.Units[0].Fingerprint)
+	top.Flow = &fs
+	p := buildDashboard(res, nil, nil, familyStatsZero(), nil, 0)
+
+	e := p.Edges[0]
+	if e.A != 0 || e.B != 1 {
+		t.Fatalf("top edge %d-%d, want 0-1", e.A, e.B)
+	}
+	if e.Flow != [2]float64{round4(fs.Steps), round4(fs.Types)} {
+		t.Errorf("Edge.Flow = %v, want %v", e.Flow, [2]float64{fs.Steps, fs.Types})
+	}
+	if e.FlowCounts != [4]int{0, 1, 2, 1} {
+		t.Errorf("Edge.FlowCounts = %v, want [0 1 2 1] in edge order", e.FlowCounts)
+	}
+	want := []dashboard.FlowRow{{A: "call Get", B: "call Delete", M: 1}, {A: "return"}}
+	if len(e.FlowAlign) != len(want) {
+		t.Fatalf("FlowAlign = %+v, want %+v", e.FlowAlign, want)
+	}
+	for i := range want {
+		if e.FlowAlign[i] != want[i] {
+			t.Errorf("FlowAlign[%d] = %+v, want %+v", i, e.FlowAlign[i], want[i])
+		}
+	}
+	if other := p.Edges[1]; other.Flow != [2]float64{-1, -1} || other.FlowAlign != nil {
+		t.Errorf("unannotated edge carries a flow view: %v %v", other.Flow, other.FlowAlign)
+	}
+}

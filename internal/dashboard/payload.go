@@ -13,7 +13,9 @@ package dashboard
 // It exists for the page, not for comparability: a stale asset bundle reading a
 // newer payload should say so rather than render half a screen. Nothing diffs
 // two payloads, and nothing should — that is snapshot.Schema's job.
-const Schema = 2
+//
+// 3 added the flow view: Edge.Flow, Edge.FlowCounts and Edge.FlowAlign.
+const Schema = 3
 
 // Payload is one analysis run, as the page receives it.
 //
@@ -118,6 +120,7 @@ type Facts struct {
 	// bound in this tool.
 	BodiesOmitted int `json:"bodiesOmitted"`
 	DetailOmitted int `json:"detailOmitted"`
+	FlowOmitted   int `json:"flowOmitted"` // edges whose flow alignment was not inlined
 }
 
 // Package is one Go package, drawn as a territory on the map.
@@ -215,6 +218,29 @@ type Edge struct {
 	Views         [5]float64 `json:"views"`
 	ViewsDisagree bool       `json:"viewsDisagree"`
 	SharedVocab   []string   `json:"sharedVocab,omitempty"`
+
+	// Flow is the flow view, [steps, types]: how much of the two bodies'
+	// logic aligns in order, and how much of the types they touch is shared
+	// (fingerprint.FlowSimilarity). -1 when the pair was never annotated.
+	// FlowCounts is [same, retargeted, steps in A, steps in B], so the page
+	// can say what the ratio was measured over. Reported, never blended.
+	//
+	// FlowAlign is the alignment itself, one row per step, in A-then-B
+	// order of this edge's endpoints. It is per-pair detail, so it is bounded
+	// like Chains and Reasons: present for the best-ranked edges, absent below
+	// the cut (Facts.FlowOmitted).
+	Flow       [2]float64 `json:"flow"`
+	FlowCounts [4]int     `json:"flowCounts"`
+	FlowAlign  []FlowRow  `json:"flowAlign,omitempty"`
+}
+
+// FlowRow is one row of a pair's aligned logic: the step from A, the step
+// from B (either empty where that side has none), and M — 2 an identical
+// step, 1 the same kind against a different target, 0 unmatched.
+type FlowRow struct {
+	A string `json:"a,omitempty"`
+	B string `json:"b,omitempty"`
+	M int    `json:"m,omitempty"`
 }
 
 // BreakdownNames labels Edge.Breakdown, in its fixed order.

@@ -166,6 +166,7 @@ type scoredPair struct {
 	fileA, fileB string
 	rank         int
 	rankKey      float64
+	idx          int // position in run.Pairs, for a caller that matched a label and wants the pair back
 }
 
 func (r *Run) scoredPair(p analyzer.SimilarPair) scoredPair {

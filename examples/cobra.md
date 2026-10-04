@@ -9,7 +9,7 @@ CLI framework; one dominant type with a long method set, plus shell-completion g
 | Corpus | [cobra](https://github.com/spf13/cobra) |
 | Pinned at | `v1.10.2` (`88b30ab89da2d0d0abb153818746c5a2d30eccec`) |
 | Project since | 2015 |
-| doppel | `d2d78d3` |
+| doppel | `075fc2e` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -412,6 +412,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
+**Flow:** `steps 1.00 (13 same of 13 and 13)  types 1.00`
+
 **Evidence:** `291.79` (shape 278.15, concept 2.76, call 10.87)
 
 **Trophic:** `1.00`
@@ -456,6 +458,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `1.00`
+
+**Flow:** `steps 1.00 (13 same of 13 and 13)  types 1.00`
 
 **Evidence:** `291.72` (shape 278.15, concept 2.69, call 10.87)
 
@@ -502,6 +506,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
+**Flow:** `steps 1.00 (13 same of 13 and 13)  types 1.00`
+
 **Evidence:** `291.72` (shape 278.15, concept 2.69, call 10.87)
 
 **Trophic:** `1.00`
@@ -546,6 +552,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 0.52  flow 1.00  nesting 1.00  sig 0.60  size 0.86`
 
 **Containment:** `0.74`
+
+**Flow:** `steps 0.90 (51 same, 1 retargeted of 53 and 62)  types 0.60`
 
 **Evidence:** `1001.03` (shape 938.74, concept 4.32, call 57.97)
 
@@ -595,6 +603,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.87`
 
+**Flow:** `steps 0.94 (15 same of 15 and 17)  types 1.00`
+
 **Evidence:** `319.60` (shape 303.93, concept 1.79, call 13.88)
 
 **Trophic:** `0.91`
@@ -642,6 +652,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.79`
 
+**Flow:** `steps 0.96 (23 same, 2 retargeted of 25 and 25)  types 0.80`
+
 **Evidence:** `340.41` (shape 311.73, concept 1.90, call 26.78)
 
 **Trophic:** `0.94`
@@ -687,6 +699,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `1.00`
+
+**Flow:** `steps 1.00 (7 same of 7 and 7)  types 1.00`
 
 **Evidence:** `160.57` (shape 144.50, concept 5.88, call 10.19)
 
@@ -736,6 +750,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.74`
 
+**Flow:** `steps 0.96 (23 same, 2 retargeted of 25 and 25)  types 1.00`
+
 **Evidence:** `318.17` (shape 289.49, concept 1.90, call 26.78)
 
 **Trophic:** `0.90`
@@ -782,6 +798,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.74`
 
+**Flow:** `steps 0.96 (23 same, 2 retargeted of 25 and 25)  types 0.80`
+
 **Evidence:** `318.17` (shape 289.49, concept 1.91, call 26.78)
 
 **Trophic:** `0.90`
@@ -827,6 +845,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 0.55  flow 1.00  nesting 1.00  sig 1.00  size 0.86`
 
 **Containment:** `0.78`
+
+**Flow:** `steps 0.89 (16 same, 1 retargeted of 20 and 17)  types 1.00`
 
 **Evidence:** `368.02` (shape 349.56, concept 5.15, call 13.30)
 

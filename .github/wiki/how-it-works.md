@@ -112,6 +112,8 @@ The 0.60 component is a *subtree* summary, not a window over a flattened stream:
 
 The relative body size is reported alongside these but is not scored — Jaccard already penalizes size mismatch through the union. Containment — how much of the *smaller* body's shape the larger one also has — is reported for the same reason and scored for none: a helper inlined into a long function reads low on the blend and high on containment, and collapsing the two would destroy the finding.
 
+Every one of those numbers ignores order. The **flow view** does not: it reads each body as a sequence of steps — branches, loops, calls, constructions, returns — and lines the two sequences up, counting a step matched to an identical one fully and one matched to the same kind of step against a different target (`call Get` against `call Delete`) as half. It is reported beside code-shape and scored for nothing. It was measured as a ranking signal against the labelled corpora and did not earn a place: the false positives that rank high, such as mirror methods, have the same logic in the same order by construction, so what the view adds is showing *where* two bodies differ rather than ranking them.
+
 ## The ontology
 
 Structural comparison used to compare strings. Two functions tagged `http_call` and `db_access` scored

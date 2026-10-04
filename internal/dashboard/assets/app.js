@@ -1112,6 +1112,55 @@
       host.appendChild(vw);
     }
 
+    /* The flow view: the two bodies' logic as ordered step sequences —
+       branches, loops, returns, calls, constructions, assertions — aligned,
+       plus the types each touches. Every score above is order-free (a label
+       multiset, two histograms, a type set); this is the one that can tell
+       validate-fetch-map from fetch-map-validate. Reported, never blended,
+       and -1 means the pair was never annotated. */
+    if (e.flow && e.flow[0] >= 0) {
+      var swap = left !== e.a;
+      var fc = e.flowCounts || [0, 0, 0, 0];
+      var fw = panel("Logic flow",
+        "Steps is how much of the two bodies' logic lines up in the same order: an identical " +
+        "step counts fully, the same kind of step against a different target (call Get against " +
+        "call Delete) counts half. Types is the overlap of the types each touches — its signature " +
+        "and what it constructs or asserts. Every code-shape component ignores order; this does not.");
+      var fbars = el("div", "bars");
+      [["steps", e.flow[0]], ["types", e.flow[1]]].forEach(function (f) {
+        var row = el("div", "bar-row");
+        row.appendChild(el("span", null, f[0]));
+        var track = el("div", "bar-track");
+        var fill = el("div", "bar-fill" + (f[1] >= 0.9 ? " hot" : ""));
+        fill.style.width = Math.max(0, Math.min(100, f[1] * 100)) + "%";
+        track.appendChild(fill);
+        row.appendChild(track);
+        row.appendChild(el("span", "bar-n", fixed(f[1])));
+        fbars.appendChild(row);
+      });
+      fw.appendChild(fbars);
+      var la = swap ? fc[3] : fc[2], lb = swap ? fc[2] : fc[3];
+      fw.appendChild(el("p", "panel-note", fc[0] + " same" +
+        (fc[1] ? ", " + fc[1] + " retargeted" : "") + " of " + la + " and " + lb + " steps."));
+      if (e.flowAlign && e.flowAlign.length) {
+        var tbl = el("div", "flow-align mono");
+        e.flowAlign.forEach(function (r) {
+          var ra = swap ? r.b : r.a, rb = swap ? r.a : r.b;
+          var row = el("div", "fa-row" + (r.m === 2 ? " same" : r.m === 1 ? " re" : " solo"));
+          row.appendChild(el("span", "fa-step", ra || ""));
+          row.appendChild(el("span", "fa-mark", r.m === 2 ? "=" : r.m === 1 ? "~" : ""));
+          row.appendChild(el("span", "fa-step", rb || ""));
+          tbl.appendChild(row);
+        });
+        fw.appendChild(tbl);
+      } else if (la + lb > 0) {
+        fw.appendChild(el("p", "panel-note",
+          "The step-by-step alignment is not inlined for this pair — the page bounds how much " +
+          "per-pair detail it carries. doppel analyze --debug prints it."));
+      }
+      host.appendChild(fw);
+    }
+
     if (e.explain) {
       host.appendChild(panel("What the canonicalizer did", e.explain));
     }

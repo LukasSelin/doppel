@@ -9,7 +9,7 @@ structured concurrency library; generics-heavy, one idea, written recently and a
 | Corpus | [conc](https://github.com/sourcegraph/conc) |
 | Pinned at | `v0.3.0` (`7b8c8f2875cb861bb61844c9bcaa1aed070adbd4`) |
 | Project since | 2023 |
-| doppel | `4aa3b83` |
+| doppel | `075fc2e` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -259,6 +259,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `1.00`
 
+**Flow:** `steps 1.00 (4 same of 4 and 4)  types 1.00`
+
 **Evidence:** `82.70` (shape 82.70, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
@@ -293,6 +295,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 **Code similarity:** `wl 0.60  flow 1.00  nesting 1.00  sig 0.00  size 0.87`
 
 **Containment:** `0.81`
+
+**Flow:** `steps 1.00 (6 same of 6 and 6)  types 0.00`
 
 **Evidence:** `129.32` (shape 126.02, concept 0.00, call 3.30)
 
@@ -338,6 +342,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `0.91`
 
+**Flow:** `steps 0.91 (5 same of 5 and 6)  types 1.00`
+
 **Evidence:** `99.48` (shape 95.77, concept 0.00, call 3.70)
 
 **Trophic:** `0.93`
@@ -379,6 +385,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `1.00`
 
+**Flow:** `steps 1.00 (2 same of 2 and 2)  types 1.00`
+
 **Evidence:** `39.73` (shape 39.73, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
@@ -416,6 +424,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `1.00`
 
+**Flow:** `steps 1.00 (3 same of 3 and 3)  types 0.33`
+
 **Evidence:** `35.02` (shape 35.02, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
@@ -450,6 +460,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
 
 **Containment:** `1.00`
+
+**Flow:** `steps 1.00 (3 same of 3 and 3)  types 0.33`
 
 **Evidence:** `35.02` (shape 35.02, concept 0.00, call 0.00)
 
@@ -488,6 +500,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `1.00`
 
+**Flow:** `steps 1.00 (3 same of 3 and 3)  types 0.33`
+
 **Evidence:** `35.02` (shape 35.02, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
@@ -522,6 +536,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
 
 **Containment:** `1.00`
+
+**Flow:** `steps 1.00 (3 same of 3 and 3)  types 0.33`
 
 **Evidence:** `35.02` (shape 35.02, concept 0.00, call 0.00)
 
@@ -559,6 +575,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 **Code similarity:** `wl 0.33  flow 0.82  nesting 0.89  sig 0.40  size 0.50`
 
 **Containment:** `0.73` — most of the smaller body's shape is inside the larger
+
+**Flow:** `steps 0.78 (7 same of 7 and 11)  types 0.40`
 
 **Evidence:** `147.72` (shape 144.02, concept 0.00, call 3.70)
 
@@ -601,6 +619,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 **Code similarity:** `wl 0.42  flow 1.00  nesting 1.00  sig 0.00  size 0.90`
 
 **Containment:** `0.60`
+
+**Flow:** `steps 0.88 (3 same, 1 retargeted of 4 and 4)  types 0.00`
 
 **Evidence:** `44.93` (shape 44.31, concept 0.61, call 0.00)
 
