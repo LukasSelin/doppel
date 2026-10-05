@@ -186,6 +186,26 @@ func TestUnitKeysDisambiguateCollisions(t *testing.T) {
 	}
 }
 
+// TestUnitKeysDisambiguateWithinFile covers two init functions in one file,
+// which Go allows and hugo's config/configLoader.go has. The file alone left
+// both on one key; the second takes an ordinal, and the first keeps the key
+// it always had.
+func TestUnitKeysDisambiguateWithinFile(t *testing.T) {
+	units := []parser.CodeUnit{
+		unit("app", "init", "app/a.go", 1, 20),
+		unit("app", "init", "app/a.go", 30, 20),
+		unit("app", "init", "app/b.go", 1, 20),
+		unit("app", "init", "app/a.go", 60, 20),
+	}
+	keys := unitKeys(units, "")
+	want := []string{"app.init@app/a.go", "app.init@app/a.go#2", "app.init@app/b.go", "app.init@app/a.go#3"}
+	for i := range want {
+		if keys[i] != want[i] {
+			t.Errorf("keys[%d] = %q, want %q", i, keys[i], want[i])
+		}
+	}
+}
+
 // TestPathsAreRelativeAndSlashed pins the property that lets two runs be
 // compared at all: a hook analyses an absolute cwd while `doppel analyze .`
 // analyses a relative root, and both must describe the same file the same way.

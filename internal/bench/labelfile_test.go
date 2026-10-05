@@ -101,3 +101,30 @@ func TestScoreMatchesPinnedFiles(t *testing.T) {
 		t.Errorf("partial segment md/a.go matched cmd/a.go at rank %d", sc.Results[1].Rank)
 	}
 }
+
+// TestCoupledIsScoredNotAsserted pins what the coupled class is for: a pair
+// history says is kept in step gets a rank and a mean like any class, and —
+// because it claims nothing about merging — never enters the merge or
+// false-positive accounting the hard assertions read. A coupled pair at rank
+// 1 above an unretrieved merge would otherwise read as a violation.
+func TestCoupledIsScoredNotAsserted(t *testing.T) {
+	lf, err := ParseLabels([]byte(`{"corpus":"x","reviewed":"2026-01-01","labels":[
+		{"a":"alpha.Create","b":"alpha.Delete","class":"coupled","note":"co-changed twice"}]}`))
+	if err != nil {
+		t.Fatalf("coupled label rejected: %v", err)
+	}
+	units := []parser.CodeUnit{
+		{Package: "alpha", Name: "Create", File: "alpha/a.go"},
+		{Package: "alpha", Name: "Delete", File: "alpha/a.go"},
+	}
+	run := &Run{Units: units, Pairs: []analyzer.SimilarPair{{AIdx: 0, BIdx: 1, Score: 1,
+		Retrieval: &analyzer.Retrieval{Total: 10, TrophicSim: 1}}}}
+	sc := Score(run, lf)
+	if sc.Results[0].Rank != 1 || sc.Present["coupled"] != 1 || sc.MeanRank["coupled"] != 1 {
+		t.Errorf("coupled not scored: rank %d, present %d, mean %.1f",
+			sc.Results[0].Rank, sc.Present["coupled"], sc.MeanRank["coupled"])
+	}
+	if sc.MergeTotal != 0 || len(sc.FPInTop20) != 0 || len(sc.FPAboveMerge) != 0 || len(sc.MergeMissing) != 0 {
+		t.Errorf("coupled leaked into the asserted accounting: %+v", sc)
+	}
+}
