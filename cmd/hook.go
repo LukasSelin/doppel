@@ -108,6 +108,16 @@ var hookStopCmd = &cobra.Command{
 	RunE:  runHookStop,
 }
 
+var hookViewCmd = &cobra.Command{
+	Use:   "view",
+	Short: "Print the session's band and delta report, as the last Stop hook wrote them",
+	Long: "Reads the session id from a hook-shaped payload on stdin and prints the\n" +
+		"user-side view the last `hook stop` recorded for it: the one-line band and the\n" +
+		"full delta report. It runs no analysis. Prints nothing when there is no view.",
+	Args: cobra.NoArgs,
+	RunE: runHookView,
+}
+
 var hookRoot string
 
 func init() {
@@ -115,7 +125,50 @@ func init() {
 		c.Flags().StringVar(&hookRoot, "root", "", "Directory to analyze (default: the cwd from the hook payload)")
 		hookCmd.AddCommand(c)
 	}
+	// view analyzes nothing, so it takes no --root.
+	hookCmd.AddCommand(hookViewCmd)
 	rootCmd.AddCommand(hookCmd)
+}
+
+// impactFile is the Stop hook's report at deltaPathFor: the snapshot delta,
+// flattened so every key the file has always carried is still at its top
+// level, plus the user-side view the plugin's mod draws.
+//
+// View rides in this file rather than a file of its own because it is the same
+// report — what the session has done, as of the last Stop — and the conventions
+// allow one persisted artifact per session beside the baseline's reports, not a
+// second state file. Nothing reads it to skip work: `hook view` only prints it.
+type impactFile struct {
+	snapshot.Delta
+	View *reporter.SessionView `json:"view,omitempty"`
+}
+
+// runHookView prints the band and the delta report the last Stop hook recorded
+// for this session — the mod's data source.
+//
+// It runs no pipeline, deliberately. The Stop hook has already measured this
+// turn; a second analysis per turn to redraw a band would double the cost of
+// every turn for a picture that cannot differ. Reading the report is the
+// no-caches rule's own exemption for reports: nothing analytical is reused to
+// skip a stage, a finished report is displayed.
+//
+// The session id arrives in the hook payload shape, so the path rule is the one
+// baselinePath already enforces and the mod never computes a path. Same
+// contract as every hook: no stderr, never a non-zero exit.
+func runHookView(cmd *cobra.Command, args []string) error {
+	in, err := readHookInput(cmd.InOrStdin())
+	if err != nil {
+		return emitNothing()
+	}
+	data, err := os.ReadFile(deltaPathFor(baselinePath(in.SessionID)))
+	if err != nil {
+		return emitNothing()
+	}
+	var f impactFile
+	if err := json.Unmarshal(data, &f); err != nil || f.View == nil || f.View.Band == "" {
+		return emitNothing()
+	}
+	return emitJSON(cmd, f.View)
 }
 
 // runHookSessionStart records the session's measurement origin and hands back a
@@ -210,6 +263,11 @@ func runHookStop(cmd *cobra.Command, args []string) error {
 		return emitNothing()
 	}
 
+	// The impact file is a report of where the session stands now, and the
+	// plugin's band reads it after every turn. Every silent exit below removes
+	// it, so a band can never keep describing a delta this turn no longer has.
+	deltaPath := deltaPathFor(path)
+
 	delta := snapshot.Diff(base.Snapshot, head)
 	if !delta.Comparable {
 		// The binary, the vocabulary or the params moved under us, so the old
@@ -220,6 +278,7 @@ func runHookStop(cmd *cobra.Command, args []string) error {
 			CreatedAt: time.Now().UTC().Format(time.RFC3339),
 			Snapshot:  head,
 		})
+		_ = os.Remove(deltaPath)
 		return emitNothing()
 	}
 
@@ -227,6 +286,9 @@ func runHookStop(cmd *cobra.Command, args []string) error {
 	if err != nil || mode == NotifyOff {
 		// A malformed hook-notify is the user's config error, but a hook is the
 		// wrong place to learn about it: stderr here reads as a broken tool.
+		// Off silences the band too: it is a user-side surface of this same
+		// measurement, and "off" was not a statement about the transcript only.
+		_ = os.Remove(deltaPath)
 		return emitNothing()
 	}
 
@@ -238,12 +300,18 @@ func runHookStop(cmd *cobra.Command, args []string) error {
 
 	digest := reporter.SessionDigest(ident, delta, "")
 	if digest == "" {
+		_ = os.Remove(deltaPath)
 		return emitNothing()
 	}
 
-	deltaPath := deltaPathFor(path)
-	if err := writeJSONAtomic(deltaPath, delta); err == nil {
+	report := impactFile{Delta: delta}
+	if view, ok := reporter.SessionViewOf(ident, delta); ok {
+		report.View = &view
+	}
+	if err := writeJSONAtomic(deltaPath, report); err == nil {
 		digest = reporter.SessionDigest(ident, delta, deltaPath)
+	} else {
+		_ = os.Remove(deltaPath)
 	}
 
 	out := map[string]any{"systemMessage": digest}

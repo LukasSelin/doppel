@@ -158,7 +158,39 @@ Set `hook-notify` in `.doppel.json` to change this:
 | --- | --- |
 | `agent` (default) | the note above, plus your digest; costs a turn when there is a finding |
 | `user` | your digest only, never continues a turn |
-| `off` | silence |
+| `off` | silence — the band and pane below included |
+
+### The band and the pane
+
+The Stop hook's transcript digest is not the only place you see this. The plugin also ships a
+**mod** (`hooks/register.tsx`), which draws in Claude Code's own interface:
+
+- **A band above the prompt**, one line, after each turn the session has changed something:
+
+  ```
+  doppel: renamed 1, new 1; pairs created 3, dissolved 1 — since session start   details  hide
+  ```
+
+- **A pane** with the full delta report, opened from the band's `details` or with **`/doppel`**
+  (which toggles it): what happened to each function since the baseline, then every pair those
+  changes created or dissolved, each with its stored `explain:` sentence. It is the same report
+  `doppel diff` prints, and the same lines the Stop digests lead with, so the three never disagree.
+
+Why it exists: the agent note above has to clear a high bar because a Stop hook cannot reach the
+model without continuing the turn. A mod draws in the UI and never touches the model's context, so
+the band and pane cost no tokens and no turns, and can show everything the session did rather than
+only what is worth interrupting for. `/doppel` answers without a model turn and puts nothing in
+the transcript. What the agent receives does not change.
+
+It runs no analysis of its own. After the Stop hook has measured the turn, the mod asks the binary
+for the view (`doppel hook view`), which only reads the report that hook just wrote. When there is
+nothing to say — a quiet session, one that undid itself, `hook-notify: off` — the band is empty.
+`hide` dismisses the band until the session's picture changes.
+
+Where nothing draws (the VS Code chat panel, `claude -p`, cloud sessions) the mod draws nothing and
+the hooks behave exactly as before. Mods need Claude Code 2.1.287 or later; an older Claude Code
+ignores the module and runs the four hooks as it always did. A `doppel` binary older than this
+plugin has no `hook view`, and the band then stays empty rather than showing an error.
 
 ## Reading the output honestly
 
@@ -201,7 +233,8 @@ than the number suggests. Failing that, remove the Stop hook and keep only Sessi
 ## State
 
 The baseline and the last delta live in `<temp>/doppel-baselines/`, named by a hash of the session
-id. They are never read by `doppel analyze` and never feed any score; losing one costs you a delta
+id. The delta file (`<hash>.impact.json`) also carries the band and pane text under `view`; the
+Stop hook removes it whenever it has nothing to report, so the band cannot outlive the finding. They are never read by `doppel analyze` and never feed any score; losing one costs you a delta
 and nothing else. Files older than seven days are swept at session start.
 
 ## Running the hooks by hand
@@ -216,5 +249,17 @@ echo '{"session_id":"test","cwd":"'"$PWD"'","source":"startup"}' | doppel hook s
 echo '{"session_id":"test","cwd":"'"$PWD"'"}' | doppel hook stop
 ```
 
-Neither ever exits non-zero or writes to stderr: a measurement must not be able to break a session.
+```bash
+echo '{"session_id":"test"}' | doppel hook view
+```
+
+To try a working copy of the plugin, run `claude --plugin-dir plugin` (Claude Code 2.1.287 or
+later) and `claude plugin test plugin` for the mod's tests. A plugin loaded this way is
+`doppel@inline`, and its four settings hooks do **not** get `doppel_binary`'s default: they fail
+with `Plugin option "doppel_binary" isn't set` until `~/.claude/settings.json` carries
+`"pluginConfigs": { "doppel@inline": { "options": { "doppel_binary": "doppel" } } }`. The mod
+itself is handed the default either way, so a band that stays empty under `--plugin-dir` usually
+means the hooks never ran, not that the mod is broken.
+
+None ever exits non-zero or writes to stderr: a measurement must not be able to break a session.
 Silence means "nothing to report" — which is also what you get when there is no baseline yet.
