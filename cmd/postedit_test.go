@@ -384,3 +384,26 @@ func TestUnreferenceableIsTheLanguageRuleOnly(t *testing.T) {
 		}
 	}
 }
+
+// walkSkips mirrors index()'s walk: a file under a directory the walk skips
+// can hold no unit, so the hook answers before paying for the index.
+func TestWalkSkipsMirrorsTheWalk(t *testing.T) {
+	cases := []struct {
+		exclude []string
+		rel     string
+		want    bool
+	}{
+		{nil, "main.go", false},
+		{nil, "internal/store/store.go", false},
+		{nil, "vendor/github.com/x/y.go", true},
+		{nil, "web/node_modules/pkg/index.js", true},
+		{nil, ".claude/worktrees/x/a.go", true},
+		{[]string{"internal/proto"}, "internal/proto/gen.go", true},
+		{[]string{"!vendor"}, "vendor/github.com/x/y.go", false},
+	}
+	for _, c := range cases {
+		if got := walkSkips(Params{Exclude: c.exclude}, c.rel); got != c.want {
+			t.Errorf("walkSkips(%v, %q) = %v, want %v", c.exclude, c.rel, got, c.want)
+		}
+	}
+}

@@ -51,7 +51,7 @@ joins the corpus. Appending before anything runs is the load-bearing choice: the
 resolver hands the probe resolved callees, mapper classifies its role against the same thresholds
 as everyone, and every corpus statistic sees it — so query statistics differ from a plain analyze
 by exactly the probe's own contribution, which is the honest way to ask how a proposed function
-would sit in this corpus. `retriever.Probe` then runs the same three channels, gates and evidence
+would sit in this corpus. `retriever.Probe` (or a `retriever.Prober` holding its indexes across probes) then runs the same three channels, gates and evidence
 arithmetic as `Retrieve`, narrowed to the probe's admission turn (`admitFor`, extracted from each
 channel's loop; the shared `evaluate` tail keeps the two from drifting). Query ranking is
 `Total × (1 + Locality)` where locality is the fraction of the probe's depth-2 call-graph ball the
@@ -2901,7 +2901,33 @@ reason rather than returning a partial delta.
 
   **Measured before the floor was fixed** — `scripts/postedit-replay.sh`, one session per
   non-merge commit (baseline at the parent, every added/modified non-test Go file as one edit):
-  @@REPLAY@@
+
+  | history | file-edits | fire at 0.50 | **at 0.60** | at 0.70 | at 0.90 | latency mean / max |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | cobra, last 200 commits (95 with Go edits) | 185 | 3.2% | **2.7%** | 1.6% | 1.6% | 0.8s / 4.6s |
+  | doppel, last 161 commits (109 with Go edits) | 483 | 20.5% | **14.5%** | 9.5% | 7.5% | 0.9s / 5.0s |
+  | moby, last 25 commits | 126 | 0.8% | **0.8%** | 0.8% | 0.8% | 3–5s / 11.5s |
+
+  Rates are after the two rules the first doppel run motivated (no `init`/`main`; a pair said once
+  per session). The doppel rate is high because doppel's history *is* that duplication: at 0.60 the
+  hook re-finds, at the commit that wrote them, the clones this file later records as consolidated —
+  `relSlash`, `shouldSkipDir`/`skipDir`, `printType`, `derivedConcepts`, `validate*Mode`,
+  `qualifiedName`, the `sortedKeys` family. Precision, read by hand and rough: above 0.70 about
+  three findings in four are real copies, and most of the rest already carry a `thin wrappers`,
+  `interface implementations` or `mirror operations` kind saying what they are; the 0.60-0.70
+  band reads about one in three — but it holds `lexicon.upperQuantile ↔ calibrate.Quantile` (0.68)
+  and `identity.WriteJSONDelta ↔ reporter.encodeJSON` (0.69), both documented here as genuine
+  local copies and both `subsystem copies`, the class the hook exists for. On cobra every firing
+  that meets a hand label is a true match (the `MarkFlags*` merges, the `validate*FlagGroups` and
+  `stripFlags`/`argsMinusFirstX` refactors) and no labelled false positive fires. So 0.60 is kept,
+  and 0.70 is the one-constant alternative if the doppel rate proves too chatty in practice.
+
+  **The cost is `index()`, not the probes**, and it is why the hook is opt-in. Profiled on a slow
+  moby edit: ~0.4s of probing inside a ~5s run, the rest parse and corpus build under heavy GC.
+  `retriever.Prober` (the three indexes `Probe` builds, held across the probes of one edit —
+  `Probe` is `NewProber(...).Probe`, verified equal by `TestProberReuseMatchesIndependentProbes`)
+  keeps a many-function Write from paying the index build per function, and `walkSkips` answers an
+  edit under `vendor/` or any directory the walk skips without indexing at all.
 - Both digests rank the pairs they have room to print by **corroborated evidence**,
   `shape x overlap` (`impactKey` in `reporter`), then shape, then names. Not by overlap, and not by
   the merge-worthy flag: shared context favours same-package siblings by construction, so overlap

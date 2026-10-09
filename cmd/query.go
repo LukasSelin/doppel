@@ -153,11 +153,12 @@ func runQuery(cmd *cobra.Command, args []string) error {
 
 	opts := probeOptions(p)
 	opts.ChannelK = p.ChannelK
+	prober := retriever.NewProber(res.Units, res.Graph, res.Onto, res.IC, res.WL, opts)
 
 	for pi := range probes {
 		probeIdx := corpusN + pi
 		// Another probe from the same snippet is not a corpus finding.
-		matches := probeMatches(res, probeIdx, opts, func(other int) bool { return other >= corpusN })
+		matches := probeMatches(res, prober, probeIdx, func(other int) bool { return other >= corpusN })
 		if len(matches) > queryTop {
 			matches = matches[:queryTop]
 		}
@@ -188,7 +189,8 @@ func probeOptions(p Params) retriever.Options {
 }
 
 // probeMatches retrieves the functions related to units[probeIdx] and ranks
-// them by evidence boosted by locality (rankQueryMatches). skip drops a
+// them by evidence boosted by locality (rankQueryMatches). The prober is built
+// once per corpus by the caller, over res.Units, with probeOptions. skip drops a
 // candidate by its unit index before ranking — query uses it to keep the
 // snippet's other probes out, the post-edit hook to keep the edit's own file
 // state out of what it reports. The probe may sit anywhere in res.Units:
@@ -197,8 +199,8 @@ func probeOptions(p Params) retriever.Options {
 // Shared by `doppel query` and `doppel hook post-edit` so that the two ask the
 // corpus the same question in the same way; nothing is truncated here, because
 // the two callers bound their output differently.
-func probeMatches(res Result, probeIdx int, opts retriever.Options, skip func(other int) bool) []reporter.QueryMatch {
-	cands, _ := retriever.Probe(res.Units, probeIdx, res.Graph, res.Onto, res.IC, res.WL, opts)
+func probeMatches(res Result, prober *retriever.Prober, probeIdx int, skip func(other int) bool) []reporter.QueryMatch {
+	cands, _ := prober.Probe(probeIdx)
 	matches := make([]reporter.QueryMatch, 0, len(cands))
 	ball := neighborhoodSet(res.Graph, res.Units[probeIdx])
 	for _, c := range cands {

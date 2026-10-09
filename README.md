@@ -456,9 +456,11 @@ deriving it are the same decision made two ways, and doppel will not do half of
 each. Set `calibrate` explicitly if you want a pinned key and a calibrated rate
 to coexist; the rate wins.
 
-One key has no flag behind it: `hook-notify` (`agent` | `user` | `off`) decides who the plugin's
+Two keys have no flag behind them. `hook-notify` (`agent` | `user` | `off`) decides who the plugin's
 Stop hook reports to. See [plugin/README.md](plugin/README.md) — reaching the agent costs an extra
-turn, so it is worth understanding before leaving it on the default.
+turn, so it is worth understanding before leaving it on the default. `hook-probe` (`on` | `off`,
+default `off`) turns on the plugin's post-edit probe, which indexes the repository after every
+edit to name near duplicates of what was just written.
 
 ## Use as a Claude Code plugin
 

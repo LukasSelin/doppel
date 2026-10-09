@@ -2,14 +2,17 @@ package cmd
 
 import (
 	"io"
+	"path"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/LukasSelin/doppel/internal/analyzer"
 	"github.com/LukasSelin/doppel/internal/gofront"
 	"github.com/LukasSelin/doppel/internal/parser"
 	"github.com/LukasSelin/doppel/internal/reporter"
+	"github.com/LukasSelin/doppel/internal/retriever"
 	"github.com/LukasSelin/doppel/internal/snapshot"
 	"github.com/spf13/cobra"
 )
@@ -161,7 +164,7 @@ func probeEdit(root string, base snapshot.Snapshot, file string, minShape float6
 		return nil, false
 	}
 	rel, ok := relativeToRoot(root, file)
-	if !ok {
+	if !ok || walkSkips(p, rel) {
 		return nil, false
 	}
 
@@ -180,7 +183,9 @@ func probeEdit(root string, base snapshot.Snapshot, file string, minShape float6
 	if p.Calibrate > 0 && p.Pinned {
 		forkFloor = p.Threshold
 	}
-	opts := probeOptions(p)
+	// Built lazily: most edits that reach this point probe nothing (every
+	// body unchanged), and the indexes are most of a probe's cost.
+	var prober *retriever.Prober
 
 	var out []reporter.ProbeResult
 	for i, u := range res.Units {
@@ -197,7 +202,10 @@ func probeEdit(root string, base snapshot.Snapshot, file string, minShape float6
 		}
 		probe := reporter.ProbeResult{Key: keys[i], File: rel, Line: u.StartLine, New: !had}
 		skip := func(o int) bool { return !parser.SameBuildUnit(u, res.Units[o]) || unreferenceable(res.Units[o]) }
-		for _, m := range probeMatches(res, i, opts, skip) {
+		if prober == nil {
+			prober = retriever.NewProber(res.Units, res.Graph, res.Onto, res.IC, res.WL, probeOptions(p))
+		}
+		for _, m := range probeMatches(res, prober, i, skip) {
 			if m.Candidate.Breakdown.Score < minShape {
 				continue
 			}
@@ -222,6 +230,31 @@ func probeEdit(root string, base snapshot.Snapshot, file string, minShape float6
 		out = append(out, probe)
 	}
 	return out, true
+}
+
+// walkSkips reports whether index()'s walk would skip a directory on the way
+// to rel — vendor/, node_modules/, a dot-directory, a configured exclusion —
+// so the file holds no unit of the corpus. Asked before the index rather than
+// after, because the answer is the same and the index is the hook's whole cost:
+// measured on moby, an edit under vendor/ paid seconds for a guaranteed
+// silence. The same Excludes.SkipDir the walk calls, applied to each ancestor
+// in walk order, so the two rules cannot disagree.
+func walkSkips(p Params, rel string) bool {
+	exc, err := parser.NewExcludes(p.Exclude)
+	if err != nil {
+		return true
+	}
+	dir := path.Dir(rel)
+	if dir == "." {
+		return false
+	}
+	parts := strings.Split(dir, "/")
+	for i := range parts {
+		if exc.SkipDir(strings.Join(parts[:i+1], "/"), parts[i]) {
+			return true
+		}
+	}
+	return false
 }
 
 // unreferenceable reports a function no Go code can call: init, and main in
