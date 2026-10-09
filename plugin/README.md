@@ -253,5 +253,13 @@ echo '{"session_id":"test","cwd":"'"$PWD"'"}' | doppel hook stop
 echo '{"session_id":"test"}' | doppel hook view
 ```
 
+To try a working copy of the plugin, run `claude --plugin-dir plugin` (Claude Code 2.1.287 or
+later) and `claude plugin test plugin` for the mod's tests. A plugin loaded this way is
+`doppel@inline`, and its four settings hooks do **not** get `doppel_binary`'s default: they fail
+with `Plugin option "doppel_binary" isn't set` until `~/.claude/settings.json` carries
+`"pluginConfigs": { "doppel@inline": { "options": { "doppel_binary": "doppel" } } }`. The mod
+itself is handed the default either way, so a band that stays empty under `--plugin-dir` usually
+means the hooks never ran, not that the mod is broken.
+
 None ever exits non-zero or writes to stderr: a measurement must not be able to break a session.
 Silence means "nothing to report" — which is also what you get when there is no baseline yet.
