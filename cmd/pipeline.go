@@ -635,6 +635,8 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 		pairs[i].Kind = analyzer.ClassifyPairIn(a, b, pairs[i].Score, forkFloor, analyzer.PairContext{
 			ResolvedA: docs[pairs[i].AIdx].ResolvedCallees, ResolvedB: docs[pairs[i].BIdx].ResolvedCallees,
 			VocabA: thinVocab[pairs[i].AIdx], VocabB: thinVocab[pairs[i].BIdx],
+			CallersA: docs[pairs[i].AIdx].Callers, CallersB: docs[pairs[i].BIdx].Callers,
+			CallerPkgsA: docs[pairs[i].AIdx].CallerPackages, CallerPkgsB: docs[pairs[i].BIdx].CallerPackages,
 		})
 		pairs[i].Explain = analyzer.ExplainWith(a, b, labelKinds)
 		pairs[i].Profile = profiles.pair(pairs[i].AIdx, pairs[i].BIdx,

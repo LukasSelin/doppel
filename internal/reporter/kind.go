@@ -38,10 +38,34 @@ func kindClause(k *analyzer.KindNote, family bool, md bool) string {
 		return fmt.Sprintf("%s — %s on %s are one operation run in opposite directions", k.Kind, joinAnd(k.Names, code), code(k.Receivers[0]))
 	case analyzer.KindThinWrappers:
 		return fmt.Sprintf("%s — both are small bodies delegating to %s and naming different things, %s", k.Kind, joinAnd(k.Shared, code), where)
+	case analyzer.KindSubsystemCopies:
+		return fmt.Sprintf("%s — %s, %s; no caller uses both", k.Kind,
+			callerSide(k.Names[0], k.CallerCounts[0], k.CallerPackages[0], code),
+			callerSide(k.Names[1], k.CallerCounts[1], k.CallerPackages[1], code))
 	case analyzer.KindDifferentCalls:
 		return fmt.Sprintf("%s — the bodies share a shape but only %.0f%% of their calls, %s", k.Kind, 100*k.Overlap, where)
 	}
 	return k.Kind
+}
+
+// callerSide phrases one side of a subsystem-copies pair:
+// "concepter.QualifiedName has 14 callers in cmd, family, reporter and 3 more".
+func callerSide(name string, callers int, pkgs []string, code func(string) string) string {
+	const shown = 3
+	where := joinAnd(pkgs, code)
+	if len(pkgs) > shown {
+		parts := make([]string, 0, shown+1)
+		for _, p := range pkgs[:shown] {
+			parts = append(parts, code(p))
+		}
+		parts = append(parts, fmt.Sprintf("%d more", len(pkgs)-shown))
+		where = joinAnd(parts, func(s string) string { return s })
+	}
+	noun := "callers"
+	if callers == 1 {
+		noun = "caller"
+	}
+	return fmt.Sprintf("%s has %d %s in %s", code(name), callers, noun, where)
 }
 
 // kindWhere phrases the package relation: "in package template",

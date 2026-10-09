@@ -48,13 +48,26 @@ const (
 type PairContext struct {
 	ResolvedA, ResolvedB []string
 	VocabA, VocabB       []fingerprint.LabelCount
+
+	// CallersA/B are each side's resolved callers (qualified names) and
+	// CallerPkgsA/B the packages they live in, sorted — the call-graph facts
+	// SubsystemCopies reads. Empty means uncalled, which that kind treats as
+	// no evidence rather than as a disjoint caller set.
+	CallersA, CallersB       []string
+	CallerPkgsA, CallerPkgsB []string
 }
 
 // ClassifyPairIn is ClassifyPairWith with the lens kinds after the naming
 // kinds. Precedence, most specific first: a fork, then an interface
-// implementation, then mirror operations, thin wrappers, different calls.
+// implementation, then subsystem copies, mirror operations, thin wrappers,
+// different calls. Subsystem copies goes before the lens kinds because it is
+// a claim about how the corpus uses the two functions, which a shape-level
+// reading such as different calls cannot overrule.
 func ClassifyPairIn(a, b parser.CodeUnit, score, forkFloor float64, ctx PairContext) *KindNote {
 	if k := ClassifyPairWith(a, b, score, forkFloor); k != nil {
+		return k
+	}
+	if k := SubsystemCopies(a, b, score, forkFloor, ctx); k != nil {
 		return k
 	}
 	if k := Mirror(a, b); k != nil {
