@@ -126,6 +126,7 @@ internal/
                 vocabulary.go is the corpus-derived side table of what each learned concept is made of,
                 and the feature view of concept relatedness that reads it
   tagger/       The 14 seed rules: AST-signal matching → founding member sets for the lexicon
+  lexbridge/    DerivedConcepts + Vocabulary: the lexicon → ontology translation cmd and bench share
   lexicon/      Learns the corpus's own concepts: features.go (evidence channels), expand.go (seeded PMI expansion), emerge.go (clique clustering), name.go
   clique/       Deterministic maximal-clique enumeration and components, shared by family and lexicon
   parallel/     Blocks / BlocksWith: the one fan-out primitive — an atomic block counter with per-worker state
@@ -160,7 +161,7 @@ scripts/        timeline.sh: walks a git history and analyses each revision at o
                 The only code in the repo that knows git exists, and deliberately outside the doppel module
 ```
 
-Seven helpers are deliberately shared rather than copied, because doppel found each
+Eight helpers are deliberately shared rather than copied, because doppel found each
 of them as an exact clone of itself: `parser.ShouldSkipDir` (the walk rule — `cmd` walks
 with it and `internal/bench` mirrored it by hand, which is how the harness could have
 silently measured a different corpus than the tool), `snapshot.RelSlash` (the path rule
@@ -170,10 +171,13 @@ fallback), `cmd.validateMode` (one check for `--tests` and `--generated`, parame
 by flag name), `internal/clique` (the Bron–Kerbosch enumerator `family` needed for the pair
 graph and `lexicon` needs for the feature graph, with the same non-transitivity argument),
 `concepter.Graded` (the `[]parser.Concept` → `[]ontology.WeightedTerm` conversion both
-`comparator` and `retriever` need), and `internal/parallel` (the atomic-block fan-out the parse,
-compare and arena stages all run — extracted at the third copy, and the only one of the seven
-that *had* to become a package, since `internal/culture` cannot import `cmd` where the first two
-live). Do not reintroduce a local copy of any of them.
+`comparator` and `retriever` need), `internal/parallel` (the atomic-block fan-out the parse,
+compare and arena stages all run — extracted at the third copy, and the first of these that
+*had* to become a package, since `internal/culture` cannot import `cmd` where the first two
+live), and `internal/lexbridge` (`DerivedConcepts` and `Vocabulary`, the lexicon → ontology
+translation `cmd` and `internal/bench` each carried a copy of, under a comment saying the two
+"must move together" — doppel ranked them #4 and #7 on its own source, code-shape 1.00; a
+package because `internal/bench` cannot import `cmd`). Do not reintroduce a local copy of any of them.
 
 Dependency directions that must hold: `analyzer` imports `comparator` (for the `Evidence` field), so
 `comparator` must never import `analyzer`. `parser` imports `fingerprint`, so `fingerprint` must
@@ -191,7 +195,8 @@ concept names) and nothing imports it except `cmd`, which bridges its findings i
 `analyzer.CultureNote`. `family` imports `parser`, `fingerprint`, `analyzer` and `clique`; `cmd`
 and `reporter` import it. `lexicon` imports `parser`, `fingerprint`, `concepter` and `clique` and
 must never import `ontology` or `tagger` — it learns names, it does not reason about a vocabulary,
-and `cmd` bridges its concepts into an ontology term table. `clique` imports nothing. `dashboard`
+and `lexbridge` (imported by `cmd` and `internal/bench`, importing only `lexicon` and `ontology`)
+bridges its concepts into an ontology term table. `clique` imports nothing. `dashboard`
 imports **nothing from this module at all** — its payload is plain data and its renderer is
 `html/template` plus `embed` — which is what keeps the page's data contract from quietly acquiring
 pipeline types; `cmd` bridges a finished run into it, exactly as it does for `reporter.Overview`.
@@ -1266,9 +1271,9 @@ they count. `TestFeatureViewSeesRootHungConcepts` pins the whole point — corpu
 feature well above 0.5 on two root-hung concepts made of the same things.
 
 **The vocabulary travels as a side table, like IC.** `lexicon.Concept.Features` never left its
-package: `derivedConcepts` passes ID, seed, anchor and a prose definition, `ontology.Term` has no
-payload slot, and `lexicon` may not import `ontology`. `cmd.vocabularyOf` (mirrored in
-`internal/bench`, and the two must move together like `derivedConcepts`) builds an
+package: `lexbridge.DerivedConcepts` passes ID, seed, anchor and a prose definition, `ontology.Term` has no
+payload slot, and `lexicon` may not import `ontology`. `lexbridge.Vocabulary` (shared by
+`cmd` and `internal/bench`, which once carried a copy each) builds an
 `ontology.Vocabulary` — feature names interned once, each concept a slice of (id, weight) sorted by
 id, so a comparison is a merge join over integers — and `Scorer.WithVocabulary` attaches it.
 `NewScorer` is unchanged: retrieval builds its own scorer and has no use for the table, because
@@ -1823,6 +1828,11 @@ order:
   the four small rungs unchanged; every new firing sampled is a real inverse pair, none of
   cobra's 17 hand labels is touched, and 13 history-labelled pairs (moby 12, hugo 1) are newly
   named — 10 coupled, 3 refactor. Like every kind it annotates and never ranks.
+  `Old`/`New` are both fork markers and a pair of opposites, so the fork rule **yields when the
+  two names are opposites** (`oldMember`/`newMember`) and the mirror rule names them — doppel
+  read its own identity matcher's old-side/new-side helpers as a diverged copy until then. A name
+  that *adds* the word (`evalCallOld`/`evalCall`) is still a fork; `isUnchanged`/`isUnchangedNew`
+  is therefore still labelled one, because lexically it cannot be told apart from that case.
 - **`thin wrappers`** — both bodies at most `ThinNodes` (30) nodes, both call at least one shared
   resolved helper, and their vocab-lens bags (the canonical tree with names and literal values
   kept, `BuildThinVocab`) overlap below `ThinVocabCeiling` (0.8, uniform weights). The

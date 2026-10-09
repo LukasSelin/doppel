@@ -107,6 +107,8 @@ func TestFork(t *testing.T) {
 		{"unrelated directories", fn("a", "x/a/a.go", "runOld"), fn("b", "y/b/b.go", "run"), 0.9},
 		{"method vs function", old, fn("template", "tpl/texttemplate/f.go", "evalCall"), 0.9},
 		{"both axes differ", v1, method("scrape", "scrape/v2.go", "*scrapeLoopAppenderV2", "appendOld", "()"), 0.9},
+		{"old/new opposites", method("identity", "identity/i.go", "*matcher", "oldMember", "()"), method("identity", "identity/i.go", "*matcher", "newMember", "()"), 1.0},
+		{"old/new opposites, plain functions", fn("p", "p/a.go", "loadOldIndex"), fn("p", "p/a.go", "loadNewIndex"), 1.0},
 	}
 	for _, tc := range negatives {
 		if k := Fork(tc.a, tc.b, tc.score); k != nil {
@@ -128,6 +130,16 @@ func TestForkWinsOverInterfaceImpl(t *testing.T) {
 	}
 	if k := ClassifyPair(v1, v2, 0.3); k == nil || k.Kind != KindInterfaceImpl {
 		t.Errorf("below the floor the interface rule should remain: %+v", k)
+	}
+}
+
+// Old and New are both fork markers and opposites; when they are the one word
+// two method names differ in, the pair is a mirror, not a diverged copy.
+func TestOldNewIsMirrorNotFork(t *testing.T) {
+	a := method("identity", "identity/i.go", "*matcher", "oldMember", "()")
+	b := method("identity", "identity/i.go", "*matcher", "newMember", "()")
+	if k := ClassifyPairIn(a, b, 1.0, ForkShapeFloor, PairContext{}); k == nil || k.Kind != KindMirror {
+		t.Errorf("ClassifyPairIn = %+v, want mirror operations", k)
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	"github.com/LukasSelin/doppel/internal/comparator"
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/fingerprint"
+	"github.com/LukasSelin/doppel/internal/lexbridge"
 	"github.com/LukasSelin/doppel/internal/lexicon"
 	"github.com/LukasSelin/doppel/internal/mapper"
 	"github.com/LukasSelin/doppel/internal/ontology"
@@ -172,42 +173,11 @@ func (r *Run) StageTag() {
 	}
 	if r.Onto == nil {
 		r.Onto = ontology.WithConcepts(ontology.Default(),
-			ontology.DerivedConceptTerms(ontology.Default(), derivedConcepts(r.Lexicon)))
+			ontology.DerivedConceptTerms(ontology.Default(), lexbridge.DerivedConcepts(r.Lexicon)))
 	}
 	r.IC = ontology.NewCorpusICMass(r.Onto, mass)
-	r.Vocab = vocabularyOf(r.Lexicon)
+	r.Vocab = lexbridge.Vocabulary(r.Lexicon)
 	r.Comp = comparator.New(ontology.NewScorer(r.Onto, r.IC).WithVocabulary(r.Vocab))
-}
-
-// vocabularyOf carries each learned concept's feature vocabulary into the
-// ontology's side table, the same way cmd does.
-func vocabularyOf(lex *lexicon.Model) *ontology.Vocabulary {
-	concepts := lex.Concepts()
-	entries := make([]ontology.VocabularyEntry, len(concepts))
-	for i, c := range concepts {
-		feats := make([]ontology.WeightedFeature, len(c.Features))
-		for j, f := range c.Features {
-			feats[j] = ontology.WeightedFeature{Name: f.Name, Weight: f.Weight, Opaque: lexicon.Opaque(f.Name)}
-		}
-		entries[i] = ontology.VocabularyEntry{ID: ontology.TermID(c.ID), Features: feats}
-	}
-	return ontology.NewVocabulary(entries)
-}
-
-// derivedConcepts translates the learned lexicon into taxonomy placements, the
-// same way cmd does.
-func derivedConcepts(lex *lexicon.Model) []ontology.DerivedConcept {
-	concepts := lex.Concepts()
-	out := make([]ontology.DerivedConcept, len(concepts))
-	for i, c := range concepts {
-		out[i] = ontology.DerivedConcept{
-			ID:         c.ID,
-			Seed:       ontology.TermID(c.Seed),
-			AnchorSeed: ontology.TermID(c.Anchor),
-			Def:        c.Definition(),
-		}
-	}
-	return out
 }
 
 // StageWL counts the Weisfeiler-Lehman label surprisals over the corpus. It
