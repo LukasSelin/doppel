@@ -14,6 +14,7 @@ import (
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/culture"
 	"github.com/LukasSelin/doppel/internal/fingerprint"
+	"github.com/LukasSelin/doppel/internal/lexbridge"
 	"github.com/LukasSelin/doppel/internal/lexicon"
 	"github.com/LukasSelin/doppel/internal/mapper"
 	"github.com/LukasSelin/doppel/internal/ontology"
@@ -405,10 +406,10 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 	// The vocabulary is per-corpus now: the abstract interior of the taxonomy
 	// survives, its fourteen authored leaves are replaced by what was learned.
 	onto := ontology.WithConcepts(ontology.Default(),
-		ontology.DerivedConceptTerms(ontology.Default(), derivedConcepts(lex)))
+		ontology.DerivedConceptTerms(ontology.Default(), lexbridge.DerivedConcepts(lex)))
 	ic := ontology.NewCorpusICMass(onto, conceptMass)
 	res.Onto, res.IC = onto, ic
-	res.Vocab = vocabularyOf(lex)
+	res.Vocab = lexbridge.Vocabulary(lex)
 	timer.mark("ontology + IC")
 
 	// Generate concept documents for every unit.
@@ -787,45 +788,6 @@ func snapshotOf(res Result, pairs []analyzer.SimilarPair) snapshot.Snapshot {
 			NNP99:                res.NN.P99,
 			NNAtOrAboveThreshold: res.NN.AtOrAboveThreshold,
 		})
-}
-
-// derivedConcepts translates the learned lexicon into taxonomy placements.
-//
-// A seeded concept hangs where its seed's leaf hung — a concept grown from
-// db_access is a kind of data_store_access, whatever this corpus turned out to
-// mean by it — and an emergent one hangs beside whichever seeded concept it
-// most resembles, or from the root when it resembles none. That is the whole of
-// what the authored vocabulary still asserts: the shape of the interior, and
-// where a learned leaf plausibly belongs in it.
-func derivedConcepts(lex *lexicon.Model) []ontology.DerivedConcept {
-	concepts := lex.Concepts()
-	out := make([]ontology.DerivedConcept, len(concepts))
-	for i, c := range concepts {
-		out[i] = ontology.DerivedConcept{
-			ID:         c.ID,
-			Seed:       ontology.TermID(c.Seed),
-			AnchorSeed: ontology.TermID(c.Anchor),
-			Def:        c.Definition(),
-		}
-	}
-	return out
-}
-
-// vocabularyOf carries each learned concept's feature vocabulary across to the
-// ontology's side table, so the comparator's feature view can read what two
-// concepts are made of. lexicon may not import ontology, which is why this
-// bridge lives here; internal/bench mirrors it and the two must move together.
-func vocabularyOf(lex *lexicon.Model) *ontology.Vocabulary {
-	concepts := lex.Concepts()
-	entries := make([]ontology.VocabularyEntry, len(concepts))
-	for i, c := range concepts {
-		feats := make([]ontology.WeightedFeature, len(c.Features))
-		for j, f := range c.Features {
-			feats[j] = ontology.WeightedFeature{Name: f.Name, Weight: f.Weight, Opaque: lexicon.Opaque(f.Name)}
-		}
-		entries[i] = ontology.VocabularyEntry{ID: ontology.TermID(c.ID), Features: feats}
-	}
-	return ontology.NewVocabulary(entries)
 }
 
 // viewStats counts the concept views' agreement over the compared pairs.

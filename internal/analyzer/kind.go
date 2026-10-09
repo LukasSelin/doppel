@@ -120,6 +120,14 @@ func forkAt(a, b parser.CodeUnit, score, floor float64) *KindNote {
 	if score < floor || a.Name == b.Name {
 		return nil
 	}
+	// Old and New are fork markers and also a pair of opposites. Names that
+	// differ in exactly that one word — oldMember beside newMember — are the
+	// two sides of one comparison, not a copy and its successor, so the fork
+	// rule yields and the mirror rule gets to name them. evalCallOld beside
+	// evalCall differs by a word *added*, which oppositeNames never matches.
+	if oppositeNames(parser.MethodName(a), parser.MethodName(b)) {
+		return nil
+	}
 	rel := relation(a, b)
 	if rel == RelationUnrelated {
 		return nil
