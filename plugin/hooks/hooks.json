@@ -1,5 +1,5 @@
 {
-  "description": "doppel: corpus inventory at session start, request-scoped facts at each prompt, twin advisories before edits, duplication impact at end of turn",
+  "description": "doppel: corpus inventory at session start, request-scoped facts at each prompt, twin advisories before edits, near-duplicate probes after them (opt-in), duplication impact at end of turn",
   "hooks": {
     "SessionStart": [
       {
@@ -37,6 +37,20 @@
             "args": ["hook", "pre-tool"],
             "timeout": 15,
             "statusMessage": "doppel: checking for twins"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${user_config.doppel_binary}",
+            "args": ["hook", "post-edit"],
+            "timeout": 30,
+            "statusMessage": "doppel: probing the edit for near duplicates"
           }
         ]
       }

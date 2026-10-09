@@ -37,8 +37,9 @@ type hookInput struct {
 	StopHookActive bool `json:"stop_hook_active"`
 	// Prompt is the user's message text, present on UserPromptSubmit.
 	Prompt string `json:"prompt"`
-	// ToolName and ToolInput are present on PreToolUse. ToolInput is the
-	// tool's own argument object; only file_path is read here.
+	// ToolName and ToolInput are present on PreToolUse and PostToolUse.
+	// ToolInput is the tool's own argument object; only file_path is read
+	// here, which Edit, Write and MultiEdit all carry.
 	ToolName  string `json:"tool_name"`
 	ToolInput struct {
 		FilePath string `json:"file_path"`
@@ -111,7 +112,7 @@ var hookStopCmd = &cobra.Command{
 var hookRoot string
 
 func init() {
-	for _, c := range []*cobra.Command{hookSessionStartCmd, hookStopCmd, hookUserPromptCmd, hookPreToolCmd} {
+	for _, c := range []*cobra.Command{hookSessionStartCmd, hookStopCmd, hookUserPromptCmd, hookPreToolCmd, hookPostEditCmd} {
 		c.Flags().StringVar(&hookRoot, "root", "", "Directory to analyze (default: the cwd from the hook payload)")
 		hookCmd.AddCommand(c)
 	}

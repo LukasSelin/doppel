@@ -643,6 +643,11 @@ func unitKeys(units []parser.CodeUnit, root string) []string {
 	return keys
 }
 
+// Keys is unitKeys for a caller that holds a corpus but builds no snapshot of
+// it: the post-edit hook has to name a live unit the way the session baseline
+// does, and a second spelling of the key rule would drift from this one.
+func Keys(units []parser.CodeUnit, root string) []string { return unitKeys(units, root) }
+
 func keyAt(keys []string, i int) string {
 	if i < 0 || i >= len(keys) {
 		return ""

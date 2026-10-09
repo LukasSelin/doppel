@@ -110,7 +110,7 @@ func TestRankQueryMatchesLocalityBoostsButEvidenceRules(t *testing.T) {
 		mk(1, 10, 0.9, 0.5), // near, equal evidence — must lead
 		mk(2, 30, 0.5, 0.0), // strictly stronger, distant — must lead them all
 	}
-	rankQueryMatches(matches)
+	rankQueryMatches(matches, 99)
 	if matches[0].Candidate.AIdx != 2 {
 		t.Errorf("strongest evidence did not lead: order %d,%d,%d",
 			matches[0].Candidate.AIdx, matches[1].Candidate.AIdx, matches[2].Candidate.AIdx)
@@ -131,7 +131,7 @@ func TestRankQueryMatchesCodeShapeBreaksTies(t *testing.T) {
 		return m
 	}
 	matches := []reporter.QueryMatch{mk(0, 0.58), mk(1, 1.00), mk(2, 0.90)}
-	rankQueryMatches(matches)
+	rankQueryMatches(matches, 99)
 	if matches[0].Candidate.AIdx != 1 || matches[1].Candidate.AIdx != 2 {
 		t.Errorf("order %d,%d,%d; want 1,2,0",
 			matches[0].Candidate.AIdx, matches[1].Candidate.AIdx, matches[2].Candidate.AIdx)

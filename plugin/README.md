@@ -4,10 +4,10 @@
 structure a project intends and the one it has, opened one locally reasonable edit at a time. An
 agent is where those edits now get made, and it has the same blind spot a human reviewer does — it
 sees the change, not the corpus. These hooks close it by putting the corpus in front of the model at
-each of the four moments it can still act on: before writing, when the target is named, at the last
-responsible moment, and after the fact.
+each of the moments it can still act on: before writing, when the target is named, at the last
+responsible moment, right after an edit lands, and after the fact.
 
-Four hooks around a Go repo, ordered by when they fire:
+Five hooks around a Go repo, ordered by when they fire:
 
 - **At session start**, an inventory of the concepts the codebase contains — the session-stable
   framing: which tags exist here, which are absent, the role distribution.
@@ -15,6 +15,8 @@ Four hooks around a Go repo, ordered by when they fire:
   moment the target is first known and no edit exists yet.
 - **Right before each Edit or Write**, an advisory naming the merge-worthy twins of the file
   about to change — the last responsible moment.
+- **Right after each Edit, Write or MultiEdit** (opt-in), the near duplicates of any function the
+  edit just wrote — the backstop for code nobody checked before writing it.
 - **At the end of each turn**, what the session did to the duplication surface — which
   near-duplicate pairs it introduced, which it removed.
 
@@ -113,6 +115,38 @@ millisecond-fast on every edit instead of costing a full analysis each time. Eac
 fires **once per session**. It is advisory-only: it never blocks an edit, because a blocking dedupe
 hook that misfires on a genuine near-duplicate would be worse than none.
 
+### PostToolUse (Edit|Write|MultiEdit) — opt-in
+
+Right after an edit lands, probes every function in the edited file that is new since session start
+or whose body changed, against the repository as it now stands, and names the ones that read as near
+duplicates of existing code:
+
+```
+doppel post-edit: 1 function just written read as near duplicates of existing code:
+  report.unionKeys (new, report/union.go:5)
+    ~ store.mergeCounts  store/merge.go:5  code-shape 1.00  containment 1.00  locality 0.00
+      kind: subsystem copies — ...
+Reusing or extending the existing function avoids a copy; if the new one is deliberately separate, one line saying why is enough.
+```
+
+It reports a match only at **code-shape 0.60 or above** — the floor doppel already uses for its
+family and fork guarantees — and only when the pair did not already exist at session start (the
+PreToolUse advisory covers those). It catches what the Stop hook's bar cannot: a copy of a shared
+helper in another package shares no callers and no package with the original, so it is never
+merge-worthy and Stop never mentions it. Each pair is said **once per session**, whichever side was
+edited, and the Stop hook does not repeat it.
+
+It is **off unless the repository opts in**, because it runs an index of the repository on every
+edit (about half a second on a few hundred functions, about a second on several thousand):
+
+```json
+{ "hook-probe": "on" }
+```
+
+It needs the session-start baseline — it is what "new since session start" is measured against — so
+a session that began before the plugin was installed gets silence. Advisory only, like PreToolUse:
+it never blocks and never asks for a decision.
+
 ### Stop
 
 Re-runs the analysis and reports the difference against the baseline:
@@ -160,6 +194,8 @@ Set `hook-notify` in `.doppel.json` to change this:
 | `user` | your digest only, never continues a turn |
 | `off` | silence |
 
+`hook-probe` (`on` | `off`, default `off`) turns the PostToolUse probe on for a repository.
+
 ## Reading the output honestly
 
 The report separates what it can prove from what it cannot, and so should you:
@@ -187,7 +223,8 @@ baseline incomparable and silences the Stop hook for a turn that nothing was wro
 
 ## Cost
 
-Both hooks run a full analysis of the repository. Candidate retrieval is sub-quadratic — inverted
+SessionStart, UserPromptSubmit and Stop each run a full analysis of the repository; PostToolUse, when
+enabled, runs the cheaper corpus-building half of one per edit. Candidate retrieval is sub-quadratic — inverted
 indexes with a bounded top-K per function, not an all-pairs scan — and nothing blocks. On a few
 hundred functions this is well under a second; a few thousand still lands in a couple of seconds.
 The Stop hook runs on every turn, so on a very large repository it is the first thing to feel.

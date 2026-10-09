@@ -481,7 +481,7 @@ claude plugin marketplace add LukasSelin/doppel
 claude plugin install doppel@doppel
 ```
 
-Four hooks, placed by when a fact can still change what gets written:
+Five hooks, placed by when a fact can still change what gets written:
 
 - **SessionStart** — the corpus inventory: the concepts doppel learned from this repo and how many
   functions carry each, the kinds of work it found no practice for, the role distribution.
@@ -489,6 +489,10 @@ Four hooks, placed by when a fact can still change what gets written:
   else. Silent when it recognises none.
 - **PreToolUse** on `Edit`/`Write` — immediately before a file changes, the merge-worthy twins of
   the functions in it. Advisory only; it never blocks an edit.
+- **PostToolUse** on `Edit`/`Write`/`MultiEdit` — right after the edit lands, every function it
+  created or changed probed against the corpus; a near duplicate of existing code (code-shape
+  >= 0.60) is named in the tool result. Opt-in per repository with `"hook-probe": "on"` in
+  `.doppel.json`, because it runs an index on every edit.
 - **Stop** — what the session has done to the duplication surface, leading with the pairs it can
   trace to a function you actually edited. Prints nothing on turns that changed nothing.
 

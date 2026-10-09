@@ -78,10 +78,7 @@ func init() {
 	queryCmd.Flags().IntVarP(&queryTop, "top", "n", 5, "Maximum related functions to report per probe")
 	queryCmd.Flags().Float64VarP(&queryThreshold, "threshold", "t", defaultThreshold, "Minimum code-shape score for structural-channel candidates (0.0–1.0)")
 	queryCmd.Flags().IntVar(&queryMinNodes, "min-nodes", defaultMinNodes, "Exclude functions with fewer body AST nodes from structural retrieval")
-	// 10, not analyze's 5: a probe's retrieval costs one function's worth, so
-	// a wider net is nearly free — and an exact-clone family larger than K gets
-	// cut on an index tie-break, which is how the nearest match goes missing.
-	queryCmd.Flags().IntVar(&queryChannelK, "channel-k", 10, "Candidates each function keeps per retrieval channel")
+	queryCmd.Flags().IntVar(&queryChannelK, "channel-k", probeChannelK, "Candidates each function keeps per retrieval channel")
 	queryCmd.Flags().StringSliceVar(&queryLanguages, "languages", nil, "Languages to read, comma-separated (default: every language doppel has a frontend for). The extension allowlist is the whole scope rule — a file is in the corpus because a frontend claims its extension, never because its contents looked like code.")
 	queryCmd.Flags().StringSliceVar(&queryExclude, "exclude", nil, "Directory patterns to skip, comma-separated, on top of the built-in blocklist (node_modules, vendor, site-packages, Pods, third_party, target, dist, build, out, obj, coverage). A pattern is a glob over a directory name, or over its root-relative path when it contains a slash; a leading exclamation mark re-admits a directory the defaults would have skipped. Repeatable.")
 	queryCmd.Flags().StringVar(&queryTests, "tests", "exclude", "Test-function population: include, exclude, or only")
@@ -154,34 +151,13 @@ func runQuery(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	opts := retriever.DefaultOptions()
+	opts := probeOptions(p)
 	opts.ChannelK = p.ChannelK
-	opts.Threshold = p.Threshold
-	opts.MinNodes = p.MinNodes
 
 	for pi := range probes {
 		probeIdx := corpusN + pi
-		cands, _ := retriever.Probe(res.Units, probeIdx, res.Graph, res.Onto, res.IC, res.WL, opts)
-
-		matches := make([]reporter.QueryMatch, 0, len(cands))
-		ball := neighborhoodSet(res.Graph, res.Units[probeIdx])
-		for _, c := range cands {
-			other := c.AIdx
-			if other == probeIdx {
-				other = c.BIdx
-			}
-			// Another probe from the same snippet is not a corpus finding.
-			if other >= corpusN {
-				continue
-			}
-			matches = append(matches, reporter.QueryMatch{
-				Unit:      res.Units[other],
-				Doc:       res.Docs[other],
-				Candidate: c,
-				Locality:  locality(ball, res.Graph, res.Units[other]),
-			})
-		}
-		rankQueryMatches(matches)
+		// Another probe from the same snippet is not a corpus finding.
+		matches := probeMatches(res, probeIdx, opts, func(other int) bool { return other >= corpusN })
 		if len(matches) > queryTop {
 			matches = matches[:queryTop]
 		}
@@ -192,6 +168,53 @@ func runQuery(cmd *cobra.Command, args []string) error {
 		})
 	}
 	return nil
+}
+
+// probeChannelK is the per-channel candidate budget a probe retrieves with —
+// 10, not analyze's 5: a probe's retrieval costs one function's worth, so a
+// wider net is nearly free, and an exact-clone family larger than K gets cut
+// on an index tie-break, which is how the nearest match goes missing.
+const probeChannelK = 10
+
+// probeOptions is the retrieval configuration a probe runs under: the run's
+// own shape-channel gates, so a probe is admitted exactly as a corpus function
+// would be, at probeChannelK. A caller with its own budget overrides ChannelK.
+func probeOptions(p Params) retriever.Options {
+	opts := retriever.DefaultOptions()
+	opts.ChannelK = probeChannelK
+	opts.Threshold = p.Threshold
+	opts.MinNodes = p.MinNodes
+	return opts
+}
+
+// probeMatches retrieves the functions related to units[probeIdx] and ranks
+// them by evidence boosted by locality (rankQueryMatches). skip drops a
+// candidate by its unit index before ranking — query uses it to keep the
+// snippet's other probes out, the post-edit hook to keep the edit's own file
+// state out of what it reports. The probe may sit anywhere in res.Units:
+// retriever.Probe is positional and indifferent to whether it was appended.
+//
+// Shared by `doppel query` and `doppel hook post-edit` so that the two ask the
+// corpus the same question in the same way; nothing is truncated here, because
+// the two callers bound their output differently.
+func probeMatches(res Result, probeIdx int, opts retriever.Options, skip func(other int) bool) []reporter.QueryMatch {
+	cands, _ := retriever.Probe(res.Units, probeIdx, res.Graph, res.Onto, res.IC, res.WL, opts)
+	matches := make([]reporter.QueryMatch, 0, len(cands))
+	ball := neighborhoodSet(res.Graph, res.Units[probeIdx])
+	for _, c := range cands {
+		other := otherIdx(c, probeIdx)
+		if skip != nil && skip(other) {
+			continue
+		}
+		matches = append(matches, reporter.QueryMatch{
+			Unit:      res.Units[other],
+			Doc:       res.Docs[other],
+			Candidate: c,
+			Locality:  locality(ball, res.Graph, res.Units[other]),
+		})
+	}
+	rankQueryMatches(matches, probeIdx)
+	return matches
 }
 
 // neighborhoodSet is the probe's depth-2 call-graph ball as a set.
@@ -242,7 +265,7 @@ func locality(probeBall map[string]bool, g *concepter.Graph, c parser.CodeUnit) 
 // never displayed: the report shows evidence and locality unblended, per the
 // house rule. Ties fall back to Total desc then corpus index asc, a total
 // order, so a fixed corpus and snippet always print the same report.
-func rankQueryMatches(matches []reporter.QueryMatch) {
+func rankQueryMatches(matches []reporter.QueryMatch, probeIdx int) {
 	sort.SliceStable(matches, func(i, j int) bool {
 		ki := matches[i].Candidate.Total * (1 + matches[i].Locality)
 		kj := matches[j].Candidate.Total * (1 + matches[j].Locality)
@@ -257,16 +280,15 @@ func rankQueryMatches(matches []reporter.QueryMatch) {
 		if matches[i].Candidate.Breakdown.Score != matches[j].Candidate.Breakdown.Score {
 			return matches[i].Candidate.Breakdown.Score > matches[j].Candidate.Breakdown.Score
 		}
-		oi, oj := otherIdx(matches[i].Candidate), otherIdx(matches[j].Candidate)
+		oi, oj := otherIdx(matches[i].Candidate, probeIdx), otherIdx(matches[j].Candidate, probeIdx)
 		return oi < oj
 	})
 }
 
-// otherIdx is the corpus-side index of a probe candidate. The probe is always
-// the appended unit, so the smaller index is the corpus function.
-func otherIdx(c retriever.Candidate) int {
-	if c.AIdx < c.BIdx {
-		return c.AIdx
+// otherIdx is the side of a probe candidate that is not the probe.
+func otherIdx(c retriever.Candidate, probeIdx int) int {
+	if c.AIdx == probeIdx {
+		return c.BIdx
 	}
-	return c.BIdx
+	return c.AIdx
 }

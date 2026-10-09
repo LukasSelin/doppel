@@ -34,6 +34,7 @@ type AnalysisConfig struct {
 	FamilyMin  *float64  `json:"family-min,omitempty"`
 	MapMetric  *string   `json:"map-metric,omitempty"`
 	HookNotify *string   `json:"hook-notify,omitempty"`
+	HookProbe  *string   `json:"hook-probe,omitempty"`
 }
 
 // defaultCalibrateRate is the fraction of random unrelated pairs a run's
@@ -138,6 +139,36 @@ func hookNotify(root string) (string, error) {
 		return mode, nil
 	}
 	return NotifyAgent, fmt.Errorf("invalid hook-notify value %q: want agent, user, or off", mode)
+}
+
+// Post-edit probe modes. Off unless a repository opts in: the hook adds an
+// index() run to every Edit/Write, and its firing rate is a measurement per
+// corpus rather than something a default can promise.
+const (
+	ProbeOn  = "on"
+	ProbeOff = "off"
+)
+
+// hookProbe reads whether `doppel hook post-edit` runs for this repository.
+//
+// Like hook-notify it is deliberately not in Params: whether an edit is probed
+// has no bearing on what a run measures, so it must not make a baseline
+// incomparable. Unlike hook-notify it defaults off — notify decides who hears
+// about a measurement that runs anyway, this decides whether one runs at all.
+func hookProbe(root string) (string, error) {
+	cfg, err := loadConfig(filepath.Join(root, ".doppel.json"))
+	if err != nil {
+		return ProbeOff, err
+	}
+	if cfg == nil || cfg.HookProbe == nil {
+		return ProbeOff, nil
+	}
+	switch mode := *cfg.HookProbe; mode {
+	case ProbeOn, ProbeOff:
+		return mode, nil
+	default:
+		return ProbeOff, fmt.Errorf("invalid hook-probe value %q: want on or off", mode)
+	}
 }
 
 // loadConfig reads a JSON config file. Returns nil (no error) if the file does not exist.
