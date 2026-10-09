@@ -100,7 +100,7 @@ cmd/            CLI commands (Cobra).
   query.go      doppel query: check a proposed function (a snippet on stdin) against the corpus, locality-weighted
   config.go     .doppel.json loading (AnalysisConfig), flag precedence, hookParams
   hook.go       doppel hook session-start / user-prompt / pre-tool / stop: the four Claude Code
-                hook entry points, and baseline file I/O
+                hook entry points, plus `hook view` (the plugin mod's read of the Stop hook's report), and baseline file I/O
   diff.go       doppel diff: match two snapshot files' functions to each other; --output writes the delta report as markdown; exit codes 0/1/2
   timeline.go   doppel timeline: N snapshot files as one steppable history; refuses a series whose steps disagree about the operating point
   timeline_text.go  the terminal form of a series
@@ -145,7 +145,8 @@ internal/
                 delta.go adds the pairs those changes created or dissolved; deltarender.go is the delta report's text + markdown form
                 series.go chains N snapshots: N-1 consecutive deltas plus one Track per function lifeline
   reporter/     Plain-text (stdout), Markdown (--output), JSON (--format json), and the five hook digests
-                (impact.go: ConceptDigest, ImpactDigest, AgentDigest; scope.go: ScopeDigest, AdviceDigest)
+                (impact.go: ConceptDigest, ImpactDigest, AgentDigest; scope.go: ScopeDigest, AdviceDigest;
+                view.go: SessionViewOf, the band and pane text the plugin's mod draws)
                 fingerprint.go is the fingerprint view: the whole weighted bag of one function, or the
                 shared / only-A / only-B partition of two, whose masses reproduce the WL Jaccard exactly;
                 labelsource.go is its --label half, the node(s) behind one hash
@@ -2920,6 +2921,33 @@ reason rather than returning a partial delta.
 - The session id is **hashed, not validated**, to build the baseline path. Against a fixed-length hex
   digest, traversal, absolute paths, drive letters and reserved device names are impossible by
   construction rather than by a blocklist somebody has to keep correct.
+- **The user side has a third channel: a mod** (`plugin/hooks/register.tsx`, named under `modules`
+  in `plugin/hooks/hooks.json` beside the settings hooks). It exists because of the Stop-hook
+  constraint above: `systemMessage` is a transcript line, `additionalContext` costs a turn, and
+  nothing else reaches anyone. A mod draws in Claude Code's UI in-process and never touches the
+  model's context, so it costs no token and no turn, and can afford to show everything the session
+  did where the agent note shows only what clears `Notable`. It draws a one-line **band** above the
+  prompt and a **pane** (`/doppel` toggles it; the command answers `{}`, because a command's `text`
+  is a row the model reads). **Nothing about the agent path changes.**
+
+  **It renders nothing and analyses nothing.** `reporter.SessionViewOf` renders both texts in Go —
+  the band is `deltaScoreboard`, the line `DeltaSection` opens with; the pane is
+  `identity.PrintDelta`, what `doppel diff` prints — and is silent exactly when `SessionDigest` is.
+  The Stop hook writes the view into its existing impact report as `view`, beside the flattened
+  `snapshot.Delta` (`impactFile` embeds it, so every key the file carried is still at its top level).
+  `doppel hook view` reads that file for a session id on stdin and prints the view: no pipeline, the
+  same silent-on-every-failure contract. The mod calls it from `classic.Stop` **after** `await
+  next(e)` — a plugin's settings hooks run as the engine's own behaviour beneath every mod, so by
+  then the Stop hook has written — and from `session.start` and `classic.SessionStart` (a `/clear`
+  changes the session id without a `session.start`). One pipeline run per turn, as before. The mod
+  holds only display state (the last view, the dismissed band) in module variables, re-derived from
+  the binary on every load; that is display, not a cache.
+
+  **The impact report now has the band's lifetime.** Every silent exit of `runHookStop` after the
+  baseline is read — incomparable, `hook-notify: off` or malformed, an empty digest, a failed write —
+  removes `<hash>.impact.json`, so the band can never keep describing a delta the session no longer
+  has. Before this the file survived a later quiet turn and went stale. `off` silences the band for
+  that reason too: it was a statement about the measurement, not about which surface shows it.
 
 The plugin itself is `plugin/`, published through the one-entry marketplace at
 `.claude-plugin/marketplace.json`. Its hooks use **exec form** (`command` + `args`), which takes no
