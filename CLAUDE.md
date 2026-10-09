@@ -135,7 +135,7 @@ internal/
   retriever/    Multi-channel candidate retrieval: shape.go / concept.go / calls.go inverted indexes, retriever.go union + evidence
                 admit.go is the per-unit admission fan-out the three channels share; memo.go the sharded pair memo that let them run at all
   culture/      Corpus-culture model: ecology.go (PMI), prototype.go (prototypes + typicality), habitat.go (fit), convention.go
-  analyzer/     SimilarPair + Retrieval types; FindSimilar (library API); rank.go: SortForReport (the report's ranking) and SortByEvidence (the plain-Total library one); kind.go + stem.go (pair kinds), lenskind.go (the mirror, thin-wrapper and different-calls kinds); explain.go (rule-attributed pair sentences)
+  analyzer/     SimilarPair + Retrieval types; FindSimilar (library API); rank.go: SortForReport (the report's ranking) and SortByEvidence (the plain-Total library one); kind.go + stem.go (pair kinds), lenskind.go (the mirror, thin-wrapper and different-calls kinds), subsystem.go (the subsystem-copies kind); explain.go (rule-attributed pair sentences)
   comparator/   Weighted structural overlap scoring (12 signals → 0.0–1.0 composite); options.go is the
                 exhibits blend — how the concept views combine into that one slot
   family/       Near-duplicate families: components + edge completion + maximal cliques over the pair graph
@@ -1842,6 +1842,32 @@ refactor in the same labels. As a ranking discount the same rules failed the hel
 `TestKindLenses`), which is why they are kinds: a label a reader can overrule, never a rank.
 `ClassifyFamily` does not apply them.
 
+**`subsystem copies` reads the call graph rather than the bodies** (`internal/analyzer/subsystem.go`),
+and sits between the naming kinds and the lens kinds: a claim about how the corpus *uses* two
+functions outranks a shape-level reading like `different calls`. Two plain functions at code-shape
+`>= ForkShapeFloor` (the calibrated value under `--calibrate`), in different packages, both called,
+whose callers' packages are **disjoint**, where at least one side is already called from outside
+its own package and neither calls the other. That is a local copy beside a helper the rest of the
+corpus already uses — the drift a merge verdict cannot see, because shared callers and a shared
+package are exactly what such a pair lacks. `PairContext` carries the callers and caller packages
+for it, from the `ConceptDoc`s.
+
+Each condition was measured in `TestCalleeDrift` and each removes a class that is not this
+finding. **Both sides private to their own package** is each package keeping its own helper —
+ipvlan beside macvlan, one discovery plugin beside the next — which is a parallel implementation
+whose locality a merge would break: the unrestricted rule's largest class (moby 76 of 144,
+prometheus 113 of 134). **Methods** are bound to their types; two one-line setters on unrelated
+types read alike at 0.85 and are not one helper said twice. Restricted, the kind fires on moby 26,
+prometheus 5, hugo 18 and doppel 9 compared pairs, and none on gin, cobra, chi or conc — so no
+committed example and no cobra label moves. On doppel all nine are local copies of a shared helper
+(four `qualifiedName`s beside `concepter.QualifiedName`, `calibrate.Quantile` beside
+`lexicon.upperQuantile`), and on hugo `helpers.IsWhitespace` beside `parse.isSpace`. What remains
+wrong is moby's functional-option constructors (`client.WithHTTPHeaders` against
+`osl.WithIsBridge`), an idiom shape no call-graph rule separates, and **declared layering, which
+doppel cannot read**: `dashboard.WriteTimelineJSON` beside `reporter.encodeJSON` is flagged though
+`dashboard` is forbidden to import anything in the module. Like every kind it annotates and never
+ranks.
+
 ## Pair explanations
 
 `analyzer.Explain` puts one sentence on **every** reported pair, saying what canonicalization did
@@ -3471,6 +3497,31 @@ functions for exactly this reason, and the first version of them did not and fai
     a skeleton is. What would change the verdict is labels drawn independently of these thresholds.
     The three flags **shipped as pair kinds** instead (see *Pair kinds*); the test's `production:`
     rows score `analyzer.ClassifyPairIn` itself, so the kinds and the measurement cannot drift.
+  - `TestCalleeDrift` (guard `DOPPEL_BENCH_CALLEEDRIFT=1`, `DOPPEL_BENCH_CALLEEDRIFT_EXTRA` for
+    further roots; doppel's own tree is always measured) measures two candidate drift signals
+    before either is a kind. **Substitution**: for each scored pair at code-shape ≥ 0.40, the
+    resolved internal callees only one side calls are matched greedily across the pair by
+    code-shape; a match at ≥ `ForkShapeFloor` means A routes through one helper and B through
+    its near-duplicate. **Caller split**: near-duplicate pairs (≥ `ForkShapeFloor`) both of whose
+    sides have resolved callers — one corpus using two versions of one thing — with the minority
+    caller share and whether the two caller populations share packages. Locality is the Jaccard
+    of the two callers' depth-2 balls (query's rule), reported beside both and never folded in.
+    **First measurement, not adopted as a kind:** substitution explains 3–11% of pairs with a
+    callee gap on the large rungs (cobra 17%, chi 0) and only 3–7% of the pairs `different
+    calls` labels (cobra 15%) — that kind is right far more often than not. What substitution
+    finds is mostly **layered forks** rather than migrations: ipvlan/macvlan, Histogram/
+    FloatHistogram, toml/xml/yaml, Markdown/ReST — the duplication carried its helpers down the
+    stack; true old→new substitutions are rare (prometheus's `scrapeLoopAppender`/`V2`).
+    Substitution pairs are markedly more local than unexplained ones (moby ball p50 0.78 against
+    0.33, prometheus 0.95 against 0.12), but **ball locality fails for interface-dispatched
+    methods**, which have no resolved callers: gin's `Bind` family reads 0 in one package. The
+    caller split is rarely lopsided (≤ 0.20 minority share on 6–13% of split pairs) and same-package
+    splits are dominated by sibling accessors (Flags/PersistentFlags, Infoln/Errorln); the
+    cross-package ones with disjoint caller packages are where per-subsystem copies show up
+    (doppel's own `concepter.QualifiedName`/`reporter.qualifiedName` 14/2 and the `sortedKeys`
+    family, prometheus's `yoloString` ×4, moby's `btrfs`/`quota` dir helpers). That shape shipped
+    as the `subsystem copies` pair kind (see *Pair kinds*); the test's last block scores the
+    production rule by reach — both sides local, one shared, both shared — and against the labels.
   - `TestGroupedDisplay` (guard `DOPPEL_BENCH_GROUP="<corpus>=<labels>[=<family-min>];…"`) measures
     showing a pair under the row of its family's best-ranked pair instead of on its own row — a
     display change that leaves every rank and score alone. **Measured on the doppel, strata, zarr

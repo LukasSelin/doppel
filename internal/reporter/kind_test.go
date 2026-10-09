@@ -49,6 +49,22 @@ func TestPrintKindNote(t *testing.T) {
 	}
 }
 
+func TestSubsystemCopiesClause(t *testing.T) {
+	k := &analyzer.KindNote{
+		Kind:           analyzer.KindSubsystemCopies,
+		Names:          []string{"concepter.QualifiedName", "reporter.qualifiedName"},
+		Packages:       []string{"concepter", "reporter"},
+		Relation:       analyzer.RelationUnrelated,
+		CallerCounts:   []int{14, 1},
+		CallerPackages: [][]string{{"cmd", "family", "lexicon", "mapper", "retriever"}, {"reporter"}},
+	}
+	want := "subsystem copies — concepter.QualifiedName has 14 callers in cmd, family, lexicon and 2 more, " +
+		"reporter.qualifiedName has 1 caller in reporter; no caller uses both"
+	if got := KindClause(k); got != want {
+		t.Errorf("got  %q\nwant %q", got, want)
+	}
+}
+
 func TestPrintMarkdownKindNote(t *testing.T) {
 	p := samplePair(nil)
 	p.Kind = interfaceKind()

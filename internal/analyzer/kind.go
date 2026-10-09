@@ -55,6 +55,11 @@ type KindNote struct {
 	Relation  string   // RelationSamePackage, RelationSiblings or RelationUnrelated
 	Shared    []string // thin wrappers: the resolved helpers both call, sorted
 	Overlap   float64  // different calls: the callee Jaccard
+
+	// subsystem copies: the two sides' qualified names ride in Names; these
+	// are each side's resolved caller count and its callers' packages, sorted.
+	CallerCounts   []int
+	CallerPackages [][]string
 }
 
 // ClassifyPair labels a pair, or returns nil. Fork is tried first: when both

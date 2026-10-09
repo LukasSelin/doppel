@@ -217,6 +217,8 @@ func (kr *kindRun) signals(p analyzer.SimilarPair) kindSignals {
 	if k := analyzer.ClassifyPairIn(a, b, p.Score, analyzer.ForkShapeFloor, analyzer.PairContext{
 		ResolvedA: da.ResolvedCallees, ResolvedB: db.ResolvedCallees,
 		VocabA: kr.thin[p.AIdx], VocabB: kr.thin[p.BIdx],
+		CallersA: da.Callers, CallersB: db.Callers,
+		CallerPkgsA: da.CallerPackages, CallerPkgsB: db.CallerPackages,
 	}); k != nil {
 		s.prodKind = k.Kind
 	}
