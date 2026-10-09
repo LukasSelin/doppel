@@ -6,6 +6,11 @@ doppel.exe
 
 dist/
 
+# Laid by Claude Code when it loads the plugin's mod from a folder
+# (--plugin-dir): it extends plugin/.claude-plugin/types/, which is per-build
+# and ignores itself, so this file is meaningless in a fresh clone.
+plugin/tsconfig.json
+
 # Generated output
 report.md
 doppel-report.md

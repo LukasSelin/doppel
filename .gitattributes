@@ -16,6 +16,10 @@ go.sum text eol=lf
 *.css text eol=lf
 *.html text eol=lf
 
+# The plugin's mod (TypeScript): LF, like every other source here
+*.ts text eol=lf
+*.tsx text eol=lf
+
 # Markdown and config: LF
 *.md text eol=lf
 *.yml text eol=lf
