@@ -357,13 +357,13 @@ func assertSilent(t *testing.T, r hookRun) {
 // hook reported it: both ledgers share the unordered `new:` key.
 func TestUnprobedDedupesThePairNotTheDirection(t *testing.T) {
 	probes := []reporter.ProbeResult{{Key: "b.G", Matches: []reporter.ProbeMatch{{Key: "a.F"}, {Key: "c.H"}}}}
-	reported := []string{probeLedgerKey("a.F", "b.G"), newPairKey("a.F", "b.G")}
+	reported := []string{probeLedgerKey("a.F", "b.G"), reporter.NewPairKey("a.F", "b.G")}
 	got := unprobed(probes, reported)
 	if len(got) != 1 || len(got[0].Matches) != 1 || got[0].Matches[0].Key != "c.H" {
 		t.Errorf("unprobed = %+v; want only b.G ~ c.H", got)
 	}
-	if newPairKey("b.G", "a.F") != "new:a.F|b.G" {
-		t.Errorf("newPairKey is not order-free: %q", newPairKey("b.G", "a.F"))
+	if reporter.NewPairKey("b.G", "a.F") != "new:a.F|b.G" {
+		t.Errorf("NewPairKey is not order-free: %q", reporter.NewPairKey("b.G", "a.F"))
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -126,19 +127,8 @@ const (
 // bearing on what was measured, and switching modes mid-session must not throw
 // away the session's origin.
 func hookNotify(root string) (string, error) {
-	cfg, err := loadConfig(filepath.Join(root, ".doppel.json"))
-	if err != nil {
-		return NotifyAgent, err
-	}
-	if cfg == nil || cfg.HookNotify == nil {
-		return NotifyAgent, nil
-	}
-	mode := *cfg.HookNotify
-	switch mode {
-	case NotifyAgent, NotifyUser, NotifyOff:
-		return mode, nil
-	}
-	return NotifyAgent, fmt.Errorf("invalid hook-notify value %q: want agent, user, or off", mode)
+	return hookMode(root, "hook-notify", func(c *AnalysisConfig) *string { return c.HookNotify },
+		NotifyAgent, "agent, user, or off", NotifyAgent, NotifyUser, NotifyOff)
 }
 
 // Post-edit probe modes. Off unless a repository opts in: the hook adds an
@@ -156,19 +146,28 @@ const (
 // incomparable. Unlike hook-notify it defaults off — notify decides who hears
 // about a measurement that runs anyway, this decides whether one runs at all.
 func hookProbe(root string) (string, error) {
+	return hookMode(root, "hook-probe", func(c *AnalysisConfig) *string { return c.HookProbe },
+		ProbeOff, "on or off", ProbeOn, ProbeOff)
+}
+
+// hookMode reads one hook-only mode key from root's .doppel.json: the default
+// when the file or the key is absent, the value when it is one of allowed, and
+// the default plus an error naming the key otherwise. hook-notify and
+// hook-probe share it — doppel found the second reader as a 0.74 code-shape
+// copy of the first — so the two keys cannot drift in how they are read.
+func hookMode(root, key string, pick func(*AnalysisConfig) *string, def, want string, allowed ...string) (string, error) {
 	cfg, err := loadConfig(filepath.Join(root, ".doppel.json"))
 	if err != nil {
-		return ProbeOff, err
+		return def, err
 	}
-	if cfg == nil || cfg.HookProbe == nil {
-		return ProbeOff, nil
+	if cfg == nil || pick(cfg) == nil {
+		return def, nil
 	}
-	switch mode := *cfg.HookProbe; mode {
-	case ProbeOn, ProbeOff:
+	mode := *pick(cfg)
+	if slices.Contains(allowed, mode) {
 		return mode, nil
-	default:
-		return ProbeOff, fmt.Errorf("invalid hook-probe value %q: want on or off", mode)
 	}
+	return def, fmt.Errorf("invalid %s value %q: want %s", key, mode, want)
 }
 
 // loadConfig reads a JSON config file. Returns nil (no error) if the file does not exist.

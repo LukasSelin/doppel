@@ -548,14 +548,8 @@ func runHookUserPrompt(cmd *cobra.Command, args []string) error {
 // genuine near-duplicate — and near-duplicates are exactly what it would
 // fire on — would be worse than no hook.
 func runHookPreTool(cmd *cobra.Command, args []string) error {
-	in, err := readHookInput(cmd.InOrStdin())
-	if err != nil || in.ToolInput.FilePath == "" {
-		return emitNothing()
-	}
-
-	path := baselinePath(in.SessionID)
-	base, err := readBaseline(path)
-	if err != nil || base.Snapshot.Schema != snapshot.Schema {
+	in, path, base, ok := fileHookBaseline(cmd)
+	if !ok {
 		return emitNothing()
 	}
 
@@ -589,6 +583,24 @@ func runHookPreTool(cmd *cobra.Command, args []string) error {
 			"additionalContext": digest,
 		},
 	})
+}
+
+// fileHookBaseline is the prologue of the two per-file hooks, pre-tool and
+// post-edit: a payload naming a file, and this session's baseline at the
+// current schema, with the path it was read from so the caller can write its
+// ledger back. ok is false whenever either is missing — both hooks read the
+// baseline as their only source of "before", so without one they stay silent.
+func fileHookBaseline(cmd *cobra.Command) (in hookInput, path string, base baselineFile, ok bool) {
+	in, err := readHookInput(cmd.InOrStdin())
+	if err != nil || in.ToolInput.FilePath == "" {
+		return in, "", base, false
+	}
+	path = baselinePath(in.SessionID)
+	base, err = readBaseline(path)
+	if err != nil || base.Snapshot.Schema != snapshot.Schema {
+		return in, path, base, false
+	}
+	return in, path, base, true
 }
 
 // relativeToRoot rewrites an absolute tool path as the snapshot's own

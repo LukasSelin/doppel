@@ -68,16 +68,10 @@ func init() {
 // those, and the session did not create them. Like every hook it never exits
 // non-zero, never writes to stderr, and never makes a permission decision.
 func runHookPostEdit(cmd *cobra.Command, args []string) error {
-	in, err := readHookInput(cmd.InOrStdin())
-	if err != nil || in.ToolInput.FilePath == "" {
-		return emitNothing()
-	}
-
-	path := baselinePath(in.SessionID)
-	base, err := readBaseline(path)
-	if err != nil || base.Snapshot.Schema != snapshot.Schema {
-		// No baseline means no "before", and so no way to tell a function
-		// this session wrote from one it merely sits beside.
+	// No baseline means no "before", and so no way to tell a function this
+	// session wrote from one it merely sits beside.
+	in, path, base, ok := fileHookBaseline(cmd)
+	if !ok {
 		return emitNothing()
 	}
 	root := base.Root
@@ -287,15 +281,6 @@ func probeKind(res Result, a, b int, score, forkFloor float64) *analyzer.KindNot
 	})
 }
 
-// newPairKey is reporter.Notable's ledger key for the pair of a and b, sides
-// in snapshot order (A < B).
-func newPairKey(a, b string) string {
-	if a > b {
-		a, b = b, a
-	}
-	return "new:" + a + "|" + b
-}
-
 // probeLedgerKey names one probe finding in the baseline's Reported ledger.
 func probeLedgerKey(probe, match string) string { return "probe:" + probe + "|" + match }
 
@@ -312,7 +297,7 @@ func unprobed(probes []reporter.ProbeResult, reported []string) []reporter.Probe
 	for _, p := range probes {
 		var keep []reporter.ProbeMatch
 		for _, m := range p.Matches {
-			if !seen[probeLedgerKey(p.Key, m.Key)] && !seen[newPairKey(p.Key, m.Key)] {
+			if !seen[probeLedgerKey(p.Key, m.Key)] && !seen[reporter.NewPairKey(p.Key, m.Key)] {
 				keep = append(keep, m)
 			}
 		}
@@ -333,7 +318,7 @@ func probeFindings(shown []reporter.ProbeResult) []reporter.Finding {
 		for _, m := range p.Matches {
 			out = append(out,
 				reporter.Finding{Key: probeLedgerKey(p.Key, m.Key)},
-				reporter.Finding{Key: newPairKey(p.Key, m.Key)})
+				reporter.Finding{Key: reporter.NewPairKey(p.Key, m.Key)})
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Key < out[j].Key })

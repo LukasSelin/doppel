@@ -331,6 +331,17 @@ type Finding struct {
 	Line string
 }
 
+// NewPairKey is the ledger key Notable gives a new pair, sides in snapshot
+// order (A < B) whichever order they arrive in. Exported because the post-edit
+// hook ledgers the same pair under it, so the Stop hook stays quiet about what
+// that hook already said; a second spelling would silently stop matching.
+func NewPairKey(a, b string) string {
+	if a > b {
+		a, b = b, a
+	}
+	return "new:" + a + "|" + b
+}
+
 // Notable selects the findings from a delta that justify occupying context.
 //
 // The bar is deliberately far higher than the user-facing digest's. That digest
@@ -369,7 +380,7 @@ func Notable(d snapshot.Delta) []Finding {
 			continue
 		}
 		out = append(out, Finding{
-			Key:  "new:" + p.A + "|" + p.B,
+			Key:  NewPairKey(p.A, p.B),
 			Line: fmt.Sprintf("%s <-> %s  shape %.2f  overlap %.2f", p.A, p.B, p.Score, p.Overlap),
 		})
 	}
