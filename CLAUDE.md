@@ -301,6 +301,31 @@ doppel analyze . --struct-min 0.4 --output report.md
 doppel ontology --defs                                # print the vocabulary and check its axioms
 ```
 
+### Before implementing: look for near candidates
+
+This repo eats its own cooking. **Before writing a new function, run `doppel query` on a draft of
+it** and read what already exists; the shared helpers listed under *Module layout* were all found
+as clones doppel had of itself, and the cheapest one to fix is the one never written.
+
+```bash
+doppel query --near <package> . < draft.go
+```
+
+`--near` is the package the function will live in: bare-name calls resolve against it, which is
+what lights up locality. Include the draft's import block, or its calls into imported packages
+count as no evidence. A hit with high code-shape *and* locality is the candidate to reuse or
+extend; a high code-shape hit in an unrelated package is a lookalike, not a reason to move code.
+If you reuse nothing, say why in one line — "nothing similar" is a finding too. Do not add a
+local copy of a function the query names; extract or share it, the way `internal/lexbridge` was.
+
+The project enables the **doppel Claude Code plugin** in `.claude/settings.json` (marketplace
+`LukasSelin/doppel`, plugin `doppel@doppel`). Its four hooks put the corpus in front of the
+session at start, per prompt, before each Edit/Write, and at end of turn — see `plugin/README.md`.
+They shell out to the `doppel` binary on `PATH`, so keep that binary current when working on
+scoring code: `go install -ldflags "-X github.com/LukasSelin/doppel/cmd.version=$(git describe
+--tags --always --dirty)" .` — stamped, because two unstamped dev builds look comparable to a
+stale session baseline (see *Rough edges*).
+
 **Hooks and CI:**
 
 - `.githooks/pre-commit` checks `gofmt` on **staged** `.go` files, then runs `go vet ./...` across
