@@ -153,6 +153,18 @@ tasks:
     cmds:
       - go run -C scripts/historylabel . summarize {{if .OUT}}-out {{.OUT}}{{end}} {{if .SAMPLES}}-samples {{.SAMPLES}}{{end}} {{.FILES}}
 
+  ranker-outcomes:
+    desc: "Rank a corpus at the cost study's T under doppel and every baseline, and judge each pair on T..pin (CORPUS=cobra OUT=<dir>; see examples/ranker-outcomes.md)"
+    vars:
+      CORPUS: '{{.CORPUS | default "cobra"}}'
+    cmds:
+      - ./scripts/ranker-outcomes.sh -c {{.CORPUS}} {{if .OUT}}-o {{.OUT}}{{end}}
+
+  ranker-outcomes-summary:
+    desc: "Turn ranker-outcome JSON files into the comparison tables (FILES='/abs/a.outcomes.json ...', absolute paths; OUT=<summary.md>)"
+    cmds:
+      - go run -C scripts/historylabel . compare-summary -cost-dir {{.ROOT_DIR}}/examples/cost-study {{if .OUT}}-out {{.OUT}}{{end}} {{.FILES}}
+
   pages:
     desc: Build the published site into _site/, exactly as the Pages workflow does
     vars:

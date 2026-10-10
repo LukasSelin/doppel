@@ -231,6 +231,11 @@ func prepareBaselineRun(root string, pop Population) (*baselineRun, error) {
 	if err != nil {
 		return nil, err
 	}
+	return prepareBaselineRunOf(root, units)
+}
+
+// prepareBaselineRunOf is prepareBaselineRun over a population already loaded.
+func prepareBaselineRunOf(root string, units []parser.CodeUnit) (*baselineRun, error) {
 	if len(units) == 0 {
 		return nil, fmt.Errorf("no functions under %s", root)
 	}
