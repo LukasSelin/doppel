@@ -161,6 +161,7 @@ examples/       Committed real reports for each corpus rung, plus labels/ (commi
 scripts/        timeline.sh: walks a git history and analyses each revision at one pinned operating point.
                 postedit-replay.sh: replays a history through `doppel hook post-edit`, one session per commit — the post-edit floor's measurement.
                 clone-baseline.sh: runs dupl (installed into GOBIN, never go.mod) over the ladder for TestBaselines' method 8.
+                ranker-outcomes.sh: ranks a corpus at the cost study's T under every baseline (TestRankingsAt) and judges the lists on T..pin (`historylabel compare`).
                 history-labels.sh + historylabel/ (its own Go module): derives golden labels from what maintainers did to each pair in git history.
                 The only code in the repo that knows git exists, and deliberately outside the doppel module
 ```
@@ -3719,14 +3720,31 @@ functions for exactly this reason, and the first version of them did not and fai
     every method on the sparse history labels, and the false-positive-mean clause fails even
     against random. Descriptively, the full key is clearly best on cobra's hand labels (P@20 0.70,
     against 0.60 for overlap alone, the hardest baseline there). On history labels **retrieval mass
-    alone ranks refactor/coupled pairs better than the full key on 4 of 5 corpora** — the
-    cost side of the shape² trade, measured on maintainer behaviour. `DOPPEL_BENCH_BASELINES_EXPORT`
+    alone ranks refactor/coupled pairs better than the full key on 4 of 5 corpora**. That was
+    first read as the cost side of the shape² trade. It is **largely label leakage**: every
+    history refactor label is an extraction that happened before the pin, so the pair is
+    scored after the fix, with both sides calling the new helper (a call-channel token, in
+    ~78 of 96) and emptied bodies that trophic² (more than shape²) pushes down. See
+    `TestRankingsAt` below for the time-correct measurement. `DOPPEL_BENCH_BASELINES_EXPORT`
     writes every method's ranked list keyed by `snapshot.Unit.Key`, for an outcome study to score.
     Method 8, an external clone detector, is a post-registration addendum: `scripts/clone-baseline.sh`
     runs `dupl` outside the module and `DOPPEL_BENCH_BASELINES_CLONES=<dir>` maps its clone groups onto
     function pairs. It changes no verdict: doppel beats neither dupl row, the false-positive clause
     passing dupl by abstention (it ranks almost nothing). Its one distinctive result is P@20 0.10 on
     prometheus's history labels, the only non-zero P@20 any method reaches on the large rungs.
+  - `TestRankingsAt` (guard `DOPPEL_BENCH_RANKINGS_AT=<tree>`, driven by
+    `scripts/ranker-outcomes.sh` / `task ranker-outcomes`) is the baselines comparison without
+    the leak. It ranks a corpus at the cost study's revision T under doppel and every baseline
+    (plus call mass alone and a size-only ranker), over the retrieval union. `historylabel
+    compare` then judges each listed pair on T..pin with the cost study's unchanged walk and
+    judge, and `compare-summary` applies the rule pre-registered in
+    `examples/ranker-outcomes.md` (M1@100, bootstrap CI on doppel minus baseline, 3 of 5
+    corpora). **Measured on cobra, gin, prometheus, hugo and moby:** doppel beats token clones,
+    code-shape, the name heuristic and random. It is not distinguishable from retrieval mass,
+    call mass, overlap or size, and no baseline beats it anywhere. Pure similarity rankers
+    surface 3-line bodies nobody edits (M1 0.000). Mass and the key reach the same rate
+    through largely different pairs. So the mass factor is load-bearing, and whether overlap,
+    shape² and trophic² add value on outcomes is not resolved at this power.
   - `TestSweep` (guard `DOPPEL_BENCH_SWEEP=1`) is the sensitivity sweep: each hand-set constant
     varied one at a time (±50% or the natural alternatives), only the stages it reaches re-run,
     and the labeled rankings reported with a verdict — `inert` (no label moved), `moves`,

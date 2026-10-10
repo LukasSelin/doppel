@@ -536,6 +536,20 @@ Summed over every label set scored all-pairs (cobra hand, and the cobra, chi and
 | name heuristic | 8 | 11 | 28 |
 | random | 0 | 0 | 28 |
 
+## Note (post-hoc): the history-label result is largely leakage
+
+Added after the addendum below existed. Nothing above was changed. Every
+history "refactor" label is an `extracted` verdict: the extraction happened
+before the pin, and the pair is scored in its state at the pin. In about 78 of
+the 96 such labels, both sides call the extracted helper there. That helper is a
+call-channel token, and the emptied bodies read low on code-shape and trophic.
+So "retrieval mass alone ranks history-relevant pairs better" mostly measures
+recognising refactors that have already happened. The factor that pushes these
+pairs down is mainly trophic², not shape². `examples/ranker-outcomes.md` ranks at
+an earlier revision T and judges the pairs on what happened afterwards. There,
+mass and the full key are not distinguishable on any corpus, and the key beats
+code-shape, token clones, the name heuristic and random.
+
 ## Addendum (post-registration): method 8, an external clone detector
 
 Added on 2026-10-10, after every result above existed. The pre-registration
