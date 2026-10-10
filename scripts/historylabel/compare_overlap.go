@@ -36,21 +36,23 @@ func writeReferenceCheck(w io.Writer, corpora []compareOut, refDir string) {
 			fmt.Fprintf(w, "| %s | — | %v |\n", c.Corpus, err)
 			continue
 		}
-		mine, theirs := listKeys(c, doppelMethod), listKeys(ref, doppelMethod)
-		same := "yes"
-		if len(mine) != len(theirs) {
-			same = fmt.Sprintf("**no** (%d against %d pairs)", len(mine), len(theirs))
-		} else {
-			for i := range mine {
-				if mine[i] != theirs[i] {
-					same = fmt.Sprintf("**no** (first difference at rank %d)", i+1)
-					break
-				}
-			}
-		}
-		fmt.Fprintf(w, "| %s | %d | %s |\n", c.Corpus, len(mine), same)
+		mine := listKeys(c, doppelMethod)
+		fmt.Fprintf(w, "| %s | %d | %s |\n", c.Corpus, len(mine), sameList(mine, listKeys(ref, doppelMethod)))
 	}
 	fmt.Fprintln(w)
+}
+
+// sameList says whether two ranked lists are the same pairs in the same order.
+func sameList(mine, theirs []upair) string {
+	if len(mine) != len(theirs) {
+		return fmt.Sprintf("**no** (%d against %d pairs)", len(mine), len(theirs))
+	}
+	for i := range mine {
+		if mine[i] != theirs[i] {
+			return fmt.Sprintf("**no** (first difference at rank %d)", i+1)
+		}
+	}
+	return "yes"
 }
 
 // writeOverlap is the descriptive table: per method, how many of its top

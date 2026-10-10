@@ -38,6 +38,8 @@ func compareSummaryMain(args []string) {
 	costDir := fs.String("cost-dir", "", "directory of the cost study's <corpus>.cost.json, for the agreement check")
 	refDir := fs.String("reference", "", "directory of earlier <corpus>.outcomes.json whose doppel list must be reproduced exactly")
 	overlap := fs.Bool("overlap", false, "add each method's overlap with doppel's top list, its median smallest side and its event count")
+	inputs := fs.String("inputs", "", "directory of the clone-outcome study's <corpus>.clone-outcomes.json; every list shared with them must be reproduced exactly")
+	fusion := fs.Bool("fusion", false, "add the fused-minus-input comparison for every RRF(a, b) list")
 	boot := fs.String("bootstrap", bootIndependent, "the primary comparison's CI: independent (each study's pre-registered rule), paired or paired-clustered (examples/outcome-reanalysis.md)")
 	fs.Parse(args)
 	if fs.NArg() == 0 {
@@ -72,7 +74,13 @@ func compareSummaryMain(args []string) {
 	if *refDir != "" {
 		writeReferenceCheck(w, corpora, *refDir)
 	}
+	if *inputs != "" {
+		writeInputsCheck(w, corpora, *inputs)
+	}
 	writeCompareSummary(w, corpora, *costDir, *boot)
+	if *fusion {
+		writeFusion(w, corpora)
+	}
 	if *overlap {
 		writeOverlap(w, corpora)
 	}
@@ -300,7 +308,6 @@ func writeCompareSummary(w io.Writer, corpora []compareOut, costDir, boot string
 	if boot != bootIndependent {
 		fmt.Fprintf(w, "CI by the %s bootstrap of examples/outcome-reanalysis.md, not the study's pre-registered independent one.\n\n", boot)
 	}
-	type cell struct{ d, lo, hi float64 }
 	var baselines []string
 	cells := map[string]map[string]cell{}
 	for _, c := range corpora {
@@ -331,33 +338,43 @@ func writeCompareSummary(w io.Writer, corpora []compareOut, costDir, boot string
 	fmt.Fprintf(w, " ---: | ---: | --- |\n")
 	for _, b := range baselines {
 		fmt.Fprintf(w, "| %s |", b)
-		win, loss := 0, 0
-		for _, c := range corpora {
-			x, ok := cells[b][c.Corpus]
-			if !ok || math.IsNaN(x.d) {
-				fmt.Fprintf(w, " — |")
-				continue
-			}
-			mark := ""
-			switch {
-			case x.lo > 0:
-				win++
-				mark = " ✓"
-			case x.hi < 0:
-				loss++
-				mark = " ✗"
-			}
-			fmt.Fprintf(w, " %+.4f [%+.4f, %+.4f]%s |", x.d, x.lo, x.hi, mark)
-		}
-		verdict := "not distinguishable"
-		switch {
-		case win >= beatsCorpora && loss == 0:
-			verdict = "**doppel beats it**"
-		case loss >= beatsCorpora && win == 0:
-			verdict = "**it beats doppel**"
-		}
-		fmt.Fprintf(w, " %d | %d | %s |\n", win, loss, verdict)
+		writeVerdictCells(w, corpora, cells[b], "**doppel beats it**", "**it beats doppel**")
 	}
 	fmt.Fprintln(w)
 	fmt.Fprintf(w, "✓ doppel's CI lower bound is above 0 on that corpus; ✗ the upper bound is below 0. A verdict needs %d corpora one way and none the other.\n", beatsCorpora)
+}
+
+// cell is one corpus's difference in M1 with its bootstrap CI.
+type cell struct{ d, lo, hi float64 }
+
+// writeVerdictCells ends a comparison row: one cell per corpus, the win and
+// loss counts, and the verdict under the pre-registered rule, worded beats
+// when the row's first method wins and beaten when it loses.
+func writeVerdictCells(w io.Writer, corpora []compareOut, cells map[string]cell, beats, beaten string) {
+	win, loss := 0, 0
+	for _, c := range corpora {
+		x, ok := cells[c.Corpus]
+		if !ok || math.IsNaN(x.d) {
+			fmt.Fprintf(w, " — |")
+			continue
+		}
+		mark := ""
+		switch {
+		case x.lo > 0:
+			win++
+			mark = " ✓"
+		case x.hi < 0:
+			loss++
+			mark = " ✗"
+		}
+		fmt.Fprintf(w, " %+.4f [%+.4f, %+.4f]%s |", x.d, x.lo, x.hi, mark)
+	}
+	verdict := "not distinguishable"
+	switch {
+	case win >= beatsCorpora && loss == 0:
+		verdict = beats
+	case loss >= beatsCorpora && win == 0:
+		verdict = beaten
+	}
+	fmt.Fprintf(w, " %d | %d | %s |\n", win, loss, verdict)
 }
