@@ -3009,9 +3009,17 @@ reason rather than returning a partial delta.
   prompt and a **pane** (`/doppel` toggles it; the command answers `{}`, because a command's `text`
   is a row the model reads). **Nothing about the agent path changes.**
 
-  **It renders nothing and analyses nothing.** `reporter.SessionViewOf` renders both texts in Go —
-  the band is `deltaScoreboard`, the line `DeltaSection` opens with; the pane is
+  **It renders nothing and analyses nothing.** `reporter.SessionViewOf` renders every text in Go —
+  the band is `deltaScoreboard`, the line `DeltaSection` opens with; the pane's full report is
   `identity.PrintDelta`, what `doppel diff` prints — and is silent exactly when `SessionDigest` is.
+  **The pane opens on `overview`, not the report** (`sessionOverview`, a toggle away from it),
+  because the full report grows with every function a session touched and every pair a rename
+  re-keyed, and by the end of a long session it was a list to scroll rather than a picture. The
+  overview selects and never rewords: merge-worthy pairs created and dissolved, one line each with
+  `identity.CauseLine`; one line per classified change without its evidence line; every other pair
+  change as a count, split into attributed and retrieval re-ranking; each list capped
+  (`overviewPairs` 5, `overviewChanges` 8) with a count of what it left out. A binary from before
+  the field leaves `overview` empty and the mod shows the report with no toggle.
   The Stop hook writes the view into its existing impact report as `view`, beside the flattened
   `snapshot.Delta` (`impactFile` embeds it, so every key the file carried is still at its top level).
   `doppel hook view` reads that file for a session id on stdin and prints the view: no pipeline, the
