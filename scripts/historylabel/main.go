@@ -119,6 +119,12 @@ func main() {
 		case "study":
 			studyMain(os.Args[2:])
 			return
+		case "compare":
+			compareMain(os.Args[2:])
+			return
+		case "compare-summary":
+			compareSummaryMain(os.Args[2:])
+			return
 		case "summarize":
 			summarizeMain(os.Args[2:])
 			return
@@ -302,11 +308,7 @@ func run(repoDir, snapPath, pin, until, handPath, outPath, corpus string, weak b
 		l.Note = noteOf(v)
 		of.Labels = append(of.Labels, l)
 	}
-	data, err := json.MarshalIndent(of, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(outPath, append(data, '\n'), 0o644)
+	return writeJSON(outPath, of)
 }
 
 // labelSide writes a side the way the bench labels do: package.Name, with the
@@ -334,6 +336,16 @@ func countPost(cs []*commit) int {
 		}
 	}
 	return n
+}
+
+// writeJSON writes v indented with a trailing newline, the one form every file
+// this command writes takes.
+func writeJSON(p string, v any) error {
+	data, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(p, append(data, '\n'), 0o644)
 }
 
 func readJSON(p string, v any) error {

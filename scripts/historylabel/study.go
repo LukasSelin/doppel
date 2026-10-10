@@ -213,6 +213,48 @@ type studyOut struct {
 	Pairs         []studyPair     `json:"pairs"`
 }
 
+// window resolves T and the pin to full SHAs and commit dates.
+func (r *repo) window(since, pin string) (sinceSHA, sinceDate, pinSHA, pinDate string, err error) {
+	rev := func(s string) (string, string, error) {
+		out, err := r.git("log", "-1", "--format=%H %cs", s)
+		if err != nil {
+			return "", "", err
+		}
+		f := strings.Fields(out)
+		return f[0], f[1], nil
+	}
+	if sinceSHA, sinceDate, err = rev(since); err != nil {
+		return
+	}
+	pinSHA, pinDate, err = rev(pin)
+	return
+}
+
+// resolveAt finds one unit as historylabel sees it at T. A unit it cannot
+// find there (a non-Go file, a receiver it renders differently) yields nil and
+// bumps unresolved: nothing about its history could be read.
+func resolveAt(ts *tables, sinceSHA, key, pkg, name, file string, unresolved *int) (*sunit, error) {
+	if !strings.HasSuffix(file, ".go") {
+		*unresolved++
+		return nil, nil
+	}
+	dir := path.Dir(file)
+	t, _, err := ts.at(sinceSHA, dir)
+	if err != nil {
+		return nil, err
+	}
+	f := t.lookup(histName(name), path.Base(file))
+	if f == nil {
+		if *unresolved++; *unresolved <= 5 {
+			fmt.Fprintf(os.Stderr, "not found at T: %s (%s)\n", key, file)
+		}
+		return nil, nil
+	}
+	su := &sunit{key: key, pkg: pkg, name: histName(name), file: file, dir: dir, top: topOf(file), lines: len(f.Lines())}
+	su.bucket = bucketOf(su.lines)
+	return su, nil
+}
+
 func studyMain(args []string) {
 	fs := flag.NewFlagSet("study", flag.ExitOnError)
 	repoDir := fs.String("repo", "", "full-history clone of the corpus")
@@ -249,52 +291,27 @@ func runStudy(repoDir, snapPath, reportPath, corpus, since, pin string, k int, o
 		return err
 	}
 	defer r.close()
-	rev := func(s string) (string, string, error) {
-		out, err := r.git("log", "-1", "--format=%H %cs", s)
-		if err != nil {
-			return "", "", err
-		}
-		f := strings.Fields(out)
-		return f[0], f[1], nil
-	}
-	sinceSHA, sinceDate, err := rev(since)
-	if err != nil {
-		return err
-	}
-	pinSHA, pinDate, err := rev(pin)
+	sinceSHA, sinceDate, pinSHA, pinDate, err := r.window(since, pin)
 	if err != nil {
 		return err
 	}
 	out := studyOut{Corpus: corpus, Since: sinceSHA, SinceDate: sinceDate, Pin: pinSHA, PinDate: pinDate,
 		Params: snap.Params, Functions: len(snap.Units), Reported: len(ranked), ControlsPer: k}
 
-	// Every unit as historylabel sees it at T. A unit it cannot find there
-	// (a non-Go file, a receiver it renders differently) can be neither
-	// treated nor a control: nothing about its history could be read.
+	// Every unit as historylabel sees it at T. An unresolved one can be
+	// neither treated nor a control.
 	ts := newTables(r)
 	units := map[string]*sunit{}
 	byLoc := map[string]*sunit{}
 	var keys []string
 	for _, u := range snap.Units {
-		if !strings.HasSuffix(u.File, ".go") {
-			out.Unresolved++
-			continue
-		}
-		dir := path.Dir(u.File)
-		t, _, err := ts.at(sinceSHA, dir)
+		su, err := resolveAt(ts, sinceSHA, u.Key, u.Package, u.Name, u.File, &out.Unresolved)
 		if err != nil {
 			return err
 		}
-		f := t.lookup(histName(u.Name), path.Base(u.File))
-		if f == nil {
-			if out.Unresolved++; out.Unresolved <= 5 {
-				fmt.Fprintf(os.Stderr, "not found at T: %s (%s)\n", u.Key, u.File)
-			}
+		if su == nil {
 			continue
 		}
-		su := &sunit{key: u.Key, pkg: u.Package, name: histName(u.Name), file: u.File, dir: dir, top: topOf(u.File),
-			lines: len(f.Lines())}
-		su.bucket = bucketOf(su.lines)
 		units[u.Key] = su
 		byLoc[u.File+":"+strconv.Itoa(u.Line)] = su
 		keys = append(keys, u.Key)
@@ -426,38 +443,8 @@ func runStudy(repoDir, snapPath, reportPath, corpus, since, pin string, k int, o
 	}
 	out.WindowCommits = len(h.commits)
 
-	edits := func(l *life) int {
-		n := 0
-		for _, e := range l.edits {
-			if e.modified() && !e.c.noisy() {
-				n++
-			}
-		}
-		return n
-	}
 	for i := range rows {
-		p := &rows[i]
-		a, b := h.lives[p.A], h.lives[p.B]
-		v := h.judge(a, b)
-		p.EditsA, p.EditsB = edits(a), edits(b)
-		p.GoneA, p.GoneB = h.atPin(a) == nil, h.atPin(b) == nil
-		for _, e := range v.Evidence {
-			switch e.Kind {
-			case "co-change":
-				p.Cochanges++
-			case "lagged-sync":
-				p.Lagged++
-			case "unpropagated-fix":
-				p.Unpropagated++
-			case "extracted":
-				p.Extracted++
-			case "consolidated":
-				p.Consolidated++
-			default:
-				continue // diverged: not an outcome here
-			}
-			p.Evidence = append(p.Evidence, e)
-		}
+		judgeInto(h, &rows[i])
 	}
 	sort.SliceStable(rows, func(i, j int) bool {
 		if rows[i].Set != rows[j].Set {
@@ -473,9 +460,5 @@ func runStudy(repoDir, snapPath, reportPath, corpus, since, pin string, k int, o
 		return rows[i].B < rows[j].B
 	})
 	out.Pairs = rows
-	data, err := json.MarshalIndent(out, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(outPath, append(data, '\n'), 0o644)
+	return writeJSON(outPath, out)
 }
