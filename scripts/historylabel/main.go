@@ -128,6 +128,9 @@ func main() {
 		case "rolling-summary":
 			rollingSummaryMain(os.Args[2:])
 			return
+		case "size-summary":
+			sizeSummaryMain(os.Args[2:])
+			return
 		case "summarize":
 			summarizeMain(os.Args[2:])
 			return

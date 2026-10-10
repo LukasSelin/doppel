@@ -120,6 +120,16 @@ func pairedDiffCI(c compareOut, la, lb []int, scheme, seed string) (d, lo, hi fl
 	if len(la) == 0 || len(lb) == 0 {
 		return math.NaN(), math.NaN(), math.NaN()
 	}
+	d, reps := pairedReps(c, la, lb, scheme, seedOf("outcome-reanalysis bootstrap", scheme, c.Corpus, seed))
+	lo, hi = percentile95(reps)
+	return d, lo, hi
+}
+
+// pairedReps is pairedDiffCI's point estimate and its bootReps replicates,
+// unsorted and in draw order, from the LCG seeded with seed: what a pooled
+// analysis combines replicate by replicate across units
+// (examples/size-aware-rank.md). Both lists must be non-empty.
+func pairedReps(c compareOut, la, lb []int, scheme string, seed uint64) (float64, []float64) {
 	u := unionOf(c, la, lb, scheme == bootPairedClustered)
 	// Per cluster: the sums of m1 and of entries, each side.
 	n := len(u.clusters)
@@ -143,13 +153,12 @@ func pairedDiffCI(c compareOut, la, lb []int, scheme, seed string) (d, lo, hi fl
 		}
 		return ta/ca - tb/cb
 	}
-	rng := lcg{seedOf("outcome-reanalysis bootstrap", scheme, c.Corpus, seed)}
+	rng := lcg{seed}
 	reps := make([]float64, 0, bootReps)
 	for range bootReps {
 		reps = append(reps, diff(rng.intn))
 	}
-	lo, hi = percentile95(reps)
-	return m1Mean(c, la) - m1Mean(c, lb), lo, hi
+	return m1Mean(c, la) - m1Mean(c, lb), reps
 }
 
 // doppelTop is doppel's top primaryK, nil when the corpus has no doppel list.

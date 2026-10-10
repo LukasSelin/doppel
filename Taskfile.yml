@@ -215,6 +215,29 @@ tasks:
     cmds:
       - go run -C scripts/historylabel . rolling-summary -origins {{.ROOT_DIR}}/examples/rolling-origin -out {{.ROOT_DIR}}/examples/rolling-origin/summary.md {{.ROOT_DIR}}/examples/ranker-outcomes/*.outcomes.json {{.ROOT_DIR}}/examples/clone-outcomes/*.clone-outcomes.json {{.ROOT_DIR}}/examples/rolling-origin/*.json
 
+  size-aware-rank:
+    desc: "Rank a corpus under the clone-outcome methods and the size-aware variants, at the cost study's T (development) and at earlier origins (test), judged under -sweep-scope commit (CORPUS=cobra ORIGINS='2 3' OUT=<dir>; see examples/size-aware-rank.md)"
+    vars:
+      CORPUS: '{{.CORPUS | default "cobra"}}'
+      ORIGINS: '{{.ORIGINS | default "2 3"}}'
+      OUT: '{{.OUT | default (print .ROOT_DIR "/examples/size-aware-rank")}}'
+    cmds:
+      - ./scripts/ranker-outcomes.sh -s size -c {{.CORPUS}} -o {{.OUT}}
+      - ./scripts/rolling-origin.sh -s size -c {{.CORPUS}} -k "{{.ORIGINS}}" -o {{.OUT}}
+
+  size-aware-rank-summary:
+    desc: "Score the size-aware variants on the development windows and on the test windows (examples/size-aware-rank/{dev,test}.md)"
+    vars:
+      D: '{{.ROOT_DIR}}/examples/size-aware-rank'
+    cmds:
+      - go run -C scripts/historylabel . size-summary -out {{.D}}/dev.md {{range splitList " " "cobra gin prometheus hugo moby"}}{{$.D}}/{{.}}.size-outcomes.json {{end}}
+      - go run -C scripts/historylabel . size-summary -origins {{.ROOT_DIR}}/examples/rolling-origin -out {{.D}}/test.md {{.D}}/cobra.o2.size-outcomes.json {{.D}}/cobra.o3.size-outcomes.json {{.D}}/gin.o3.size-outcomes.json {{.D}}/prometheus.o2.size-outcomes.json {{.D}}/prometheus.o3.size-outcomes.json {{.D}}/hugo.o2.size-outcomes.json {{.D}}/hugo.o3.size-outcomes.json {{.D}}/moby.o2.size-outcomes.json {{.D}}/moby.o3.size-outcomes.json
+
+  size-aware-rank-golden:
+    desc: "Score the production key, the development candidates and the locked size-aware variants against the cobra hand labels"
+    cmds:
+      - go test ./internal/bench/ -run '^TestSizeVariantsGolden$' -count=1 -v
+
   pages:
     desc: Build the published site into _site/, exactly as the Pages workflow does
     vars:

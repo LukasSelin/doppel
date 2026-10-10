@@ -154,7 +154,14 @@ func RankKey(p SimilarPair, o RankOptions, units []parser.CodeUnit) float64 {
 
 // SortForReportWith is SortForReport under an explicit rank key.
 func SortForReportWith(pairs []SimilarPair, units []parser.CodeUnit, topN, maxPerFunc int, o RankOptions) ([]SimilarPair, int) {
-	key := func(p SimilarPair) float64 { return RankKey(p, o, units) }
+	return SortForReportBy(pairs, func(p SimilarPair) float64 { return RankKey(p, o, units) }, topN, maxPerFunc)
+}
+
+// SortForReportBy is SortForReport's ordering, tie-breaks and diversity cap
+// under an arbitrary key: the measurement seam for a key that RankOptions
+// cannot express (internal/bench's size-aware variants). Production never
+// calls it with anything but RankKey, through SortForReportWith.
+func SortForReportBy(pairs []SimilarPair, key func(SimilarPair) float64, topN, maxPerFunc int) ([]SimilarPair, int) {
 	sort.SliceStable(pairs, func(i, j int) bool {
 		ki, kj := key(pairs[i]), key(pairs[j])
 		if ki != kj {

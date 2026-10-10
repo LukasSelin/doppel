@@ -26,6 +26,15 @@
 # inputs and their Reciprocal Rank Fusion. Its files are
 # <corpus>.fusion-rankings.json and <corpus>.fusion-outcomes.json.
 #
+# -s size is examples/size-aware-rank.md: the same dupl runs, and
+# internal/bench's TestSizeRankingsAt lists the clone-outcome methods beside the
+# size-aware rank variants. Its files are <corpus>.size-rankings.json and
+# <corpus>.size-outcomes.json, and it always judges under -sweep-scope commit,
+# so a pair's outcome does not depend on the other pairs listed. SIZE_DEV=1 in
+# the environment adds the whole retrieval union as a list and writes every
+# listed pair's features to <corpus>.size-features.json: the development
+# seam, for scoring candidate keys offline.
+#
 # -t and -p replace the cost study's T and pin with an explicit window, and -n
 # names the files <corpus>.<name>.rankings.json and so on. That is how
 # scripts/rolling-origin.sh judges earlier origins (examples/rolling-origin.md);
@@ -48,14 +57,15 @@ while getopts ":c:o:s:t:p:n:" opt; do
     t) SINCE=$OPTARG ;;
     p) PIN=$OPTARG ;;
     n) NAME=$OPTARG ;;
-    *) echo "usage: $0 [-c corpus] [-o out-dir] [-s ranker|clones|fusion] [-t since -p pin -n name]" >&2; exit 2 ;;
+    *) echo "usage: $0 [-c corpus] [-o out-dir] [-s ranker|clones|fusion|size] [-t since -p pin -n name]" >&2; exit 2 ;;
   esac
 done
 case "$STUDY" in
   ranker) PREFIX=""; DEFAULT_DIR="ranker-outcomes" ;;
   clones) PREFIX="clone-"; DEFAULT_DIR="clone-outcomes" ;;
   fusion) PREFIX="fusion-"; DEFAULT_DIR="fusion-outcomes" ;;
-  *) echo "unknown study $STUDY: ranker, clones or fusion" >&2; exit 2 ;;
+  size) PREFIX="size-"; DEFAULT_DIR="size-aware-rank" ;;
+  *) echo "unknown study $STUDY: ranker, clones, fusion or size" >&2; exit 2 ;;
 esac
 
 MODULE=$(cd "$(dirname "$0")/.." && pwd)
@@ -105,6 +115,7 @@ for try in 1 2 3 4 5 6; do
   sleep $((try * 5))
 done
 
+SCOPE=""
 RANKINGS="$OUT_DIR/$STEM.${PREFIX}rankings.json"
 OUTCOMES="$OUT_DIR/$STEM.${PREFIX}outcomes.json"
 echo "$CORPUS: ranking the tree at ${SINCE:0:9}" >&2
@@ -118,6 +129,15 @@ elif [ "$STUDY" = fusion ]; then
   (cd "$MODULE" && DOPPEL_BENCH_FUSION_AT="$WT" DOPPEL_BENCH_FUSION_CORPUS="$CORPUS" \
     DOPPEL_BENCH_FUSION_CLONES="$WORK/clones" DOPPEL_BENCH_FUSION_OUT="$RANKINGS" \
     go test ./internal/bench/ -run '^TestFusionRankingsAt$' -count=1 -v -timeout 120m | grep -E '^\s+[a-z_]+_test\.go|^(ok|FAIL|---)' >&2)
+elif [ "$STUDY" = size ]; then
+  "$MODULE/scripts/clone-baseline.sh" -r "$WT" -o "$WORK/clones" -t 100,50 "$CORPUS"
+  FEATURES=""
+  [ "${SIZE_DEV:-}" = 1 ] && FEATURES="$OUT_DIR/$STEM.size-features.json"
+  (cd "$MODULE" && DOPPEL_BENCH_SIZERANK_AT="$WT" DOPPEL_BENCH_SIZERANK_CORPUS="$CORPUS" \
+    DOPPEL_BENCH_SIZERANK_CLONES="$WORK/clones" DOPPEL_BENCH_SIZERANK_OUT="$RANKINGS" \
+    DOPPEL_BENCH_SIZERANK_FEATURES="$FEATURES" \
+    go test ./internal/bench/ -run '^TestSizeRankingsAt$' -count=1 -v -timeout 120m | grep -E '^\s+[a-z_]+_test\.go|^(ok|FAIL|---)' >&2)
+  SCOPE="-sweep-scope commit"
 else
   (cd "$MODULE" && DOPPEL_BENCH_RANKINGS_AT="$WT" DOPPEL_BENCH_RANKINGS_CORPUS="$CORPUS" \
     DOPPEL_BENCH_RANKINGS_OUT="$RANKINGS" \
@@ -125,5 +145,5 @@ else
 fi
 
 "$WORK/historylabel" compare -repo "$HIST" -rankings "$RANKINGS" \
-  -since "$SINCE" -pin "$PIN" -out "$OUTCOMES" ${MIN_DOPPEL:+-min-doppel "$MIN_DOPPEL"}
+  -since "$SINCE" -pin "$PIN" -out "$OUTCOMES" ${MIN_DOPPEL:+-min-doppel "$MIN_DOPPEL"} $SCOPE
 echo "wrote $OUTCOMES" >&2
