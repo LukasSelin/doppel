@@ -49,13 +49,7 @@ func b2f(b bool) float64 {
 }
 
 var metrics = []metric{
-	{"M1", "normalised co-change (cochanges / min edits)", func(p studyPair) float64 {
-		m := min(p.EditsA, p.EditsB)
-		if m == 0 {
-			return 0
-		}
-		return float64(p.Cochanges) / float64(m)
-	}, true},
+	{"M1", "normalised co-change (cochanges / min edits)", m1, true},
 	{"M2", "lagged or unpropagated (share of pairs)", func(p studyPair) float64 { return b2f(p.Lagged+p.Unpropagated > 0) }, true},
 	{"co", "any co-change", func(p studyPair) float64 { return b2f(p.Cochanges > 0) }, false},
 	{"synced", "synced (>= 2 co-changes)", func(p studyPair) float64 { return b2f(p.Cochanges >= minCochanges) }, false},

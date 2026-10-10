@@ -64,7 +64,7 @@ func compareSummaryMain(args []string) {
 	writeCompareSummary(w, corpora, *costDir)
 }
 
-// m1 is the cost study's M1 for one pair.
+// m1 is the cost study's M1 for one pair, shared with summarize's metric table.
 func m1(p studyPair) float64 {
 	m := min(p.EditsA, p.EditsB)
 	if m == 0 {
