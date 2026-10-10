@@ -160,8 +160,9 @@ internal/
 examples/       Committed real reports for each corpus rung, plus labels/ (committed golden reviews) — see examples/README.md
 scripts/        timeline.sh: walks a git history and analyses each revision at one pinned operating point.
                 postedit-replay.sh: replays a history through `doppel hook post-edit`, one session per commit — the post-edit floor's measurement.
-                clone-baseline.sh: runs dupl (installed into GOBIN, never go.mod) over the ladder for TestBaselines' method 8.
-                ranker-outcomes.sh: ranks a corpus at the cost study's T under every baseline (TestRankingsAt) and judges the lists on T..pin (`historylabel compare`).
+                clone-baseline.sh: runs dupl (installed into GOBIN, never go.mod) over the ladder for TestBaselines' method 8, or over one tree with -r.
+                ranker-outcomes.sh: ranks a corpus at the cost study's T under every baseline (TestRankingsAt) and judges the lists on T..pin (`historylabel compare`);
+                -s clones runs dupl on the T tree and lists doppel beside clone detectors that search the whole tree (TestCloneRankingsAt).
                 history-labels.sh + historylabel/ (its own Go module): derives golden labels from what maintainers did to each pair in git history.
                 The only code in the repo that knows git exists, and deliberately outside the doppel module
 ```
@@ -3745,6 +3746,25 @@ functions for exactly this reason, and the first version of them did not and fai
     surface 3-line bodies nobody edits (M1 0.000). Mass and the key reach the same rate
     through largely different pairs. So the mass factor is load-bearing, and whether overlap,
     shape² and trophic² add value on outcomes is not resolved at this power.
+  - `TestCloneRankingsAt` (guard `DOPPEL_BENCH_CLONERANK_AT=<tree>`, driven by
+    `scripts/ranker-outcomes.sh -s clones` / `task clone-outcomes`) is the follow-up without the
+    two handicaps that study's baselines had: every detector searches the whole T tree rather
+    than re-ranking doppel's union, and has a size floor. It lists doppel (the ranker-outcome
+    study's list, reproduced exactly) beside dupl at t=100 and t=50, run on the T tree, and
+    exact all-pairs token-shingle Jaccard and code-shape with the floor in syntax nodes
+    (`allPairsTop`, per-row top-K then a global cut, pinned against brute force by
+    `TestAllPairsTopIsExact`). Nodes because dupl's "tokens" are serialized AST nodes. Judged
+    unchanged by `historylabel compare`. `compare-summary -reference <dir> -overlap` adds the
+    list-identity check and the overlap/size/event-count table, and without those flags renders
+    exactly as before. **Measured on the same five corpora, by the rule pre-registered in
+    `examples/clone-outcomes.md`:** doppel beats token Jaccard with no floor and with a
+    100-node floor. It is not distinguishable from dupl at either threshold, token Jaccard at 50
+    nodes, or code-shape at 50 nodes, and nothing beats it anywhere. So most of the earlier win
+    over similarity rankers was the missing floor, and a claim that doppel beats traditional
+    clone detection on outcomes is not supported. Each corpus's difference comes down to a few
+    commits: gin's `Engine.Run*` family (10-16 lines, below any clone floor) for doppel, moby's
+    `client.*Prune` methods (one commit) for dupl. On prometheus and moby, half or more of a
+    floored detector's top 100 is in doppel's.
   - `TestSweep` (guard `DOPPEL_BENCH_SWEEP=1`) is the sensitivity sweep: each hand-set constant
     varied one at a time (±50% or the natural alternatives), only the stages it reaches re-run,
     and the labeled rankings reported with a verdict — `inert` (no label moved), `moves`,
