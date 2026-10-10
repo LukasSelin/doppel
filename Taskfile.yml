@@ -190,6 +190,19 @@ tasks:
       - for: [paired, paired-clustered]
         cmd: go run -C scripts/historylabel . compare-summary -bootstrap {{.ITEM}} -reference {{.R}} -overlap -out {{.O}}/clone-outcomes.{{.ITEM}}.md {{range splitList " " .CORPORA}}{{$.C}}/{{.}}.clone-outcomes.json {{end}}
 
+  rolling-origin:
+    desc: "Rank a corpus at earlier origins T_k under both outcome studies' methods, and judge each on its own window T_k..T_k-1 (CORPUS=cobra ORIGINS='2 3' OUT=<dir>; see examples/rolling-origin.md)"
+    vars:
+      CORPUS: '{{.CORPUS | default "cobra"}}'
+      ORIGINS: '{{.ORIGINS | default "2 3"}}'
+    cmds:
+      - ./scripts/rolling-origin.sh -c {{.CORPUS}} -k "{{.ORIGINS}}" {{if .OUT}}-o {{.OUT}}{{end}}
+
+  rolling-origin-summary:
+    desc: "Pool the committed outcome files over every origin into examples/rolling-origin/summary.md"
+    cmds:
+      - go run -C scripts/historylabel . rolling-summary -origins {{.ROOT_DIR}}/examples/rolling-origin -out {{.ROOT_DIR}}/examples/rolling-origin/summary.md {{.ROOT_DIR}}/examples/ranker-outcomes/*.outcomes.json {{.ROOT_DIR}}/examples/clone-outcomes/*.clone-outcomes.json {{.ROOT_DIR}}/examples/rolling-origin/*.json
+
   pages:
     desc: Build the published site into _site/, exactly as the Pages workflow does
     vars:
