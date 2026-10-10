@@ -285,12 +285,14 @@ func runStudy(repoDir, snapPath, reportPath, corpus, since, pin string, k int, o
 		if err != nil {
 			return err
 		}
-		f := t.lookup(u.Name, path.Base(u.File))
+		f := t.lookup(histName(u.Name), path.Base(u.File))
 		if f == nil {
-			out.Unresolved++
+			if out.Unresolved++; out.Unresolved <= 5 {
+				fmt.Fprintf(os.Stderr, "not found at T: %s (%s)\n", u.Key, u.File)
+			}
 			continue
 		}
-		su := &sunit{key: u.Key, pkg: u.Package, name: u.Name, file: u.File, dir: dir, top: topOf(u.File),
+		su := &sunit{key: u.Key, pkg: u.Package, name: histName(u.Name), file: u.File, dir: dir, top: topOf(u.File),
 			lines: len(f.Lines())}
 		su.bucket = bucketOf(su.lines)
 		units[u.Key] = su

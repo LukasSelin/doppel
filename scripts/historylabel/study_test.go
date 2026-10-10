@@ -94,3 +94,16 @@ func TestEstimate(t *testing.T) {
 		t.Fatalf("CI [%v, %v] excludes the point estimate %v", e.lo, e.hi, e.ratio)
 	}
 }
+
+func TestHistName(t *testing.T) {
+	for in, want := range map[string]string{
+		"*Stack[T].Pop":    "*Stack.Pop",
+		"Map[K, V].Get":    "Map.Get",
+		"*Command.Execute": "*Command.Execute",
+		"plainFunc":        "plainFunc",
+	} {
+		if got := histName(in); got != want {
+			t.Errorf("histName(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

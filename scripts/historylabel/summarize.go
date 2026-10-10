@@ -264,7 +264,8 @@ func summarize(w io.Writer, studies []studyOut) {
 	}
 
 	fmt.Fprintf(w, "\n### Decision (pre-registered: top50, M1 or M2 ratio >= %.1f with CI lower bound > 1, on >= %d corpora)\n\n", costRatio, costCorpora)
-	fmt.Fprintf(w, "| corpus | M1 ratio [95%% CI] | M2 ratio [95%% CI] | shows cost |\n| --- | --- | --- | --- |\n")
+	fmt.Fprintf(w, "| corpus | M1 ratio [95%% CI] | M2 ratio [95%% CI] | shows cost | top50 pairs with an M1/M2 event | distinct commits behind them |\n")
+	fmt.Fprintf(w, "| --- | --- | --- | --- | ---: | ---: |\n")
 	showing := 0
 	for _, o := range studies {
 		sets := setsOf(o, "top50")
@@ -274,7 +275,9 @@ func summarize(w io.Writer, studies []studyOut) {
 		if yes {
 			showing++
 		}
-		fmt.Fprintf(w, "| %s | %s | %s | %s |\n", o.Corpus, m1.cell(), m2.cell(), map[bool]string{true: "**yes**", false: "no"}[yes])
+		pairs, commits := clustering(sets)
+		fmt.Fprintf(w, "| %s | %s | %s | %s | %d | %d |\n", o.Corpus, m1.cell(), m2.cell(),
+			map[bool]string{true: "**yes**", false: "no"}[yes], pairs, commits)
 	}
 	verdict := "**no evidence of cost**"
 	if showing >= costCorpora {
@@ -344,6 +347,30 @@ func summarize(w io.Writer, studies []studyOut) {
 	}
 	split("### By pair kind (pooled, ranks 1-500)", "kind", func(p studyPair) string { return p.Kind })
 	split("### By locality (pooled, ranks 1-500)", "locality", func(p studyPair) string { return p.Locality })
+}
+
+// clustering counts the treated pairs carrying an M1 or M2 event and the
+// distinct commits those events start from. Descriptive: the bootstrap
+// resamples pairs, and one commit editing a family of four functions alike is
+// six pairs' worth of events, so this is how a reader sees how few
+// independent observations a ratio rests on.
+func clustering(sets []matchedSet) (int, int) {
+	pairs := 0
+	commits := map[string]bool{}
+	for _, s := range sets {
+		p := s.treated
+		if p.Cochanges+p.Lagged+p.Unpropagated == 0 {
+			continue
+		}
+		pairs++
+		for _, e := range p.Evidence {
+			switch e.Kind {
+			case "co-change", "lagged-sync", "unpropagated-fix":
+				commits[e.Commits[0]] = true
+			}
+		}
+	}
+	return pairs, len(commits)
 }
 
 // samples lists, per corpus, the best-ranked treated pairs that carry any

@@ -233,7 +233,7 @@ func run(repoDir, snapPath, pin, until, handPath, outPath, corpus string, weak b
 			if !strings.HasSuffix(u.file, ".go") {
 				continue
 			}
-			l := &life{key: k, dir: path.Dir(u.file), name: u.name, file: path.Base(u.file)}
+			l := &life{key: k, dir: path.Dir(u.file), name: histName(u.name), file: path.Base(u.file)}
 			h.lives[k] = l
 			dirSet[l.dir] = true
 		}
