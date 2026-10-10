@@ -3,7 +3,7 @@
 # Rank one corpus at the cost study's revision T under doppel and every
 # baseline, then judge each ranked pair on what happened over T..pin.
 #
-#   scripts/ranker-outcomes.sh [-c <corpus>] [-o <out dir>] [-s ranker|clones]
+#   scripts/ranker-outcomes.sh [-c <corpus>] [-o <out dir>] [-s ranker|clones|fusion]
 #
 # T and the pin are read from the committed cost study
 # (examples/cost-study/<corpus>.cost.json), never chosen again. The ranking is
@@ -20,6 +20,11 @@
 # TestCloneRankingsAt lists doppel beside dupl and the all-pairs detectors, and
 # the same `historylabel compare` judges them. Its files are
 # <corpus>.clone-rankings.json and <corpus>.clone-outcomes.json.
+#
+# -s fusion is the study after that (examples/fusion-outcomes.md): the same
+# dupl runs, and internal/bench's TestFusionRankingsAt lists doppel, its clone
+# inputs and their Reciprocal Rank Fusion. Its files are
+# <corpus>.fusion-rankings.json and <corpus>.fusion-outcomes.json.
 set -euo pipefail
 
 CORPUS="cobra"
@@ -30,13 +35,14 @@ while getopts ":c:o:s:" opt; do
     c) CORPUS=$OPTARG ;;
     o) OUT_DIR=$OPTARG ;;
     s) STUDY=$OPTARG ;;
-    *) echo "usage: $0 [-c corpus] [-o out-dir] [-s ranker|clones]" >&2; exit 2 ;;
+    *) echo "usage: $0 [-c corpus] [-o out-dir] [-s ranker|clones|fusion]" >&2; exit 2 ;;
   esac
 done
 case "$STUDY" in
   ranker) PREFIX=""; DEFAULT_DIR="ranker-outcomes" ;;
   clones) PREFIX="clone-"; DEFAULT_DIR="clone-outcomes" ;;
-  *) echo "unknown study $STUDY: ranker or clones" >&2; exit 2 ;;
+  fusion) PREFIX="fusion-"; DEFAULT_DIR="fusion-outcomes" ;;
+  *) echo "unknown study $STUDY: ranker, clones or fusion" >&2; exit 2 ;;
 esac
 
 MODULE=$(cd "$(dirname "$0")/.." && pwd)
@@ -83,6 +89,11 @@ if [ "$STUDY" = clones ]; then
   (cd "$MODULE" && DOPPEL_BENCH_CLONERANK_AT="$WT" DOPPEL_BENCH_CLONERANK_CORPUS="$CORPUS" \
     DOPPEL_BENCH_CLONERANK_CLONES="$WORK/clones" DOPPEL_BENCH_CLONERANK_OUT="$RANKINGS" \
     go test ./internal/bench/ -run '^TestCloneRankingsAt$' -count=1 -v -timeout 120m | grep -E '^\s+[a-z_]+_test\.go|^(ok|FAIL|---)' >&2)
+elif [ "$STUDY" = fusion ]; then
+  "$MODULE/scripts/clone-baseline.sh" -r "$WT" -o "$WORK/clones" -t 100,50 "$CORPUS"
+  (cd "$MODULE" && DOPPEL_BENCH_FUSION_AT="$WT" DOPPEL_BENCH_FUSION_CORPUS="$CORPUS" \
+    DOPPEL_BENCH_FUSION_CLONES="$WORK/clones" DOPPEL_BENCH_FUSION_OUT="$RANKINGS" \
+    go test ./internal/bench/ -run '^TestFusionRankingsAt$' -count=1 -v -timeout 120m | grep -E '^\s+[a-z_]+_test\.go|^(ok|FAIL|---)' >&2)
 else
   (cd "$MODULE" && DOPPEL_BENCH_RANKINGS_AT="$WT" DOPPEL_BENCH_RANKINGS_CORPUS="$CORPUS" \
     DOPPEL_BENCH_RANKINGS_OUT="$RANKINGS" \

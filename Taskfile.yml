@@ -177,6 +177,18 @@ tasks:
     cmds:
       - go run -C scripts/historylabel . compare-summary -reference {{.ROOT_DIR}}/examples/ranker-outcomes -overlap {{if .OUT}}-out {{.OUT}}{{end}} {{.FILES}}
 
+  fusion-outcomes:
+    desc: "Rank a corpus at the cost study's T under doppel, dupl, token clones and their RRF fusion, and judge each pair on T..pin (CORPUS=cobra OUT=<dir>; see examples/fusion-outcomes.md)"
+    vars:
+      CORPUS: '{{.CORPUS | default "cobra"}}'
+    cmds:
+      - ./scripts/ranker-outcomes.sh -s fusion -c {{.CORPUS}} {{if .OUT}}-o {{.OUT}}{{end}}
+
+  fusion-outcomes-summary:
+    desc: "Turn fusion-outcome JSON files into the comparison tables (FILES='/abs/a.fusion-outcomes.json ...', absolute paths; OUT=<summary.md>)"
+    cmds:
+      - go run -C scripts/historylabel . compare-summary -inputs {{.ROOT_DIR}}/examples/clone-outcomes -fusion -overlap {{if .OUT}}-out {{.OUT}}{{end}} {{.FILES}}
+
   pages:
     desc: Build the published site into _site/, exactly as the Pages workflow does
     vars:
