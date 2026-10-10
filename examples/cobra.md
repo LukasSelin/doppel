@@ -9,7 +9,7 @@ CLI framework; one dominant type with a long method set, plus shell-completion g
 | Corpus | [cobra](https://github.com/spf13/cobra) |
 | Pinned at | `v1.10.2` (`88b30ab89da2d0d0abb153818746c5a2d30eccec`) |
 | Project since | 2015 |
-| doppel | `d2d78d3` |
+| doppel | `783a0d4` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -285,33 +285,21 @@ _20 further concepts are modeled and not described._
 
 `++` at least four times chance, `+` at least twice, `−` at most half, `never` not once. A blank cell is ordinary company — near chance, which is not culture.
 
-| | `Value.Type+flag.Value` | `c.AddCommand+c.Find` | `c.AddCommand+c.Find+c.RemoveCommand` | `c.AddCommand+c.RemoveCommand` | `c.Deprecated+c.Runnable` | `c.DisableAutoGenTag+child.IsAdditionalHelpTopic…` | `c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand` | `c.DisableAutoGenTag+cmd.VisitParents` | `c.DisableAutoGenTag+cmd.VisitParents+cobra.Command` | `c.DisableFlagParsing+sort.Strings` | `c.LocalFlags+cobra.*Command.LocalFlags` | `c.Parent+c.HasParent` | `c.PersistentFlags+c.parentsPflags` | `c.PrintErrln+c.Parent` | `cmd.Name+c.commands` | `cmd.Root+fmt.Sprintf` | `cobra.WriteStringAndCheck+header.Section` | `f.Annotations+c.flagErrorBuf` | `f.Name+flag.ContinueOnError` | `f.Name+flag.ContinueOnError+flag.NewFlagSet` | `flag.Usage+flag.Shorthand` | `flags.HasAvailableFlags+cmd.InheritedFlags` | `fmt.Fprint+fprint` | `io.WriteString+filepath.Join` | `reflect+template` |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| **`c.AddCommand+c.Find`** |  | | | | | | | | | | | | | | | | | | | | | | | | |
-| **`c.AddCommand+c.Find+c.RemoveCommand`** |  | ++ | | | | | | | | | | | | | | | | | | | | | | | |
-| **`c.AddCommand+c.RemoveCommand`** |  | ++ | ++ | | | | | | | | | | | | | | | | | | | | | | |
-| **`c.Deprecated+c.Runnable`** |  |  |  |  | | | | | | | | | | | | | | | | | | | | | |
-| **`c.DisableAutoGenTag+child.IsAdditionalHelpTopic…`** |  |  |  |  |  | | | | | | | | | | | | | | | | | | | | |
-| **`c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand`** |  |  |  |  | + | ++ | | | | | | | | | | | | | | | | | | | |
-| **`c.DisableAutoGenTag+cmd.VisitParents`** |  |  |  |  |  | ++ | ++ | | | | | | | | | | | | | | | | | | |
-| **`c.DisableAutoGenTag+cmd.VisitParents+cobra.Command`** |  |  |  |  |  |  | ++ | ++ | | | | | | | | | | | | | | | | | |
-| **`c.DisableFlagParsing+sort.Strings`** |  |  | − | − |  |  | − | − |  | | | | | | | | | | | | | | | | |
-| **`c.LocalFlags+cobra.*Command.LocalFlags`** |  |  |  |  |  |  |  |  |  |  | | | | | | | | | | | | | | | |
-| **`c.Parent+c.HasParent`** |  |  |  |  |  |  | + |  |  | never |  | | | | | | | | | | | | | | |
-| **`c.PersistentFlags+c.parentsPflags`** |  |  |  |  |  |  |  |  |  |  |  |  | | | | | | | | | | | | | |
-| **`c.PrintErrln+c.Parent`** |  |  |  |  |  |  |  |  |  | never |  | ++ |  | | | | | | | | | | | | |
-| **`cmd.Name+c.commands`** |  |  |  | − | + |  |  |  |  |  |  |  |  |  | | | | | | | | | | | |
-| **`cmd.Root+fmt.Sprintf`** |  |  | ++ |  |  |  |  |  |  | + |  |  |  |  |  | | | | | | | | | | |
-| **`cobra.WriteStringAndCheck+header.Section`** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | | | | | | | | |
-| **`f.Annotations+c.flagErrorBuf`** |  |  |  |  |  |  |  |  |  | + |  |  |  |  |  |  |  | | | | | | | | |
-| **`f.Name+flag.ContinueOnError`** |  |  |  |  |  |  |  |  |  |  |  |  | ++ |  |  |  |  | ++ | | | | | | | |
-| **`f.Name+flag.ContinueOnError+flag.NewFlagSet`** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ++ | ++ | | | | | | |
-| **`flag.Usage+flag.Shorthand`** | ++ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | | | | |
-| **`flags.HasAvailableFlags+cmd.InheritedFlags`** | ++ |  |  |  |  |  |  |  |  |  | ++ |  |  |  |  |  |  |  |  |  |  | | | | |
-| **`fmt.Fprint+fprint`** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | | |
-| **`io.WriteString+filepath.Join`** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | |
-| **`reflect+template`** |  |  |  |  |  |  |  |  |  | + |  |  |  |  |  |  |  |  |  |  |  |  |  |  | |
-| **`subCmd.Name+strings.HasPrefix`** |  |  |  | ++ |  |  |  |  |  |  |  |  |  |  | + |  |  |  |  |  |  |  |  |  |  |
+_Showing 12 of 26 concepts — those in the strongest pairings, taken strongest first by lift weighted by how many functions it speaks for. Every cell between them is shown; the other 14 concepts are not on the grid._
+
+| | `Value.Type+flag.Value` | `c.AddCommand+c.Find` | `c.AddCommand+c.Find+c.RemoveCommand` | `c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand` | `c.DisableAutoGenTag+cmd.VisitParents` | `c.DisableFlagParsing+sort.Strings` | `c.Parent+c.HasParent` | `c.PrintErrln+c.Parent` | `f.Annotations+c.flagErrorBuf` | `f.Name+flag.ContinueOnError` | `f.Name+flag.ContinueOnError+flag.NewFlagSet` |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| **`c.AddCommand+c.Find`** |  | | | | | | | | | | |
+| **`c.AddCommand+c.Find+c.RemoveCommand`** |  | ++ | | | | | | | | | |
+| **`c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand`** |  |  |  | | | | | | | | |
+| **`c.DisableAutoGenTag+cmd.VisitParents`** |  |  |  | ++ | | | | | | | |
+| **`c.DisableFlagParsing+sort.Strings`** |  |  | − | − | − | | | | | | |
+| **`c.Parent+c.HasParent`** |  |  |  | + |  | never | | | | | |
+| **`c.PrintErrln+c.Parent`** |  |  |  |  |  | never | ++ | | | | |
+| **`f.Annotations+c.flagErrorBuf`** |  |  |  |  |  | + |  |  | | | |
+| **`f.Name+flag.ContinueOnError`** |  |  |  |  |  |  |  |  | ++ | | |
+| **`f.Name+flag.ContinueOnError+flag.NewFlagSet`** |  |  |  |  |  |  |  |  | ++ | ++ | |
+| **`flag.Usage+flag.Shorthand`** | ++ |  |  |  |  |  |  |  |  |  |  |
 
 ### What travels with what
 

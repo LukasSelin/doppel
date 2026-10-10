@@ -581,12 +581,26 @@ func assocRank(a reporter.AssocRow) float64 {
 	return math.Log(lift) * math.Log(1+float64(a.Count))
 }
 
+// maxMatrixConcepts bounds the concept grid. A grid is concepts², so the bound
+// has to be on the axis rather than the cells: twelve concepts is eleven
+// columns, about what a rendered markdown table can hold before it scrolls
+// sideways — the same density maxOverviewNodes keeps the package diagrams at.
+const maxMatrixConcepts = 12
+
 // practiceMatrix builds the concept-to-concept co-occurrence grid.
 //
-// Unlike every other list in this section it is not a sample: the vocabulary is
-// a fixed, small set of concrete concepts, so the grid is bounded by
-// construction and can show every cell — including the blank ones, which are the ordinary company
-// that a ranked list never has room to mention.
+// It used to show every concept, on the argument that a fixed fourteen-tag
+// vocabulary bounds the grid by construction. The vocabulary is learned now and
+// has no natural size — kubernetes learns 1 091 concepts, and the whole grid was
+// 3.1MB of a 3.2MB report — so past maxMatrixConcepts it is a sample like every
+// other list here, and says so.
+//
+// The sample is the concepts in the strongest pairings: reported tag~tag
+// associations are taken strongest first (matrixCellWeight) and both of their
+// concepts admitted until the axis is full. Selecting by cell rather than by a
+// per-concept total is what keeps a shown concept's strongest partner on the
+// grid beside it. Within the sample every cell is still shown, blank ones
+// included — they are the ordinary company a ranked list never mentions.
 func practiceMatrix(ov *reporter.Overview, res Result) {
 	tags := make([]string, 0, len(ov.Concepts))
 	for _, c := range ov.Concepts {
@@ -594,6 +608,23 @@ func practiceMatrix(ov *reporter.Overview, res Result) {
 	}
 	if len(tags) < 2 {
 		return
+	}
+	total := len(tags)
+	known := make(map[string]bool, len(tags))
+	for _, t := range tags {
+		known[t] = true
+	}
+	var assocs []culture.Association
+	for _, a := range res.Culture.Associations() { // a slice, in culture's fixed order
+		if a.Kind == culture.TagTag && known[a.A] && known[a.B] {
+			assocs = append(assocs, a)
+		}
+	}
+	if total > maxMatrixConcepts {
+		tags = strongestConcepts(assocs, len(res.Units), maxMatrixConcepts)
+		if len(tags) < 2 {
+			return
+		}
 	}
 	sort.Strings(tags)
 	at := make(map[string]int, len(tags))
@@ -605,10 +636,7 @@ func practiceMatrix(ov *reporter.Overview, res Result) {
 	for i := range cells {
 		cells[i] = make([]string, len(tags))
 	}
-	for _, a := range res.Culture.Associations() {
-		if a.Kind != culture.TagTag {
-			continue
-		}
+	for _, a := range assocs {
 		i, iok := at[a.A]
 		j, jok := at[a.B]
 		if !iok || !jok {
@@ -628,7 +656,55 @@ func practiceMatrix(ov *reporter.Overview, res Result) {
 		// Symmetric: fill both, the renderer reads the lower triangle.
 		cells[i][j], cells[j][i] = state, state
 	}
-	ov.Matrix = &reporter.ConceptMatrix{Tags: tags, Cells: cells}
+	ov.Matrix = &reporter.ConceptMatrix{Tags: tags, Cells: cells, Total: total}
+}
+
+// strongestConcepts admits concepts from the strongest cells first, both ends
+// of a cell at a time, until limit concepts are in. A cell whose second end no
+// longer fits contributes its first. Ties break on the two names, so the
+// sample never depends on the order culture happened to report them in.
+func strongestConcepts(assocs []culture.Association, n, limit int) []string {
+	ranked := make([]culture.Association, len(assocs))
+	copy(ranked, assocs)
+	sort.SliceStable(ranked, func(i, j int) bool {
+		wi, wj := matrixCellWeight(ranked[i], n), matrixCellWeight(ranked[j], n)
+		if wi != wj {
+			return wi > wj
+		}
+		if ranked[i].A != ranked[j].A {
+			return ranked[i].A < ranked[j].A
+		}
+		return ranked[i].B < ranked[j].B
+	})
+	in := make(map[string]bool, limit)
+	out := make([]string, 0, limit)
+	for _, a := range ranked {
+		for _, t := range [2]string{a.A, a.B} {
+			if len(out) < limit && !in[t] {
+				in[t] = true
+				out = append(out, t)
+			}
+		}
+		if len(out) == limit {
+			break
+		}
+	}
+	return out
+}
+
+// matrixCellWeight is |PMI| weighted by how many functions the finding speaks
+// for — assocRank's rule, extended so the two directions share one scale. A
+// positive association's evidence is the functions that carry both; a negative
+// one's is the functions chance said should have, which is the larger of the
+// observed and expected counts either way. A never (PMI −Inf) takes −ln N, the
+// largest finite repulsion the corpus can express — the arena's convention.
+func matrixCellWeight(a culture.Association, n int) float64 {
+	pmi := a.PMI
+	if math.IsInf(pmi, -1) {
+		pmi = -math.Log(float64(max(n, 2)))
+	}
+	evidence := math.Max(float64(a.Count), a.Expected)
+	return math.Abs(pmi) * math.Log(1+evidence)
 }
 
 // practiceDrift names the functions realizing a concept unlike their peers.

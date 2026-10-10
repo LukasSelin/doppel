@@ -172,16 +172,18 @@ type AssocGroup struct {
 	More int
 }
 
-// ConceptMatrix is the whole concept-to-concept co-occurrence structure.
+// ConceptMatrix is the concept-to-concept co-occurrence grid over Tags.
 //
-// It is bounded by construction — the vocabulary is a fixed, small set of
-// concrete concepts and a corpus uses some subset — so unlike every other list
-// here it can show everything rather than a strongest-first sample. Widening the
-// taxonomy widens this table; it does not turn it into a sample. Cells[i][j] is meaningful
-// for i > j: the lower triangle, since co-occurrence is symmetric.
+// The vocabulary is learned per corpus and the grid is concepts², so it is a
+// sample once the vocabulary outgrows the axis bound: Tags is the concepts in
+// the strongest pairings and Total how many there were, and the renderer says
+// so when the two differ. Within the sample every cell is shown, blank ones
+// included. Cells[i][j] is meaningful for i > j: the lower triangle, since
+// co-occurrence is symmetric. A zero Total reads as len(Tags) — not a sample.
 type ConceptMatrix struct {
 	Tags  []string
 	Cells [][]string // "", "+", "++", "-", "never"
+	Total int        // concepts in the vocabulary the sample was drawn from
 }
 
 // ConceptPractice is how this corpus normally realizes one concept — the
