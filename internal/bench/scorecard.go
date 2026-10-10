@@ -62,6 +62,13 @@ func Score(run *Run, lf LabelsFile) Scorecard {
 
 // ScoreWith is Score under an explicit rank key, for the sensitivity sweep.
 func ScoreWith(run *Run, lf LabelsFile, ro analyzer.RankOptions) Scorecard {
+	return ScoreBy(run, lf, func(p analyzer.SimilarPair) float64 { return analyzer.RankKey(p, ro, run.Units) })
+}
+
+// ScoreBy is Score under an arbitrary rank key, through
+// analyzer.SortForReportBy: the seam the size-aware rank variants are
+// guarded through (size_rank_test.go).
+func ScoreBy(run *Run, lf LabelsFile, key func(analyzer.SimilarPair) float64) Scorecard {
 	pairs := run.Pairs
 
 	// Candidates are indexed by their unordered name pair, each list in the
@@ -74,13 +81,13 @@ func ScoreWith(run *Run, lf LabelsFile, ro analyzer.RankOptions) Scorecard {
 		retrieved[sp.key] = append(retrieved[sp.key], sp)
 	}
 
-	kept, suppressed := analyzer.SortForReportWith(pairs, run.Units, 0, 2, ro)
+	kept, suppressed := analyzer.SortForReportBy(pairs, key, 0, 2)
 
 	ranked := make(map[string][]scoredPair, len(kept))
 	for i, p := range kept {
 		sp := run.scoredPair(p)
 		sp.rank = i + 1
-		sp.rankKey = analyzer.RankKey(p, ro, run.Units)
+		sp.rankKey = key(p)
 		ranked[sp.key] = append(ranked[sp.key], sp)
 	}
 

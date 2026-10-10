@@ -162,7 +162,8 @@ scripts/        timeline.sh: walks a git history and analyses each revision at o
                 postedit-replay.sh: replays a history through `doppel hook post-edit`, one session per commit — the post-edit floor's measurement.
                 clone-baseline.sh: runs dupl (installed into GOBIN, never go.mod) over the ladder for TestBaselines' method 8, or over one tree with -r.
                 ranker-outcomes.sh: ranks a corpus at the cost study's T under every baseline (TestRankingsAt) and judges the lists on T..pin (`historylabel compare`);
-                -s clones runs dupl on the T tree and lists doppel beside clone detectors that search the whole tree (TestCloneRankingsAt).
+                -s clones runs dupl on the T tree and lists doppel beside clone detectors that search the whole tree (TestCloneRankingsAt);
+                -s size adds the size-aware rank variants (TestSizeRankingsAt) and judges under -sweep-scope commit.
                 history-labels.sh + historylabel/ (its own Go module): derives golden labels from what maintainers did to each pair in git history.
                 The only code in the repo that knows git exists, and deliberately outside the doppel module
 ```
@@ -3811,6 +3812,29 @@ functions for exactly this reason, and the first version of them did not and fai
     two or three independent commits, so a zero-scoring baseline's lower bound sits at exactly 0;
     only prometheus (26 clusters) has the events to decide. A new outcome study should cluster on
     commits from the start and add independent events (origins, corpora), not depth.
+  - **The size-aware rank study** (`TestSizeRankingsAt`, guard `DOPPEL_BENCH_SIZERANK_AT=<tree>`,
+    driven by `scripts/ranker-outcomes.sh -s size` and `scripts/rolling-origin.sh -s size`;
+    `task size-aware-rank`, `task size-aware-rank-summary`, `task size-aware-rank-golden`;
+    `examples/size-aware-rank.md`) tests whether multiplying doppel's key by a duplicated-size
+    term closes the gap to clone detectors. Three variants live in `sizeVariants` beside the
+    development candidates (`sizeCandidates`), ranked through `analyzer.SortForReportBy` — a seam
+    production calls only with `RankKey` — and guarded against the cobra hand labels by
+    `TestSizeVariantsGolden` through `ScoreBy`. Two pieces outlive the study. **`historylabel
+    compare -sweep-scope commit`** makes a pair's judgment pair-local: the sweep, family, adopter
+    and campaign counts read the commit's whole Go diff instead of the directories the run
+    happens to walk (`TestCommitScopeIsPairLocal`; default `walked` reproduces every committed
+    file byte for byte). Use it for any new outcome study, and never compare its numbers with a
+    walked-scope file. **`historylabel size-summary`** pools M1@100 at matched depth (each list
+    cut at `min(nX, nY, 100)`) with the paired-clustered bootstrap, corpora weighted equally, and
+    a floor of three independent event clusters per unit. Development showed every size *reward*
+    lifts one large cobra refactor pair above the `MarkFlags*` merges, so the golden merge-mean
+    guardrail and a size reward conflict by construction. **Measured on nine held-out rolling-origin
+    windows:** K-size (`key × containment × smaller node count`) beats production doppel (+0.010
+    [+0.004, +0.018] pooled M1@100) and moves the gap toward four of five detectors while dropping
+    one small co-changing pair; K-subtree beats doppel but not the dupl gap; K-floor, the one
+    variant inside the guardrails, is not distinguishable. No variant meets every criterion, and
+    no default moved. At matched depth on the pair-local judge, production doppel itself beats
+    dupl t=50 — the rolling-origin "dupl beats doppel" verdict was a one-pair list.
   - `TestSweep` (guard `DOPPEL_BENCH_SWEEP=1`) is the sensitivity sweep: each hand-set constant
     varied one at a time (±50% or the natural alternatives), only the stages it reaches re-run,
     and the labeled rankings reported with a verdict — `inert` (no label moved), `moves`,

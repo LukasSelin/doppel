@@ -58,6 +58,7 @@ type compareOut struct {
 	Pin           string        `json:"pin"`
 	PinDate       string        `json:"pinDate"`
 	WindowCommits int           `json:"windowCommits"`
+	SweepScope    string        `json:"sweepScope,omitempty"` // set only under -sweep-scope commit
 	Calibration   string        `json:"calibration"`
 	Functions     int           `json:"functions"`
 	Union         int           `json:"union"`
@@ -76,7 +77,12 @@ func compareMain(args []string) {
 	outPath := fs.String("out", "", "write the outcomes JSON here")
 	fs.IntVar(&minCochanges, "min-cochanges", minCochanges, "as for labelling")
 	minDoppel := fs.Int("min-doppel", 0, "refuse (exit 3) before reading the window when doppel's list has fewer pairs")
+	fs.StringVar(&sweepScope, "sweep-scope", sweepScope, "what a commit's sweep, family and campaign counts read: walked (the tracked directories, every earlier study's judge) or commit (the commit's whole Go diff, so a pair's outcome does not depend on the other pairs judged)")
 	fs.Parse(args)
+	if !validScope(sweepScope) {
+		fmt.Fprintf(os.Stderr, "historylabel compare: -sweep-scope %q: want %s or %s\n", sweepScope, scopeWalked, scopeCommit)
+		os.Exit(2)
+	}
 	if *repoDir == "" || *rankPath == "" || *since == "" || *pin == "" || *outPath == "" {
 		fs.Usage()
 		os.Exit(2)
@@ -163,7 +169,10 @@ func runCompare(repoDir, rankPath, since, pin, outPath string) error {
 		out.Lists = append(out.Lists, ol)
 	}
 
-	h := &history{r: r, ts: ts, lives: map[string]*life{}, pinSHA: pinSHA}
+	h := &history{r: r, ts: ts, lives: map[string]*life{}, pinSHA: pinSHA, scope: sweepScope}
+	if sweepScope == scopeCommit {
+		out.SweepScope = scopeCommit
+	}
 	dirSet := map[string]bool{}
 	for _, p := range out.Pairs {
 		for _, key := range []string{p.A, p.B} {
