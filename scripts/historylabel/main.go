@@ -18,6 +18,10 @@
 // The pairs judged are the snapshot's candidate set plus every hand-labelled
 // pair. Functions are followed by name: history before a rename is invisible,
 // which costs evidence and never invents it.
+//
+// Two subcommands reuse the same walk for the cost study (study.go,
+// summarize.go): `historylabel study` measures one corpus over a window,
+// `historylabel summarize` turns the per-corpus files into rates and ratios.
 package main
 
 import (
@@ -110,6 +114,16 @@ func classOf(v string, weak bool) string {
 }
 
 func main() {
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "study":
+			studyMain(os.Args[2:])
+			return
+		case "summarize":
+			summarizeMain(os.Args[2:])
+			return
+		}
+	}
 	repoDir := flag.String("repo", "", "full-history clone of the corpus")
 	snapPath := flag.String("snapshot", "", "doppel analyze --format json --top 0 --max-per-func 0, run at -pin")
 	pin := flag.String("pin", "", "revision the snapshot was taken at (the benchmark's pinned commit)")
@@ -230,7 +244,7 @@ func run(repoDir, snapPath, pin, until, handPath, outPath, corpus string, weak b
 	}
 	sort.Strings(dirs)
 	fmt.Fprintf(os.Stderr, "walking history of %d directories for %d functions in %d pairs\n", len(dirs), len(h.lives), len(pairs))
-	if err := h.walk(pin, until, dirs); err != nil {
+	if err := h.walk("", pin, until, dirs); err != nil {
 		return err
 	}
 	sweeps := 0
