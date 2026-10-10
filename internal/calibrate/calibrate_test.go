@@ -128,7 +128,7 @@ func TestRunMirrorsEligibilityAndPopulation(t *testing.T) {
 			shapeIdx = append(shapeIdx, i)
 		}
 	}
-	for _, p := range samplePopulation(units, shapeIdx, o.MaxPairs, Seed(units)) {
+	for _, p := range samplePopulation(units, shapeIdx, o.MaxPairs, identities(units, order), shapeSalt) {
 		for _, i := range p {
 			if units[i].Fingerprint.Nodes < o.MinNodes {
 				t.Fatalf("shape null sampled a unit below min-nodes: %d", i)
@@ -182,5 +182,42 @@ func TestRunDeclinesSmallCorpora(t *testing.T) {
 	}
 	if bad := Run(units, docs, comp(), labelWeights(units), Options{Rate: 0}); bad.Applied() {
 		t.Error("rate 0 must decline")
+	}
+}
+
+// TestSampleStableUnderInsertion pins what bottom-k buys over a seeded
+// generator: adding one function to the population leaves the null sample
+// almost untouched. Only pairs involving the new function can enter, and each
+// entrant displaces one incumbent, so the churn is bounded by that function's
+// share of the pairs — about 2/m of the sample — instead of the whole draw.
+func TestSampleStableUnderInsertion(t *testing.T) {
+	units, _ := fixture(300)
+	k := 2000
+	key := func(us []parser.CodeUnit, p [2]int) string {
+		return us[p[0]].Name + "|" + us[p[1]].Name
+	}
+	draw := func(us []parser.CodeUnit) map[string]bool {
+		order := canonicalOrder(us)
+		got := map[string]bool{}
+		for _, p := range samplePopulation(us, order, k, identities(us, order), shapeSalt) {
+			got[key(us, p)] = true
+		}
+		return got
+	}
+	before := draw(units)
+	grown := append(append([]parser.CodeUnit{}, units...), parser.CodeUnit{Name: "Added", Package: "q", File: "q/b.go", StartLine: 1})
+	after := draw(grown)
+	kept := 0
+	for p := range before {
+		if after[p] {
+			kept++
+		}
+	}
+	// 2/m of 2000 is ~13 displaced pairs; allow generous slack.
+	if lost := len(before) - kept; lost > 60 {
+		t.Errorf("adding one unit displaced %d of %d null pairs; bottom-k should displace ~%d", lost, len(before), 2*k/len(units))
+	}
+	if len(after) != len(before) {
+		t.Errorf("sample size moved %d -> %d", len(before), len(after))
 	}
 }

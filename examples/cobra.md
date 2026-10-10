@@ -9,7 +9,7 @@ CLI framework; one dominant type with a long method set, plus shell-completion g
 | Corpus | [cobra](https://github.com/spf13/cobra) |
 | Pinned at | `v1.10.2` (`88b30ab89da2d0d0abb153818746c5a2d30eccec`) |
 | Project since | 2015 |
-| doppel | `783a0d4` |
+| doppel | `a7601b6` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -24,18 +24,18 @@ Scanning . ...
 Learning concept vocabulary...
 Lexicon: 26 concepts (2 seeded, 24 emergent), 992/2492 features above 98 df, 59 functions unlabeled
 Generating concept documents...
-Calibration: rate 0.01 over 14535 shape / 20000 overlap null pairs -> threshold 0.44, struct-min 0.53, family-min 0.44
+Calibration: rate 0.01 over 14535 shape / 20000 overlap null pairs -> threshold 0.44, struct-min 0.52, family-min 0.44
 Found 269 functions. Retrieving candidates...
 Retrieval: shape 135, concept 811, call 712 -> 1401 unique pairs
   concept-only 44.0%  call-only 37.8%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1705
 Running structural comparison on 1401 pairs...
   Concept views: 42 of 1401 compared pairs disagree with the taxonomy (1 vocabulary the tree misses, 41 kinship the vocabularies lack)
-  239 pairs remain after struct-min=0.53 filter
+  258 pairs remain after struct-min=0.52 filter
 Culture: 26 concepts modeled, 184 associations, 10 unusual realizations
 Habitats: 2 modeled, 0 misfits; most uniform cobra (norm 0.93), most diverse doc (norm 0.93)
 Conventions: strongest f.Name+flag.ContinueOnError+flag.NewFlagSet (0.59), loosest Value.Type+flag.Value (0.23)
 Ecosystems: 235 profiled (171 dominance, 62 coalition, 0 conflict, 2 weak)
-Families: 19 over 43 components, 57 functions in a family, 9 edges completed
+Families: 20 over 44 components, 60 functions in a family, 11 edges completed
 ```
 
 # Code Similarity Report
@@ -849,7 +849,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ## Families
 
-19 families, 57 functions in a family, largest 6 members; 9 edges scored here that retrieval never proposed
+20 families, 60 functions in a family, largest 6 members; 11 edges scored here that retrieval never proposed
 
 ### Family 1 — 4 members, every pair `>= 0.44` code-shape, evidence `1577`
 
@@ -980,5 +980,5 @@ flowchart LR
 | `flag_groups.go:49` | `cobra.*Command.MarkFlagsOneRequired` | `(...string)` | f.Annotations+c.flagErrorBuf 0.61, c.DisableFlagParsing+sort.Strings 0.50 |
 | `flag_groups.go:65` | `cobra.*Command.MarkFlagsMutuallyExclusive` | `(...string)` | f.Annotations+c.flagErrorBuf 0.61, c.DisableFlagParsing+sort.Strings 0.45 |
 
-_14 more families not listed._
+_15 more families not listed._
 
