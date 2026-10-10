@@ -360,3 +360,138 @@ whether the doppel-versus-detector gap closed by (b).
 - **Origins.** The origin tables the script writes equal the committed
   rolling-origin ones.
 - **Unresolved units** are reported per unit.
+
+## Results
+
+Everything below was produced after the pre-registration above was committed
+(`a3471af`, pushed before any test origin was ranked), and nothing above this
+heading was edited afterwards. Reproduce with `task size-aware-rank
+CORPUS=<name>` per corpus, then `task size-aware-rank-summary`; the
+guardrails with `task size-aware-rank-golden`. The generated tables are
+[size-aware-rank/test.md](size-aware-rank/test.md) (the nine test units) and
+[size-aware-rank/dev.md](size-aware-rank/dev.md) (the five development units).
+The per-pair rows are `size-aware-rank/<corpus>.o<k>.size-outcomes.json`
+(test) and `<corpus>.size-outcomes.json` (development).
+
+### Validity checks
+
+- **Production lists reproduce.** At all nine test units, doppel's list and the
+  six detector lists equal, pair for pair and in order, the lists of the same
+  name in `examples/rolling-origin/<corpus>.o<k>.clone-outcomes.json`.
+- **The committed rolling-origin files reproduce under the default judge.**
+  All eighteen (`*.o<k>.outcomes.json` and `*.o<k>.clone-outcomes.json`) were
+  re-ranked and re-judged with `scripts/rolling-origin.sh` and are
+  byte-identical to the committed ones.
+- **Determinism.** cobra k = 2, ranked and judged a second time: rankings and
+  outcomes byte-identical.
+- **Origins.** The tables the script wrote equal the committed rolling-origin
+  ones line for line (they differ only in line endings, from the Windows
+  checkout). gin k = 2 was again inadmissible (80 Go commits).
+- **Unresolved units: 0** at every unit. Every file records
+  `"sweepScope": "commit"`.
+
+### Verdict, by the pre-registered rule
+
+| variant | (a) vs doppel: pooled D [95% CI] | verdict | (b) gap change > 0 | verdicts worse | (c) guardrails | improving in the right direction |
+| --- | --- | --- | ---: | ---: | --- | --- |
+| K-size | +0.0103 [+0.0038, +0.0175] | **improved** | 4 of 5 | 0 | fail (merge 5.0, FP 51.5) | **no** (fails c) |
+| K-subtree | +0.0072 [+0.0025, +0.0126] | **improved** | 3 of 5 | 0 | fail (merge 5.8) | **no** (fails b, c) |
+| K-floor | +0.0025 [+0.0000, +0.0062] | not distinguishable | 3 of 5 | 1 | pass | **no** (fails a, b) |
+
+Six units counted in each of the three primary comparisons (cobra k = 3,
+prometheus k = 2 and 3, hugo k = 3, moby k = 2 and 3), four corpora. cobra
+k = 2, gin k = 3 and hugo k = 2 fell below the three-cluster floor.
+
+**No variant meets all four criteria.** One at a time:
+
+- **K-size improved on held-out windows.** Its lower bound clears zero, and it
+  moves the gap toward doppel against four of the five detectors and against
+  none the wrong way. Under this study's rule it beats dupl t=100 (+0.083
+  [+0.003, +0.163], where doppel is not distinguishable), dupl t=50 and token
+  clones at 100 nodes, and is not distinguishable from token clones and
+  code-shape at 50 nodes, as doppel is. It fails only the label guardrail,
+  which was known before the test.
+- **K-subtree improved on held-out windows** but did not close the gap by the
+  rule: against both dupl rows its gap change is negative (−0.021 and −0.005).
+  Its development edge, moby's `Prune` sweep, has no counterpart here.
+- **K-floor is not distinguishable from doppel.** It is the one variant inside
+  the guardrails, and held out it changes almost nothing (its top 100 differs
+  from doppel's by 0-15 pairs per unit). Its verdict against token clones at
+  100 nodes falls from "doppel beats it" to not distinguishable.
+
+**Did the doppel-versus-detector gap close?** Partly, and only for K-size. The
+effect is small: +0.010 of M1@100 pooled, the same order as the
+doppel−detector differences themselves. The held-out picture of doppel against
+the detectors is also different from the rolling-origin study's, because this
+study compares at matched depth on a pair-local judge: here **doppel itself
+beats dupl t=50** (+0.035 [+0.007, +0.062]) and token clones at 100 nodes, and
+is level with dupl t=100, token clones at 50 nodes and code-shape at 50 nodes.
+The rolling-origin verdict that dupl t=50 beats doppel rested on a one-pair
+list at cobra k = 3 scored against doppel's top 100. At matched depth that
+unit compares the two lists' top one, which is the same pair, so d = 0.
+
+Against the expectations stated in advance:
+
+1. **Shrinkage, as expected.** Pooled development D was +0.028 (K-size),
+   +0.041 (K-subtree) and +0.005 (K-floor); held out it is +0.010, +0.007 and
+   +0.003. K-size and K-subtree swapped order.
+2. **prometheus decides, as expected, together with moby k = 2.** K-size's
+   held-out gain comes from prometheus k = 2 (+0.024, CI includes 0) and k = 3
+   (+0.020) and moby k = 2 (+0.035). moby's development gain did not recur for
+   K-subtree, as anticipated.
+3. **(a): right for all three.** K-size and K-subtree beat doppel, K-floor is
+   not distinguishable.
+4. **(b): wrong for K-subtree**, whose gap change was positive for only three
+   detectors.
+5. **cobra and gin mostly fell below the floor.** cobra k = 2 and gin k = 3
+   did; cobra k = 3 did not (three clusters). hugo k = 2 also fell below it,
+   which was not foreseen.
+6. **(d): as expected.** On prometheus, hugo and moby, K-size drops 21-48 of
+   doppel's small pairs per unit, K-subtree 17-31, K-floor 1-17. Over all nine
+   units the three variants together drop **one small pair with an event**
+   (K-size, prometheus k = 2: `discovery.*Manager.Run` /
+   `legacymanager.*Manager.Run`, 8 lines each). At gin k = 3 K-size drops 6
+   small pairs and K-subtree and K-floor 3, none with an event.
+
+### What the numbers show (descriptive)
+
+- **What K-size adds held out** is larger, partly alike pairs that later
+  co-changed: prometheus's two `registerProviders`, the EC2/Lightsail
+  `refresh` pair (114 and 56 lines), `metricMetadata`/`targetMetadata`,
+  `scrapePool.reload`/`sync` (eight commits), `writeLabelIndex`/
+  `writePostingsOffsetTable`, `Expand`/`ExpandHTML`; moby's
+  `ServiceCreate`/`ServiceUpdate` at two layers, the two layer-download
+  functions, `RegisterByGraphID`/`registerWithDescriptor`, overlay/overlay2
+  `Init`. That is the kind of pair the diagnosis named, and they come from many
+  separate commits rather than one sweep.
+- **The cost is on the hand labels, not on outcomes.** Every size reward lifts
+  cobra's `GenMarkdownCustom`/`GenReSTCustom` refactor above the `MarkFlags*`
+  merges. The outcome data never punish that, because a large refactor pair
+  that maintainers keep in step is exactly what the outcome metric rewards.
+- **The top 100 gets larger.** K-size's median smaller side rises from 18 to
+  27 lines on prometheus k = 2 and from 23 to 27 on moby k = 2. Its top 100
+  shares 52-79 pairs with doppel's on the large corpora and 94-100 on the
+  small ones.
+
+### Deviations from the pre-registration
+
+- None in the design. The default-judge reproduction had one `git worktree
+  add` hang (cobra k = 3, clone method set) with five parallel runs sharing
+  history clones. It was killed and that one unit re-run alone; its output is
+  byte-identical to the committed file.
+
+### What this means
+
+- **A size term buys a small held-out improvement on maintenance outcomes, in
+  the right direction.** K-size (`key × containment × smaller node count`) is
+  the clearest case: it beats production doppel on windows it was not developed
+  on, moves the gap toward four of five clone detectors, and drops almost none
+  of the small co-changing families doppel reaches below a clone floor.
+- **It conflicts with the cobra hand labels by construction**, through one
+  rank swap (merge mean 4.8 → 5.0, FP mean 52.5 → 51.5). The pre-registered
+  guardrail fails, so by this study's own criteria **no variant is a
+  demonstrated improvement**, and nothing here changes a production default.
+- **Exact shared subtrees and soft floors did not do better.** K-subtree's
+  development gain came from one sweeping commit that had no counterpart held
+  out, and K-floor, the variant that keeps the labels, changes too little to
+  matter.
