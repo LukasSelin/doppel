@@ -202,3 +202,162 @@ corpora or of the private labels directory is committed, in this file, in a
 commit message, in the PR or in `CLAUDE.md`. Committed private results are
 aggregates, and per-corpus rows appear only as "private corpus A/B/C" counts
 that name nothing.
+
+## Results
+
+Everything below was produced after the pre-registration above was committed
+(`db08150`, pushed before any check was scored), and nothing above this
+heading was edited afterwards. Reproduce with `task size-aware-check-labels
+LABELS=<dir> EXTRA='<roots>'` (check 1; its log names private pairs),
+`task size-aware-check-outcomes` (check 2) and `task size-aware-check-top20`
+(check 3). The public outputs are in [size-aware-check/](size-aware-check/):
+`chi.md` and `chi.o2.size-outcomes.json` (check 2), the origin tables, and for
+check 3 `top20.txt` (both top 20s per corpus, all three variants),
+`blind.tsv`, `top20-classes.tsv` (the classification, written before
+`directions.tsv` was opened) and `directions.tsv`.
+
+### Verdict, by the pre-registered rule
+
+| criterion | production | K-size | result |
+| --- | --- | --- | --- |
+| 1a pooled violations, four private label sets | 45 | 47 | **fail** |
+| 1b pooled false positives in the top 20 | 20 | 20 | pass |
+| 1c merge mean at most 1.0 rank worse, every corpus with a merge | — | +1.0, +18.0, +21.0 on private A, B, C; +0.2 on cobra | **fail** (B, C) |
+| 2 no judged chi/conc unit with CI upper bound < 0 | — | chi k = 2: +0.000 [+0.000, +0.000], 2 event clusters, below the floor | pass, **vacuously** |
+| 3 entering FP-class pairs ≤ leaving, four ladder rungs | — | 1 entering against 6 leaving | pass |
+
+**K-size is not safe to propose.** Criteria 1a and 1c fail. Criterion 2
+passes only because no unit could judge it. Criterion 3 passes.
+
+### Check 1: the private labels
+
+Production against K-size, per label set. Means are given as K-size's change,
+so no private corpus's rank distribution is published.
+
+| label set | violations | FP in top 20 | FP above worst merge | merge mean | refactor mean | FP mean |
+| --- | --- | --- | --- | --- | --- | --- |
+| private A | 24 → 22 | 13 → 12 | 11 → 10 | +1.0 | +0.8 | +0.7 |
+| private B | 9 → 14 | 5 → 7 | 4 → 7 | +18.0 | +12.6 | −1.4 |
+| private C | 11 → 10 | 1 → 0 | 10 → 10 | +21.0 | +20.1 | +91.0 |
+| doppel's own (one label) | 1 → 1 | 1 → 1 | 0 → 0 | — | — | +2.0 |
+| **pooled** | **45 → 47** | **20 → 20** | **25 → 27** | **+13.3** | **+11.1** | **+23.1** |
+| cobra (public, not pooled) | 0 → 0 | 0 → 0 | 0 → 0 | +0.2 | −0.3 | −1.0 |
+
+The secondary rows, pooled over the same four sets: K-subtree violations 40,
+false positives in the top 20 17, above the worst merge 23; K-floor 40, 18 and
+22. Both are below production on all three counts. On the per-corpus merge
+criterion K-subtree is +9.0 on B and +12.2 on C, and K-floor +6.2 on C (−3.0
+on B, −1.5 on A), so both would fail 1c too.
+
+**The mirror check.** Eleven labelled false positives across the private sets
+rank higher under K-size than under production. Read by hand: **four are
+inverse mirror pairs** (encode/decode, read/write twice, one conversion each
+way), **five are sibling methods or parallel implementations** of one API, and
+two are other false positives (two separate programs' operation tables, and a
+read path's internal opener against its public entry point). Eight of the
+eleven sit in the top 20 under K-size:
+
+- **The predicted failure happened.** On private A a large encode/decode
+  method pair (a few hundred nodes a side) rises from 3 to **1**, displacing a
+  labelled merge, and a large read/write pair rises 16 → 8. On private B a
+  large read/write pair rises 8 → 6.
+- **The largest single move is not a mirror.** On private B two separate
+  programs' operation tables, over a thousand nodes each, rise from 22 to
+  **2**.
+- **What leaves is small.** The two false positives K-size pushes out of the
+  top 20 are short sibling pairs (under 80 nodes a side). Inside the top 20 the
+  same holds: small accessor and arithmetic siblings drop (B's top pair, a
+  min/max pair of about 60 nodes, falls 1 → 13).
+
+So the number of false positives in the top 20 does not move (criterion 1b),
+but their **size and rank** do: K-size swaps small sibling false positives for
+large mirror and multi-program pairs, and puts one at rank 1 and one at rank 2.
+
+**The merges that drop are mid-sized exact clones.** On B, the corpus's one
+merge (about 50 nodes a side) falls 14 → 32; on C, a merge of about 140 nodes
+falls 4 → 13 and one of about 25 nodes 54 → 139. Containment × the smaller
+node count rewards size, so a large, partly alike pair (refactor or false
+positive) outranks a mid-sized exact clone. That is the cobra mechanism
+(`GenMarkdownCustom`/`GenReSTCustom` above `MarkFlags*`): 0.2 ranks of merge
+mean there, 18 and 21 on two private corpora.
+
+### Check 2: chi and conc maintenance outcomes
+
+| unit | window | Go commits | admissible | result |
+| --- | --- | ---: | --- | --- |
+| chi k = 1 | 2022-08-12 .. 2026-08-20 (`b6a2c5a90`, the cost study's rule at 4 years) | 92 | **no**, under 100 | — |
+| chi k = 2 | 2018-08-16 .. 2022-08-12 (`44932d207`) | 146 (132 replayed) | yes; doppel lists 500 pairs of a 512-pair union | K-size − doppel **+0.000 [+0.000, +0.000]**, 2 event clusters, below the floor of 3: reported, not judged |
+| chi k = 3 | none (no commit 12 years before the pin) | 0 | no | — |
+| conc k = 1, 2, 3 | none: the repository starts in 2023, under 2 years before its pin | 0 | **no** | — |
+
+At chi k = 2 production and all three variants score M1@100 0.015 (2 pairs
+with an event, 6 commits). K-size's top 100 shares 95 pairs with production's
+and drops 5 of production's 95 small pairs, none with an event. **Criterion 2
+passes vacuously: no chi or conc unit can measure a difference.** Small
+corpora remain outside what the outcome studies can say, as cobra and gin
+mostly were in #82. Full tables in [size-aware-check/chi.md](size-aware-check/chi.md).
+
+### Check 3: label-free top-20 inspection
+
+Validity: production's top 10 equals the committed `examples/<corpus>.md` top
+10, pair for pair and in order, on all four rungs.
+
+| corpus | entering (K-size) | leaving (production) |
+| --- | --- | --- |
+| chi | `ClientIPFromHeader`/`ClientIPFromXFFTrustedProxies` (mirror/sibling), `RedirectSlashes`/`URLFormat` (refactor) | `URLParam`/`URLParamFromCtx` (merge-worthy), `compressResponseWriter.Push`/`.Close` (mirror/sibling) |
+| conc | none | none |
+| cobra | `AddCommand`/`RemoveCommand` (refactor), `genMan`/`GenMarkdownCustom` and `genMan`/`GenReSTCustom` (refactor) | `SetUsageTemplate`/`SetHelpTemplate`/`SetVersionTemplate`, three pairs (mirror/sibling) |
+| gin | `LoadHTMLGlob`/`LoadHTMLFS` (refactor), `ProtoBuf.Render`/`TOML.Render` (merge-worthy) | `Context.Done`/`.Err`, `StaticFile`/`StaticFileFS` (mirror/sibling) |
+| **sum** | 7: 1 FP-class, 5 refactor, 1 merge-worthy | 7: 6 FP-class, 1 merge-worthy |
+
+The notes are in `top20-classes.tsv`. **On public code K-size does the
+opposite of what it does on the private corpora**: what enters is larger and
+mostly refactor material, and what leaves is short accessor and forwarding
+siblings. It costs one merge-worthy pair on chi (`URLParam`/`URLParamFromCtx`,
+22 and 19 nodes, rank 15 → out) and gains one on gin. No large mirror pair is
+in these four trees' top 20s under either key, which is why the public check
+could not catch the private failure. The secondary variants move 1-2 pairs per
+corpus (`top20.txt`).
+
+### Against the expectations
+
+1. **Check 1 was the real test, as expected**, and two of its three parts
+   failed. 1b held, which I had put at even odds. 1c failed on two corpora,
+   worse than expected: the merges that dropped were not all small (one is
+   about 140 nodes), so "small merges drop" understated it. The large mirror
+   pairs rose as predicted.
+2. **Check 2 said nothing, as expected**, but at chi k = 2 for another reason
+   than the one I thought likelier: doppel's list cleared 100 pairs and the
+   unit was admissible, then fell below the event-cluster floor.
+3. **Check 3 moved 0-3 pairs per corpus**, inside the 0-4 expected, and passed
+   as expected. `GenMarkdownCustom`/`GenReSTCustom` rose to rank 1 on cobra.
+4. **K-size made doppel worse on the private corpora and not on the public
+   ladder**, as expected.
+
+### Deviations from the pre-registration
+
+- None in the design. One addition: check 3's harness also logs the two
+  secondary variants' top 20s.
+- doppel's own label set is scored against the working tree of the main
+  checkout at the time of the run, so its numbers are not reproducible from a
+  commit.
+
+### What this means
+
+**K-size can make doppel worse, in one place and by a measurable amount.** On
+the private labelled corpora it lifts large mirror and multi-program pairs to
+the top of the report (ranks 1 and 2 on two corpora) while the number of false
+positives in the top 20 stays the same, and it pushes mid-sized exact merges
+down, worsening the merge mean by 18 and 21 ranks on two of three corpora. Pooled violations rise 45 → 47. On
+the public ladder it does the opposite, trading short sibling pairs for
+refactor-sized ones, and on held-out maintenance outcomes it was already
+measured better (#82). The two findings share a mechanism: a size reward ranks
+large, partly alike pairs above mid-sized exact ones. Maintenance outcomes
+reward that, because such pairs do get edited together. Reviewers do not,
+because they label large mirror pairs false positives.
+
+What would have to change before a proposal: a size term that does not reward
+a large pair for being a mirror (the `mirror operations` kind detects them but
+by design never ranks, see *Pair kinds*), or a size term bounded above so that
+it cannot carry a partly alike pair past an exact clone. Neither was measured
+here.

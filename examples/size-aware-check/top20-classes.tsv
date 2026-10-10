@@ -1,0 +1,15 @@
+corpus	pair	class	note
+chi	chi.URLParam <-> chi.URLParamFromCtx	merge-worthy	the same body; URLParam is URLParamFromCtx(r.Context(), key)
+chi	middleware.*compressResponseWriter.Push <-> .Close	mirror/sibling	parallel interface forwarders on one receiver
+chi	middleware.ClientIPFromHeader <-> middleware.ClientIPFromXFFTrustedProxies	mirror/sibling	parallel client-IP strategies sharing the middleware skeleton and a 3-line store
+chi	middleware.RedirectSlashes <-> middleware.URLFormat	refactor	share the route-path lookup (rctx.RoutePath or URL.Path); the rest differs; weak
+cobra	cobra.*Command.AddCommand <-> .RemoveCommand	refactor	inverse verbs, but share a 12-line max-length update that could be one helper
+cobra	cobra.*Command.SetHelpTemplate <-> .SetVersionTemplate	mirror/sibling	accessor family: setters of different fields
+cobra	cobra.*Command.SetUsageTemplate <-> .SetHelpTemplate	mirror/sibling	accessor family
+cobra	cobra.*Command.SetUsageTemplate <-> .SetVersionTemplate	mirror/sibling	accessor family
+cobra	doc.genMan <-> doc.GenMarkdownCustom	refactor	doc writers sharing the see-also walk and VisitParents logic
+cobra	doc.genMan <-> doc.GenReSTCustom	refactor	as above
+gin	gin.*Context.Done <-> .Err	mirror/sibling	context.Context forwarders on one receiver
+gin	gin.*Engine.LoadHTMLGlob <-> .LoadHTMLFS	refactor	parallel loaders duplicating the debug branch and template construction
+gin	gin.*RouterGroup.StaticFile <-> .StaticFileFS	mirror/sibling	parallel API variants, already delegating to one helper
+gin	render.ProtoBuf.Render <-> render.TOML.Render	merge-worthy	interface implementations whose bodies differ only in the marshal call

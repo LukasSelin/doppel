@@ -223,9 +223,7 @@ func TestSizeVariantsGolden(t *testing.T) {
 	run := Analyze(units, retriever.DefaultOptions())
 	run.Root = corpus
 	sz := newSizeFeatures(run)
-	rows := []sizeVariant{{"production", func(r *Run, _ *sizeFeatures, p analyzer.SimilarPair) float64 {
-		return analyzer.RankKey(p, analyzer.DefaultRankOptions(), r.Units)
-	}}}
+	rows := sizeCheckRows()[:1] // production
 	rows = append(rows, sizeCandidates...)
 	rows = append(rows, sizeVariants...)
 	t.Logf("| key | merge mean | refactor mean | false-positive mean | merges in top 50 | merges never retrieved | FP above worst merge | FP in top 20 |")
