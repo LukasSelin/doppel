@@ -3686,6 +3686,18 @@ functions for exactly this reason, and the first version of them did not and fai
     failure mode a family row invites, since a quarter of families mix verdicts. Tight rules
     (min edge ≥ 0.90, or ≥ 0.9 × mean) group only pairs far below row 20 and change nothing a
     reader scans first. Grouping shortens a long list by 15–30%; it is not a false-positive lever.
+  - `TestBaselines` (guard `DOPPEL_BENCH_BASELINES=1`, `task baselines`) asks whether the full
+    ranking beats simple baselines — random, token-shingle Jaccard, code-shape alone, retrieval
+    mass alone, overlap alone, a same-package name heuristic — re-ranking doppel's own pool
+    (setting A, union and struct-min-filtered) and all pairs on the small rungs (setting B), on
+    the cobra hand labels and the history labels. `examples/baselines.md` carries the
+    pre-registered rule and the result: **by that rule doppel beats no baseline**. P@20 is 0 for
+    every method on the sparse history labels, and the false-positive-mean clause fails even
+    against random. Descriptively, the full key is clearly best on cobra's hand labels (P@20 0.70,
+    against 0.60 for overlap alone, the hardest baseline there). On history labels **retrieval mass
+    alone ranks refactor/coupled pairs better than the full key on 4 of 5 corpora** — the
+    cost side of the shape² trade, measured on maintainer behaviour. `DOPPEL_BENCH_BASELINES_EXPORT`
+    writes every method's ranked list keyed by `snapshot.Unit.Key`, for an outcome study to score.
   - `TestSweep` (guard `DOPPEL_BENCH_SWEEP=1`) is the sensitivity sweep: each hand-set constant
     varied one at a time (±50% or the natural alternatives), only the stages it reaches re-run,
     and the labeled rankings reported with a verdict — `inert` (no label moved), `moves`,

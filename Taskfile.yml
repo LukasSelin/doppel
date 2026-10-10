@@ -108,6 +108,11 @@ tasks:
     cmds:
       - DOPPEL_BENCH_ABLATE=1 go test ./internal/bench/ -run TestAblateFingerprint -v -timeout 30m
 
+  baselines:
+    desc: "Rank the labels under doppel and simple baselines (random, token clones, code-shape, mass, overlap, names) — a measurement, see examples/baselines.md (MD=<results.md> EXPORT=<dir of ranked lists>)"
+    cmds:
+      - DOPPEL_BENCH_BASELINES=1 DOPPEL_BENCH_BASELINES_MD={{.MD}} DOPPEL_BENCH_BASELINES_EXPORT={{.EXPORT}} go test ./internal/bench/ -run 'TestBaselines$' -v -timeout 90m
+
   timeline:
     desc: "Analyse the last N git revisions of a repo and render one steppable timeline (REPO=. N=20 OUT=timeline.html)"
     vars:
