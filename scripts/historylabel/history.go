@@ -171,12 +171,20 @@ func sameCampaign(a, b *commit) bool {
 // small corpus checking every directory per commit is free; on one with
 // thousands of directories and a hundred thousand commits it is the whole
 // cost.
-func (h *history) walk(pin, until string, dirs []string) error {
+//
+// since, when set, starts the replay there instead of at the root commit:
+// the cost study judges only what happened in since..pin, and a function's
+// life before since is deliberately invisible to it.
+func (h *history) walk(since, pin, until string, dirs []string) error {
 	tracked := map[string]bool{}
 	for _, d := range dirs {
 		tracked[d] = true
 	}
-	pre, err := h.revList(pin, tracked)
+	rng := pin
+	if since != "" {
+		rng = since + ".." + pin
+	}
+	pre, err := h.revList(rng, tracked)
 	if err != nil {
 		return err
 	}

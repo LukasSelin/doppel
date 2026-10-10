@@ -129,6 +129,18 @@ tasks:
       # Like timeline: the git walk lives outside the module, never in the tool.
       - ./scripts/history-labels.sh -c {{.CORPUS}} {{if .OUT}}-o {{.OUT}}{{end}}
 
+  cost-study:
+    desc: "Measure whether doppel's flagged pairs at T cost maintainers anything over T..pin, against matched controls (CORPUS=cobra OUT=<dir>; see examples/cost-study.md)"
+    vars:
+      CORPUS: '{{.CORPUS | default "cobra"}}'
+    cmds:
+      - ./scripts/cost-study.sh -c {{.CORPUS}} {{if .OUT}}-o {{.OUT}}{{end}}
+
+  cost-study-summary:
+    desc: "Turn cost-study JSON files into the summary tables (FILES='/abs/a.cost.json /abs/b.cost.json', absolute paths; OUT=<summary.md> SAMPLES=<samples.md>)"
+    cmds:
+      - go run -C scripts/historylabel . summarize {{if .OUT}}-out {{.OUT}}{{end}} {{if .SAMPLES}}-samples {{.SAMPLES}}{{end}} {{.FILES}}
+
   pages:
     desc: Build the published site into _site/, exactly as the Pages workflow does
     vars:

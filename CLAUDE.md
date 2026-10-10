@@ -3476,6 +3476,21 @@ functions for exactly this reason, and the first version of them did not and fai
     produced the false evidence; the small rungs are too small to show any of it. Treat the output
     as proposed labels to review, never as a committed review; a co-change proves coupling, not
     mergeability, and accessor families and mirror pairs (Create/Update) co-change too.
+  - **The cost study** (`scripts/cost-study.sh`, `task cost-study CORPUS=…`, `historylabel study` /
+    `summarize`) reuses that walk on a time split. doppel analyses the tree at T, two years before
+    the pin. Its top 50 and ranks 51-500 are then compared with three matched controls per pair
+    (same locality class, same size buckets, never a reported pair) on what happened in T..pin.
+    The walk starts at T (`walk`'s `since`), so `judge` runs unchanged on in-window edits only.
+    The design, metrics and decision rule were committed before any number was read, and they
+    live with the results in `examples/cost-study.md`.
+    **Measured on cobra, gin, prometheus, hugo and moby: evidence of cost by that rule (4 of 5).**
+    That rests on controls that almost never co-change, on clustered events (gin is one commit),
+    and on an instrument that favours alike bodies. So it says doppel's pairs cost more than
+    matched random pairs, not that doppel beats a cheaper similarity detector.
+    `interface implementations` is the kind that carries the lagged/unpropagated drift, and
+    `thin wrappers` carry none. The study found `histName`: doppel names generic methods
+    `*T[K].M` and the walk's parser `*T.M`, so before it every generic method was untracked,
+    in `history-labels` too.
   - `Corpora` (corpora.go) pins seven public Go repos at release tags, ordered old-and-complex
     to new-and-narrow (moby 8003 funcs → conc 81). Only coordinates are committed; `Fetch`
     shallow-clones into `Root()` (`$DOPPEL_CORPORA`, else user cache) and verifies HEAD against

@@ -96,6 +96,21 @@ func parseFuncs(file string, src []byte) []*fn {
 	return out
 }
 
+// histName maps a doppel unit name onto this parser's: doppel keeps a generic
+// receiver's type parameters (*Stack[T].Pop), recvName drops them
+// (*Stack.Pop). Without it every generic method is silently untrackable.
+func histName(name string) string {
+	i := strings.IndexByte(name, '[')
+	if i < 0 {
+		return name
+	}
+	j := strings.LastIndexByte(name, ']')
+	if j < i {
+		return name
+	}
+	return name[:i] + name[j+1:]
+}
+
 func recvName(e ast.Expr) string {
 	switch t := e.(type) {
 	case *ast.StarExpr:
