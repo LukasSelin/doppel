@@ -125,6 +125,9 @@ func main() {
 		case "compare-summary":
 			compareSummaryMain(os.Args[2:])
 			return
+		case "rolling-summary":
+			rollingSummaryMain(os.Args[2:])
+			return
 		case "summarize":
 			summarizeMain(os.Args[2:])
 			return

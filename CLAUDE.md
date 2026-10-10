@@ -3494,6 +3494,13 @@ functions for exactly this reason, and the first version of them did not and fai
     `thin wrappers` carry none. The study found `histName`: doppel names generic methods
     `*T[K].M` and the walk's parser `*T.M`, so before it every generic method was untracked,
     in `history-labels` too.
+  - **Rolling origins** (`scripts/rolling-origin.sh`, `task rolling-origin CORPUS=…`, `historylabel
+    rolling-summary`) re-run the ranker- and clone-outcome comparisons at earlier origins T_k,
+    each judged only on its own window T_k..T_{k−1}, so no outcome is counted twice. T_k steps
+    back from the cost study's T by its window length; `ranker-outcomes.sh -t/-p/-n` is the
+    explicit-window seam, and with neither it reads the cost study's T as before. The rule, the
+    pooled verdict (a unit-stratified bootstrap, corpora weighted equally) and the results are
+    in `examples/rolling-origin.md`.
   - `Corpora` (corpora.go) pins seven public Go repos at release tags, ordered old-and-complex
     to new-and-narrow (moby 8003 funcs → conc 81). Only coordinates are committed; `Fetch`
     shallow-clones into `Root()` (`$DOPPEL_CORPORA`, else user cache) and verifies HEAD against
