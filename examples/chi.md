@@ -9,7 +9,7 @@ HTTP router; a narrow core with a middleware package beside it
 | Corpus | [chi](https://github.com/go-chi/chi) |
 | Pinned at | `v5.3.2` (`38939062c5df4d3e8814aad1a488983112627ced`) |
 | Project since | 2015 |
-| doppel | `d2d78d3` |
+| doppel | `783a0d4` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -274,28 +274,21 @@ _14 further concepts are modeled and not described._
 
 `++` at least four times chance, `+` at least twice, `−` at most half, `never` not once. A blank cell is ordinary company — near chance, which is not culture.
 
-| | `URL.RawPath+chi.RouteContext` | `b.ResponseWriter+b.discard` | `buf.String+bytes.Buffer` | `context.WithValue+r.WithContext` | `cw.ResponseWriter+cw.writer` | `fmt.Sprintf+r.Context` | `h.handler+n.endpoints` | `http.StatusUnsupportedMedia…+Header.Get` | `http.StatusUnsupportedMedia…+Header.Get+context.WithValue` | `http.StatusUnsupportedMedia…+chi.RouteContext` | `http.StatusUnsupportedMedia…+strings.ToLower` | `http.StatusUnsupportedMedia…+w.WriteHeader` | `mx.handle+chi.*Mux.handle` | `mx.inline+mx.handler` | `mx.tree+rctx.RoutePath` | `netip.Addr+context.WithValue` | `r.Context+http.Handler` | `rctx.URLParams+URLParams.Keys` | `strings.Cut+chi.*Mux.Get` | `strings.TrimSpace+space` |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| **`b.ResponseWriter+b.discard`** |  | | | | | | | | | | | | | | | | | | | |
-| **`buf.String+bytes.Buffer`** |  |  | | | | | | | | | | | | | | | | | | |
-| **`context.WithValue+r.WithContext`** |  |  |  | | | | | | | | | | | | | | | | | |
-| **`cw.ResponseWriter+cw.writer`** |  | + | ++ |  | | | | | | | | | | | | | | | | |
-| **`fmt.Sprintf+r.Context`** |  |  |  |  |  | | | | | | | | | | | | | | | |
-| **`h.handler+n.endpoints`** |  | never |  |  |  | + | | | | | | | | | | | | | | |
-| **`http.StatusUnsupportedMedia…+Header.Get`** |  |  |  |  |  |  |  | | | | | | | | | | | | | |
-| **`http.StatusUnsupportedMedia…+Header.Get+context.WithValue`** |  |  |  | ++ |  |  |  | ++ | | | | | | | | | | | | |
-| **`http.StatusUnsupportedMedia…+chi.RouteContext`** | ++ | never |  | + |  |  |  |  | + | | | | | | | | | | | |
-| **`http.StatusUnsupportedMedia…+strings.ToLower`** | ++ |  |  |  |  |  |  | ++ |  | + | | | | | | | | | | |
-| **`http.StatusUnsupportedMedia…+w.WriteHeader`** |  |  |  |  |  |  |  | ++ | ++ | + |  | | | | | | | | | |
-| **`mx.handle+chi.*Mux.handle`** |  |  |  |  |  |  |  |  |  |  |  |  | | | | | | | | |
-| **`mx.inline+mx.handler`** |  |  |  |  |  |  |  |  |  |  |  |  |  | | | | | | | |
-| **`mx.tree+rctx.RoutePath`** |  |  |  |  |  |  |  |  |  |  |  |  |  | ++ | | | | | | |
-| **`netip.Addr+context.WithValue`** |  |  |  | ++ |  |  |  |  | ++ |  |  |  |  |  |  | | | | | |
-| **`r.Context+http.Handler`** |  |  | ++ |  |  |  |  |  |  |  |  |  |  |  |  |  | | | | |
-| **`rctx.URLParams+URLParams.Keys`** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | | |
-| **`strings.Cut+chi.*Mux.Get`** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | | |
-| **`strings.TrimSpace+space`** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | |
-| **`w.Header+http.Handler`** |  |  |  |  |  |  |  |  |  | ++ |  |  |  |  |  |  |  |  |  |  |
+_Showing 12 of 21 concepts — those in the strongest pairings, taken strongest first by lift weighted by how many functions it speaks for. Every cell between them is shown; the other 9 concepts are not on the grid._
+
+| | `URL.RawPath+chi.RouteContext` | `b.ResponseWriter+b.discard` | `buf.String+bytes.Buffer` | `context.WithValue+r.WithContext` | `cw.ResponseWriter+cw.writer` | `h.handler+n.endpoints` | `http.StatusUnsupportedMedia…+Header.Get` | `http.StatusUnsupportedMedia…+Header.Get+context.WithValue` | `http.StatusUnsupportedMedia…+chi.RouteContext` | `http.StatusUnsupportedMedia…+strings.ToLower` | `netip.Addr+context.WithValue` |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| **`b.ResponseWriter+b.discard`** |  | | | | | | | | | | |
+| **`buf.String+bytes.Buffer`** |  |  | | | | | | | | | |
+| **`context.WithValue+r.WithContext`** |  |  |  | | | | | | | | |
+| **`cw.ResponseWriter+cw.writer`** |  | + | ++ |  | | | | | | | |
+| **`h.handler+n.endpoints`** |  | never |  |  |  | | | | | | |
+| **`http.StatusUnsupportedMedia…+Header.Get`** |  |  |  |  |  |  | | | | | |
+| **`http.StatusUnsupportedMedia…+Header.Get+context.WithValue`** |  |  |  | ++ |  |  | ++ | | | | |
+| **`http.StatusUnsupportedMedia…+chi.RouteContext`** | ++ | never |  | + |  |  |  | + | | | |
+| **`http.StatusUnsupportedMedia…+strings.ToLower`** | ++ |  |  |  |  |  | ++ |  | + | | |
+| **`netip.Addr+context.WithValue`** |  |  |  | ++ |  |  |  | ++ |  |  | |
+| **`r.Context+http.Handler`** |  |  | ++ |  |  |  |  |  |  |  |  |
 
 ### What travels with what
 

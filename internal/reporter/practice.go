@@ -110,11 +110,12 @@ func bar(p float64) string {
 	return "`" + strings.Repeat("█", n) + strings.Repeat("·", barWidth-n) + "`"
 }
 
-// practiceMatrix renders the whole concept-to-concept co-occurrence structure.
+// practiceMatrix renders the concept-to-concept co-occurrence grid.
 //
-// This is the one table in the report that is not a sample. The vocabulary is a
-// fixed, small set of concrete concepts, so the grid is bounded by construction
-// and can show every cell — including the empty ones, which is the point. A `never` cell
+// Past cmd's axis bound it is a sample — the concepts in the strongest
+// pairings — and the prose says how many were cut, like every other bounded
+// list here. Within it every cell is shown, including the empty ones, which is
+// the point. A `never` cell
 // says two concepts this corpus uses are never written by the same function,
 // and that is a statement about layering no ranked list would surface.
 func practiceMatrix(w io.Writer, ov *Overview) {
@@ -137,6 +138,12 @@ func practiceMatrix(w io.Writer, ov *Overview) {
 	fmt.Fprintf(w, "### Which concepts share a function\n\n")
 	fmt.Fprintf(w, "`++` at least four times chance, `+` at least twice, `−` at most half, "+
 		"`never` not once. A blank cell is ordinary company — near chance, which is not culture.\n\n")
+	if m.Total > len(m.Tags) {
+		fmt.Fprintf(w, "_Showing %d of %d concepts — those in the strongest pairings, taken strongest "+
+			"first by lift weighted by how many functions it speaks for. Every cell between them is "+
+			"shown; the other %d concepts are not on the grid._\n\n",
+			len(m.Tags), m.Total, m.Total-len(m.Tags))
+	}
 
 	fmt.Fprintf(w, "| |")
 	for _, t := range m.Tags[:len(m.Tags)-1] {

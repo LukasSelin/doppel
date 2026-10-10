@@ -105,8 +105,26 @@ func TestNeverCoOccurringRendersAsAWord(t *testing.T) {
 	}
 }
 
-// The matrix is the one table here that is not a sample: a fixed vocabulary,
-// bounded by construction, so it can show every cell including the ordinary ones.
+// A bounded grid says how much it cut; an unbounded one says nothing about it.
+func TestConceptMatrixStatesItsSample(t *testing.T) {
+	var whole strings.Builder
+	PrintMarkdownPractice(&whole, samplePractice())
+	if strings.Contains(whole.String(), "_Showing") {
+		t.Errorf("a whole grid claimed to be a sample:\n%s", whole.String())
+	}
+
+	ov := samplePractice()
+	ov.Matrix.Total = 1091
+	var b strings.Builder
+	PrintMarkdownPractice(&b, ov)
+	if !strings.Contains(b.String(), "_Showing 3 of 1091 concepts") ||
+		!strings.Contains(b.String(), "the other 1088 concepts are not on the grid") {
+		t.Errorf("the sample was not stated:\n%s", b.String())
+	}
+}
+
+// Within whatever concepts are on the axis, every cell is shown — the ordinary
+// ones included.
 func TestConceptMatrixRendersTheLowerTriangle(t *testing.T) {
 	var b strings.Builder
 	PrintMarkdownPractice(&b, samplePractice())
