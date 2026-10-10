@@ -37,6 +37,7 @@ import (
 //	DOPPEL_BENCH_BASELINES_MD=<path>        write the public results tables as markdown
 //	DOPPEL_BENCH_BASELINES_EXPORT=<dir>     write every method's ranked list as JSON, public corpora only
 //	DOPPEL_BENCH_BASELINES_EXPORT_TOP=<n>   pairs per exported list (default 500, 0 = all)
+//	DOPPEL_BENCH_BASELINES_CLONES=<dir>     method 8, an external clone detector's groups (scripts/clone-baseline.sh); see clones_test.go
 //
 // The export is the hand-off to a cost study: it names each pair by the two
 // snapshot.Unit.Key values, so an outcome measured on doppel's pairs can be
@@ -69,6 +70,9 @@ func TestBaselines(t *testing.T) {
 			runs[key] = br
 			t.Logf("[%s] %d functions, calibration %s, union %d pairs, report pool %d pairs",
 				tg.corpus, len(br.run.Units), br.calib, len(br.run.Pairs), len(br.report))
+			if tg.public {
+				attachClones(t, br, tg.corpus)
+			}
 		}
 
 		settings := []struct {
@@ -106,6 +110,7 @@ func TestBaselines(t *testing.T) {
 		if err != nil {
 			continue
 		}
+		attachClones(t, br, c.Name)
 		exportRankings(t, br, c.Name, "A-union", br.run.Pairs)
 		t.Logf("[%s] no labels; ranked lists exported only", c.Name)
 	}
@@ -206,6 +211,19 @@ type baselineRun struct {
 	calib  string
 	report []analyzer.SimilarPair // the union at or above the calibrated struct-min
 	keys   []string               // snapshot.Unit.Key per unit
+	clones []cloneList            // method 8, public corpora with clone files only
+}
+
+func attachClones(t *testing.T, br *baselineRun, corpus string) {
+	t.Helper()
+	lists, notes, err := loadCloneLists(br, corpus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range notes {
+		t.Logf("[%s] %s", corpus, n)
+	}
+	br.clones = lists
 }
 
 func prepareBaselineRun(root string, pop Population) (*baselineRun, error) {
@@ -408,6 +426,7 @@ const randomSeeds = 20
 var methodOrder = []string{
 	"doppel", "doppel (struct-min filtered)", "token clones", "code-shape",
 	"retrieval mass", "overlap", "name heuristic",
+	cloneMethods[0].name, cloneMethods[1].name,
 }
 
 func (m *methodSet) add(name string, l []ref) {
@@ -453,6 +472,13 @@ func poolMethods(br *baselineRun, pool []analyzer.SimilarPair) methodSet {
 	m.add("retrieval mass", rankBy(refs, mass))
 	m.add("overlap", rankBy(refs, overlap))
 	m.add("name heuristic", rankBy(refs, name))
+	in := make(map[ref]bool, len(refs))
+	for _, x := range refs {
+		in[x] = true
+	}
+	for _, c := range br.clones {
+		m.add(c.name, rankBy(c.restrictTo(in)))
+	}
 	base := rankBy(refs, make([]float64, len(refs))) // index order, the shuffle's start
 	for s := uint64(1); s <= randomSeeds; s++ {
 		m.random = append(m.random, shuffled(base, s))
@@ -653,6 +679,11 @@ func evaluateAllPairs(br *baselineRun, lf LabelsFile) (poolEval, int) {
 	m.add("retrieval mass", rankBy(massRefs, mass))
 	m.add("overlap", rankBy(refs, overlap))
 	m.add("name heuristic", rankBy(refs, name))
+	// Every clone pair is already a same-build-unit pair of the population,
+	// so the detector ranks what it reported and leaves the rest unranked.
+	for _, c := range br.clones {
+		m.add(c.name, rankBy(c.refs, c.key))
+	}
 	for s := uint64(1); s <= randomSeeds; s++ {
 		m.random = append(m.random, shuffled(refs, s))
 	}
@@ -698,6 +729,20 @@ func aggregate(rs []evalResult) randomAgg {
 		agg.mean.meanRank[c], agg.sd.meanRank[c] = field(func(e evalResult) float64 { return e.meanRank[c] })
 	}
 	return agg
+}
+
+// pickMethod finds one method's result in an evaluation; random is the seed
+// mean. ok is false for a method the evaluation did not run.
+func pickMethod(pe poolEval, name string) (evalResult, bool) {
+	if name == "random" {
+		return pe.random.mean, true
+	}
+	for _, e := range pe.methods {
+		if e.name == name {
+			return e, true
+		}
+	}
+	return evalResult{}, false
 }
 
 func fmtMean(e evalResult, class string) string {
@@ -794,24 +839,32 @@ func logVerdict(t *testing.T, md *strings.Builder, rows []verdictRow) {
 	}
 	baselines := append(slices.Clone(methodOrder[2:]), "random")
 	pick := func(pe *poolEval, name string) evalResult {
-		if name == "random" {
-			return pe.random.mean
+		e, _ := pickMethod(*pe, name)
+		return e
+	}
+	has := func(pe *poolEval, name string) bool {
+		if pe == nil {
+			return false
 		}
-		for _, e := range pe.methods {
-			if e.name == name {
-				return e
-			}
-		}
-		return evalResult{}
+		_, ok := pickMethod(*pe, name)
+		return ok
 	}
 	md.WriteString("#### Decision rule, applied\n\n")
 	md.WriteString("| baseline | cobra hand, A-union | history wins (A-report), strict | history wins, weak (P@20 not lower) | beaten (strict) | beaten (weak) |\n")
 	md.WriteString("| --- | --- | --- | --- | --- | --- |\n")
 	for _, bl := range baselines {
+		// A method that was not run (method 8 without clone files) is left
+		// out, not scored as an empty list.
+		if !slices.ContainsFunc(rows, func(r verdictRow) bool { return has(&r.pe, bl) }) {
+			continue
+		}
 		cobra := find("cobra/hand", "A-union")
 		c1s, c1w := false, false
 		parts := "no cobra labels"
-		if cobra != nil {
+		if cobra != nil && !has(cobra, bl) {
+			parts = "not run on cobra"
+		}
+		if cobra != nil && has(cobra, bl) {
 			d := pick(cobra, "doppel")
 			b := pick(cobra, bl)
 			c1s, c1w = beats(d, b, true, true), beats(d, b, false, true)
@@ -829,7 +882,7 @@ func logVerdict(t *testing.T, md *strings.Builder, rows []verdictRow) {
 		var winsS, winsW, avail []string
 		for _, c := range historyVerdictCorpora {
 			pe := find(c+"/history", "A-report")
-			if pe == nil {
+			if pe == nil || !has(pe, bl) {
 				continue
 			}
 			avail = append(avail, c)
@@ -924,15 +977,8 @@ func writePooled(t *testing.T, md *strings.Builder, rows []verdictRow) {
 	t.Helper()
 	names := append(slices.Clone(methodOrder), "random")
 	pick := func(pe poolEval, name string) evalResult {
-		if name == "random" {
-			return pe.random.mean
-		}
-		for _, e := range pe.methods {
-			if e.name == name {
-				return e
-			}
-		}
-		return evalResult{}
+		e, _ := pickMethod(pe, name)
+		return e
 	}
 	for _, setting := range []string{"A-union", "A-report"} {
 		fmt.Fprintf(md, "#### Pooled (post-hoc) — history labels, %s\n\n", setting)
@@ -979,14 +1025,19 @@ func writePooled(t *testing.T, md *strings.Builder, rows []verdictRow) {
 	md.WriteString("Summed over every label set scored all-pairs (cobra hand, and the cobra, chi and gin history labels).\n\n| method | top 50 | top 100 | of |\n| --- | ---: | ---: | ---: |\n")
 	for _, name := range names {
 		var h50, h100, n int
+		ran := false
 		for _, r := range rows {
 			if r.setting != "B-all-pairs" {
 				continue
 			}
-			e := pick(r.pe, name)
+			e, ok := pickMethod(r.pe, name)
+			ran = ran || ok
 			h50 += e.hits50
 			h100 += e.hits100
 			n += e.relN
+		}
+		if !ran {
+			continue
 		}
 		fmt.Fprintf(md, "| %s | %d | %d | %d |\n", name, h50, h100, n)
 	}

@@ -222,7 +222,8 @@ than that, but they are post-hoc and do not replace the verdict.
 - **External clone detector (method 8).** Neither `dupl` nor `jscpd` is
   installed. Installing one means a Go toolchain install of a third-party module
   or an npm global, and the pre-registration said to skip it if it added
-  friction. Token clones (method 3) is the in-repo stand-in.
+  friction. Token clones (method 3) is the in-repo stand-in. *(Done afterwards:
+  see the post-registration addendum at the end of this file.)*
 
 ### Hand-off to the cost study
 
@@ -534,3 +535,185 @@ Summed over every label set scored all-pairs (cobra hand, and the cobra, chi and
 | overlap | 20 | 24 | 28 |
 | name heuristic | 8 | 11 | 28 |
 | random | 0 | 0 | 28 |
+
+## Addendum (post-registration): method 8, an external clone detector
+
+Added on 2026-10-10, after every result above existed. The pre-registration
+section is unchanged. This method is scored under the **same rule, metrics,
+settings and imputation** as methods 1–7, and nothing above was re-run
+differently to make room for it. With the clone files left out, `TestBaselines`
+reproduces the tables above byte for byte. With them included, the only change
+is the new rows, and two runs are byte-identical.
+
+### What was run
+
+- **Detector: `dupl` v1.1.0** (`github.com/mibk/dupl`), a token-sequence clone
+  finder over the Go AST. It installed with a single `go install` into GOBIN. `jscpd` was
+  not tried, because a second detector would have added an npm toolchain to
+  answer the same question. `go.mod` is untouched.
+- **It runs outside the module.** `scripts/clone-baseline.sh` (`task
+  clone-baseline`) runs dupl on each fetched ladder rung. It writes
+  `<corpus>.dupl-t<N>.clones.json` (clone groups as file, start line, end line)
+  to a cache directory outside the repo. The bench reads those files only when
+  `DOPPEL_BENCH_BASELINES_CLONES=<dir>` is set (`task baselines CLONES=<dir>`).
+  Without that variable the method does not appear in any table. It is never
+  scored as an empty list.
+- **Population**: non-test `.go` files. The script skips the directories the
+  pipeline's walk skips (`parser.DefaultExcludes`, read out of the source) and
+  files carrying Go's generated-code marker. A fragment in a file outside
+  doppel's population maps to no function, so a difference between the two
+  populations can never add pairs.
+- **Two thresholds, both fixed before the scoring run.** The method-8 row is
+  `dupl (t=100, default)`, the tool's own operating point and the counterpart of
+  doppel at its production default. `dupl (t=25)` is a sensitivity row. At its
+  default, dupl reports 0–3 clone groups on each of chi, cobra, conc and gin,
+  which would leave the comparison nearly empty on the small rungs.
+
+### Mapping clones to function pairs
+
+A fragment covers every function whose `[StartLine, end]` span it overlaps. The
+`end` line is the closing brace: `StartLine` plus the number of newlines in
+`Body`. Within one clone group, each pair of fragments yields every cross pair
+of the functions the two fragments cover. That pair is keyed by the **smaller of
+the two overlaps, in lines**: the detector's clone size, clipped to the two
+functions. dupl reports no token count, so lines are the only size it gives. A
+pair reached through several fragment pairs keeps its largest key.
+
+Ties break on `(AIdx, BIdx)`, as for every other method. Pairs outside one build
+unit (`parser.SameBuildUnit`) are dropped. In setting A the list is restricted
+to the pool. In both settings a pair the detector never reported is
+**unranked**, and its label gets the imputed rank `(len(list) + 1 + N) / 2`,
+the same as an unranked label under any other method.
+
+| corpus | t=100: groups → function pairs | t=25: groups → function pairs |
+| --- | ---: | ---: |
+| moby | 43 → 943 | 991 → 10 590 |
+| prometheus | 80 → 114 | 1 022 → 7 159 |
+| hugo | 5 → 3 | 501 → 1 533 |
+| gin | 3 → 120 | 35 → 554 |
+| cobra | 1 → 1 | 37 → 86 |
+| chi | 0 → 0 | 19 → 61 |
+| conc | 0 → 0 | 6 → 17 |
+
+### Verdict, by the pre-registered rule
+
+**doppel beats neither dupl row**, under the strict rule or the weak one. The
+reasons are the same two as for every other baseline:
+
+1. **Condition 1 fails on the false-positive clause**, and here the failure is
+   degenerate. dupl reports none of cobra's three false positives, and at t=100
+   it reports only one cobra pair in total. So all three take the imputed rank:
+   701.5 at t=100 and 733.5 at t=25, against doppel's 513.5. A method that ranks
+   almost nothing passes this clause by abstaining. doppel wins the other two
+   clauses easily: P@20 0.70 against 0.05 and 0.20, and merge+refactor mean 11.0
+   against 654.8 and 262.6.
+2. **Condition 2: strict 0/4, weak 3/4 (gin, hugo, moby) for both rows.**
+   Prometheus is the exception, and this result is new. **dupl reaches P@20 0.10
+   on prometheus's history labels, against 0.00 for doppel.** No other method in
+   this study scores a non-zero P@20 on any of the four larger history label
+   sets. At t=100 its top 20 there holds two refactor labels
+   (`FloatHistogram.Add ↔ Sub` and `memSeries.appendFloatHistogram ↔
+   appendHistogram`) and three coupled labels. Much of the rest is unlabelled
+   float/int histogram twins.
+
+The verdict section above already describes the rule's weaknesses. This method
+makes the false-positive one sharper. That is stated here, not used as a reason
+to set the result aside.
+
+### What the numbers show (descriptive, post-hoc)
+
+- **dupl is precise but finds very few of these labels.** The four larger
+  corpora carry 92 history-relevant pairs. t=100 ranks 3 of them and t=25 ranks
+  31 (moby 7/33, prometheus 21/43, hugo 3/9, gin 0/7). In A-report, the pooled
+  normalised refactor rank is 0.498 at t=100 and 0.365 at t=25, against 0.183
+  for doppel and 0.497 for random. For most pairs that maintainers kept in step
+  or factored apart, dupl finds no shared sequence of 25 tokens or more.
+- **Where it does report a pair, it is good.** At t=25 it ranks all six of
+  cobra's merges, with the best merge mean of any baseline: 14.2 in A-union,
+  against 17.3 for overlap and 17.7 for token clones (doppel 4.8). Its P@10 is
+  0.40. It ranks only 4 of the 9 refactors, which puts its merge+refactor mean
+  at 262.6. On chi's history labels t=25 is the best method outright, with an
+  A-report mean of 6.5 against doppel's 9.5. Code-shape, token clones and the
+  name heuristic also beat doppel there.
+- **Setting B (all pairs)**: summed over the cobra hand labels and the chi and
+  gin history labels, labelled relevant pairs in the top 50 / top 100 are 1 / 1
+  for t=100 and 14 / 16 for t=25. doppel has 24 / 27, overlap 20 / 24 and token
+  clones 6 / 18. The bias noted above applies: every label here came from
+  doppel's output.
+- **Most of dupl's pairs fall outside doppel's retrieval union.** At t=25 the
+  union holds 2 190 of moby's 10 590 dupl pairs, 1 782 of prometheus's 7 159 and
+  200 of gin's 554. These pairs are unlabelled, so this measurement cannot say
+  whether they are recall doppel lacks or fragment overlaps that do not make two
+  functions alike. The export now carries dupl's ranked lists, so the cost
+  study's outcome can answer that without hand labels.
+
+### Tables (dupl rows only; every other row is as above)
+
+The columns and the imputation are the same as in the full tables. The last
+column repeats doppel's merge+refactor mean and P@20 for the same label set and
+setting. cobra/history has no relevant labels and is left out.
+
+| label set — setting | method | ranked | merge+refactor mean (ranked/n) | P@10 | P@20 | hits@50 | merge | refactor | false positive | coupled | doppel: mean, P@20 |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| moby/history — A-union (38415) | dupl (t=100, default) | 147 | 19281.5 (0/33) | 0.00 | 0.00 | 0 | - | 19281.5 | - | 15832.7 | 7534.4, 0.00 |
+| moby/history — A-union (38415) | dupl (t=25) | 2190 | 16200.5 (7/33) | 0.00 | 0.00 | 0 | - | 16200.5 | - | 11987.6 | 7534.4, 0.00 |
+| moby/history — A-report (18545) | dupl (t=100, default) | 145 | 9345.5 (0/33) | 0.00 | 0.00 | 0 | - | 9345.5 | - | 7676.2 | 5058.1, 0.00 |
+| moby/history — A-report (18545) | dupl (t=25) | 1989 | 8282.2 (7/33) | 0.00 | 0.00 | 0 | - | 8282.2 | - | 6135.9 | 5058.1, 0.00 |
+| prometheus/history — A-union (28916) | dupl (t=100, default) | 88 | 13492.6 (3/43) | 0.10 | 0.10 | 2 | - | 13492.6 | - | 12520.7 | 4904.2, 0.00 |
+| prometheus/history — A-union (28916) | dupl (t=25) | 1782 | 8257.6 (21/43) | 0.10 | 0.10 | 2 | - | 8257.6 | - | 7075.4 | 4904.2, 0.00 |
+| prometheus/history — A-report (13027) | dupl (t=100, default) | 88 | 6102.3 (3/43) | 0.10 | 0.10 | 2 | - | 6102.3 | - | 5664.5 | 3163.3, 0.00 |
+| prometheus/history — A-report (13027) | dupl (t=25) | 1636 | 4135.9 (21/43) | 0.10 | 0.10 | 2 | - | 4135.9 | - | 3544.0 | 3163.3, 0.00 |
+| hugo/history — A-union (31895) | dupl (t=100, default) | 3 | 15949.5 (0/9) | 0.00 | 0.00 | 0 | - | 15949.5 | - | 15949.5 | 5335.4, 0.00 |
+| hugo/history — A-union (31895) | dupl (t=25) | 920 | 11093.8 (3/9) | 0.00 | 0.00 | 0 | - | 11093.8 | - | 9652.3 | 5335.4, 0.00 |
+| hugo/history — A-report (13571) | dupl (t=100, default) | 2 | 6787.0 (0/9) | 0.00 | 0.00 | 0 | - | 6787.0 | - | 6787.0 | 2911.7, 0.00 |
+| hugo/history — A-report (13571) | dupl (t=25) | 857 | 4958.3 (3/9) | 0.00 | 0.00 | 0 | - | 4958.3 | - | 4286.3 | 2911.7, 0.00 |
+| gin/history — A-union (2116) | dupl (t=100, default) | 34 | 1075.5 (0/7) | 0.00 | 0.00 | 0 | - | 1075.5 | - | 1075.5 | 80.9, 0.00 |
+| gin/history — A-union (2116) | dupl (t=25) | 200 | 1158.5 (0/7) | 0.00 | 0.00 | 0 | - | 1158.5 | - | 1158.5 | 80.9, 0.00 |
+| gin/history — A-report (570) | dupl (t=100, default) | 16 | 293.5 (0/7) | 0.00 | 0.00 | 0 | - | 293.5 | - | 293.5 | 61.7, 0.00 |
+| gin/history — A-report (570) | dupl (t=25) | 162 | 366.5 (0/7) | 0.00 | 0.00 | 0 | - | 366.5 | - | 366.5 | 61.7, 0.00 |
+| gin/history — B-all-pairs (123256) | dupl (t=100, default) | 120 | 61688.5 (0/7) | 0.00 | 0.00 | 0 | - | 61688.5 | - | 61688.5 | 80.9, 0.00 |
+| gin/history — B-all-pairs (123256) | dupl (t=25) | 554 | 61905.5 (0/7) | 0.00 | 0.00 | 0 | - | 61905.5 | - | 61905.5 | 80.9, 0.00 |
+| cobra/hand — A-union (1401) | dupl (t=100, default) | 1 | 654.8 (1/15) | 0.10 | 0.05 | 1 | 584.8 | 701.5 | 701.5 | - | 11.0, 0.70 |
+| cobra/hand — A-union (1401) | dupl (t=25) | 65 | 262.6 (10/15) | 0.40 | 0.20 | 8 | 14.2 | 428.3 | 733.5 | - | 11.0, 0.70 |
+| cobra/hand — A-report (239) | dupl (t=100, default) | 1 | 112.5 (1/15) | 0.10 | 0.05 | 1 | 100.6 | 120.5 | 120.5 | - | 10.8, 0.70 |
+| cobra/hand — A-report (239) | dupl (t=25) | 56 | 65.1 (10/15) | 0.40 | 0.20 | 9 | 12.5 | 100.1 | 148.0 | - | 10.8, 0.70 |
+| cobra/hand — B-all-pairs (36046) | dupl (t=100, default) | 1 | 16822.5 (1/15) | 0.10 | 0.05 | 1 | 15020.2 | 18024.0 | 18024.0 | - | 11.0, 0.70 |
+| cobra/hand — B-all-pairs (36046) | dupl (t=25) | 86 | 6041.7 (10/15) | 0.40 | 0.20 | 8 | 14.2 | 10060.1 | 12072.7 | - | 11.0, 0.70 |
+| chi/history — A-union (814) | dupl (t=100, default) | 0 | 407.5 (0/6) | 0.00 | 0.00 | 0 | - | 407.5 | - | 407.5 | 9.5, 0.30 |
+| chi/history — A-union (814) | dupl (t=25) | 50 | 7.5 (6/6) | 0.60 | 0.30 | 6 | - | 7.5 | - | 216.8 | 9.5, 0.30 |
+| chi/history — A-report (124) | dupl (t=100, default) | 0 | 62.5 (0/6) | 0.00 | 0.00 | 0 | - | 62.5 | - | 62.5 | 9.5, 0.30 |
+| chi/history — A-report (124) | dupl (t=25) | 48 | 6.5 (6/6) | 0.60 | 0.30 | 6 | - | 6.5 | - | 43.8 | 9.5, 0.30 |
+| chi/history — B-all-pairs (16653) | dupl (t=100, default) | 0 | 8327.0 (0/6) | 0.00 | 0.00 | 0 | - | 8327.0 | - | 8327.0 | 9.5, 0.30 |
+| chi/history — B-all-pairs (16653) | dupl (t=25) | 61 | 7.5 (6/6) | 0.60 | 0.30 | 6 | - | 7.5 | - | 4179.2 | 9.5, 0.30 |
+
+The decision rule rows, as `TestBaselines` prints them:
+
+| baseline | cobra hand, A-union | history wins (A-report), strict | history wins, weak (P@20 not lower) | beaten (strict) | beaten (weak) |
+| --- | --- | --- | --- | --- | --- |
+| dupl (t=100, default) | P@20 0.70 vs 0.05 ✓; rel 11.0 vs 654.8 ✓; fp 513.5 vs 701.5 ✗ — strict no, weak no | 0/4  | 3/4 gin,hugo,moby | **no** | no |
+| dupl (t=25) | P@20 0.70 vs 0.20 ✓; rel 11.0 vs 262.6 ✓; fp 513.5 vs 733.5 ✗ — strict no, weak no | 0/4  | 3/4 gin,hugo,moby | **no** | no |
+
+Pooled normalised mean rank on the history labels (post-hoc):
+
+| method | A-union refactor | A-union coupled | A-report refactor | A-report coupled |
+| --- | ---: | ---: | ---: | ---: |
+| doppel | 0.117 | 0.043 | 0.183 | 0.119 |
+| dupl (t=100, default) | 0.495 | 0.476 | 0.498 | 0.479 |
+| dupl (t=25) | 0.322 | 0.345 | 0.365 | 0.400 |
+| random | 0.496 | 0.491 | 0.497 | 0.503 |
+
+### Export
+
+When `DOPPEL_BENCH_BASELINES_CLONES` is set, `DOPPEL_BENCH_BASELINES_EXPORT` also
+writes `dupl (t=100, default)` and `dupl (t=25)` into every
+`<corpus>.<pool>.rankings.json`. Each of these lists holds only the pool pairs
+the detector reported, so it is often shorter than the top-500 cut.
+
+### Reproduce
+
+```bash
+go install github.com/mibk/dupl@v1.1.0
+task corpora
+task clone-baseline OUT=<dir>
+task baselines CLONES=<dir> MD=<results.md> EXPORT=<rankings dir>
+```

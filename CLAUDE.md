@@ -160,6 +160,7 @@ internal/
 examples/       Committed real reports for each corpus rung, plus labels/ (committed golden reviews) — see examples/README.md
 scripts/        timeline.sh: walks a git history and analyses each revision at one pinned operating point.
                 postedit-replay.sh: replays a history through `doppel hook post-edit`, one session per commit — the post-edit floor's measurement.
+                clone-baseline.sh: runs dupl (installed into GOBIN, never go.mod) over the ladder for TestBaselines' method 8.
                 history-labels.sh + historylabel/ (its own Go module): derives golden labels from what maintainers did to each pair in git history.
                 The only code in the repo that knows git exists, and deliberately outside the doppel module
 ```
@@ -3698,6 +3699,11 @@ functions for exactly this reason, and the first version of them did not and fai
     alone ranks refactor/coupled pairs better than the full key on 4 of 5 corpora** — the
     cost side of the shape² trade, measured on maintainer behaviour. `DOPPEL_BENCH_BASELINES_EXPORT`
     writes every method's ranked list keyed by `snapshot.Unit.Key`, for an outcome study to score.
+    Method 8, an external clone detector, is a post-registration addendum: `scripts/clone-baseline.sh`
+    runs `dupl` outside the module and `DOPPEL_BENCH_BASELINES_CLONES=<dir>` maps its clone groups onto
+    function pairs. It changes no verdict: doppel beats neither dupl row, the false-positive clause
+    passing dupl by abstention (it ranks almost nothing). Its one distinctive result is P@20 0.10 on
+    prometheus's history labels, the only non-zero P@20 any method reaches on the large rungs.
   - `TestSweep` (guard `DOPPEL_BENCH_SWEEP=1`) is the sensitivity sweep: each hand-set constant
     varied one at a time (±50% or the natural alternatives), only the stages it reaches re-run,
     and the labeled rankings reported with a verdict — `inert` (no label moved), `moves`,
