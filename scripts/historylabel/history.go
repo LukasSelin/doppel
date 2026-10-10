@@ -70,8 +70,9 @@ type commit struct {
 	post                 bool     // after the pin
 	sweep                bool     // modified more than sweepFuncs functions
 	mechanical           bool     // its subject says a tool, a move or a refactor made it
-	edits                []edit   // every function this commit modified, tracked or not
+	edits                []edit   // every function this commit modified in the directories scanned
 	dirs                 []string // tracked directories this commit touched
+	allDirs              []string // every directory whose non-test .go files this commit touched
 }
 
 // edit is one change to one function in one commit. old nil is a birth, new
@@ -121,7 +122,36 @@ type history struct {
 	// check cannot see.
 	deltaFuncs map[string]int
 	deltaKeys  map[[2]*fn]string
+
+	// scope is what the commit-level exclusions count over: scopeWalked (the
+	// default) or scopeCommit. See sweepScope.
+	scope string
 }
+
+// The two sweep scopes. Under scopeWalked, the default and what every outcome
+// study before examples/size-aware-rank.md judged with, a commit's
+// exclusions — the sweep count, the per-commit family and adopter counts, and
+// the campaign tally — are counted over the tracked directories only, and
+// only commits touching one are replayed. The tracked directories are the
+// union over every pair judged in one run, so a pair's outcome depends on
+// what else was judged beside it: a commit touching six functions beside the
+// pair and six in a directory only another list reaches is a sweep in one run
+// and an ordinary edit in the other.
+//
+// Under scopeCommit every non-merge commit in the window that touches a
+// non-test .go file is replayed, and each counts over its whole Go diff,
+// every directory, tracked or not. Nothing a pair's judgment reads then
+// depends on which other pairs share the run: the outcome is a function of
+// the pair and the repository.
+const (
+	scopeWalked = "walked"
+	scopeCommit = "commit"
+)
+
+// sweepScope is the -sweep-scope flag's value.
+var sweepScope = scopeWalked
+
+func validScope(s string) bool { return s == scopeWalked || s == scopeCommit }
 
 // deltaKey is an edit's delta as one canonical string, memoized per edit.
 func (h *history) deltaKey(e edit) string {
@@ -213,7 +243,11 @@ func (h *history) walk(since, pin, until string, dirs []string) error {
 			h.ts.trim()
 		}
 		modified := 0
-		for _, dir := range c.dirs {
+		scan := c.dirs
+		if h.scope == scopeCommit {
+			scan = c.allDirs
+		}
+		for _, dir := range scan {
 			newT, newSHA, err := h.ts.at(c.sha, dir)
 			if err != nil {
 				return err
@@ -285,19 +319,25 @@ func (h *history) revList(rng string, tracked map[string]bool) ([]*commit, error
 		if len(f) > 2 {
 			c.subject = f[2]
 		}
-		seen := map[string]bool{}
+		seen, seenAll := map[string]bool{}, map[string]bool{}
 		for _, p := range lines[1:] {
 			p = strings.TrimSpace(p)
 			if !strings.HasSuffix(p, ".go") || strings.HasSuffix(p, "_test.go") {
 				continue
 			}
-			if d := path.Dir(p); tracked[d] && !seen[d] {
+			d := path.Dir(p)
+			if tracked[d] && !seen[d] {
 				seen[d] = true
 				c.dirs = append(c.dirs, d)
 			}
+			if h.scope == scopeCommit && !seenAll[d] {
+				seenAll[d] = true
+				c.allDirs = append(c.allDirs, d)
+			}
 		}
 		sort.Strings(c.dirs)
-		if len(c.dirs) > 0 {
+		sort.Strings(c.allDirs)
+		if len(c.dirs) > 0 || len(c.allDirs) > 0 {
 			cs = append(cs, c)
 		}
 	}
