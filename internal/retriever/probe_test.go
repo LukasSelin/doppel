@@ -146,3 +146,32 @@ func TestProbeIsDeterministic(t *testing.T) {
 		}
 	}
 }
+
+// A Prober reused across every unit of a corpus answers exactly what an
+// independent Probe per unit does: the indexes are immutable and the memo is
+// of a pure function, so reuse may only save work, never change an answer.
+func TestProberReuseMatchesIndependentProbes(t *testing.T) {
+	units, g, onto, ic := probeCorpus(t, map[string]string{"a.go": probeFixtureA})
+	opt := DefaultOptions()
+	opt.MinNodes = 1
+	wl := labelWeights(units)
+
+	prober := NewProber(units, g, onto, ic, wl, opt)
+	// Reverse order, so a later probe reads memo entries an earlier one wrote.
+	for i := len(units) - 1; i >= 0; i-- {
+		shared, sharedStats := prober.Probe(i)
+		alone, aloneStats := Probe(units, i, g, onto, ic, wl, opt)
+		if sharedStats != aloneStats {
+			t.Errorf("unit %d stats: reused %+v, alone %+v", i, sharedStats, aloneStats)
+		}
+		if len(shared) != len(alone) {
+			t.Fatalf("unit %d: reused %d candidates, alone %d", i, len(shared), len(alone))
+		}
+		for j := range shared {
+			s, a := shared[j], alone[j]
+			if s.AIdx != a.AIdx || s.BIdx != a.BIdx || s.Total != a.Total || s.Breakdown != a.Breakdown || s.TrophicSim != a.TrophicSim {
+				t.Errorf("unit %d candidate %d: reused %+v, alone %+v", i, j, s, a)
+			}
+		}
+	}
+}

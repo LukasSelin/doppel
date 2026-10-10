@@ -456,9 +456,11 @@ deriving it are the same decision made two ways, and doppel will not do half of
 each. Set `calibrate` explicitly if you want a pinned key and a calibrated rate
 to coexist; the rate wins.
 
-One key has no flag behind it: `hook-notify` (`agent` | `user` | `off`) decides who the plugin's
+Two keys have no flag behind them. `hook-notify` (`agent` | `user` | `off`) decides who the plugin's
 Stop hook reports to. See [plugin/README.md](plugin/README.md) — reaching the agent costs an extra
-turn, so it is worth understanding before leaving it on the default.
+turn, so it is worth understanding before leaving it on the default. `hook-probe` (`on` | `off`,
+default `off`) turns on the plugin's post-edit probe, which indexes the repository after every
+edit to name near duplicates of what was just written.
 
 ## Use as a Claude Code plugin
 
@@ -481,7 +483,7 @@ claude plugin marketplace add LukasSelin/doppel
 claude plugin install doppel@doppel
 ```
 
-Four hooks, placed by when a fact can still change what gets written:
+Five hooks, placed by when a fact can still change what gets written:
 
 - **SessionStart** — the corpus inventory: the concepts doppel learned from this repo and how many
   functions carry each, the kinds of work it found no practice for, the role distribution.
@@ -489,6 +491,10 @@ Four hooks, placed by when a fact can still change what gets written:
   else. Silent when it recognises none.
 - **PreToolUse** on `Edit`/`Write` — immediately before a file changes, the merge-worthy twins of
   the functions in it. Advisory only; it never blocks an edit.
+- **PostToolUse** on `Edit`/`Write`/`MultiEdit` — right after the edit lands, every function it
+  created or changed probed against the corpus; a near duplicate of existing code (code-shape
+  >= 0.60) is named in the tool result. Opt-in per repository with `"hook-probe": "on"` in
+  `.doppel.json`, because it runs an index on every edit.
 - **Stop** — what the session has done to the duplication surface, leading with the pairs it can
   trace to a function you actually edited. Prints nothing on turns that changed nothing.
 

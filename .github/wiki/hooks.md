@@ -1,6 +1,6 @@
 # Hooks and the Causal Window
 
-Doppel knows things about a codebase that are worth knowing before you write into it. Whether any of that changes an outcome is entirely a question of *when* it gets said. This page is about the timing argument the four hooks are built on; [plugin/README.md](../../plugin/README.md) is the operational manual for what each one prints and how to configure it.
+Doppel knows things about a codebase that are worth knowing before you write into it. Whether any of that changes an outcome is entirely a question of *when* it gets said. This page is about the timing argument the five hooks are built on; [plugin/README.md](../../plugin/README.md) is the operational manual for what each one prints and how to configure it.
 
 ## The problem
 
@@ -33,13 +33,14 @@ SessionStart is upstream of the first condition. It cannot know that this sessio
 
 That is not an argument for deleting either. It is an argument for giving each one the job it can actually do — and for putting the per-target findings in the two hooks that can act on a target.
 
-## The four hooks
+## The five hooks
 
 | Event | Fires | Subcommand | The question it answers | Cost |
 | --- | --- | --- | --- | --- |
 | SessionStart | once, at session start (also on resume and after compaction) | `doppel hook session-start` | what kind of codebase is this? | one analysis |
 | UserPromptSubmit | on every user message | `doppel hook user-prompt` | what does doppel know about *this* package? | one analysis |
 | PreToolUse | before every `Edit` or `Write` | `doppel hook pre-tool` | does this file's code already have twins? | a file read |
+| PostToolUse (opt-in) | after every `Edit`, `Write` or `MultiEdit` | `doppel hook post-edit` | is a function this edit just wrote a copy of something that exists? | one index |
 | Stop | when the agent finishes a turn | `doppel hook stop` | what did this session do to the duplication surface? | one analysis |
 
 **SessionStart — deliberately vague.** It carries only what stays true for the whole session: which concepts doppel learned from the corpus and how many functions carry each, which kinds of work it found *no* practice for, the role distribution, one pair count. That last-but-one line is the most useful thing on it, because "this codebase has no retry practice" is a complete answer where a list of present concepts only narrows a search. It names *seeds* rather than learned concepts, necessarily: a learned concept exists because functions carry it, so it can never be absent. It used to also list merge-worthy pairs and a concepts-by-package survey; both were removed. The survey was alphabetical and capped, so on a large repo it reliably ran out somewhere in the a's, and the pair list named packages the session would never touch. Per-target findings moved to the hooks that have a target.
@@ -49,6 +50,10 @@ That is not an argument for deleting either. It is an argument for giving each o
 **PreToolUse — the last responsible moment.** Immediately before a file is rewritten, the hook names the merge-worthy twins of the functions in it. This is the version with the most leverage, because the alternative to acting on it is a diff you will have to unpick. Its facts come from the session-start baseline and are labelled *as of session start*, which makes it a file read rather than an analysis — the difference between milliseconds and seconds on every edit. Each file's advisory fires once per session; without that it would repeat on every edit of the same file.
 
 It is **advisory-only, permanently**. `PreToolUse` can deny a tool call with a reason, which would turn "don't edit one half of a merge-worthy pair" into something the agent must answer. Doppel never sets that field. A blocking dedupe hook misfires on genuine near-duplicates — and near-duplicates are precisely and exclusively what it fires on — so the failure mode is blocking legitimate work, repeatedly, with no recourse.
+
+**PostToolUse — the backstop, per edit.** Right after an edit lands, the hook probes every function the file now holds that is new since session start or whose body changed, against the corpus as it stands *after* the edit — the same retrieval `doppel query` runs on a draft, but on code nobody queried. A match at code-shape 0.60 or above that was not already a pair at session start is named in the tool result, with its kind when one applies, and one closing sentence: reuse or extend it, or say in one line why not. After rather than before, because before the edit the file still holds the old body, and a changed function's nearest match would be its own former self.
+
+It exists for the finding the Stop hook's bar structurally cannot see. Stop interrupts only for merge-worthy pairs, and merge-worthiness leans on shared callers and a shared package — exactly what a cross-package copy of an existing helper lacks. Opt-in (`"hook-probe": "on"`), because it costs one index per edit; each pair is said once per session, whichever side was edited, and not repeated by Stop.
 
 **Stop — measurement, not prevention.** It re-runs the analysis and diffs against the baseline taken at session start, so it is cumulative: every turn answers "what has this session done so far", not "what happened in the last thirty seconds". It prints nothing when nothing changed, because a "no changes" line after every turn trains you to stop reading the place real findings appear.
 
@@ -105,12 +110,14 @@ flowchart LR
     SS["hook session-start"]
     UP["hook user-prompt"]
     PT["hook pre-tool"]
+    PE["hook post-edit"]
     ST["hook stop"]
     AN["doppel analyze / query"]
 
     SRC --> SS
     SRC --> UP
     SRC --> ST
+    SRC --> PE
     SRC --> AN
 
     SS -- "writes once, only if absent" --> BASE
@@ -118,6 +125,8 @@ flowchart LR
     ST -- "Reported ledger" --> BASE
     BASE -- "reads: the fact sheet" --> PT
     PT -- "Advised ledger" --> BASE
+    BASE -- "reads: the before" --> PE
+    PE -- "Reported ledger" --> BASE
 ```
 
 The baseline is a measurement origin, not a cache: nothing recomputes faster because it exists, and no pipeline stage is ever skipped because it exists. `analyze` never reads it — visible above as an edge that is not drawn. The PreToolUse advisory widened its role to *also* be the session's fact sheet, which is a deliberate change and the one place the boundary was moved; the boundary itself held.
@@ -126,7 +135,7 @@ SessionStart writes the baseline only if one is not already there. That hook als
 
 ## Failure is silence
 
-All four hooks share one contract: read the payload on stdin, write the response on stdout, **never exit non-zero, never write to stderr**. Every failure path ends at the same place, emitting nothing.
+All five hooks share one contract: read the payload on stdin, write the response on stdout, **never exit non-zero, never write to stderr**. Every failure path ends at the same place, emitting nothing.
 
 This is not defensive habit. A SessionStart hook's stderr surfaces to the user as a broken-tool notice, and a measurement that can interrupt a session over its own failure to measure is indefensible. Silence is also the normal, common case rather than an error state — most prompts mention no package doppel knows, most turns change no duplication, most files have no twins.
 

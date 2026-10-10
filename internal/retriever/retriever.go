@@ -230,16 +230,46 @@ func Retrieve(units []parser.CodeUnit, g *concepter.Graph,
 // scoring a unit against statistics it is excluded from would misrepresent
 // how it sits in this corpus. The caller appends it before tagging and graph
 // building, which also hands it resolved callees for free.
+//
+// Probe is NewProber(...).Probe(probeIdx). A caller probing several units of
+// one corpus should hold the Prober instead: the three indexes are most of a
+// probe's cost, and they do not depend on which unit is probed.
 func Probe(units []parser.CodeUnit, probeIdx int, g *concepter.Graph,
 	onto *ontology.Ontology, ic *ontology.IC, wl *fingerprint.LabelIDF,
 	opt Options) ([]Candidate, Stats) {
+	return NewProber(units, g, onto, ic, wl, opt).Probe(probeIdx)
+}
 
+// Prober is Probe's three inverted indexes and its pair memo, built once over
+// one corpus and reused across probes. Everything it holds is immutable after
+// construction or a memo of a pure function of the pair, so probing unit i
+// and then unit j answers exactly what two independent Probe calls would —
+// the memo only spares recomputing a pair both probes reach.
+type Prober struct {
+	opt      Options
+	sim      *simCache
+	shapes   *shapeIndex
+	calls    *callIndex
+	concepts *conceptIndex
+}
+
+// NewProber builds the indexes Probe reads, over units as given.
+func NewProber(units []parser.CodeUnit, g *concepter.Graph,
+	onto *ontology.Ontology, ic *ontology.IC, wl *fingerprint.LabelIDF, opt Options) *Prober {
 	scorer := ontology.NewScorer(onto, ic)
-	sim := newSimCache(units, wl, opt.weights())
+	return &Prober{
+		opt:      opt,
+		sim:      newSimCache(units, wl, opt.weights()),
+		shapes:   buildShapeIndex(units, opt),
+		calls:    buildCallIndex(units, g, opt),
+		concepts: buildConceptIndex(units, onto, scorer, opt),
+	}
+}
 
-	shapes := buildShapeIndex(units, opt)
-	calls := buildCallIndex(units, g, opt)
-	concepts := buildConceptIndex(units, onto, scorer, opt)
+// Probe retrieves the functions most related to the unit at probeIdx; see the
+// package-level Probe.
+func (p *Prober) Probe(probeIdx int) ([]Candidate, Stats) {
+	opt, sim, shapes, calls, concepts := p.opt, p.sim, p.shapes, p.calls, p.concepts
 
 	admitted := make(map[pairKey]*admission)
 	// Same counting semantics as Retrieve's admit closure: distinct counts

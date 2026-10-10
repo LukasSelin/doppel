@@ -168,6 +168,8 @@ func TestHookCommandsFailSilently(t *testing.T) {
 		{"user-prompt with an empty object", "user-prompt", `{}`},
 		{"pre-tool with malformed payload", "pre-tool", "{not json"},
 		{"pre-tool with an empty object", "pre-tool", `{}`},
+		{"post-edit with malformed payload", "post-edit", "{not json"},
+		{"post-edit with an empty object", "post-edit", `{}`},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

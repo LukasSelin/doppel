@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -34,6 +35,7 @@ type AnalysisConfig struct {
 	FamilyMin  *float64  `json:"family-min,omitempty"`
 	MapMetric  *string   `json:"map-metric,omitempty"`
 	HookNotify *string   `json:"hook-notify,omitempty"`
+	HookProbe  *string   `json:"hook-probe,omitempty"`
 }
 
 // defaultCalibrateRate is the fraction of random unrelated pairs a run's
@@ -125,19 +127,47 @@ const (
 // bearing on what was measured, and switching modes mid-session must not throw
 // away the session's origin.
 func hookNotify(root string) (string, error) {
+	return hookMode(root, "hook-notify", func(c *AnalysisConfig) *string { return c.HookNotify },
+		NotifyAgent, "agent, user, or off", NotifyAgent, NotifyUser, NotifyOff)
+}
+
+// Post-edit probe modes. Off unless a repository opts in: the hook adds an
+// index() run to every Edit/Write, and its firing rate is a measurement per
+// corpus rather than something a default can promise.
+const (
+	ProbeOn  = "on"
+	ProbeOff = "off"
+)
+
+// hookProbe reads whether `doppel hook post-edit` runs for this repository.
+//
+// Like hook-notify it is deliberately not in Params: whether an edit is probed
+// has no bearing on what a run measures, so it must not make a baseline
+// incomparable. Unlike hook-notify it defaults off — notify decides who hears
+// about a measurement that runs anyway, this decides whether one runs at all.
+func hookProbe(root string) (string, error) {
+	return hookMode(root, "hook-probe", func(c *AnalysisConfig) *string { return c.HookProbe },
+		ProbeOff, "on or off", ProbeOn, ProbeOff)
+}
+
+// hookMode reads one hook-only mode key from root's .doppel.json: the default
+// when the file or the key is absent, the value when it is one of allowed, and
+// the default plus an error naming the key otherwise. hook-notify and
+// hook-probe share it — doppel found the second reader as a 0.74 code-shape
+// copy of the first — so the two keys cannot drift in how they are read.
+func hookMode(root, key string, pick func(*AnalysisConfig) *string, def, want string, allowed ...string) (string, error) {
 	cfg, err := loadConfig(filepath.Join(root, ".doppel.json"))
 	if err != nil {
-		return NotifyAgent, err
+		return def, err
 	}
-	if cfg == nil || cfg.HookNotify == nil {
-		return NotifyAgent, nil
+	if cfg == nil || pick(cfg) == nil {
+		return def, nil
 	}
-	mode := *cfg.HookNotify
-	switch mode {
-	case NotifyAgent, NotifyUser, NotifyOff:
+	mode := *pick(cfg)
+	if slices.Contains(allowed, mode) {
 		return mode, nil
 	}
-	return NotifyAgent, fmt.Errorf("invalid hook-notify value %q: want agent, user, or off", mode)
+	return def, fmt.Errorf("invalid %s value %q: want %s", key, mode, want)
 }
 
 // loadConfig reads a JSON config file. Returns nil (no error) if the file does not exist.

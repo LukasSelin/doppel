@@ -51,7 +51,7 @@ joins the corpus. Appending before anything runs is the load-bearing choice: the
 resolver hands the probe resolved callees, mapper classifies its role against the same thresholds
 as everyone, and every corpus statistic sees it — so query statistics differ from a plain analyze
 by exactly the probe's own contribution, which is the honest way to ask how a proposed function
-would sit in this corpus. `retriever.Probe` then runs the same three channels, gates and evidence
+would sit in this corpus. `retriever.Probe` (or a `retriever.Prober` holding its indexes across probes) then runs the same three channels, gates and evidence
 arithmetic as `Retrieve`, narrowed to the probe's admission turn (`admitFor`, extracted from each
 channel's loop; the shared `evaluate` tail keeps the two from drifting). Query ranking is
 `Total × (1 + Locality)` where locality is the fraction of the probe's depth-2 call-graph ball the
@@ -99,8 +99,9 @@ cmd/            CLI commands (Cobra).
   profile.go    --cpuprofile / --memprofile, hidden persistent flags on the root command
   query.go      doppel query: check a proposed function (a snippet on stdin) against the corpus, locality-weighted
   config.go     .doppel.json loading (AnalysisConfig), flag precedence, hookParams
-  hook.go       doppel hook session-start / user-prompt / pre-tool / stop: the four Claude Code
+  hook.go       doppel hook session-start / user-prompt / pre-tool / post-edit / stop: the five Claude Code
                 hook entry points, plus `hook view` (the plugin mod's read of the Stop hook's report), and baseline file I/O
+  postedit.go   doppel hook post-edit: probe the functions an Edit/Write wrote against the post-edit corpus
   diff.go       doppel diff: match two snapshot files' functions to each other; --output writes the delta report as markdown; exit codes 0/1/2
   timeline.go   doppel timeline: N snapshot files as one steppable history; refuses a series whose steps disagree about the operating point
   timeline_text.go  the terminal form of a series
@@ -158,6 +159,7 @@ internal/
   bench/        Measurement harness: golden-ranking scorer, the pinned public corpus ladder, per-stage benchmarks, example generator
 examples/       Committed real reports for each corpus rung, plus labels/ (committed golden reviews) — see examples/README.md
 scripts/        timeline.sh: walks a git history and analyses each revision at one pinned operating point.
+                postedit-replay.sh: replays a history through `doppel hook post-edit`, one session per commit — the post-edit floor's measurement.
                 history-labels.sh + historylabel/ (its own Go module): derives golden labels from what maintainers did to each pair in git history.
                 The only code in the repo that knows git exists, and deliberately outside the doppel module
 ```
@@ -319,9 +321,18 @@ extend; a high code-shape hit in an unrelated package is a lookalike, not a reas
 If you reuse nothing, say why in one line — "nothing similar" is a finding too. Do not add a
 local copy of a function the query names; extract or share it, the way `internal/lexbridge` was.
 
+**The post-edit hook is the automatic backstop, not a replacement for the query.** This repo's
+`.doppel.json` sets `hook-probe: on`, so after every Edit/Write `doppel hook post-edit` probes the
+functions the edit created or changed and, when one reads at code-shape >= 0.60 against something
+that already exists, says so in the tool result. Treat that note exactly like a query hit: reuse or
+extend what it names, or say in one line why the new function is deliberately separate. It fires
+*after* the code is written, so the manual query on a draft is still the step that saves the
+rewrite; the hook catches the drafts nobody queried.
+
 The project enables the **doppel Claude Code plugin** in `.claude/settings.json` (marketplace
-`LukasSelin/doppel`, plugin `doppel@doppel`). Its four hooks put the corpus in front of the
-session at start, per prompt, before each Edit/Write, and at end of turn — see `plugin/README.md`.
+`LukasSelin/doppel`, plugin `doppel@doppel`). Its five hooks put the corpus in front of the
+session at start, per prompt, before and after each Edit/Write, and at end of turn — see
+`plugin/README.md`.
 They shell out to the `doppel` binary on `PATH`, so keep that binary current when working on
 scoring code: `go install -ldflags "-X github.com/LukasSelin/doppel/cmd.version=$(git describe
 --tags --always --dirty)" .` — stamped, because two unstamped dev builds look comparable to a
@@ -2472,7 +2483,8 @@ or the `languages` config key restores the old population exactly.
   "families": 5,
   "family-min": 0.60,
   "map-metric": "merge-worthy",
-  "hook-notify": "agent"
+  "hook-notify": "agent",
+  "hook-probe": "off"
 }
 ```
 
@@ -2544,7 +2556,11 @@ but it is a *selection* stage, and turning a filter on by default would drop pai
 report to no labeled benefit.
 
 `hook-notify` (`agent` | `user` | `off`) is read only by `doppel hook stop` and has no flag — there
-is no CLI surface a hook setting would belong to. `format` (`text` or `json`) is a key like any
+is no CLI surface a hook setting would belong to. `hook-probe` (`on` | `off`, default `off`) is read
+only by `doppel hook post-edit`, for the same reason, and is likewise not in `Params`: whether an
+edit gets probed has no bearing on what a run measures. It defaults off where `hook-notify`
+defaults on because it decides whether an analysis runs at all — one `index()` per Edit/Write —
+rather than who hears about one that runs anyway; this repository opts in. `format` (`text` or `json`) is a key like any
 other. Every functional flag except `--config` has a
 config key. Precedence: `applyConfig` only calls
 `Flags().Set` when `!Flags().Changed(name)`, so explicit CLI flags always win over the file.
@@ -2850,6 +2866,69 @@ reason rather than returning a partial delta.
   `permissionDecision` never is — a blocking dedupe hook misfiring on a genuine near-duplicate
   (exactly what it fires on) would be worse than none. An `Advised` ledger in the baseline
   wrapper (same mechanism as `Reported`) makes each file's advisory fire once per session.
+- `post-edit` (PostToolUse, matched on `Edit|Write|MultiEdit`, opt-in via `hook-probe: on`)
+  probes every function the edited file now holds whose key is absent from the session baseline
+  or whose `Digest` moved, against the corpus **as it stands after the edit**, and names the near
+  duplicates in `additionalContext`. After rather than before, because before the edit the file on
+  disk still holds the old body and a changed function's nearest match is its own former self;
+  after it, a plain `index()` reads the true post-edit corpus and `retriever.Probe` accepts any
+  unit index, so no pipeline stage changed. `probeMatches` (in `cmd/query.go`) is the per-probe
+  retrieval `doppel query` runs — one function, both callers — and `doppel query`'s output was
+  verified byte-identical across the extraction.
+
+  What fires: a match at code-shape >= `postEditShapeFloor` (0.60, `analyzer.ForkShapeFloor` —
+  the family/fork guarantee floor; the calibrated threshold is the 99th percentile of *random*
+  pairs, a fine admission gate and far too weak a claim to interrupt an edit with), that was **not
+  already a pair in the baseline** (`pre-tool` covered those, and the session did not create
+  them). `init`, and `main` in package `main`, are never probed or matched: Go code cannot refer to
+  either, so "reuse it" is impossible, and flag-registering `init`s were the largest noise class in
+  the replay. Pair kinds annotate (`analyzer.ClassifyPairIn`, same context as the pipeline) and
+  never filter. The note is at most three matches per probe and closes with one sentence: reuse or
+  extend it, or say in one line why not.
+
+  It is the one hook that catches what the merge-worthy gate cannot: a cross-package copy of a
+  shared helper (the `subsystem copies` kind) shares no callers and no package with the original
+  by construction, so the Stop hook's `Notable` bar — merge-worthy pairs only — never sees it.
+
+  The ledger is the baseline's `Reported`, with two keys per finding shown: `probe:<probe>|<match>`
+  and the Stop hook's own `new:<A>|<B>`. A match is skipped when **either** is present, so a pair
+  is said once per session whichever side was probed, and the end-of-turn note does not repeat
+  it. The baseline is re-read immediately before the ledger write, so a concurrent hook's ledger
+  entries are not dropped by this one's. Like `pre-tool` it needs a baseline (no baseline, no
+  "before", silence) and pins its operating point from it; `index()` runs under a 20-second
+  deadline (`postEditDeadline`, under the plugin's 30) and an expired or panicking probe emits
+  nothing. A file no frontend reads, a `_test.go` file outside the population, or a file that does
+  not parse mid-edit all end silent before or after the index.
+
+  **Measured before the floor was fixed** — `scripts/postedit-replay.sh`, one session per
+  non-merge commit (baseline at the parent, every added/modified non-test Go file as one edit):
+
+  | history | file-edits | fire at 0.50 | **at 0.60** | at 0.70 | at 0.90 | latency mean / max |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | cobra, last 200 commits (95 with Go edits) | 185 | 3.2% | **2.7%** | 1.6% | 1.6% | 0.8s / 4.6s |
+  | doppel, last 161 commits (109 with Go edits) | 483 | 20.5% | **14.5%** | 9.5% | 7.5% | 0.9s / 5.0s |
+  | moby, last 25 commits | 126 | 0.8% | **0.8%** | 0.8% | 0.8% | 3–5s / 11.5s |
+
+  Rates are after the two rules the first doppel run motivated (no `init`/`main`; a pair said once
+  per session). The doppel rate is high because doppel's history *is* that duplication: at 0.60 the
+  hook re-finds, at the commit that wrote them, the clones this file later records as consolidated —
+  `relSlash`, `shouldSkipDir`/`skipDir`, `printType`, `derivedConcepts`, `validate*Mode`,
+  `qualifiedName`, the `sortedKeys` family. Precision, read by hand and rough: above 0.70 about
+  three findings in four are real copies, and most of the rest already carry a `thin wrappers`,
+  `interface implementations` or `mirror operations` kind saying what they are; the 0.60-0.70
+  band reads about one in three — but it holds `lexicon.upperQuantile ↔ calibrate.Quantile` (0.68)
+  and `identity.WriteJSONDelta ↔ reporter.encodeJSON` (0.69), both documented here as genuine
+  local copies and both `subsystem copies`, the class the hook exists for. On cobra every firing
+  that meets a hand label is a true match (the `MarkFlags*` merges, the `validate*FlagGroups` and
+  `stripFlags`/`argsMinusFirstX` refactors) and no labelled false positive fires. So 0.60 is kept,
+  and 0.70 is the one-constant alternative if the doppel rate proves too chatty in practice.
+
+  **The cost is `index()`, not the probes**, and it is why the hook is opt-in. Profiled on a slow
+  moby edit: ~0.4s of probing inside a ~5s run, the rest parse and corpus build under heavy GC.
+  `retriever.Prober` (the three indexes `Probe` builds, held across the probes of one edit —
+  `Probe` is `NewProber(...).Probe`, verified equal by `TestProberReuseMatchesIndependentProbes`)
+  keeps a many-function Write from paying the index build per function, and `walkSkips` answers an
+  edit under `vendor/` or any directory the walk skips without indexing at all.
 - Both digests rank the pairs they have room to print by **corroborated evidence**,
   `shape x overlap` (`impactKey` in `reporter`), then shape, then names. Not by overlap, and not by
   the merge-worthy flag: shared context favours same-package siblings by construction, so overlap
