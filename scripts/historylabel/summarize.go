@@ -149,10 +149,15 @@ func estimateOf(all []matchedSet, f func(studyPair) float64, seedLabel string) e
 		e.lo, e.hi = math.NaN(), math.NaN()
 		return e
 	}
-	sort.Float64s(reps)
-	e.lo = reps[int(0.025*float64(len(reps)-1))]
-	e.hi = reps[int(math.Ceil(0.975*float64(len(reps)-1)))]
+	e.lo, e.hi = percentile95(reps)
 	return e
+}
+
+// percentile95 sorts reps and reads the nearest-rank 2.5% and 97.5% points,
+// the interval every bootstrap here reports.
+func percentile95(reps []float64) (lo, hi float64) {
+	sort.Float64s(reps)
+	return reps[int(0.025*float64(len(reps)-1))], reps[int(math.Ceil(0.975*float64(len(reps)-1)))]
 }
 
 func fmtRatio(x float64) string {

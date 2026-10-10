@@ -177,6 +177,19 @@ tasks:
     cmds:
       - go run -C scripts/historylabel . compare-summary -reference {{.ROOT_DIR}}/examples/ranker-outcomes -overlap {{if .OUT}}-out {{.OUT}}{{end}} {{.FILES}}
 
+  outcome-reanalysis:
+    desc: "Re-run both outcome studies' summaries under the paired and paired-clustered bootstraps, from the committed outcome files (see examples/outcome-reanalysis.md)"
+    vars:
+      R: '{{.ROOT_DIR}}/examples/ranker-outcomes'
+      C: '{{.ROOT_DIR}}/examples/clone-outcomes'
+      O: '{{.ROOT_DIR}}/examples/outcome-reanalysis'
+      CORPORA: cobra gin prometheus hugo moby
+    cmds:
+      - for: [paired, paired-clustered]
+        cmd: go run -C scripts/historylabel . compare-summary -bootstrap {{.ITEM}} -cost-dir {{.ROOT_DIR}}/examples/cost-study -out {{.O}}/ranker-outcomes.{{.ITEM}}.md {{range splitList " " .CORPORA}}{{$.R}}/{{.}}.outcomes.json {{end}}
+      - for: [paired, paired-clustered]
+        cmd: go run -C scripts/historylabel . compare-summary -bootstrap {{.ITEM}} -reference {{.R}} -overlap -out {{.O}}/clone-outcomes.{{.ITEM}}.md {{range splitList " " .CORPORA}}{{$.C}}/{{.}}.clone-outcomes.json {{end}}
+
   rolling-origin:
     desc: "Rank a corpus at earlier origins T_k under both outcome studies' methods, and judge each on its own window T_k..T_k-1 (CORPUS=cobra ORIGINS='2 3' OUT=<dir>; see examples/rolling-origin.md)"
     vars:
