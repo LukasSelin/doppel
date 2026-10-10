@@ -18,7 +18,6 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 )
 
@@ -41,9 +40,16 @@ func compareSummaryMain(args []string) {
 	overlap := fs.Bool("overlap", false, "add each method's overlap with doppel's top list, its median smallest side and its event count")
 	inputs := fs.String("inputs", "", "directory of the clone-outcome study's <corpus>.clone-outcomes.json; every list shared with them must be reproduced exactly")
 	fusion := fs.Bool("fusion", false, "add the fused-minus-input comparison for every RRF(a, b) list")
+	boot := fs.String("bootstrap", bootIndependent, "the primary comparison's CI: independent (each study's pre-registered rule), paired or paired-clustered (examples/outcome-reanalysis.md)")
 	fs.Parse(args)
 	if fs.NArg() == 0 {
 		fs.Usage()
+		os.Exit(2)
+	}
+	switch *boot {
+	case bootIndependent, bootPaired, bootPairedClustered:
+	default:
+		fmt.Fprintf(os.Stderr, "historylabel compare-summary: -bootstrap %q: want %s, %s or %s\n", *boot, bootIndependent, bootPaired, bootPairedClustered)
 		os.Exit(2)
 	}
 	var corpora []compareOut
@@ -71,12 +77,15 @@ func compareSummaryMain(args []string) {
 	if *inputs != "" {
 		writeInputsCheck(w, corpora, *inputs)
 	}
-	writeCompareSummary(w, corpora, *costDir)
+	writeCompareSummary(w, corpora, *costDir, *boot)
 	if *fusion {
 		writeFusion(w, corpora)
 	}
 	if *overlap {
 		writeOverlap(w, corpora)
+	}
+	if *boot != bootIndependent {
+		writeClusterTable(w, corpora, *boot)
 	}
 }
 
@@ -179,9 +188,21 @@ func rateOf(c compareOut, idx []int) rates {
 	return r
 }
 
+// m1Mean is M1 over the list entries idx, in order.
+func m1Mean(c compareOut, idx []int) float64 {
+	s := 0.0
+	for _, x := range idx {
+		s += m1(c.Pairs[x])
+	}
+	return s / float64(len(idx))
+}
+
 // diffCI is M1(a) - M1(b) with a 95% percentile bootstrap CI, each side
 // resampled independently.
 func diffCI(c compareOut, a, b []int, seed string) (d, lo, hi float64) {
+	if len(a) == 0 || len(b) == 0 {
+		return math.NaN(), math.NaN(), math.NaN()
+	}
 	va := make([]float64, len(a))
 	vb := make([]float64, len(b))
 	for i, x := range a {
@@ -190,17 +211,7 @@ func diffCI(c compareOut, a, b []int, seed string) (d, lo, hi float64) {
 	for i, x := range b {
 		vb[i] = m1(c.Pairs[x])
 	}
-	mean := func(v []float64) float64 {
-		s := 0.0
-		for _, x := range v {
-			s += x
-		}
-		return s / float64(len(v))
-	}
-	if len(va) == 0 || len(vb) == 0 {
-		return math.NaN(), math.NaN(), math.NaN()
-	}
-	d = mean(va) - mean(vb)
+	d = m1Mean(c, a) - m1Mean(c, b)
 	rng := lcg{seedOf("ranker-outcomes bootstrap", c.Corpus, seed)}
 	reps := make([]float64, 0, bootReps)
 	for range bootReps {
@@ -213,13 +224,11 @@ func diffCI(c compareOut, a, b []int, seed string) (d, lo, hi float64) {
 		}
 		reps = append(reps, sa/float64(len(va))-sb/float64(len(vb)))
 	}
-	sort.Float64s(reps)
-	lo = reps[int(0.025*float64(len(reps)-1))]
-	hi = reps[int(math.Ceil(0.975*float64(len(reps)-1)))]
+	lo, hi = percentile95(reps)
 	return d, lo, hi
 }
 
-func writeCompareSummary(w io.Writer, corpora []compareOut, costDir string) {
+func writeCompareSummary(w io.Writer, corpora []compareOut, costDir, boot string) {
 	fmt.Fprintf(w, "### Operating points\n\n")
 	fmt.Fprintf(w, "| corpus | T | T date | pin date | window commits | functions at T | calibration | union | listed units unresolved |\n")
 	fmt.Fprintf(w, "| --- | --- | --- | --- | ---: | ---: | --- | ---: | ---: |\n")
@@ -296,15 +305,13 @@ func writeCompareSummary(w io.Writer, corpora []compareOut, costDir string) {
 	}
 
 	fmt.Fprintf(w, "### Primary comparison: M1@%d, doppel minus baseline\n\n", primaryK)
+	if boot != bootIndependent {
+		fmt.Fprintf(w, "CI by the %s bootstrap of examples/outcome-reanalysis.md, not the study's pre-registered independent one.\n\n", boot)
+	}
 	var baselines []string
 	cells := map[string]map[string]cell{}
 	for _, c := range corpora {
-		var dop []int
-		for _, v := range viewsOf(c) {
-			if v.name == doppelMethod {
-				dop = v.slice(1, primaryK)
-			}
-		}
+		dop := doppelTop(c)
 		for _, v := range viewsOf(c) {
 			if v.name == doppelMethod {
 				continue
@@ -314,6 +321,9 @@ func writeCompareSummary(w io.Writer, corpora []compareOut, costDir string) {
 				baselines = append(baselines, v.name)
 			}
 			d, lo, hi := diffCI(c, dop, v.slice(1, primaryK), v.name)
+			if boot != bootIndependent {
+				d, lo, hi = pairedDiffCI(c, dop, v.slice(1, primaryK), boot, v.name)
+			}
 			cells[v.name][c.Corpus] = cell{d, lo, hi}
 		}
 	}

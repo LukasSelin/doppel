@@ -3785,6 +3785,18 @@ functions for exactly this reason, and the first version of them did not and fai
     depends on what else is judged beside it**. Compare numbers across studies only when they
     were judged in one run. Descriptively, fusion beats doppel nowhere and reads lower on
     prometheus and hugo; it gains only moby's `client.*Prune` sweep, which dupl alone had.
+  - **The outcome re-analysis** (`task outcome-reanalysis`, `historylabel compare-summary
+    -bootstrap paired|paired-clustered`; default `independent` renders byte-identically) re-reads
+    both outcome studies' committed files with two separately pre-registered bootstraps
+    (`examples/outcome-reanalysis.md`): paired resamples the union of the two top-100 lists
+    jointly, stratified by list membership; paired-clustered resamples connected components of
+    pairs sharing an evidence commit. The original verdicts stand as recorded. **Measured:**
+    paired adds three wins and doppel's first two per-corpus losses (moby, against dupl t=50 and
+    floored code-shape); **paired-clustered turns every "doppel beats it" verdict in both studies
+    into not distinguishable**, and nothing beats doppel. doppel's M1@100 on gin, hugo and moby is
+    two or three independent commits, so a zero-scoring baseline's lower bound sits at exactly 0;
+    only prometheus (26 clusters) has the events to decide. A new outcome study should cluster on
+    commits from the start and add independent events (origins, corpora), not depth.
   - `TestSweep` (guard `DOPPEL_BENCH_SWEEP=1`) is the sensitivity sweep: each hand-set constant
     varied one at a time (±50% or the natural alternatives), only the stages it reaches re-run,
     and the labeled rankings reported with a verdict — `inert` (no label moved), `moves`,
