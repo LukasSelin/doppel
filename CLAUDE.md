@@ -2612,11 +2612,25 @@ measured at floor 18), so calibration is **declined** and conc runs at the stati
 a calibration — and it is stated on stderr, not silent. Whether 16 is right for a corpus that
 small is a measurement question, not a merge question; the seam is here for it.
 
-Mechanics, all deterministic by construction: units are put in a canonical order (`package.name`,
-file, line) so walk order cannot matter; the seed is FNV-1a over those names; a 64-bit LCG draws
-up to 20 000 distinct unordered pairs (enumerated outright when the population is smaller),
-rejecting cross test/production pairs like the pipeline does; pairs are scored in ascending index
-order. The **code-shape null** is drawn over `--min-nodes`-eligible units — the shape channel's own
+Mechanics, all deterministic by construction: each unit gets an identity hash (`package.name`,
+file, and an ordinal for a repeated name in one file — never the line, which moves whenever code
+above it does); each unordered pair's priority is a splitmix of its two identities; the null is
+the **bottom-k** sample — the 20 000 lowest-priority pairs (all of them when the population is
+smaller), rejecting pairs `SameBuildUnit` refuses, like the pipeline does; pairs are scored in
+ascending index order. Finding the bottom k scans every pair once against a cut near `k/total`,
+doubled until enough survive — O(m²) mixes, 0.2s on moby, across cores.
+
+**Bottom-k replaced a seeded LCG because the LCG made the operating point chaotic.** Its seed was
+FNV-1a over *every* name and it drew positions in the canonical order, so adding any function — a
+one-liner in an unrelated package — redrew all 20 000 null pairs, and the 0.01-rounded floors moved
+on half of all additions. Measured on doppel's own tree over twelve additions (a third copy of a
+helper, a novel body, a one-liner, each in four packages): the LCG moved threshold or struct-min on
+**6 of 12**, dropping up to **130 of 1 840** reported pairs nobody touched (22 merge-worthy); bottom-k
+moved them on **0 of 12** and dropped **none**. A pair's priority is a function of its two functions
+alone, so an added function displaces the sample only where one of its own pairs outbids an
+incumbent — about 2/m of it (`TestSampleStableUnderInsertion`). The switch itself is a one-time
+redraw: moby 0.36/0.30 → 0.35/0.31, gin 0.41/0.49 → 0.40/0.47, cobra struct-min 0.53 → 0.52, the
+other four rungs unchanged; the cobra golden scorecard stays green. The **code-shape null** is drawn over `--min-nodes`-eligible units — the shape channel's own
 gate — and scored with `fingerprint.SimilarityWith`; the **overlap null** is drawn over all units
 and scored with the run's own corpus-weighted comparator. Each threshold is the nearest-rank upper
 quantile at `1 − rate` (a score some null pair actually had, never an interpolation), **rounded up

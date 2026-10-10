@@ -5,12 +5,22 @@
 // corpus of 81 functions and one of 8000; "admit 1% of random pairs" means
 // the same thing on both.
 //
-// Everything here is deterministic by construction. The sample is drawn by a
-// seeded generator whose seed is derived from the corpus's own names in a
-// canonical order, the pairs are scored in ascending index order, and the
-// quantile is a rank, not an interpolation. An unchanged tree calibrates to
-// the same numbers every run, which is what lets the derived thresholds live
-// in a snapshot's Params.
+// Everything here is deterministic by construction. The sample is a bottom-k
+// sample over pair priorities hashed from each function's identity, the pairs
+// are scored in ascending index order, and the quantile is a rank, not an
+// interpolation. An unchanged tree calibrates to the same numbers every run,
+// which is what lets the derived thresholds live in a snapshot's Params.
+//
+// The sample is also stable under change, which a seeded generator was not.
+// The old sampler seeded an LCG from a hash over every name in the corpus and
+// drew positions in the canonical order, so adding any function - a one-line
+// accessor in an unrelated package - redrew all 20 000 null pairs, and the
+// derived floors moved by a hundredth as often as not, dropping every pair
+// that sat between the old cut and the new one. Measured on doppel's own
+// tree, a one-line method moved threshold 0.35 -> 0.36 and struct-min
+// 0.40 -> 0.41 and took 135 of 1 842 reported pairs with it. Under bottom-k a
+// pair's priority depends on its two functions alone, so an added function
+// can only displace the existing sample where one of its own pairs outbids it.
 //
 // The package imports parser, fingerprint, comparator and concepter only; it
 // never imports cmd, analyzer or bench.
@@ -74,7 +84,7 @@ func Run(units []parser.CodeUnit, docs []concepter.ConceptDoc, comp *comparator.
 		w = fingerprint.DefaultWeights()
 	}
 	order := canonicalOrder(units)
-	seed := Seed(units)
+	ids := identities(units, order)
 
 	// Code-shape null: over units the shape channel would consider, so the
 	// threshold is calibrated at the gate's own operating point.
@@ -84,7 +94,7 @@ func Run(units []parser.CodeUnit, docs []concepter.ConceptDoc, comp *comparator.
 			shapeIdx = append(shapeIdx, i)
 		}
 	}
-	shapePairs := samplePopulation(units, shapeIdx, o.MaxPairs, seed)
+	shapePairs := samplePopulation(units, shapeIdx, o.MaxPairs, ids, shapeSalt)
 	res.ShapePairs = len(shapePairs)
 	if len(shapePairs) < o.MinNullPairs {
 		res.Declined = declined(len(shapePairs), o.MinNullPairs, "shape")
@@ -102,7 +112,7 @@ func Run(units []parser.CodeUnit, docs []concepter.ConceptDoc, comp *comparator.
 	})
 
 	// Overlap null: every unit, the way the comparator sees pairs.
-	overlapPairs := samplePopulation(units, order, o.MaxPairs, seed^0x9e3779b97f4a7c15)
+	overlapPairs := samplePopulation(units, order, o.MaxPairs, ids, overlapSalt)
 	res.OverlapPairs = len(overlapPairs)
 	if len(overlapPairs) < o.MinNullPairs || comp == nil || len(docs) != len(units) {
 		res.Declined = declined(len(overlapPairs), o.MinNullPairs, "overlap")
@@ -147,9 +157,10 @@ func canonicalOrder(units []parser.CodeUnit) []int {
 	return order
 }
 
-// Seed derives the sampler seed from the corpus: FNV-1a over the canonical
-// unit names. Corpus-derived and order-independent, so the same tree always
-// draws the same null sample.
+// Seed derives a seed from the corpus: FNV-1a over the canonical unit names.
+// Run no longer uses it - a seed over the whole population is exactly what
+// made every added function redraw the sample - and it survives for callers
+// of SamplePairs that bring their own units and want one fixed draw per tree.
 func Seed(units []parser.CodeUnit) uint64 {
 	order := canonicalOrder(units)
 	h := fnv.New64a()
@@ -161,51 +172,129 @@ func Seed(units []parser.CodeUnit) uint64 {
 	return h.Sum64()
 }
 
-// samplePopulation draws up to k distinct unordered pairs from the given
-// unit indices, rejecting pairs that cross the test/production boundary
-// (never merge candidates, so never part of the null either). When the
-// population has at most k pairs it is enumerated instead. The result is
-// sorted ascending so every consumer scores in one fixed order.
-func samplePopulation(units []parser.CodeUnit, idx []int, k int, seed uint64) [][2]int {
+// The two nulls are independent samples over overlapping populations, so
+// their priorities are salted apart.
+const (
+	shapeSalt   uint64 = 0
+	overlapSalt uint64 = 0x9e3779b97f4a7c15
+)
+
+// identities hashes each unit's identity: package, name and file, plus an
+// ordinal for the second and later declarations of one name in one file
+// (init, or functions in a bundled script) - the snapshot key's rule. Never
+// the line: a line number moves whenever code above it does, and a priority
+// keyed on it would reshuffle the sample on edits nobody made to the unit.
+// order is canonicalOrder, which is what makes the ordinal deterministic.
+func identities(units []parser.CodeUnit, order []int) []uint64 {
+	ids := make([]uint64, len(units))
+	seen := make(map[string]int, len(units))
+	for _, i := range order {
+		u := units[i]
+		key := u.Package + "." + u.Name + "\x00" + u.File
+		n := seen[key]
+		seen[key] = n + 1
+		if n > 0 {
+			key += "\x00" + itoa(n)
+		}
+		h := fnv.New64a()
+		_, _ = h.Write([]byte(key))
+		ids[i] = h.Sum64()
+	}
+	return ids
+}
+
+// mix is splitmix64's finalizer: a bijection on uint64 whose output bits each
+// depend on every input bit, which is what lets a priority built from two
+// FNV hashes read as uniform.
+func mix(x uint64) uint64 {
+	x ^= x >> 30
+	x *= 0xbf58476d1ce4e5b9
+	x ^= x >> 27
+	x *= 0x94d049bb133111eb
+	x ^= x >> 31
+	return x
+}
+
+// priority is a pair's place in the bottom-k sample: symmetric in the two
+// identities, and a function of them and the salt alone.
+func priority(a, b, salt uint64) uint64 {
+	if a > b {
+		a, b = b, a
+	}
+	return mix(a ^ mix(b^salt))
+}
+
+// samplePopulation is a bottom-k sample: of every unordered pair over the
+// given unit indices that stays inside one build unit (cross test/production
+// and cross-target pairs are never merge candidates, so never part of the
+// null either), the k with the lowest priority. When the population has at
+// most k such pairs, that is all of them. The result is sorted ascending so
+// every consumer scores in one fixed order.
+//
+// Finding the k lowest without holding every pair: priorities are uniform, so
+// a cut at about k/total of the range keeps about k pairs. Rows are scanned
+// across cores against the cut, and a cut that kept too few - the build-unit
+// rule rejects some - is doubled and the scan repeated. Cost is one mix per
+// pair, O(m^2): 29M on moby's 7 658 functions.
+func samplePopulation(units []parser.CodeUnit, idx []int, k int, ids []uint64, salt uint64) [][2]int {
 	m := len(idx)
-	if m < 2 {
+	if m < 2 || k <= 0 {
 		return nil
 	}
-	sameUnit := func(i, j int) bool { return parser.SameBuildUnit(units[i], units[j]) }
-	var pairs [][2]int
-	if m*(m-1)/2 <= k {
-		for a := 0; a < m; a++ {
+	type cand struct {
+		prio uint64
+		pair [2]int
+	}
+	total := float64(m) * float64(m-1) / 2
+	cut := uint64(math.MaxUint64)
+	if f := 1.25 * float64(k) / total; f < 0.5 { // past half, scanning everything is as cheap
+		cut = uint64(f * math.MaxUint64)
+	}
+	var cands []cand
+	for {
+		rows := make([][]cand, m)
+		parallel.Blocks(m, sampleRowBlock, minRowsPerSampleWorker, func(a int) {
+			i := idx[a]
+			var row []cand
 			for b := a + 1; b < m; b++ {
-				i, j := idx[a], idx[b]
-				if !sameUnit(i, j) {
+				j := idx[b]
+				p := priority(ids[i], ids[j], salt)
+				if p > cut || !parser.SameBuildUnit(units[i], units[j]) {
 					continue
 				}
-				pairs = append(pairs, orderPair(i, j))
+				row = append(row, cand{p, orderPair(i, j)})
 			}
+			rows[a] = row
+		})
+		cands = cands[:0]
+		for _, row := range rows {
+			cands = append(cands, row...)
 		}
-	} else {
-		seen := make(map[[2]int]bool, k)
-		x := seed
-		next := func() int {
-			x = x*6364136223846793005 + 1442695040888963407
-			return int((x >> 33) % uint64(m))
+		if len(cands) >= k || cut == math.MaxUint64 {
+			break
 		}
-		for draws := 0; len(pairs) < k && draws < 8*k; draws++ {
-			a, b := next(), next()
-			if a == b {
-				continue
-			}
-			i, j := idx[a], idx[b]
-			if !sameUnit(i, j) {
-				continue
-			}
-			p := orderPair(i, j)
-			if seen[p] {
-				continue
-			}
-			seen[p] = true
-			pairs = append(pairs, p)
+		if cut > math.MaxUint64/2 {
+			cut = math.MaxUint64
+		} else {
+			cut *= 2
 		}
+	}
+	sort.Slice(cands, func(a, b int) bool {
+		x, y := cands[a], cands[b]
+		if x.prio != y.prio {
+			return x.prio < y.prio
+		}
+		if x.pair[0] != y.pair[0] {
+			return x.pair[0] < y.pair[0]
+		}
+		return x.pair[1] < y.pair[1]
+	})
+	if len(cands) > k {
+		cands = cands[:k]
+	}
+	pairs := make([][2]int, len(cands))
+	for i, c := range cands {
+		pairs[i] = c.pair
 	}
 	sort.Slice(pairs, func(a, b int) bool {
 		if pairs[a][0] != pairs[b][0] {
@@ -216,16 +305,19 @@ func samplePopulation(units []parser.CodeUnit, idx []int, k int, seed uint64) []
 	return pairs
 }
 
-// SamplePairs draws up to k distinct unordered index pairs from [0, n) with
-// the package's generator — the sampler without any population rule, for
-// callers that bring their own units (the bench self-weighting experiment).
+// SamplePairs draws up to k distinct unordered index pairs from [0, n) - the
+// sampler without any population rule, for callers that bring their own
+// units (the bench self-weighting experiment). Identities are the indices
+// salted by seed, so one seed is one fixed draw.
 func SamplePairs(n, k int, seed uint64) [][2]int {
 	units := make([]parser.CodeUnit, n)
 	idx := make([]int, n)
+	ids := make([]uint64, n)
 	for i := range idx {
 		idx[i] = i
+		ids[i] = mix(seed ^ mix(uint64(i)))
 	}
-	return samplePopulation(units, idx, k, seed)
+	return samplePopulation(units, idx, k, ids, 0)
 }
 
 func orderPair(i, j int) [2]int {
@@ -269,4 +361,9 @@ func itoa(n int) string { return strconv.Itoa(n) }
 const (
 	nullBlock             = 64
 	minPairsPerNullWorker = 512
+
+	// A sampler row is a scan of up to m pairs, so a block of rows is real
+	// work; rows shorten toward the end, which the block counter absorbs.
+	sampleRowBlock         = 16
+	minRowsPerSampleWorker = 64
 )

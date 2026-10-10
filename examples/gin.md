@@ -9,7 +9,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `783a0d4` |
+| doppel | `a7601b6` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -24,23 +24,23 @@ Scanning . ...
 Learning concept vocabulary...
 Lexicon: 46 concepts (6 seeded, 40 emergent), 1266/3382 features above 182 df, 76 functions unlabeled
 Generating concept documents...
-Calibration: rate 0.01 over 20000 null pairs -> threshold 0.41, struct-min 0.49, family-min 0.41
+Calibration: rate 0.01 over 20000 null pairs -> threshold 0.40, struct-min 0.47, family-min 0.40
 Found 497 functions. Retrieving candidates...
-Retrieval: shape 187, concept 1637, call 609 -> 2116 unique pairs
-  concept-only 64.9%  call-only 17.4%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1934
-Running structural comparison on 2116 pairs...
-  Concept views: 70 of 2116 compared pairs disagree with the taxonomy (4 vocabulary the tree misses, 66 kinship the vocabularies lack)
-  570 pairs remain after struct-min=0.49 filter
+Retrieval: shape 209, concept 1637, call 609 -> 2132 unique pairs
+  concept-only 64.3%  call-only 17.2%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1934
+Running structural comparison on 2132 pairs...
+  Concept views: 70 of 2132 compared pairs disagree with the taxonomy (4 vocabulary the tree misses, 66 kinship the vocabularies lack)
+  687 pairs remain after struct-min=0.47 filter
 Culture: 37 concepts modeled, 153 associations, 31 unusual realizations
 Habitats: 5 modeled, 15 misfits (0 excused by subsystem), 1 subsystems; most uniform binding (norm 0.92), most diverse json (norm 0.63)
 Conventions: strongest c.MustBindWith+gin.*Context.MustBindWith (1.00), loosest gin.*Context.Header+gin.*Context.Set (0.22)
 Ecosystems: 443 profiled (351 dominance, 74 coalition, 0 conflict, 18 weak)
-Families: 35 over 58 components, 169 functions in a family, 211 edges completed
+Families: 33 over 62 components, 180 functions in a family, 249 edges completed
 ```
 
 # Code Similarity Report
 
-**Functions analyzed:** 497 | **Threshold:** 0.41 | **Pairs found:** 10
+**Functions analyzed:** 497 | **Threshold:** 0.40 | **Pairs found:** 10
 
 ---
 
@@ -205,6 +205,13 @@ Convention is how uniformly this corpus realizes a concept: `1.00` means every f
 
 Merge-worthy pairs are folded up to their packages: only pairs doppel judges worth consolidating are counted. An edge means two packages keep solving the same problem separately; a count on a node means the repetition is inside one package. Weights are **merge-worthy pairs**.
 
+```mermaid
+flowchart LR
+    p0["fs"]
+    p1["gin<br/>262 internal"]
+    p0 ---|"1"| p1
+```
+
 ### How settled each package is
 
 A package with at least five functions gets a habitat model: doppel learns what is normal there and measures how surprising each member is against it. **Norm** is how uniform the package's practice is. A **misfit** is a function alien to its package *and* to the wider subsystem around it — one that fits its neighbours a directory up is normal for this codebase and is not reported.
@@ -227,9 +234,9 @@ Most uniform is `binding` (norm `0.92`); most varied is `json` (norm `0.63`). 15
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **2116 candidate pairs** (shape 187, concept 1637, call 609), of which 17% arrived on call evidence alone and 65% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **2132 candidate pairs** (shape 209, concept 1637, call 609), of which 17% arrived on call evidence alone and 64% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
-The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **70 of 2116** pairs the taxonomy and the vocabularies differ by at least 0.50: 4 where the vocabularies agree and the tree cannot see it, 66 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
+The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **70 of 2132** pairs the taxonomy and the vocabularies differ by at least 0.50: 4 where the vocabularies agree and the tree cannot see it, 66 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 443 functions reached an equilibrium: **351** settled on a single concept, **74** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -237,7 +244,7 @@ Each function is also an arena where its candidate concepts compete for its evid
 
 **Compression ratio:** `5.28`x — this corpus's canonical function bodies contain **17625 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **3336 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **497 functions**, **463** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.48` / `1.00` / `1.00`, and 65% of them (303 of 463) already clear this run's threshold of `0.41`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 34 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **497 functions**, **463** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.48` / `1.00` / `1.00`, and 70% of them (323 of 463) already clear this run's threshold of `0.40`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 34 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -384,13 +391,13 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 | `gin.*Context.ClientIP` <br/>`context.go:975` | `c.requestHeader+gin.*Context.requestHeader` | `0.18` | `0.80` | no near-duplicate |
 | `gin.*Context.Header` <br/>`context.go:1080` | `c.requestHeader+gin.*Context.requestHeader` | `0.23` | `0.80` | no near-duplicate |
 | `binding.*multipartRequest.TrySet` <br/>`binding/multipart_form_mapping.go:27` | `engine.MaxMultipartMemory+c.engine` | `0.09` | `0.66` | no near-duplicate |
-| `gin.*Context.NegotiateFormat` <br/>`context.go:1394` | `c.requestHeader+gin.*Context.requestHeader` | `0.24` | `0.80` | no near-duplicate |
-| `gin.WrapH` <br/>`utils.go:54` | `xml+runtime` | `0.31` | `0.66` | no near-duplicate |
 | `render.Redirect.WriteContentType` <br/>`render/redirect.go:29` | `bytesconv.StringToBytes+json.API` | `0.18` | `0.52` | no near-duplicate |
 | `binding.setArray` <br/>`binding/form_mapping.go:490` | `binding+nil` | `0.12` | `0.38` | no near-duplicate |
 | `gin.*responseWriter.Status` <br/>`response_writer.go:98` | `gin.*Context.Header+gin.*Context.Set` | `0.19` | `0.45` | no near-duplicate |
 | `gin.*Engine.addRoute` <br/>`gin.go:364` | `tree.method+tree.root` | `0.12` | `0.36` | no near-duplicate |
 | `binding.queryBinding.Bind` <br/>`binding/query.go:15` | `binding+nil` | `0.15` | `0.38` | no near-duplicate |
+| `gin.*Context.Next` <br/>`context.go:188` | `binding+nil` | `0.17` | `0.38` | no near-duplicate |
+| `gin.*Context.Stream` <br/>`context.go:1322` | `binding+nil` | `0.18` | `0.38` | no near-duplicate |
 
 _21 more unusual realizations not listed._
 
@@ -855,7 +862,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ## Families
 
-35 families, 169 functions in a family, largest 16 members; 211 edges scored here that retrieval never proposed
+33 families, 180 functions in a family, largest 17 members; 249 edges scored here that retrieval never proposed
 
 ### Family 1 — 6 members, every pair `>= 0.48` code-shape, evidence `3517`
 
@@ -893,7 +900,60 @@ flowchart LR
 | `gin.go:630` | `gin.*Engine.RunQUIC` | `(string, string, string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.63, http.Server+engine.Handler 0.53 |
 | `gin.go:645` | `gin.*Engine.RunListener` | `(net.Listener) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.61, http.Server+engine.Handler 0.51 |
 
-### Family 2 — 5 members, every pair `>= 0.47` code-shape, evidence `717`
+### Family 2 — 8 members, every pair `>= 0.40` code-shape, evidence `758`  (13 edges scored here), interface implementations of `Render(http.ResponseWriter) (error)`, in package `render`
+
+```mermaid
+flowchart LR
+    m0["render.BSON.Render"]
+    m1["render.HTML.Render"]
+    m2["render.IndentedJSON.Render"]
+    m3["render.PureJSON.Render"]
+    m4["render.ProtoBuf.Render"]
+    m5["render.TOML.Render"]
+    m6["render.XML.Render"]
+    m7["render.YAML.Render"]
+    m0 --- m1
+    m0 --- m2
+    m0 --- m3
+    m0 --- m4
+    m0 --- m5
+    m0 --- m6
+    m0 --- m7
+    m1 --- m2
+    m1 --- m3
+    m1 --- m4
+    m1 --- m5
+    m1 --- m6
+    m1 --- m7
+    m2 --- m3
+    m2 --- m4
+    m2 --- m5
+    m2 --- m6
+    m2 --- m7
+    m3 --- m4
+    m3 --- m5
+    m3 --- m6
+    m3 --- m7
+    m4 --- m5
+    m4 --- m6
+    m4 --- m7
+    m5 --- m6
+    m5 --- m7
+    m6 --- m7
+```
+
+| Location | Function | Signature | Concepts |
+|---|---|---|---|
+| `render/bson.go:21` | `render.BSON.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.58, binding+nil 0.45, json.Marshal+json.MarshalIndent 0.14 |
+| `render/html.go:89` | `render.HTML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.49, json.Marshal+json.MarshalIndent 0.15 |
+| `render/json.go:78` | `render.IndentedJSON.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.61, bytesconv.StringToBytes+json.API 0.47, json.Marshal+json.MarshalIndent 0.18 |
+| `render/json.go:184` | `render.PureJSON.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.50, json.Marshal+json.MarshalIndent 0.17 |
+| `render/protobuf.go:21` | `render.ProtoBuf.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.56, binding+nil 0.42 |
+| `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.59, binding+nil 0.43 |
+| `render/xml.go:20` | `render.XML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.43, json.Marshal+json.MarshalIndent 0.27 |
+| `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.59, binding+nil 0.43 |
+
+### Family 3 — 5 members, every pair `>= 0.47` code-shape, evidence `717`
 
 ```mermaid
 flowchart LR
@@ -922,7 +982,7 @@ flowchart LR
 | `binding/xml.go:28` | `binding.decodeXML` | `(io.Reader, any) (error)` | delims.Left+delims.Right 0.63, binding+nil 0.45 |
 | `binding/yaml.go:29` | `binding.decodeYAML` | `(io.Reader, any) (error)` | delims.Left+delims.Right 0.62, binding+nil 0.44 |
 
-### Family 3 — 3 members, every pair `>= 0.45` code-shape, evidence `621`
+### Family 4 — 3 members, every pair `>= 0.45` code-shape, evidence `621`
 
 ```mermaid
 flowchart LR
@@ -940,63 +1000,49 @@ flowchart LR
 | `gin.go:288` | `gin.*Engine.LoadHTMLFiles` | `(...string)` | delims.Left+delims.Right 0.61, delims.Left+delims.Right+engine.SetHTMLTemplate 0.60 |
 | `gin.go:300` | `gin.*Engine.LoadHTMLFS` | `(http.FileSystem, ...string)` | delims.Left+delims.Right 0.60, delims.Left+delims.Right+engine.SetHTMLTemplate 0.59 |
 
-### Family 4 — 5 members, every pair `>= 0.53` code-shape, evidence `619`, interface implementations of `Render(http.ResponseWriter) (error)`, in package `render`
+### Family 5 — 7 members, every pair `>= 0.40` code-shape, evidence `590`  (5 edges scored here)
 
 ```mermaid
 flowchart LR
-    m0["render.BSON.Render"]
-    m1["render.IndentedJSON.Render"]
-    m2["render.ProtoBuf.Render"]
-    m3["render.TOML.Render"]
-    m4["render.YAML.Render"]
+    m0["gin.*Context.IndentedJSON"]
+    m1["gin.*Context.SecureJSON"]
+    m2["gin.*Context.String"]
+    m3["gin.*Context.Redirect"]
+    m4["gin.*Context.Data"]
+    m5["gin.*Context.DataFromReader"]
+    m6["gin.*Context.SSEvent"]
     m0 --- m1
     m0 --- m2
     m0 --- m3
     m0 --- m4
+    m0 --- m5
+    m0 --- m6
     m1 --- m2
     m1 --- m3
     m1 --- m4
+    m1 --- m5
+    m1 --- m6
     m2 --- m3
     m2 --- m4
+    m2 --- m5
+    m2 --- m6
     m3 --- m4
+    m3 --- m5
+    m3 --- m6
+    m4 --- m5
+    m4 --- m6
+    m5 --- m6
 ```
 
 | Location | Function | Signature | Concepts |
 |---|---|---|---|
-| `render/bson.go:21` | `render.BSON.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.58, binding+nil 0.45, json.Marshal+json.MarshalIndent 0.14 |
-| `render/json.go:78` | `render.IndentedJSON.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.61, bytesconv.StringToBytes+json.API 0.47, json.Marshal+json.MarshalIndent 0.18 |
-| `render/protobuf.go:21` | `render.ProtoBuf.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.56, binding+nil 0.42 |
-| `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.59, binding+nil 0.43 |
-| `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.59, binding+nil 0.43 |
+| `context.go:1180` | `gin.*Context.IndentedJSON` | `(int, any)` | binding+nil 0.60, engine.MaxMultipartMemory+c.engine 0.27 |
+| `context.go:1187` | `gin.*Context.SecureJSON` | `(int, any)` | binding+nil 0.47, engine.MaxMultipartMemory+c.engine 0.37 |
+| `context.go:1248` | `gin.*Context.String` | `(int, string, ...any)` | binding+nil 0.55, c.formCache+c.queryCache 0.36, engine.MaxMultipartMemory+c.engine 0.23 |
+| `context.go:1253` | `gin.*Context.Redirect` | `(int, string)` | Request.URL+req.URL 0.49, c.requestHeader+gin.*Context.requestHeader 0.41, engine.MaxMultipartMemory+c.engine 0.40 |
+| `context.go:1262` | `gin.*Context.Data` | `(int, string, []byte)` | binding+nil 0.59, engine.MaxMultipartMemory+c.engine 0.26 |
+| `context.go:1270` | `gin.*Context.DataFromReader` | `(int, int64, string, io.Reader, map[string]string)` | binding+nil 0.48 |
+| `context.go:1313` | `gin.*Context.SSEvent` | `(string, any)` | binding+nil 0.63, c.requestHeader+gin.*Context.requestHeader 0.35, engine.MaxMultipartMemory+c.engine 0.29 |
 
-### Family 5 — 5 members, every pair `>= 0.46` code-shape, evidence `415`
-
-```mermaid
-flowchart LR
-    m0["binding.setIntField"]
-    m1["binding.setUintField"]
-    m2["binding.setBoolField"]
-    m3["binding.setFloatField"]
-    m4["binding.setTimeDuration"]
-    m0 --- m1
-    m0 --- m2
-    m0 --- m3
-    m0 --- m4
-    m1 --- m2
-    m1 --- m3
-    m1 --- m4
-    m2 --- m3
-    m2 --- m4
-    m3 --- m4
-```
-
-| Location | Function | Signature | Concepts |
-|---|---|---|---|
-| `binding/form_mapping.go:390` | `binding.setIntField` | `(string, int, reflect.Value) (error)` | value.Addr+field.Tag 0.55, binding+nil 0.43 |
-| `binding/form_mapping.go:401` | `binding.setUintField` | `(string, int, reflect.Value) (error)` | value.Addr+field.Tag 0.54, binding+nil 0.42 |
-| `binding/form_mapping.go:412` | `binding.setBoolField` | `(string, reflect.Value) (error)` | value.Addr+field.Tag 0.55, binding+nil 0.46, value.Set+value.Type 0.43 |
-| `binding/form_mapping.go:423` | `binding.setFloatField` | `(string, int, reflect.Value) (error)` | value.Addr+field.Tag 0.57, binding+nil 0.46, value.Set+value.Type 0.39 |
-| `binding/form_mapping.go:510` | `binding.setTimeDuration` | `(string, reflect.Value) (error)` | value.Addr+field.Tag 0.55, reflect.Map+reflect.New 0.55, value.Set+value.Type 0.54 |
-
-_30 more families not listed._
+_28 more families not listed._
 
