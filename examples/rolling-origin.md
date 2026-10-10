@@ -189,3 +189,178 @@ nothing is substituted for it.
    are the slowest; the budget is one working day of wall clock with corpora
    run in parallel. An admissible origin that has not finished by then is
    reported as not run, never silently dropped.
+
+## Results
+
+Everything below was produced after the pre-registration above was committed
+(`633bef8`; written as `d623e84` and rebased unchanged onto `master` when #78
+merged), and nothing above this heading was edited afterwards. Reproduce with
+`task rolling-origin CORPUS=<name>` per corpus, then
+`task rolling-origin-summary`. The generated tables are in
+[rolling-origin/summary.md](rolling-origin/summary.md). The judged files of the
+new origins are `rolling-origin/<corpus>.o<k>.outcomes.json` and
+`.clone-outcomes.json`, and each corpus's origins are in
+`rolling-origin/<corpus>.origins.tsv`. The k = 1 units are the committed files
+of the two earlier studies.
+
+### Origins
+
+| corpus | window | k = 2 | k = 3 |
+| --- | --- | --- | --- |
+| cobra | 4 years | 2017-12-04, 153 Go commits | 2013-11-05, 348 Go commits |
+| gin | 2 years | 2022-02-14, **80 Go commits: inadmissible** | 2020-02-26, 140 Go commits |
+| prometheus | 2 years | 2022-08-18, 1488 | 2020-08-18, 842 |
+| hugo | 2 years | 2022-08-12, 850 | 2020-08-12, 725 |
+| moby | 2 years | 2021-11-03, 2670 | 2019-11-07, 2487 |
+
+Nine new units, fourteen in all. Every new origin except gin k = 2 was
+admissible. cobra k = 3 is the project two months old (48 functions). Its
+calibration declined (406 null pairs, 1 000 needed), so it ran at the static
+defaults, and doppel's list there is the whole 133-pair union. That clears the
+100-pair bar, so it is a unit, as the rule says.
+
+### Validity checks
+
+- **The original T is reproduced.** At k = 1 the explicit-window path wrote
+  outcome files **byte-identical** to the committed ones, for both method sets
+  on all five corpora. That is stronger than the pre-registered check, which
+  asked for byte identity on cobra and gin and identical lists elsewhere.
+- **T_1 equals the cost study's `since`** on all five corpora (the script
+  asserts it).
+- **Unresolved units: 0** at every unit, in both files.
+- **doppel's list is identical in both method sets** at every unit.
+- **Determinism.** cobra k = 2 was ranked and judged twice; rankings and
+  outcomes were byte-identical.
+- **Shared code.** `compare-summary` still reproduces
+  `ranker-outcomes/summary.md` and `clone-outcomes/summary.md` byte for byte.
+  The only change to shared code is a `-min-doppel` flag on `compare`, off by
+  default; `study` is untouched.
+
+### Pooled verdict, by the pre-registered rule
+
+| baseline | units | D [95% CI] | verdict | at T alone (earlier study) |
+| --- | ---: | --- | --- | --- |
+| doppel (struct-min filtered) | 14 | +0.0010 [−0.0148, +0.0170] | not distinguishable | not distinguishable |
+| token clones | 14 | +0.0551 [+0.0426, +0.0674] | **doppel beats it** | doppel beats it |
+| code-shape | 14 | +0.0575 [+0.0453, +0.0706] | **doppel beats it** | doppel beats it |
+| retrieval mass | 14 | −0.0029 [−0.0186, +0.0143] | not distinguishable | not distinguishable |
+| overlap | 14 | +0.0240 [+0.0084, +0.0386] | **doppel beats it** | not distinguishable |
+| name heuristic | 14 | +0.0495 [+0.0367, +0.0626] | **doppel beats it** | doppel beats it |
+| call mass | 14 | +0.0142 [−0.0013, +0.0294] | not distinguishable | not distinguishable |
+| size | 14 | +0.0457 [+0.0327, +0.0594] | **doppel beats it** | not distinguishable |
+| random (3 seeds) | 14 | +0.0592 [+0.0478, +0.0707] | **doppel beats it** | doppel beats it |
+| dupl (t=100, default) | 13 | −0.0255 [−0.0764, +0.0186] | not distinguishable | not distinguishable |
+| dupl (t=50) | 14 | −0.0455 [−0.0617, −0.0288] | **dupl beats doppel** | not distinguishable |
+| token clones (≥100 nodes) | 14 | +0.0285 [+0.0145, +0.0430] | **doppel beats it** | doppel beats it |
+| token clones (≥50 nodes) | 14 | +0.0168 [+0.0014, +0.0327] | **doppel beats it** | not distinguishable |
+| token clones (no floor) | 14 | +0.0598 [+0.0468, +0.0726] | **doppel beats it** | doppel beats it |
+| code-shape (≥50 nodes) | 14 | +0.0126 [−0.0034, +0.0297] | not distinguishable | not distinguishable |
+
+D is M1@100(doppel) − M1@100(X), averaged over a corpus's units and then over
+the five corpora. The right-hand column is the earlier studies' per-corpus rule
+at the original T, which stands unchanged.
+
+**By the rule as written, dupl at t=50 beats doppel.** That verdict stands as
+computed. What it rests on is one pair at one unit. These are facts about the
+result, not reinterpretations of it:
+
+- At cobra k = 3, dupl t=50 lists **one** function pair,
+  `*Command.Flags ↔ *Command.PersistentFlags`, which one commit (`b655df6`)
+  later co-changed: M1@100 = 1.000 over a list of one. doppel ranks the same
+  pair **first**; its M1@100 over that pair and the 99 below it is 0.029. So
+  d = −0.971 at that unit, cobra's corpus mean is −0.309, and that alone moves
+  the pooled D by −0.062. A list of one resamples only to itself, so its
+  bootstrap has no spread.
+- **Leave cobra out and the sign reverses**: D = +0.0203 [+0.0006, +0.0398],
+  doppel ahead. With any other corpus left out, dupl t=50 stays ahead, because
+  cobra k = 3 stays in.
+- The pre-registration let a short list be scored over the pairs it has, and
+  weighted corpora equally. Together those let a one-pair list on a 48-function
+  tree decide a pooled verdict. That is a flaw in the rule that the data
+  exposed. It is reported here, not repaired: a rule changed after seeing this
+  would no longer be pre-registered.
+
+dupl at its default threshold has the same shape at hugo k = 2 and k = 3 (4
+and 3 pairs, M1 0.250 and 0.500). It ends not distinguishable only because
+those lists have more than one pair to resample.
+
+### Did more data change the answers?
+
+- **Against the simple rankers over doppel's union: slightly, and only
+  towards doppel.** overlap and size, not distinguishable at T, are beaten
+  pooled. Retrieval mass and call mass stay level. Retrieval mass's D is
+  −0.003 with a CI narrow around zero, so pooling did not hide a difference; it
+  measured its absence. The factors the key multiplies onto mass still add
+  nothing measurable on M1@100.
+- **Against a configured clone detector: no.** Not shown before, not shown
+  now. doppel beats floored token Jaccard at both floors, but at 50 nodes the
+  margin is small and is gone when gin, hugo or prometheus is left out, and in
+  the replication table. Floored code-shape and dupl at its default are not
+  distinguishable. dupl at t=50 beats doppel by the rule, on the single pair
+  above. Without cobra, doppel is ahead of it, with a lower bound of 0.0006.
+- **Apart from that one pair, the added data does not go against doppel.** No
+  other unit has a CI entirely below zero for any baseline.
+
+### What the new windows show (descriptive)
+
+- **Replication on the k ≥ 2 units alone** gives the pooled table's verdicts
+  for token clones, code-shape, name heuristic, size, random, token clones
+  ≥100 and no floor (doppel ahead), and for retrieval mass, call mass,
+  struct-min, dupl t=100 and code-shape ≥50 (level). overlap and token clones
+  ≥50 fall back to not distinguishable. dupl t=50 still beats doppel there,
+  for the cobra k = 3 reason.
+- **prometheus carries the signal at every origin.** doppel's M1@100 there is
+  0.216, 0.146 and 0.147, with 47, 27 and 20 distinct commits behind its
+  events. Every other unit sits between 0.010 and 0.065, with 1 to 10 commits
+  behind it. Leaving prometheus out halves most pooled margins and removes
+  the overlap and token ≥50 wins.
+- **At earlier origins dupl at t=50 is not sparse on the large trees**: 50
+  to 92 pairs on prometheus and hugo. It is behind doppel on both new
+  prometheus origins (0.118 and 0.095 against 0.146 and 0.147) and within
+  0.012 of it on hugo.
+- **Clustered M1** (each co-change commit's credit divided among the pairs it
+  touches) keeps every sign of the pooled table. It shrinks most of doppel's
+  margins, by up to a third, and widens both dupl leads.
+
+### Caveats that apply to every number above
+
+- **Commit clustering.** The bootstrap resamples pairs, and one commit can
+  co-change several pairs in a list. The sibling reanalysis (#79, paired and
+  paired-clustered bootstrap for `compare-summary`) had **not merged** when
+  this was scored, so the pre-registered secondary analysis was not run, and
+  nothing was substituted for it. Its reported finding on the earlier studies:
+  under paired-clustered resampling every "doppel beats it" becomes not
+  distinguishable, because gin, hugo and moby rest on two or three independent
+  commit clusters. The new origins add clusters rather than depth, but most
+  units still have fewer than ten distinct commits behind doppel's events. Read
+  the "beats" verdicts above as an upper bound on what a clustered analysis
+  would grant.
+- **The sweep exclusion depends on what else is judged.** `history.go` marks
+  a commit a sweep by how many functions it modifies *in the directories
+  walked*, and those are the union over every listed pair. So a pair's outcome
+  can differ between two `compare` runs with different lists. The "window
+  commits replayed" column of the summary differs between the two files of
+  most units for this reason. This study never compares a pair across runs:
+  each baseline is compared with the doppel list judged in its own file. A fix
+  is pending outside this branch. When it lands, every file here needs
+  re-judging, which `scripts/rolling-origin.sh -c <corpus> -k "<k>"` does per
+  corpus and origin.
+- **One look before the new data.** While `rolling-summary` was being tested
+  on the committed k = 1 files only, its pooled table over those five units
+  was read before any new origin was summarised. Those files were already
+  public, the rule was already committed, and nothing in the design moved.
+
+### Deviations from the pre-registration
+
+- None in the design. The k = 1 reproduction was run in full on all five
+  corpora instead of as a list comparison on three.
+- The summary tool first labelled a unit by its rank among the judged
+  origins, which called gin's k = 3 "o2". It now reads k from the origin table.
+  No pooled number changed, because the pooled seeds do not depend on k.
+
+### Compute
+
+All nine new origins plus the five k = 1 reproductions, both method sets,
+corpora in parallel on 24 threads, took about 8 minutes of wall clock (moby
+7m48s, prometheus 5m28s, hugo 4m00s, cobra 1m29s, gin 0m35s). The
+one-working-day budget was nowhere near reached.
