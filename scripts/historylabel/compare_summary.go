@@ -37,6 +37,8 @@ func compareSummaryMain(args []string) {
 	fs := flag.NewFlagSet("compare-summary", flag.ExitOnError)
 	outPath := fs.String("out", "", "write the markdown here (default stdout)")
 	costDir := fs.String("cost-dir", "", "directory of the cost study's <corpus>.cost.json, for the agreement check")
+	refDir := fs.String("reference", "", "directory of earlier <corpus>.outcomes.json whose doppel list must be reproduced exactly")
+	overlap := fs.Bool("overlap", false, "add each method's overlap with doppel's top list, its median smallest side and its event count")
 	fs.Parse(args)
 	if fs.NArg() == 0 {
 		fs.Usage()
@@ -61,7 +63,13 @@ func compareSummaryMain(args []string) {
 		defer f.Close()
 		w = f
 	}
+	if *refDir != "" {
+		writeReferenceCheck(w, corpora, *refDir)
+	}
 	writeCompareSummary(w, corpora, *costDir)
+	if *overlap {
+		writeOverlap(w, corpora)
+	}
 }
 
 // m1 is the cost study's M1 for one pair, shared with summarize's metric table.

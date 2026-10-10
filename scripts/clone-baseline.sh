@@ -4,6 +4,11 @@
 # clone groups as JSON, for TestBaselines' method 8.
 #
 #   scripts/clone-baseline.sh [-o <out dir>] [-t <tokens>[,<tokens>...]] [corpus ...]
+#   scripts/clone-baseline.sh -r <tree> [-o <out dir>] [-t ...] <corpus>
+#
+# With -r, the one named corpus is read from <tree> instead of the fetched
+# ladder: a checkout at another revision, as examples/clone-outcomes.md runs it
+# on the cost study's T.
 #
 # The detector is dupl (github.com/mibk/dupl), a token-sequence clone finder
 # over the Go AST. It is installed into GOBIN, never into this module:
@@ -34,14 +39,20 @@ MODULE=$(cd "$(dirname "$0")/.." && pwd)
 CACHE_ROOT=$(go env GOCACHE)/..
 OUT="${DOPPEL_CLONES:-$CACHE_ROOT/doppel-clones}"
 THRESHOLDS="100,25"
-while getopts ":o:t:" opt; do
+TREE=""
+while getopts ":o:t:r:" opt; do
   case "$opt" in
     o) OUT=$OPTARG ;;
     t) THRESHOLDS=$OPTARG ;;
-    *) echo "usage: $0 [-o out-dir] [-t tokens[,tokens...]] [corpus ...]" >&2; exit 2 ;;
+    r) TREE=$OPTARG ;;
+    *) echo "usage: $0 [-r tree] [-o out-dir] [-t tokens[,tokens...]] [corpus ...]" >&2; exit 2 ;;
   esac
 done
 shift $((OPTIND - 1))
+if [ -n "$TREE" ] && [ $# -ne 1 ]; then
+  echo "-r reads one tree: name exactly one corpus" >&2
+  exit 2
+fi
 
 DUPL=$(command -v dupl || true)
 if [ -z "$DUPL" ]; then
@@ -143,8 +154,8 @@ toJSON() {
 }
 
 for corpus in "$@"; do
-  dir="$CORPORA_ROOT/$corpus"
-  if [ ! -d "$dir/.git" ]; then
+  dir="${TREE:-$CORPORA_ROOT/$corpus}"
+  if [ ! -e "$dir/.git" ]; then
     echo "[$corpus] not fetched under $CORPORA_ROOT; skipping (task corpora)" >&2
     continue
   fi

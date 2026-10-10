@@ -25,10 +25,14 @@ import (
 // default threshold is the method-8 row; t=25 is a sensitivity row, fixed
 // before the scoring run, because dupl's default reports almost nothing on the
 // small rungs.
-var cloneMethods = []struct{ name, tag string }{
+var cloneMethods = []cloneMethod{
 	{"dupl (t=100, default)", "dupl-t100"},
 	{"dupl (t=25)", "dupl-t25"},
 }
+
+// cloneMethod is one detector run: its display name and the tag its clone file
+// carries.
+type cloneMethod struct{ name, tag string }
 
 type cloneFile struct {
 	Tool      string `json:"tool"`
@@ -135,9 +139,14 @@ func loadCloneLists(br *baselineRun, corpus string) ([]cloneList, []string, erro
 	if dir == "" {
 		return nil, nil, nil
 	}
+	return readCloneLists(br, corpus, dir, cloneMethods)
+}
+
+// readCloneLists is loadCloneLists over an explicit directory and method set.
+func readCloneLists(br *baselineRun, corpus, dir string, methods []cloneMethod) ([]cloneList, []string, error) {
 	var out []cloneList
 	var notes []string
-	for _, c := range cloneMethods {
+	for _, c := range methods {
 		path := filepath.Join(dir, corpus+"."+c.tag+".clones.json")
 		data, err := os.ReadFile(path)
 		if err != nil {
