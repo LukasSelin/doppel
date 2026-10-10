@@ -207,10 +207,28 @@ The Stop hook's transcript digest is not the only place you see this. The plugin
   doppel: renamed 1, new 1; pairs created 3, dissolved 1 — since session start   details  hide
   ```
 
-- **A pane** with the full delta report, opened from the band's `details` or with **`/doppel`**
-  (which toggles it): what happened to each function since the baseline, then every pair those
-  changes created or dissolved, each with its stored `explain:` sentence. It is the same report
-  `doppel diff` prints, and the same lines the Stop digests lead with, so the three never disagree.
+- **A pane**, opened from the band's `details` or with **`/doppel`** (which toggles it). It opens
+  on an **overview**: the merge-worthy pairs the session created or dissolved, one line each with
+  the change that explains it, then one line per changed function, and every other pair change as
+  a count. Each list is capped and says how many it left out:
+
+  ```
+  renamed 1, new 1; functions 3 -> 4
+
+  merge-worthy pairs created 1
+    svc.Clip <-> svc.Trim  shape 1.00  (svc.Trim new)
+
+  functions changed 2
+    renamed  svc.Total -> svc.Sum
+    new      svc.Trim  svc/svc.go:49
+
+  other pairs from these changes: 2 created, 1 dissolved (below merge-worthy)
+  ```
+
+  `full report` at the top of the pane switches to the full delta report: what happened to each
+  function, with its evidence, then every pair those changes created or dissolved, each with its
+  stored `explain:` sentence. It is the same report `doppel diff` prints, and the same lines the
+  Stop digests lead with, so the three never disagree. Every opening starts on the overview.
 
 Why it exists: the agent note above has to clear a high bar because a Stop hook cannot reach the
 model without continuing the turn. A mod draws in the UI and never touches the model's context, so

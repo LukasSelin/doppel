@@ -92,6 +92,13 @@ func writeIndented(b *strings.Builder, lines []string) {
 // pair counts. Unchanged is excluded — it is the bulk of any nearby comparison
 // and says nothing about the session.
 func deltaScoreboard(d identity.Delta) string {
+	return classTally(d) +
+		fmt.Sprintf("; pairs created %d, dissolved %d", len(d.Created), len(d.Dissolved))
+}
+
+// classTally is the class half of the scoreboard. The pane's overview leads
+// with it alone, because it states the pair half in its own sections.
+func classTally(d identity.Delta) string {
 	var parts []string
 	for _, cc := range d.Counts {
 		if cc.Class == identity.Unchanged || cc.Count == 0 {
@@ -100,10 +107,9 @@ func deltaScoreboard(d identity.Delta) string {
 		parts = append(parts, fmt.Sprintf("%s %d", cc.Class, cc.Count))
 	}
 	if len(parts) == 0 {
-		parts = append(parts, "no function reclassified")
+		return "no function reclassified"
 	}
-	return strings.Join(parts, ", ") +
-		fmt.Sprintf("; pairs created %d, dissolved %d", len(d.Created), len(d.Dissolved))
+	return strings.Join(parts, ", ")
 }
 
 // classifiedChanges is every finding that is not `unchanged`, in the order

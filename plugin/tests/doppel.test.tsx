@@ -6,6 +6,17 @@ import { parseView } from '../hooks/register'
 // copied another. Its text is the binary's; the mod must draw it, not compose it.
 const VIEW = {
   band: 'doppel: renamed 1, new 1; pairs created 3, dissolved 1 — since session start',
+  overview: [
+    'renamed 1, new 1; functions 3 -> 4',
+    '',
+    'merge-worthy pairs created 1',
+    '  svc.Clip <-> svc.Trim  shape 1.00  (svc.Trim new)',
+    '',
+    'functions changed 2',
+    '  renamed  svc.Total -> svc.Sum',
+    '  new      svc.Trim  svc/svc.go:49',
+    '',
+  ].join('\n'),
   report: [
     'Delta since the baseline',
     '========================',
@@ -140,7 +151,7 @@ test('a later turn that measures nothing clears the band', async ($, on) => {
   expect(await ui.find({ key: 'doppel-details' })).toBeUndefined()
 })
 
-test('/doppel opens the pane with the report verbatim, costs the model nothing, and toggles closed', async ($, on) => {
+test('/doppel opens the pane on the overview, switches to the full report, costs the model nothing, and toggles closed', async ($, on) => {
   const open = new Set<string>()
   on('process.run', () => ({ value: { exitCode: 0, stdout: JSON.stringify(VIEW), stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }))
   on('classic.Stop', () => ({}))
@@ -163,6 +174,17 @@ test('/doppel opens the pane with the report verbatim, costs the model nothing, 
 
   for (const surface of SURFACES) {
     const ui = await $.ui.mount({ ...PANE, surface })
+    // The overview first, verbatim, and none of the report's evidence lines.
+    for (const line of [
+      'merge-worthy pairs created 1',
+      '  svc.Clip <-> svc.Trim  shape 1.00  (svc.Trim new)',
+      '  renamed  svc.Total -> svc.Sum',
+    ]) {
+      expect(await ui.find({ type: 'Text', text: exactly(line) })).toBeDefined()
+    }
+    expect(await ui.find({ type: 'Text', text: 'explain:' })).toBeUndefined()
+
+    await ui.press({ key: 'doppel-toggle' })
     for (const line of [
       'Delta since the baseline',
       '  svc.Total (svc/svc.go:3) -> svc.Sum (svc/svc.go:3)',
@@ -171,6 +193,8 @@ test('/doppel opens the pane with the report verbatim, costs the model nothing, 
     ]) {
       expect(await ui.find({ type: 'Text', text: exactly(line) })).toBeDefined()
     }
+    await ui.press({ key: 'doppel-toggle' })
+    expect(await ui.find({ type: 'Text', text: 'explain:' })).toBeUndefined()
     await ui.unmount()
   }
 
@@ -221,8 +245,19 @@ test('hide dismisses the band until the session says something new', async ($, o
   expect(await ui.find({ key: 'doppel-details' })).toBeDefined()
 })
 
+test('a binary from before the overview shows its report, with nothing to toggle', async ($, on) => {
+  const old = { band: VIEW.band, report: VIEW.report }
+  on('process.run', () => ({ value: { exitCode: 0, stdout: JSON.stringify(old), stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }))
+  on('classic.Stop', () => ({}))
+  await $.classic.Stop({ session_id: 's', stop_hook_active: false })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: exactly('Delta since the baseline') })).toBeDefined()
+  expect(await ui.find({ key: 'doppel-toggle' })).toBeUndefined()
+})
+
 test('parseView accepts only the shape `hook view` prints', async () => {
   expect(parseView(JSON.stringify(VIEW) + '\n')).toEqual(VIEW)
+  expect(parseView(JSON.stringify({ band: VIEW.band, report: VIEW.report }))).toEqual({ ...VIEW, overview: VIEW.report })
   expect(parseView('')).toBe(null)
   expect(parseView('Error: unknown command "view" for "doppel hook"')).toBe(null)
   expect(parseView('{"band":"","report":"x"}')).toBe(null)

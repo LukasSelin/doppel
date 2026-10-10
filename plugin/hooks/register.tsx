@@ -6,16 +6,18 @@ import type { EngineInterface as Engine, Register } from 'claude-code'
 // turn, which is why the agent note is gated so hard (reporter.Notable, the
 // Reported ledger, stop_hook_active). A mod draws in the UI and never touches
 // the model's context, so it is a third channel that costs no token and no turn:
-// a one-line band above the prompt, and a pane with the full delta report.
+// a one-line band above the prompt, and a pane that opens on an overview of the
+// session and switches to the full delta report.
 //
-// The mod renders nothing itself. Both texts come from the binary — the band is
-// the delta report's scoreboard and the pane is the delta report exactly as
-// `doppel diff` prints it — and they are read from the report the Stop hook
+// The mod renders nothing itself. Every text comes from the binary — the band
+// is the delta report's scoreboard, the overview a bounded selection from that
+// report, and the full report is the delta report exactly as `doppel diff`
+// prints it — and they are read from the report the Stop hook
 // already wrote, through `doppel hook view`, which runs no analysis. One
 // rendering, three surfaces; one pipeline run per turn.
 
-/** What `doppel hook view` prints: the band line and the full delta report. */
-type View = { band: string; report: string }
+/** What `doppel hook view` prints: the band line, the overview and the full delta report. */
+type View = { band: string; overview: string; report: string }
 
 const PANE = 'doppel'
 const PANE_TITLE = 'doppel: since session start'
@@ -28,6 +30,10 @@ let view: View | null = null
 // The band text the person dismissed. The band stays hidden until the session
 // says something different, so "hide" never hides a later finding.
 let hiddenBand: string | null = null
+// Whether the pane shows the full report rather than the overview. Every
+// opening starts on the overview: the full report is a place to look something
+// up, not the picture to come back to.
+let showFull = false
 
 /** parseView accepts exactly the shape `hook view` prints, and nothing else. */
 export function parseView(stdout: string): View | null {
@@ -36,7 +42,9 @@ export function parseView(stdout: string): View | null {
   try {
     const v = JSON.parse(text)
     if (typeof v?.band === 'string' && v.band !== '' && typeof v?.report === 'string') {
-      return { band: v.band, report: v.report }
+      // A binary from before the overview existed has only the report.
+      const overview = typeof v.overview === 'string' && v.overview !== '' ? v.overview : v.report
+      return { band: v.band, overview, report: v.report }
     }
   } catch {
     // A binary too old to know `hook view` prints usage text: show nothing.
@@ -108,6 +116,7 @@ export const register: Register = (on, options) => {
       return {}
     }
     hiddenBand = null
+    showFull = false
     const opened = await $.ui.open({ id: PANE, title: PANE_TITLE })
     if (!opened.isPlaced) $.ui.toast('doppel: this surface cannot show the pane')
     // {} rather than { text }: a command's text is a transcript row the model
@@ -128,6 +137,7 @@ export const register: Register = (on, options) => {
           label="details"
           plain
           onPress={async () => {
+            showFull = false
             await $.ui.open({ id: PANE, title: PANE_TITLE })
           }}
         />
@@ -145,7 +155,7 @@ export const register: Register = (on, options) => {
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Text } = $.ui.resolve(e)
+    const { Box, Button, Text } = $.ui.resolve(e)
     if (view === null) {
       return (
         <Box flexDirection="column">
@@ -153,11 +163,27 @@ export const register: Register = (on, options) => {
         </Box>
       )
     }
-    // Lines as the binary wrote them. Indented lines are evidence under a
-    // headline, so they are dimmed; nothing is reworded or reordered.
-    const lines = view.report.replace(/\n+$/, '').split('\n')
+    // Lines as the binary wrote them. Indented lines under a headline are
+    // evidence, so they are dimmed; nothing is reworded or reordered.
+    const text = showFull ? view.report : view.overview
+    const lines = text.replace(/\n+$/, '').split('\n')
+    // The toggle exists only when there is something to switch to: the
+    // fallback view carries one text as both.
+    const toggle =
+      view.overview === view.report ? null : (
+        <Button
+          key="doppel-toggle"
+          label={showFull ? 'overview' : 'full report'}
+          plain
+          onPress={() => {
+            showFull = !showFull
+            $.ui.invalidate('ui.render')
+          }}
+        />
+      )
     return (
       <Box flexDirection="column">
+        {toggle}
         {lines.map(line => (
           <Text dimColor={line.startsWith('    ')}>{line === '' ? ' ' : line}</Text>
         ))}
