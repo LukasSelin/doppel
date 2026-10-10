@@ -75,10 +75,28 @@ func compareMain(args []string) {
 	pin := fs.String("pin", "", "end of the window")
 	outPath := fs.String("out", "", "write the outcomes JSON here")
 	fs.IntVar(&minCochanges, "min-cochanges", minCochanges, "as for labelling")
+	minDoppel := fs.Int("min-doppel", 0, "refuse (exit 3) before reading the window when doppel's list has fewer pairs")
 	fs.Parse(args)
 	if *repoDir == "" || *rankPath == "" || *since == "" || *pin == "" || *outPath == "" {
 		fs.Usage()
 		os.Exit(2)
+	}
+	if *minDoppel > 0 {
+		var in rankingsIn
+		if err := readJSON(*rankPath, &in); err != nil {
+			fmt.Fprintln(os.Stderr, "historylabel compare:", err)
+			os.Exit(1)
+		}
+		n := -1
+		for _, l := range in.Lists {
+			if l.Method == doppelMethod {
+				n = len(l.Pairs)
+			}
+		}
+		if n < *minDoppel {
+			fmt.Fprintf(os.Stderr, "historylabel compare: inadmissible: doppel lists %d pairs, fewer than %d\n", n, *minDoppel)
+			os.Exit(3)
+		}
 	}
 	if err := runCompare(*repoDir, *rankPath, *since, *pin, *outPath); err != nil {
 		fmt.Fprintln(os.Stderr, "historylabel compare:", err)
