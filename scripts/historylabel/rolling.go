@@ -277,6 +277,19 @@ func writeRollingSummary(w io.Writer, units []unit, originsDir string) {
 			corpora = append(corpora, u.corpus)
 		}
 	}
+	// An inadmissible origin leaves a gap, so a file's rank among the judged
+	// dates is not its k: the origins table, where given, names it.
+	var origins []originRow
+	if originsDir != "" {
+		origins = readOrigins(originsDir, corpora)
+	}
+	for i, u := range units {
+		for _, o := range origins {
+			if o.corpus == u.corpus && o.since == u.files[0].Since {
+				fmt.Sscan(o.k, &units[i].k)
+			}
+		}
+	}
 	lists := make([]map[string]unitList, len(units))
 	dops := make([][]unitList, len(units))
 	var baselines []string
@@ -294,7 +307,7 @@ func writeRollingSummary(w io.Writer, units []unit, originsDir string) {
 		fmt.Fprintf(w, "### Origins\n\n")
 		fmt.Fprintf(w, "Window k is T_k..T_{k−1}; Go commits are non-merge commits touching `*.go` in it (the admissibility count, at least 100).\n\n")
 		fmt.Fprintf(w, "| corpus | k | T_k | T_k date | window end date | Go commits | judged |\n| --- | ---: | --- | --- | --- | ---: | --- |\n")
-		for _, o := range readOrigins(originsDir, corpora) {
+		for _, o := range origins {
 			judged := "no"
 			for _, u := range units {
 				if u.corpus == o.corpus && fmt.Sprint(u.k) == o.k {
