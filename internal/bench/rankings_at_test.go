@@ -35,6 +35,14 @@ func TestRankingsAt(t *testing.T) {
 	if corpus == "" || out == "" {
 		t.Fatal("DOPPEL_BENCH_RANKINGS_CORPUS and DOPPEL_BENCH_RANKINGS_OUT are required")
 	}
+	br := rankingsRun(t, root, corpus)
+	writeRankingsFile(t, out, rankingsAt(br, corpus, root, rankingsTop))
+}
+
+// rankingsRun analyses the tree at T over the cost study's population: Go
+// files only, tests and generated files excluded.
+func rankingsRun(t *testing.T, root, corpus string) *baselineRun {
+	t.Helper()
 	all, err := Load(root, PopExclude)
 	if err != nil {
 		t.Fatal(err)
@@ -46,7 +54,12 @@ func TestRankingsAt(t *testing.T) {
 	}
 	t.Logf("[%s] %d functions, calibration %s, union %d pairs, report pool %d pairs",
 		corpus, len(br.run.Units), br.calib, len(br.run.Pairs), len(br.report))
-	data, err := json.MarshalIndent(rankingsAt(br, corpus, root, rankingsTop), "", " ")
+	return br
+}
+
+func writeRankingsFile(t *testing.T, out string, f rankingsFile) {
+	t.Helper()
+	data, err := json.MarshalIndent(f, "", " ")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,8 +132,15 @@ func rankingsAt(br *baselineRun, corpus, root string, top int) rankingsFile {
 		lists = append(lists, m.random[s])
 	}
 
+	return rankingsFileOf(br, corpus, root, names, lists, top)
+}
+
+// rankingsFileOf writes named lists, each cut at top, with the units they
+// name: the file `historylabel compare` reads, whichever methods made it.
+func rankingsFileOf(br *baselineRun, corpus, root string, names []string, lists [][]ref, top int) rankingsFile {
+	r := br.run
 	f := rankingsFile{Corpus: corpus, Calibration: br.calib, Functions: len(r.Units),
-		Union: len(pool), Report: len(br.report)}
+		Union: len(r.Pairs), Report: len(br.report)}
 	used := map[int]bool{}
 	for i, l := range lists {
 		if top > 0 && len(l) > top {
