@@ -9,7 +9,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `a7601b6` |
+| doppel | `bf703a9` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -24,18 +24,18 @@ Scanning . ...
 Learning concept vocabulary...
 Lexicon: 46 concepts (6 seeded, 40 emergent), 1266/3382 features above 182 df, 76 functions unlabeled
 Generating concept documents...
-Calibration: rate 0.01 over 20000 null pairs -> threshold 0.40, struct-min 0.47, family-min 0.40
+Calibration: rate 0.01 over 20000 null pairs -> threshold 0.40, struct-min 0.49, family-min 0.40
 Found 497 functions. Retrieving candidates...
 Retrieval: shape 209, concept 1637, call 609 -> 2132 unique pairs
   concept-only 64.3%  call-only 17.2%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1934
 Running structural comparison on 2132 pairs...
   Concept views: 70 of 2132 compared pairs disagree with the taxonomy (4 vocabulary the tree misses, 66 kinship the vocabularies lack)
-  687 pairs remain after struct-min=0.47 filter
+  571 pairs remain after struct-min=0.49 filter
 Culture: 37 concepts modeled, 153 associations, 31 unusual realizations
 Habitats: 5 modeled, 15 misfits (0 excused by subsystem), 1 subsystems; most uniform binding (norm 0.92), most diverse json (norm 0.63)
 Conventions: strongest c.MustBindWith+gin.*Context.MustBindWith (1.00), loosest gin.*Context.Header+gin.*Context.Set (0.22)
 Ecosystems: 443 profiled (351 dominance, 74 coalition, 0 conflict, 18 weak)
-Families: 33 over 62 components, 180 functions in a family, 249 edges completed
+Families: 32 over 58 components, 170 functions in a family, 216 edges completed
 ```
 
 # Code Similarity Report
@@ -204,13 +204,6 @@ Convention is how uniformly this corpus realizes a concept: `1.00` means every f
 ### Where the duplication is
 
 Merge-worthy pairs are folded up to their packages: only pairs doppel judges worth consolidating are counted. An edge means two packages keep solving the same problem separately; a count on a node means the repetition is inside one package. Weights are **merge-worthy pairs**.
-
-```mermaid
-flowchart LR
-    p0["fs"]
-    p1["gin<br/>262 internal"]
-    p0 ---|"1"| p1
-```
 
 ### How settled each package is
 
@@ -391,13 +384,13 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 | `gin.*Context.ClientIP` <br/>`context.go:975` | `c.requestHeader+gin.*Context.requestHeader` | `0.18` | `0.80` | no near-duplicate |
 | `gin.*Context.Header` <br/>`context.go:1080` | `c.requestHeader+gin.*Context.requestHeader` | `0.23` | `0.80` | no near-duplicate |
 | `binding.*multipartRequest.TrySet` <br/>`binding/multipart_form_mapping.go:27` | `engine.MaxMultipartMemory+c.engine` | `0.09` | `0.66` | no near-duplicate |
+| `gin.*Context.NegotiateFormat` <br/>`context.go:1394` | `c.requestHeader+gin.*Context.requestHeader` | `0.24` | `0.80` | no near-duplicate |
+| `gin.WrapH` <br/>`utils.go:54` | `xml+runtime` | `0.31` | `0.66` | no near-duplicate |
 | `render.Redirect.WriteContentType` <br/>`render/redirect.go:29` | `bytesconv.StringToBytes+json.API` | `0.18` | `0.52` | no near-duplicate |
 | `binding.setArray` <br/>`binding/form_mapping.go:490` | `binding+nil` | `0.12` | `0.38` | no near-duplicate |
 | `gin.*responseWriter.Status` <br/>`response_writer.go:98` | `gin.*Context.Header+gin.*Context.Set` | `0.19` | `0.45` | no near-duplicate |
 | `gin.*Engine.addRoute` <br/>`gin.go:364` | `tree.method+tree.root` | `0.12` | `0.36` | no near-duplicate |
 | `binding.queryBinding.Bind` <br/>`binding/query.go:15` | `binding+nil` | `0.15` | `0.38` | no near-duplicate |
-| `gin.*Context.Next` <br/>`context.go:188` | `binding+nil` | `0.17` | `0.38` | no near-duplicate |
-| `gin.*Context.Stream` <br/>`context.go:1322` | `binding+nil` | `0.18` | `0.38` | no near-duplicate |
 
 _21 more unusual realizations not listed._
 
@@ -862,7 +855,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ## Families
 
-33 families, 180 functions in a family, largest 17 members; 249 edges scored here that retrieval never proposed
+32 families, 170 functions in a family, largest 16 members; 216 edges scored here that retrieval never proposed
 
 ### Family 1 — 6 members, every pair `>= 0.48` code-shape, evidence `3517`
 
@@ -900,60 +893,7 @@ flowchart LR
 | `gin.go:630` | `gin.*Engine.RunQUIC` | `(string, string, string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.63, http.Server+engine.Handler 0.53 |
 | `gin.go:645` | `gin.*Engine.RunListener` | `(net.Listener) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.61, http.Server+engine.Handler 0.51 |
 
-### Family 2 — 8 members, every pair `>= 0.40` code-shape, evidence `758`  (13 edges scored here), interface implementations of `Render(http.ResponseWriter) (error)`, in package `render`
-
-```mermaid
-flowchart LR
-    m0["render.BSON.Render"]
-    m1["render.HTML.Render"]
-    m2["render.IndentedJSON.Render"]
-    m3["render.PureJSON.Render"]
-    m4["render.ProtoBuf.Render"]
-    m5["render.TOML.Render"]
-    m6["render.XML.Render"]
-    m7["render.YAML.Render"]
-    m0 --- m1
-    m0 --- m2
-    m0 --- m3
-    m0 --- m4
-    m0 --- m5
-    m0 --- m6
-    m0 --- m7
-    m1 --- m2
-    m1 --- m3
-    m1 --- m4
-    m1 --- m5
-    m1 --- m6
-    m1 --- m7
-    m2 --- m3
-    m2 --- m4
-    m2 --- m5
-    m2 --- m6
-    m2 --- m7
-    m3 --- m4
-    m3 --- m5
-    m3 --- m6
-    m3 --- m7
-    m4 --- m5
-    m4 --- m6
-    m4 --- m7
-    m5 --- m6
-    m5 --- m7
-    m6 --- m7
-```
-
-| Location | Function | Signature | Concepts |
-|---|---|---|---|
-| `render/bson.go:21` | `render.BSON.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.58, binding+nil 0.45, json.Marshal+json.MarshalIndent 0.14 |
-| `render/html.go:89` | `render.HTML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.49, json.Marshal+json.MarshalIndent 0.15 |
-| `render/json.go:78` | `render.IndentedJSON.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.61, bytesconv.StringToBytes+json.API 0.47, json.Marshal+json.MarshalIndent 0.18 |
-| `render/json.go:184` | `render.PureJSON.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.50, json.Marshal+json.MarshalIndent 0.17 |
-| `render/protobuf.go:21` | `render.ProtoBuf.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.56, binding+nil 0.42 |
-| `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.59, binding+nil 0.43 |
-| `render/xml.go:20` | `render.XML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.43, json.Marshal+json.MarshalIndent 0.27 |
-| `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.59, binding+nil 0.43 |
-
-### Family 3 — 5 members, every pair `>= 0.47` code-shape, evidence `717`
+### Family 2 — 5 members, every pair `>= 0.47` code-shape, evidence `717`
 
 ```mermaid
 flowchart LR
@@ -982,7 +922,7 @@ flowchart LR
 | `binding/xml.go:28` | `binding.decodeXML` | `(io.Reader, any) (error)` | delims.Left+delims.Right 0.63, binding+nil 0.45 |
 | `binding/yaml.go:29` | `binding.decodeYAML` | `(io.Reader, any) (error)` | delims.Left+delims.Right 0.62, binding+nil 0.44 |
 
-### Family 4 — 3 members, every pair `>= 0.45` code-shape, evidence `621`
+### Family 3 — 3 members, every pair `>= 0.45` code-shape, evidence `621`
 
 ```mermaid
 flowchart LR
@@ -999,6 +939,35 @@ flowchart LR
 | `gin.go:272` | `gin.*Engine.LoadHTMLGlob` | `(string)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.60, delims.Left+delims.Right 0.59 |
 | `gin.go:288` | `gin.*Engine.LoadHTMLFiles` | `(...string)` | delims.Left+delims.Right 0.61, delims.Left+delims.Right+engine.SetHTMLTemplate 0.60 |
 | `gin.go:300` | `gin.*Engine.LoadHTMLFS` | `(http.FileSystem, ...string)` | delims.Left+delims.Right 0.60, delims.Left+delims.Right+engine.SetHTMLTemplate 0.59 |
+
+### Family 4 — 5 members, every pair `>= 0.53` code-shape, evidence `619`, interface implementations of `Render(http.ResponseWriter) (error)`, in package `render`
+
+```mermaid
+flowchart LR
+    m0["render.BSON.Render"]
+    m1["render.IndentedJSON.Render"]
+    m2["render.ProtoBuf.Render"]
+    m3["render.TOML.Render"]
+    m4["render.YAML.Render"]
+    m0 --- m1
+    m0 --- m2
+    m0 --- m3
+    m0 --- m4
+    m1 --- m2
+    m1 --- m3
+    m1 --- m4
+    m2 --- m3
+    m2 --- m4
+    m3 --- m4
+```
+
+| Location | Function | Signature | Concepts |
+|---|---|---|---|
+| `render/bson.go:21` | `render.BSON.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.58, binding+nil 0.45, json.Marshal+json.MarshalIndent 0.14 |
+| `render/json.go:78` | `render.IndentedJSON.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.61, bytesconv.StringToBytes+json.API 0.47, json.Marshal+json.MarshalIndent 0.18 |
+| `render/protobuf.go:21` | `render.ProtoBuf.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.56, binding+nil 0.42 |
+| `render/toml.go:21` | `render.TOML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.59, binding+nil 0.43 |
+| `render/yaml.go:21` | `render.YAML.Render` | `(http.ResponseWriter) (error)` | API.Marshal+bytesconv.StringToBytes 0.59, binding+nil 0.43 |
 
 ### Family 5 — 7 members, every pair `>= 0.40` code-shape, evidence `590`  (5 edges scored here)
 
@@ -1044,5 +1013,5 @@ flowchart LR
 | `context.go:1270` | `gin.*Context.DataFromReader` | `(int, int64, string, io.Reader, map[string]string)` | binding+nil 0.48 |
 | `context.go:1313` | `gin.*Context.SSEvent` | `(string, any)` | binding+nil 0.63, c.requestHeader+gin.*Context.requestHeader 0.35, engine.MaxMultipartMemory+c.engine 0.29 |
 
-_28 more families not listed._
+_27 more families not listed._
 
