@@ -3765,6 +3765,19 @@ functions for exactly this reason, and the first version of them did not and fai
     commits: gin's `Engine.Run*` family (10-16 lines, below any clone floor) for doppel, moby's
     `client.*Prune` methods (one commit) for dupl. On prometheus and moby, half or more of a
     floored detector's top 100 is in doppel's.
+  - `TestFusionRankingsAt` (guard `DOPPEL_BENCH_FUSION_AT=<tree>`, driven by
+    `scripts/ranker-outcomes.sh -s fusion` / `task fusion-outcomes`) lists doppel, dupl at
+    t=100 and t=50 and token clones at 50 nodes (`cloneOutcomeLists`' lists, unchanged) beside
+    their Reciprocal Rank Fusion with doppel (`rrfFuse`, k = 60, ties on best single rank then
+    `(a, b)`, pinned by `TestRRFFuse`). `compare-summary -inputs <clone-outcomes dir> -fusion`
+    adds the input-identity check and the fused-minus-input table. **Measured on the same five
+    corpora, `examples/fusion-outcomes.md`: no verdict**, because a pre-registered check failed
+    — the input lists reproduce, but hugo's and moby's input rate rows do not. The cause is in
+    `historylabel compare`: a commit is a sweep when it modifies more than 10 functions *in the
+    directories walked*, and those depend on every list in the file, so **a pair's outcome
+    depends on what else is judged beside it**. Compare numbers across studies only when they
+    were judged in one run. Descriptively, fusion beats doppel nowhere and reads lower on
+    prometheus and hugo; it gains only moby's `client.*Prune` sweep, which dupl alone had.
   - `TestSweep` (guard `DOPPEL_BENCH_SWEEP=1`) is the sensitivity sweep: each hand-set constant
     varied one at a time (±50% or the natural alternatives), only the stages it reaches re-run,
     and the labeled rankings reported with a verdict — `inert` (no label moved), `moves`,
