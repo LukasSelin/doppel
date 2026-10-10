@@ -45,12 +45,25 @@ mkdir -p "$OUT_DIR"
 OUT_DIR=$(cd "$OUT_DIR" && pwd)
 
 COST="$MODULE/examples/cost-study/$CORPUS.cost.json"
-field() { sed -n "s/^  \"$1\": \"\([0-9a-f]*\)\",\$/\1/p" "$COST" | head -1; }
-COST_SINCE=$(field since)
-PIN=$(field pin)
-if [ -z "$COST_SINCE" ] || [ -z "$PIN" ]; then
-  echo "could not read since/pin from $COST" >&2
-  exit 1
+COST_SINCE=""
+if [ -f "$COST" ]; then
+  field() { sed -n "s/^  \"$1\": \"\([0-9a-f]*\)\",\$/\1/p" "$COST" | head -1; }
+  COST_SINCE=$(field since)
+  PIN=$(field pin)
+  if [ -z "$COST_SINCE" ] || [ -z "$PIN" ]; then
+    echo "could not read since/pin from $COST" >&2
+    exit 1
+  fi
+else
+  # No cost study for this rung (chi, conc): the pin is the ladder's, and T_1
+  # is derived below by the cost study's own rule, with no committed T to
+  # assert it against (examples/size-aware-check.md).
+  MANIFEST="$MODULE/internal/bench/corpora.go"
+  PIN=$(awk -v n="\"$CORPUS\"" '$0 ~ "Name:" && index($0, n) {on=1} on && $0 ~ "Commit:" {gsub(/[",]/, "", $2); print $2; exit}' "$MANIFEST")
+  if [ -z "$PIN" ]; then
+    echo "no cost study for $CORPUS and no pin in $MANIFEST" >&2
+    exit 1
+  fi
 fi
 if [ ! -d "$HIST/.git" ]; then
   echo "no full-history clone at $HIST; run scripts/cost-study.sh -c $CORPUS first" >&2
@@ -64,13 +77,14 @@ origin() { git -C "$HIST" rev-list --first-parent -1 --before=$((PIN_TS - $1 * 3
 YEARS=""
 for years in 2 3 4; do
   t=$(origin "$years")
-  n=$(git -C "$HIST" rev-list --count --no-merges "$t..$PIN" -- '*.go')
+  n=0
+  [ -n "$t" ] && n=$(git -C "$HIST" rev-list --count --no-merges "$t..$PIN" -- '*.go')
   if [ "$n" -ge 100 ] || [ "$years" -eq 4 ]; then
     YEARS=$years
     break
   fi
 done
-if [ "$(origin "$YEARS")" != "$COST_SINCE" ]; then
+if [ -n "$COST_SINCE" ] && [ "$(origin "$YEARS")" != "$COST_SINCE" ]; then
   echo "$CORPUS: T_1 $(origin "$YEARS") is not the cost study's since $COST_SINCE" >&2
   exit 1
 fi

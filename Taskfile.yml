@@ -238,6 +238,27 @@ tasks:
     cmds:
       - go test ./internal/bench/ -run '^TestSizeVariantsGolden$' -count=1 -v
 
+  size-aware-check-labels:
+    desc: "Check 1 of examples/size-aware-check.md: score production and the size variants against every labelled corpus (LABELS=<private labels dir> EXTRA='<root>;<root>'); the log names private pairs, keep it out of the repo"
+    cmds:
+      - DOPPEL_BENCH_SIZECHECK=1 DOPPEL_BENCH_LENSES_LABELS="{{.LABELS}}" DOPPEL_BENCH_LENSES_EXTRA="{{.EXTRA}}" go test ./internal/bench/ -run '^TestSizeCheckLabels$' -count=1 -v -timeout 60m
+
+  size-aware-check-outcomes:
+    desc: "Check 2 of examples/size-aware-check.md: chi and conc at the rolling origins under the size-aware method set, then the summary"
+    vars:
+      D: '{{.ROOT_DIR}}/examples/size-aware-check'
+    cmds:
+      - ./scripts/rolling-origin.sh -s size -c chi -k "1 2 3" -o {{.D}}
+      - ./scripts/rolling-origin.sh -s size -c conc -k "1 2 3" -o {{.D}}
+      - go run -C scripts/historylabel . size-summary -origins {{.D}} -out {{.D}}/chi.md {{.D}}/chi.o2.size-outcomes.json
+
+  size-aware-check-top20:
+    desc: "Check 3 of examples/size-aware-check.md: the report's top 20 under production and K-size on chi, conc, cobra and gin; blind.tsv and directions.tsv go to OUT"
+    vars:
+      OUT: '{{.OUT | default (print .ROOT_DIR "/examples/size-aware-check")}}'
+    cmds:
+      - DOPPEL_BENCH_SIZECHECK_TOP20=chi,conc,cobra,gin DOPPEL_BENCH_SIZECHECK_OUT="{{.OUT}}" go test ./internal/bench/ -run '^TestSizeCheckTop20$' -count=1 -v
+
   pages:
     desc: Build the published site into _site/, exactly as the Pages workflow does
     vars:

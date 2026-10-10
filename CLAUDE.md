@@ -3835,6 +3835,21 @@ functions for exactly this reason, and the first version of them did not and fai
     variant inside the guardrails, is not distinguishable. No variant meets every criterion, and
     no default moved. At matched depth on the pair-local judge, production doppel itself beats
     dupl t=50 — the rolling-origin "dupl beats doppel" verdict was a one-pair list.
+  - **The K-size safety check** (`examples/size-aware-check.md`) asks where K-size makes doppel
+    worse. `TestSizeCheckLabels` (guard `DOPPEL_BENCH_SIZECHECK=1`, the private label variables
+    `TestOverlapRank` reads; `task size-aware-check-labels`) scores production and the three
+    variants against every labelled corpus; its log names private pairs and stays out of the repo.
+    `TestSizeCheckTop20` (guard `DOPPEL_BENCH_SIZECHECK_TOP20=<rungs>`; `task
+    size-aware-check-top20`) ranks the report's pool under both keys and writes the entering and
+    leaving pairs blind to direction, for hand classification. `scripts/rolling-origin.sh` now
+    derives T_1 by the cost study's rule from the ladder pin when a rung has no cost study (chi,
+    conc; `task size-aware-check-outcomes`). **Measured, and K-size is not safe to propose:** on
+    the private labels pooled violations rise 45 → 47 and the merge mean worsens by 18 and 21 ranks
+    on two of three corpora, because large mirror and multi-program pairs rise (to ranks 1 and 2)
+    over mid-sized exact merges; the false positives in the top 20 hold at 20. On chi, conc,
+    cobra and gin it does the opposite — 7 pairs enter the top 20, 1 of them a false-positive
+    class, against 6 of 7 leaving. chi and conc cannot judge outcomes: conc has no origin, chi
+    k = 1 has 92 commits, and chi k = 2 falls below the event-cluster floor.
   - `TestSweep` (guard `DOPPEL_BENCH_SWEEP=1`) is the sensitivity sweep: each hand-set constant
     varied one at a time (±50% or the natural alternatives), only the stages it reaches re-run,
     and the labeled rankings reported with a verdict — `inert` (no label moved), `moves`,
