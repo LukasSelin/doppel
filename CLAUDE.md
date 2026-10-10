@@ -2112,10 +2112,21 @@ contains, from the two models that had no caller outside their own tests:
   second is a real fact about how that codebase wraps errors. A concept with **no** distinctive
   feature says so explicitly rather than rendering an empty table: the tag groups its members, but
   no shared way of writing them exists, and that is a finding about the tag.
-- **Which concepts share a function** — the tag~tag grid, and the one table in the report that is
-  **not** a sample: a fixed concept vocabulary means it is bounded by construction, so it shows every
-  cell including the ordinary ones. `never` cells are the layering signal. An all-blank grid
-  renders nothing, which is what doppel's own corpus produces.
+- **Which concepts share a function** — the tag~tag grid. It was written as the one table in the
+  report that was **not** a sample, on the premise that a fixed fourteen-tag vocabulary bounds it by
+  construction. That premise broke when concepts became learned: the grid is concepts², and on
+  kubernetes (1 091 learned concepts) it was ~3.1MB of a 3.2MB report, with moby (519) and hugo
+  (547) ~800KB each for the same reason. It is now bounded on the **axis** at `maxMatrixConcepts`
+  (12, `cmd/overview.go` — eleven columns, the `maxOverviewNodes` density) and the prose says
+  "showing N of M concepts" whenever it cuts. The sample is the concepts in the **strongest
+  pairings**: reported tag~tag associations ranked by `matrixCellWeight` — |PMI| × ln(1 + evidence),
+  evidence being max(count, expected) so both directions share one scale, and a `never` taking
+  −ln N, the arena's largest finite repulsion — and both ends of each admitted strongest-first
+  until the axis is full (`strongestConcepts`, ties on the two names). Selecting by cell rather than
+  by a per-concept total is what keeps a shown concept's strongest partner beside it on the grid.
+  Under the cap nothing changes: every concept, every cell. Within the sample every cell is still
+  shown, ordinary ones included. `never` cells are the layering signal. An all-blank grid renders
+  nothing, which is what doppel's own corpus produces.
 - **What travels with what** — the PMI ecology, both directions, **grouped by kind**. Grouping is
   not cosmetic: there are far more call tokens than concepts, so on one shared list the tag~call
   rows crowd out every tag~tag row — this report showed zero concept-to-concept associations until
