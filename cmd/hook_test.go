@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -325,38 +326,27 @@ func TestRelativeToRootRejectsOutsiders(t *testing.T) {
 	}
 }
 
-// The digest prints a bounded head of the findings, and the ledger retires
-// whatever it is handed. Handing it the whole list therefore suppresses, for
-// the rest of the session, findings nobody was ever shown — so the ledger gets
-// what AgentDigest rendered, and the remainder leads the next turn.
-func TestLedgerRetiresOnlyTheFindingsShown(t *testing.T) {
+// A backlog is said once. The digest prints a bounded head and the ledger
+// retires the whole list, so the next turn has nothing left to continue for —
+// retiring only the printed head drip-fed a 28-finding backlog over nine
+// continued turns in real sessions.
+func TestLedgerRetiresTheWholeBacklogAtOnce(t *testing.T) {
 	var all []reporter.Finding
-	for _, n := range []string{"one", "two", "three", "four", "five"} {
-		all = append(all, reporter.Finding{Key: "new:" + n, Line: n + " <-> other"})
+	for i := 0; i < 25; i++ {
+		all = append(all, reporter.Finding{Key: fmt.Sprintf("new:%02d", i), Line: fmt.Sprintf("f%02d <-> other", i)})
 	}
 	base := baselineFile{Root: "/repo", Snapshot: snapshot.Snapshot{Schema: snapshot.Schema}}
 
-	note, shown := reporter.AgentDigest(unreported(all, base.Reported))
+	note, retired := reporter.AgentDigest(unreported(all, base.Reported))
 	if note == "" {
-		t.Fatal("no digest rendered for five findings")
+		t.Fatal("no digest rendered for the backlog")
 	}
-	base = withReported(base, shown)
-
-	left := unreported(all, base.Reported)
-	if len(left) != len(all)-len(shown) {
-		t.Fatalf("%d findings left for the next turn, want %d", len(left), len(all)-len(shown))
+	if !strings.Contains(note, "not be repeated") {
+		t.Errorf("the note does not say the rest is retired:\n%s", note)
 	}
-	for _, f := range left {
-		if strings.Contains(note, f.Line) {
-			t.Errorf("finding %q was shown yet not retired", f.Line)
-		}
-	}
-
-	// The second turn surfaces the remainder, and then there is nothing left.
-	_, shown2 := reporter.AgentDigest(left)
-	base = withReported(base, shown2)
+	base = withReported(base, retired)
 	if rest := unreported(all, base.Reported); len(rest) != 0 {
-		t.Errorf("%d findings still unreported after two turns, want 0", len(rest))
+		t.Errorf("%d findings left for the next turn, want 0", len(rest))
 	}
 }
 

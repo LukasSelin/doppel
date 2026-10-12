@@ -165,7 +165,8 @@ scripts/        timeline.sh: walks a git history and analyses each revision at o
                 -s clones runs dupl on the T tree and lists doppel beside clone detectors that search the whole tree (TestCloneRankingsAt);
                 -s size adds the size-aware rank variants (TestSizeRankingsAt) and judges under -sweep-scope commit.
                 history-labels.sh + historylabel/ (its own Go module): derives golden labels from what maintainers did to each pair in git history.
-                The only code in the repo that knows git exists, and deliberately outside the doppel module
+                The only code in the repo that reads git history, and deliberately outside the doppel module
+                (cmd/hookgit.go reads HEAD for the Stop hook's baseline, and nothing else — see the hook contract)
 ```
 
 Eight helpers are deliberately shared rather than copied, because doppel found each
@@ -3006,7 +3007,7 @@ reason rather than returning a partial delta.
   (`transition: {reason: "stop_hook_blocking"}`). There is no way to put text in the model's
   context from a Stop hook without the agent working again.
 
-  Three things make that affordable, and removing any one of them makes the feature hostile:
+  Four things make that affordable, and removing any one of them makes the feature hostile:
 
   1. **The `stop_hook_active` guard.** The harness sets it on the re-entry; `runHookStop` returns
      before any analysis when it is true. Without it the turn never ends until Claude Code
@@ -3015,13 +3016,45 @@ reason rather than returning a partial delta.
   2. **`reporter.Notable`, a much higher bar than the user digest's.** Only new merge-worthy
      attributable pairs, and gate crossings with an edited side. Attribution gates the crossings
      as hard as the pairs, and measurement proved it must: merge-worthiness is corpus-weighted, so
-     adding two functions anywhere nudges untouched pairs across the 0.4 boundary.
+     adding two functions anywhere nudges untouched pairs across the 0.4 boundary. **Every kind
+     must also reach code-shape `analyzer.ForkShapeFloor` (0.60)** — the post-edit floor — judged
+     after the change for a pair that appeared or became merge-worthy, before it for one that
+     stopped being, and on the higher side for a drift. The merge-worthy gate's own shape floor is
+     0.40, and over a weekend of real sessions (61 sessions, 66 agent notes) the pairs it let
+     through had a median shape of 0.49, which agents rejected almost without exception ("both
+     open a handle", "both print a table"); the two notes an agent acted on read 0.56 and above.
+     The user digest keeps the gate alone, because it does not cost a turn.
   3. **The `Reported` ledger** in the baseline wrapper. A delta is cumulative against the
      session-start origin, so an unremembered finding is re-reported — and re-continues the turn —
      every turn thereafter. The ledger rides in the baseline file rather than a second one, and
-     never touches its `Snapshot`. It records **only what the digest printed**, which is why
-     `AgentDigest` returns the findings it rendered: the note prints a bounded head, and ledgering
-     the rest would retire findings nobody was ever shown. They lead the next turn's list instead.
+     never touches its `Snapshot`. **A backlog is said once**: `AgentDigest` prints up to
+     `maxAgentListed` (10) lines and a count of the rest, and returns the *whole* list for the
+     ledger. It used to return only what it printed, so that nothing merely counted was retired
+     unseen; measured, that was a drip-feed — a 28-finding backlog came out three per turn
+     (28 → 25 → 23 → 20 …), each three continuing the turn again. Nothing is lost to the user,
+     whose digest and impact file still carry the whole delta. The delta-report half of the note
+     (`maxAgentDelta`) still ledgers only what it printed: it never justifies a note on its own.
+  4. **The baseline follows the branch** (`followHead`, `cmd/hookgit.go`). Agents move the branch
+     under a session — a rebase onto main, a merge of origin/main, a fast-forward, a branch
+     switch — and every function that arrives that way reads as the session's work. The
+     `Attributable` bit cannot see it, since those functions really did change in the tree, and it
+     was **34 of 66** agent notes over that weekend, each a continued turn spent saying "that
+     isn't mine". The baseline wrapper records `Head`; at Stop, a HEAD that moved by anything other
+     than the session's own commits **re-baselines silently** at the current tree, carrying both
+     ledgers over. The session's own commits are recognised without reading history as evidence:
+     they extend the old HEAD linearly (`merge-base --is-ancestor`), contain no merge commit, were
+     committed after the baseline's `CreatedAt`, and by the local `user.email` — a squash-merged PR
+     pulled down is committed by the forge. Then only `Head` moves. The rules lean towards
+     "moved", the cheap direction: re-baselining forgets session work not yet reported, while not
+     re-baselining blames the session for someone else's code on every following turn. Any git
+     failure answers "unknown" and keeps the old behaviour. Two cases it does not reach: an
+     uncommitted change by another actor in the same tree (a user editing beside the agent), and
+     read-only sessions on another repository that saw edits at an unmoved HEAD — not yet explained.
+
+     This is the module's one use of git, and it reads one fact: which commit the tree sits on.
+     It is not history as evidence — no score, ranking or annotation reads it — but a validity
+     check on the measurement origin, the way `Params` equality is. Widening it to anything that
+     feeds a score is a design change.
 
   `hook-notify` (`agent` | `user` | `off`) is the escape hatch; `user` is the pre-existing
   behaviour exactly. It is deliberately **not** in `Params`, because who gets told has no bearing
@@ -3248,7 +3281,7 @@ nothing. Argument order **is** series order, which needs no timestamp inside a `
 none, by the schema's third rule) and no sorting the tool could not justify. `scripts/timeline.sh`
 walks `git rev-list`, materializes each revision in a detached worktree, analyses it, and calls the
 command; `task timeline` wraps it. That script and `scripts/historylabel` are the only things in the
-repo that know git exists.
+repo that read git history (the Stop hook reads HEAD and nothing more; see the hook contract).
 
 ### One operating point for the whole series
 

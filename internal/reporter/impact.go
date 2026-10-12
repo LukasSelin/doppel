@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/LukasSelin/doppel/internal/analyzer"
 	"github.com/LukasSelin/doppel/internal/snapshot"
 )
 
@@ -20,13 +21,22 @@ const (
 	maxImpactListed = 6
 	// The agent digest is not merely short, it is expensive: handing a Stop
 	// hook's output to the model continues the turn, so every line here costs
-	// part of a model turn. Three findings is enough to act on and few enough
-	// that the cost stays proportionate.
-	maxAgentListed = 3
+	// part of a model turn. Ten one-line findings bound a single note; past
+	// that the rest is counted and retired with the ones shown, because the
+	// alternative is one continued turn per three findings (see AgentDigest).
+	maxAgentListed = 10
 	// notableDrift is the movement worth interrupting for, an order above
 	// driftFloor. driftFloor only asks "is this visible at all"; this asks "is
 	// this worth a turn".
 	notableDrift = 0.05
+	// notableShapeFloor is the code-shape a pair must reach before it may
+	// interrupt the model. It is the post-edit hook's floor and the family
+	// guarantee's (analyzer.ForkShapeFloor), not the merge-worthy gate's 0.4:
+	// that gate is a verdict over context, and measured over a weekend of real
+	// sessions the notes it let through had a median shape of 0.49, which
+	// agents rejected almost without exception as "both open a handle" or
+	// "both print a table". Both notes an agent acted on read 0.56 and above.
+	notableShapeFloor = analyzer.ForkShapeFloor
 )
 
 // ConceptDigest describes a corpus in the terms doppel reasons about, for the
@@ -353,6 +363,11 @@ func NewPairKey(a, b string) string {
 //   - a pair with an edited side that crossed the merge-worthy gate, or,
 //     failing that, moved by notableDrift.
 //
+// Every kind must also reach notableShapeFloor on code-shape: a crossing is
+// judged on the side where the pair was merge-worthy, a drift on whichever
+// side is higher. The user digest keeps the merge-worthy gate alone; it does
+// not cost a turn.
+//
 // Attribution gates the crossings as hard as it gates the new pairs, and
 // measurement proved it has to. Merge-worthiness is corpus-weighted: adding two
 // functions anywhere shifts the information content of every tag and nudges
@@ -376,7 +391,7 @@ func Notable(d snapshot.Delta) []Finding {
 	added, _ := d.AttributablePairs()
 	sortForReading(added)
 	for _, p := range added {
-		if !p.MergeWorthy {
+		if !p.MergeWorthy || p.Score < notableShapeFloor {
 			continue
 		}
 		out = append(out, Finding{
@@ -387,7 +402,7 @@ func Notable(d snapshot.Delta) []Finding {
 
 	for _, dr := range d.Drift {
 		switch {
-		case dr.CrossedGate() && dr.Attributable:
+		case dr.CrossedGate() && dr.Attributable && crossingShape(dr) >= notableShapeFloor:
 			verb := "became merge-worthy"
 			if !dr.MergeWorthyAfter {
 				verb = "is no longer merge-worthy"
@@ -397,7 +412,8 @@ func Notable(d snapshot.Delta) []Finding {
 				Line: fmt.Sprintf("%s <-> %s  %s (overlap %.3f -> %.3f)",
 					dr.A, dr.B, verb, dr.OverlapBefore, dr.OverlapAfter),
 			})
-		case dr.Attributable && dr.ScoreMoved() >= notableDrift:
+		case dr.Attributable && dr.ScoreMoved() >= notableDrift &&
+			max(dr.ScoreBefore, dr.ScoreAfter) >= notableShapeFloor:
 			out = append(out, Finding{
 				Key: "drift:" + dr.A + "|" + dr.B,
 				Line: fmt.Sprintf("%s <-> %s  shape %.2f -> %.2f",
@@ -408,13 +424,25 @@ func Notable(d snapshot.Delta) []Finding {
 	return out
 }
 
+// crossingShape is the code-shape a gate crossing is judged at: the side on
+// which the pair was merge-worthy.
+func crossingShape(dr snapshot.Drift) float64 {
+	if dr.MergeWorthyAfter {
+		return dr.ScoreAfter
+	}
+	return dr.ScoreBefore
+}
+
 // AgentDigest renders findings as a note for the model, or "" for none, and
-// returns the findings it actually rendered.
+// returns the findings the caller must retire — all of them.
 //
-// The second return is what the caller must remember, and it is deliberately
-// not the input: the digest prints a bounded head of the list, so recording
-// the whole set would retire findings that were only ever counted. They keep
-// their turn — on the next one.
+// It used to return only the bounded head it printed, so that nothing merely
+// counted was retired unseen. Measured on real sessions that was a drip-feed:
+// a backlog of 28 findings came out three per turn, and each three continued
+// the turn again, so one burst of duplication cost the agent nine turns of
+// "noted, nothing to do". The note is now said once — up to maxAgentListed
+// lines, a count of the rest, and every finding retired. Nothing is lost to the
+// user: their digest and the impact file still carry the whole delta.
 //
 // Phrasing follows the same rule as ConceptDigest, and for a sharper reason:
 // this text arrives while the turn is being deliberately continued, so a line
@@ -439,8 +467,8 @@ func AgentDigest(findings []Finding) (string, []Finding) {
 		fmt.Fprintf(&b, "  %s\n", f.Line)
 	}
 	if more := len(findings) - len(shown); more > 0 {
-		fmt.Fprintf(&b, "  (%d further findings not listed)\n", more)
+		fmt.Fprintf(&b, "  (%d further findings not listed; they will not be repeated)\n", more)
 	}
 	b.WriteString("This is a measurement, not a request. No change is required.\n")
-	return truncate(b.String()), shown
+	return truncate(b.String()), findings
 }
