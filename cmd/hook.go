@@ -72,6 +72,11 @@ type baselineFile struct {
 	// rationale as Reported — the facts are session-cumulative, so an
 	// unremembered advisory repeats on every edit of the same file.
 	Advised []string `json:"advised,omitempty"`
+	// Head is the commit the tree sat on when Snapshot was recorded, or empty
+	// outside a git repository. The Stop hook compares it with the current
+	// HEAD to notice the branch moving under the session; see hookgit.go.
+	// Like CreatedAt it is never compared as part of a measurement.
+	Head string `json:"head,omitempty"`
 }
 
 var hookCmd = &cobra.Command{
@@ -203,6 +208,7 @@ func runHookSessionStart(cmd *cobra.Command, args []string) error {
 			Root:      filepath.ToSlash(root),
 			CreatedAt: time.Now().UTC().Format(time.RFC3339),
 			Snapshot:  snap,
+			Head:      gitHead(root),
 		})
 	}
 
@@ -278,9 +284,25 @@ func runHookStop(cmd *cobra.Command, args []string) error {
 			Root:      base.Root,
 			CreatedAt: time.Now().UTC().Format(time.RFC3339),
 			Snapshot:  head,
+			Head:      gitHead(root),
 		})
 		_ = os.Remove(deltaPath)
 		return emitNothing()
+	}
+
+	// The branch moved under the session — a rebase, a merge of main, a
+	// fast-forward, a switch — so the origin no longer describes the tree the
+	// session started from, and every function that arrived with the move
+	// would read as this session's work. Re-baseline and stay quiet this turn.
+	if b, rebased := followHead(root, base, head); rebased {
+		_ = writeJSONAtomic(path, b)
+		_ = os.Remove(deltaPath)
+		return emitNothing()
+	} else if b.Head != base.Head {
+		// HEAD advanced by the session's own commits: keep the origin, and
+		// remember the new HEAD so the next move is judged from here.
+		base = b
+		_ = writeJSONAtomic(path, base)
 	}
 
 	mode, err := hookNotify(root)
@@ -346,6 +368,48 @@ func runHookStop(cmd *cobra.Command, args []string) error {
 	}
 
 	return emitJSON(cmd, out)
+}
+
+// followHead checks the baseline's recorded HEAD against the tree's current one.
+//
+// rebased is true when the branch moved by something other than this session's
+// own commits; the returned baseline then has head as its origin, the current
+// HEAD, and a fresh CreatedAt. The two ledgers are carried over on purpose: a
+// finding already said this session is still said, and repeating it because
+// the origin moved would be the noise this exists to remove. The price of
+// re-baselining is the other direction — session work not yet reported before
+// the move is forgotten, which is the cheaper of the two errors.
+//
+// When rebased is false the returned baseline is base, with Head updated if
+// HEAD moved by the session's own commits (or was never recorded). Whenever git
+// cannot answer, base comes back unchanged.
+func followHead(root string, base baselineFile, head snapshot.Snapshot) (baselineFile, bool) {
+	cur := gitHead(root)
+	if cur == "" || cur == base.Head {
+		return base, false
+	}
+	if base.Head == "" {
+		// A baseline from before Head was recorded: adopt the current HEAD as
+		// the reference. Nothing can be said about a move nobody saw.
+		base.Head = cur
+		return base, false
+	}
+	since, err := time.Parse(time.RFC3339, base.CreatedAt)
+	if err != nil {
+		return base, false
+	}
+	moved, ok := baseMoved(root, base.Head, cur, since)
+	if !ok {
+		return base, false
+	}
+	if !moved {
+		base.Head = cur
+		return base, false
+	}
+	base.Snapshot = head
+	base.Head = cur
+	base.CreatedAt = time.Now().UTC().Format(time.RFC3339)
+	return base, true
 }
 
 // identityDelta matches the two snapshots' bodies, degrading to nothing rather

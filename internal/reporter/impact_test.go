@@ -1,6 +1,7 @@
 package reporter
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -274,25 +275,55 @@ func TestAgentDigestEmptyFindingsRenderNothing(t *testing.T) {
 }
 
 // The note arrives while the turn is being deliberately continued, so it must
-// read as a measurement and not as an instruction to go refactor.
+// read as a measurement and not as an instruction to go refactor. It prints a
+// bounded head, and it retires the whole list: handing back only what it
+// printed drip-fed a backlog three findings per continued turn.
 func TestAgentDigestStatesFactsAndCapsTheList(t *testing.T) {
 	var f []Finding
-	for _, n := range []string{"one", "two", "three", "four", "five"} {
-		f = append(f, Finding{Key: "new:" + n, Line: n + " <-> other"})
+	for i := 0; i < maxAgentListed+3; i++ {
+		f = append(f, Finding{Key: fmt.Sprintf("new:%02d", i), Line: fmt.Sprintf("f%02d <-> other", i)})
 	}
-	got, shown := AgentDigest(f)
-	// Only what was printed may be remembered: the ledger retires findings,
-	// and retiring one that was merely counted suppresses it for the session.
-	if len(shown) != maxAgentListed {
-		t.Errorf("reported %d findings shown, want %d", len(shown), maxAgentListed)
+	got, retired := AgentDigest(f)
+	if len(retired) != len(f) {
+		t.Errorf("retired %d findings, want all %d", len(retired), len(f))
 	}
 	if strings.Count(got, "<->") != maxAgentListed {
 		t.Errorf("listed %d findings, want %d:\n%s", strings.Count(got, "<->"), maxAgentListed, got)
 	}
-	if !strings.Contains(got, "2 further findings not listed") {
+	if !strings.Contains(got, "3 further findings not listed; they will not be repeated") {
 		t.Errorf("missing the roll-up line:\n%s", got)
 	}
 	if !strings.Contains(got, "No change is required.") {
 		t.Errorf("digest does not bound itself as a measurement:\n%s", got)
+	}
+}
+
+// A merge-worthy pair below the shape floor is a verdict over shared context,
+// not a look-alike body, and it does not buy a model turn. The floor applies to
+// all three kinds, each judged on the side where the pair was a look-alike.
+func TestNotableRequiresTheShapeFloor(t *testing.T) {
+	d := snapshot.Delta{Comparable: true,
+		PairsAdded: []snapshot.PairChange{
+			pc("a.Twin", "b.Twin", notableShapeFloor, 0.50, true, true),
+			pc("a.Shallow", "b.Shallow", 0.49, 0.70, true, true),
+		},
+		Drift: []snapshot.Drift{
+			{A: "c.Up", B: "d.Up", ScoreBefore: 0.70, ScoreAfter: 0.70,
+				MergeWorthyAfter: true, Attributable: true},
+			{A: "c.Low", B: "d.Low", ScoreBefore: 0.45, ScoreAfter: 0.45,
+				MergeWorthyAfter: true, Attributable: true},
+			{A: "e.Lost", B: "f.Lost", ScoreBefore: 0.65, ScoreAfter: 0.30,
+				MergeWorthyBefore: true, Attributable: true},
+			{A: "g.Drift", B: "h.Drift", ScoreBefore: 0.27, ScoreAfter: 0.22,
+				MergeWorthyBefore: true, MergeWorthyAfter: true, Attributable: true},
+		},
+	}
+	var keys []string
+	for _, f := range Notable(d) {
+		keys = append(keys, f.Key)
+	}
+	want := []string{"new:a.Twin|b.Twin", "gate:c.Up|d.Up", "gate:e.Lost|f.Lost"}
+	if strings.Join(keys, " ") != strings.Join(want, " ") {
+		t.Errorf("notable keys = %v, want %v", keys, want)
 	}
 }
