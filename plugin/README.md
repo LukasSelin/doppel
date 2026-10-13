@@ -41,10 +41,13 @@ claude plugin marketplace add LukasSelin/doppel
 claude plugin install doppel@doppel
 ```
 
-The plugin's `doppel_binary` option defaults to the bare name `doppel`, resolved through your
-`PATH` — so extracting an archive is not by itself enough. Either put the extracted binary on your
-`PATH`, or set `doppel_binary` to its absolute path (`~/tools/doppel`, `C:\tools\doppel.exe` —
-include the `.exe` on Windows) when the plugin asks, or in the plugin's configuration afterwards.
+The plugin runs the binary as `doppel`, resolved through your `PATH` — so extracting an archive
+is not by itself enough: put the extracted binary on your `PATH` (on Windows, the directory holding
+`doppel.exe`). There is no option for an absolute path. There used to be one, `doppel_binary`, but
+Claude Code fills `${user_config.*}` in a hook command only from settings you have saved and never
+from the manifest's default, so on a fresh install every hook failed with `Plugin option
+"doppel_binary" isn't set` until the option was saved by hand. A stale
+`pluginConfigs."doppel@doppel".options.doppel_binary` in your settings is now ignored.
 
 Check that the binary the plugin will run works:
 
@@ -309,12 +312,9 @@ echo '{"session_id":"test"}' | doppel hook view
 ```
 
 To try a working copy of the plugin, run `claude --plugin-dir plugin` (Claude Code 2.1.287 or
-later) and `claude plugin test plugin` for the mod's tests. A plugin loaded this way is
-`doppel@inline`, and its four settings hooks do **not** get `doppel_binary`'s default: they fail
-with `Plugin option "doppel_binary" isn't set` until `~/.claude/settings.json` carries
-`"pluginConfigs": { "doppel@inline": { "options": { "doppel_binary": "doppel" } } }`. The mod
-itself is handed the default either way, so a band that stays empty under `--plugin-dir` usually
-means the hooks never ran, not that the mod is broken.
+later) and `claude plugin test plugin` for the mod's tests. The hooks and the mod both run `doppel` from your
+`PATH`, so a band that stays empty under `--plugin-dir` usually means the binary there is missing or
+too old to know `hook view`, not that the mod is broken.
 
 None ever exits non-zero or writes to stderr: a measurement must not be able to break a session.
 Silence means "nothing to report" — which is also what you get when there is no baseline yet.

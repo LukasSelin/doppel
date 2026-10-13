@@ -71,8 +71,14 @@ async function refresh($: Engine, binary: string, sessionId?: string): Promise<v
   $.ui.invalidate('ui.render')
 }
 
-export const register: Register = (on, options) => {
-  const binary = String(options.doppel_binary ?? 'doppel') || 'doppel'
+// The binary is found on PATH, exactly as the settings hooks find it. It was a
+// plugin option once, but Claude Code substitutes ${user_config.*} in a hook
+// command from saved settings only and never from the manifest default, so a
+// fresh install failed every hook until the option was saved by hand. One
+// lookup rule for the mod and the hooks keeps them running the same binary.
+const binary = 'doppel'
+
+export const register: Register = on => {
 
   on('session.start', async ($, e, next) => {
     try {

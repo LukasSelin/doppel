@@ -1,18 +1,10 @@
 {
   "name": "doppel",
   "description": "Measures a Go repo's architectural erosion from inside your session: surfaces the concepts and duplicates that already exist before you write code, and reports what your session did to them afterwards.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "author": {
     "name": "Lukas Selin"
   },
   "homepage": "https://github.com/LukasSelin/doppel",
-  "keywords": ["go", "duplication", "refactoring", "static-analysis"],
-  "userConfig": {
-    "doppel_binary": {
-      "type": "string",
-      "title": "doppel binary",
-      "description": "Path to the doppel binary. Leave as \"doppel\" if it is on your PATH; otherwise give an absolute path.",
-      "default": "doppel"
-    }
-  }
+  "keywords": ["go", "duplication", "refactoring", "static-analysis"]
 }
