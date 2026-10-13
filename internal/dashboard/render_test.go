@@ -109,12 +109,21 @@ func TestPrintIsSelfContained(t *testing.T) {
 			t.Errorf("page is not self-contained: found %q", bad)
 		}
 	}
-	if !strings.Contains(page, "powerDiagram") {
-		t.Error("the map geometry was not inlined")
+	// Every script render.go lists must reach the page: core.js defines the
+	// namespace and boot.js starts it, so either missing is a blank page.
+	for _, mark := range []string{"var DOPPEL = (function", "DOPPEL.start();"} {
+		if !strings.Contains(page, mark) {
+			t.Errorf("script marker %q was not inlined", mark)
+		}
+	}
+	for _, name := range []string{"triage", "atlas", "briefing", "case"} {
+		if !strings.Contains(page, `D.screens["`+name+`"]`) && !strings.Contains(page, `D.screens.`+name) {
+			t.Errorf("the %s screen was not inlined", name)
+		}
 	}
 	// There is no vendored JavaScript, and that is a property worth pinning:
-	// the map is a power diagram in plain SVG, so a graph library would be
-	// several hundred KB in every report for a screen that does not need one.
+	// every screen is plain DOM and SVG, so a graph library would be several
+	// hundred KB in every report for screens that do not need one.
 	if strings.Contains(page, "cytoscape") {
 		t.Error("a graph library reappeared in the page")
 	}

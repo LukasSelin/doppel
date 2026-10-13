@@ -36,13 +36,23 @@ const (
 	broadsheetCSS = "vendor/broadsheet.css"
 	appCSS        = "app.css"
 	timelineCSS   = "timeline.css"
-	appJS         = "app.js"
 	timelineJS    = "timeline.js"
 )
 
+// The dashboard's scripts, in load order. core.js owns the payload indexes,
+// the shared helpers and the router; each screen file registers itself on
+// the namespace core.js defines, and boot.js starts the router last. They are
+// concatenated into one inline script, so a screen is a file for the people
+// editing it and nothing more for the page.
+var dashboardJS = []string{"core.js", "triage.js", "atlas.js", "briefing.js", "case.js", "boot.js"}
+
+// The dashboard's stylesheets after the vendored design system, in cascade
+// order: shared layout first, then one file per screen.
+var dashboardCSS = []string{broadsheetCSS, appCSS, "triage.css", "atlas.css", "briefing.css", "case.css"}
+
 // A page is one self-contained document this package can render: which shell
 // carries it, which stylesheets are inlined into it and in what order, and
-// which script drives it.
+// which scripts drive it, concatenated in order.
 //
 // Two pages exist and they share everything below this line — the asset
 // source, the </script guard, the escaping rule and the template shape. They
@@ -52,12 +62,12 @@ type page struct {
 	name  string
 	shell string
 	css   []string
-	js    string
+	js    []string
 }
 
 var (
-	dashboardPage = page{name: "dashboard", shell: shellAsset, css: []string{broadsheetCSS, appCSS}, js: appJS}
-	timelinePage  = page{name: "timeline", shell: timelineShell, css: []string{broadsheetCSS, appCSS, timelineCSS}, js: timelineJS}
+	dashboardPage = page{name: "dashboard", shell: shellAsset, css: dashboardCSS, js: dashboardJS}
+	timelinePage  = page{name: "timeline", shell: timelineShell, css: []string{broadsheetCSS, appCSS, timelineCSS}, js: []string{timelineJS}}
 )
 
 // source is where assets are read from: a filesystem plus the prefix the
@@ -87,9 +97,9 @@ type view struct {
 
 // Print writes the single-run payload as one self-contained HTML document.
 //
-// There is no vendored JavaScript. The map is a power diagram drawn as plain
-// SVG and the neighbourhood screen is DOM, so the graph library this started
-// with earned nothing but its own 373KB in every report written.
+// There is no vendored JavaScript. Every screen is plain DOM, so the graph
+// library this started with earned nothing but its own 373KB in every report
+// written.
 //
 // Self-contained is the contract the previous report established and this one
 // keeps: everything is inlined, there is no fetch, and the page opens from
@@ -120,7 +130,7 @@ func printPage(w io.Writer, pg page, target string, payload any) error {
 	if err != nil {
 		return err
 	}
-	script, err := src.read(pg.js)
+	script, err := src.readAll(pg.js...)
 	if err != nil {
 		return err
 	}
