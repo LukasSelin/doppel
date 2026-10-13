@@ -21,7 +21,8 @@ and similarity edges. It was dropped when the map became a **power diagram** —
 packages as polygons tiling the canvas with shared borders. That is plain SVG
 plus about 200 lines of geometry, and the neighbourhood screen never used a
 library at all, so the dependency was 373KB in every report written for a
-screen that no longer needed it.
+screen that no longer needed it. The power diagram has since been replaced by
+a squarified treemap of plain DOM buttons, which needs no library either.
 
 Cytoscape was also actively wrong for the picture. Packages were compound
 parent nodes, which pin every function inside its own box, so its force layout

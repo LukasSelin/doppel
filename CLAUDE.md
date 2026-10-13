@@ -152,7 +152,8 @@ internal/
                 shared / only-A / only-B partition of two, whose masses reproduce the WL Jaccard exactly;
                 labelsource.go is its --label half, the node(s) behind one hash
                 overview.go + mermaid.go render the corpus model into the markdown report only
-  dashboard/    The two HTML pages: payload.go + assets/(shell.html, app.js, app.css) is the
+  dashboard/    The two HTML pages: payload.go + assets/(shell.html, core.js, one script and one
+                stylesheet per screen — triage, atlas, briefing, case — boot.js, app.css) is the
                 single-run dashboard (--output *.html); timeline.go + assets/(timeline.html,
                 timeline.js, timeline.css) is the series page (doppel timeline -o *.html).
                 render.go inlines either into its shell; both share vendor/ and app.css
@@ -2166,28 +2167,64 @@ nobody.
 `html/template` literal fed by a flat struct of render-ready percentages and label strings, so
 every visual decision was Go's and adding one meant editing a template, a struct and an assembler
 across two packages. Now `cmd/dashboard.go` emits a **semantic payload** — raw scores, counts and
-identifiers, no percentages, no labels — and `internal/dashboard/assets/app.js` decides what a
-colour, a radius or a bar means. Iterating on the visuals is an asset edit.
+identifiers, no percentages, no labels — and the page's own scripts decide what a colour, an area
+or a bar means. Iterating on the visuals is an asset edit.
 
 `internal/dashboard` owns the payload types, the renderer and the assets; `cmd/dashboard.go` builds
 the payload. That is the same bridge `cmd/overview.go` makes for the markdown report — `dashboard`
 never learns about `culture`, and `cmd` queries the model.
 
-- **Two screens, and the two that are missing are missing for a reason.** *Map* is a political map
-  of the corpus: every package (or concept — it is a toggle) is a polygon whose area is its share of
-  the functions, polygons tile the canvas with shared borders, and each region is tinted by the
-  concept most of its functions carry. Pair evidence is carried by the **borders** rather than by
-  a line layer. Individual functions are deliberately **not** drawn: a per-function dot inside a
-  region encodes nothing the region does not already say — its position is an arbitrary spiral —
-  so it was clutter with a redundant click target, and the border/arc pair lists and the
-  neighbourhood picker remain the ways into a single function. *Neighbourhood* takes
-  one function and shows its ranked neighbours, both bodies side by side, and the pair's evidence.
-  A **delta** screen was scoped and dropped here and then built as its own artifact — see *The
-  timeline* — because a series is not a format of a single-run page. A **concept-drift** screen
-  is still not built and the reason survives intact: concept identity is corpus-relative, so two
-  revisions' `sql.Open+QueryRow` are different objects sharing a spelling, and nothing from
-  `culture` is persisted in a snapshot at all. Drift is not measurable from what a snapshot
-  carries.
+- **Four screens, one question each, and every one reachable by link.** *Triage* (the default)
+  is the whole repo in five headline numbers above the ranked list of what to act on first, with a
+  filter rail (verdict scope, rank-by, pair kind, entry points, scope, package, name) and a context
+  rail (where duplication concentrates, the heaviest seam, the strongest families, drift). *Atlas*
+  is a squarified treemap of packages — or of directories — sized by function count and tinted by
+  merge-worthy pairs per function, habitat norm or misfits, with a selection rail and the
+  **seams** (package pairs joined by crossing pairs) as a ranked list. *Briefing* is the
+  shareable, printable reading of the run: a generated lede, the top findings, the code-shape ×
+  overlap heat map split into four findings, where it lives, families, drift and method. *Case
+  file* is the drill-down all three link into: one pair (`#case/a-b`) with both bodies, the
+  unblended score row and every piece of evidence, or one function (`#fn/id`) with its ranked
+  neighbours. A **delta** screen was scoped and dropped here and then built as its own artifact —
+  see *The timeline* — because a series is not a format of a single-run page. A
+  **concept-drift-over-time** screen is still not built and the reason survives intact: concept
+  identity is corpus-relative, so two revisions' `sql.Open+QueryRow` are different objects sharing
+  a spelling, and nothing from `culture` is persisted in a snapshot at all.
+- **One script per screen, one shared core, concatenated.** `render.go` lists the scripts
+  (`core.js`, `triage.js`, `atlas.js`, `briefing.js`, `case.js`, `boot.js`) and the stylesheets
+  (the vendored design system, `app.css`, then one sheet per screen) and inlines each list as one
+  element, so a screen is a file for the people editing it and nothing more for the page.
+  `core.js` owns everything two screens would otherwise each compute — the payload indexes, the
+  derived corpus tables (`packageStats`, `seams`, `quadrants`, `heat`, `drifting`), the DOM and
+  formatting helpers, the shared score legend, and the hash router — and exposes them on one
+  global, `DOPPEL`; a screen file registers `D.screens["name"] = { render(host, params) }` and only
+  renders. Selectors are prefixed per screen (`.tr-`, `.at-`, `.br-`, `.ca-`) and anything two
+  screens style goes in `app.css`. The four screens were written in parallel against that
+  contract; the helpers each one grew that another also needed (`scoreKey`, `atlasHref`) were
+  hoisted into core the moment doppel's post-edit hook named the second copy.
+- **Routes are the integration surface.** `#triage`, `#triage/pkg/<name>`, `#triage/quad/<id>`,
+  `#atlas`, `#atlas/<name>`, `#briefing`, `#briefing/<section>`, `#case/<a>-<b>`, `#fn/<id>`
+  (the old `#pair/…` and `#unit/…` still resolve). The router owns `location.hash`, so no screen
+  uses `#id` anchors for in-page jumps. A list screen calls `D.setCaseList(edgeIdxs)` with what it
+  is showing, in its order, and the case file's previous/next walks exactly that.
+- **The headline view hides what cannot be acted on, and says so.** Triage and the Briefing open
+  on merge-worthy pairs minus entry points (`init`, and `main` in package `main` — the same rule
+  the post-edit hook applies, since Go code cannot name either) minus the kinds that say a pair is
+  something other than a merge (mirror operations, thin wrappers, different calls). Kinds still
+  annotate and never rank: this is a reader's default filter, one checkbox from undone, and the
+  counts beside each checkbox say what it would bring back.
+- **The two scores keep one colour each on every screen** — code-shape the accent, overlap the
+  second accent (`--shape`/`--overlap` in `app.css`) — and are always two bars or two numbers.
+  The heat map is the one place both are drawn on one figure, and it still bins them on two axes
+  rather than combining them. Its quadrant cut is 0.60 on both, the family/fork floor.
+- **The cartogram is gone, and the lesson it taught is kept.** The previous map was a power
+  diagram fitted to area shares, with pair evidence painted on shared borders and dashed arcs for
+  related regions the packing could not seat together. Every claim it made was correct and most
+  were hard to read: a border width is a poor channel for a count, adjacency was a tendency the
+  page had to keep disclaiming, and the arcs existed to repair the geometry. The atlas keeps area
+  as the share of functions and moves the cross-package evidence into a list a reader can rank and
+  click — the seams — so nothing about the picture has to be decoded or excused. A treemap tile
+  is a button, which also made the map keyboard-accessible for the first time.
 - **The page draws `res.Pairs`, not the ranked report list.** Same reasoning as the family stage:
   `--top` and `--max-per-func` are report-time devices, and a neighbourhood built on a
   diversity-capped list would hide the neighbour a reader clicked in to find. So those two flags do
@@ -2205,63 +2242,17 @@ never learns about `culture`, and `cmd` queries the model.
   `\u003c/script\u003e` or it ends the page. `TestPrintEscapesScriptClose` pins it, and fails
   loudly when the flag is flipped.
 - **One vendored asset, not hand-edited** (`internal/dashboard/assets/vendor/`, with a README
-  recording source and licence): `broadsheet.css`, the same design-system subset as before, moved.
-  There is deliberately **no vendored JavaScript**. Cytoscape.js was vendored first and dropped when
-  the map became a power diagram — that is plain SVG, and the neighbourhood screen never used a
-  library at all, so it was ~370 KB in every report written for a screen that no longer needed it.
-  `TestPrintIsSelfContained` pins its absence. The bar for bringing one back is that it does
-  something the page cannot do in a few hundred lines of its own.
-- **The map is a cartogram: a power diagram fitted to area shares.** Every package is a convex
-  polygon, the polygons tile the canvas, and each one's **area is its share of the function count**.
-  Cells fall out of successive half-plane clips (`clipHalfPlane`, `powerDiagram`), because a
-  weighted-Voronoi bisector is still a straight line — only shifted by the weight difference — so
-  weights cost nothing but a constant in the clip. `fitAreas` then alternates Lloyd relaxation with
-  a weight step, both expressed in **radii** and both clamped against the distance to the nearest
-  site. The radius formulation is load-bearing: written additively on raw area, with the clamp as
-  `wᵢ − wⱼ ≤ |pᵢ − pⱼ|²`, it does not converge — that constraint binds hardest exactly where two
-  sites are close, so a large region wedged beside a small one cannot grow. Measured on this repo,
-  that version left `parser` at 0.02% of the canvas against a 4.9% target; the shipped one holds
-  every region of four functions or more inside 0.1%, weighted mean error 0.2%. Residual error is
-  concentrated in regions too small to draw honestly anyway.
-  `cose` was tried before either and is wrong twice over: compound parents pin every function inside
-  its own package box, so a force layout can only jiggle within a territory rather than pull related
-  functions across one; and on a corpus with many disconnected components it detonates (measured at
-  y ≈ 1.3e6 on this repo, off-screen and unfittable).
-- **A shared border is geometry; the paint on it is the evidence.** `clipHalfPlane` carries a tag
-  per polygon edge naming the site that produced it, so a finished cell knows which neighbour every
-  border faces — recovering that afterwards by comparing coordinates would be slower and fuzzier
-  than recording it at the moment it is created. Sites are seeded by a spring embedding of the
-  region coupling graph, so related regions *tend* to adjoin, and where two related regions do meet
-  the border between them is painted by the duplication crossing it. **Adjacency is a tendency, not
-  a claim**: a planar map cannot realise every adjacency a corpus asks for, so related regions the
-  packing could not seat together are drawn as dashed arcs between centroids instead. Without those
-  the map would be quietly lossy, which is the failure mode a political map invites. The page says
-  all of this in its own words, next to the map.
-- **The partition is a control, not a rebuild.** `powerDiagram` does not care what a site is, so the
-  same renderer draws territories by package or by concept. Concept territories force each function
-  into one region where membership is genuinely multi-valued and graded — a real simplification, and
-  the reason package is the default.
-- **The colour channel is a unit's strongest membership, not its arena equilibrium.** The arena was
-  used here first, when concepts were fourteen asserted tags and its job was suppressing the
-  tagger's false positives. A learned lexicon does that job at membership time, with a confidence.
-  What the arena still adds is *invasion* — a concept can win a function through an association
-  without the function carrying it — which is a real finding and a bad colour: measured on this repo
-  it painted 111 functions with a concept only 5 of them carry, and a legend cannot honestly say
-  "leads 111, carried by 5". Taking the head of the ranked memberships keeps `Dominant` a subset of
-  `Carried` by construction, which is the invariant the legend rests on.
-- **The palette does not cycle.** The vocabulary is learned, so its size is a property of the corpus
-  — 71 concepts on this repo against 13 palette entries. Cycling would give two unrelated concepts
-  the same hue and say nothing about it, so the concepts that colour the most functions take the
-  palette and the rest pool into one neutral that the legend counts out loud.
-- **Seeding and fitting are deterministic by construction.** Fixed iteration counts, fixed order,
-  sites started on a ring in size order — no seeded RNG, because there is no RNG. The same payload
-  always draws the same map, which is what lets the page itself stay byte-identical.
+  recording source and licence): `broadsheet.css`, the design system. There is deliberately **no
+  vendored JavaScript**: Cytoscape.js was vendored first and dropped, and every screen now is plain
+  DOM. `TestPrintIsSelfContained` pins its absence and that every screen script reached the page.
+  The bar for bringing a library back is that it does something the page cannot do in a few
+  hundred lines of its own.
 - **Bodies are bounded and the bound is reported.** `parser.CodeUnit.Body` already holds full source
   text, but it is the only part of the payload that scales with corpus size rather than with the
   number of findings. Bodies are admitted in descending edge rank until `maxBodyBytes` (3 MB) is
   spent, so what a reader is most likely to open survives the bound; the count dropped goes to
   stderr and onto the page, and a function without one shows its `file:line` instead.
-- **The residual-difference view is a text diff, and says so.** Screen 3 was specified to highlight
+- **The residual-difference view is a text diff, and says so.** The case file was specified to highlight
   the shared structural patterns inside both bodies. There is no data for that: a shared chain is a
   Weisfeiler-Lehman label, which is a hash of a whole subtree, so `SharedChain.Render` can *name*
   it (`depth-2 IF`, via `fingerprint.DescribeLabel`) but nothing maps it back to the tokens that
@@ -2285,14 +2276,16 @@ never learns about `culture`, and `cmd` queries the model.
   `Edge.SharedVocab` names the strongest features both sides' concepts carry. The panel draws
   them as bars from the same bar-row idiom the code-shape components use, says in a note which
   way a disagreement runs, and blends nothing — `Overlap` is still one number, and the page does
-  not recompute how its concept half was read. Payload `Schema` went 1 → 2 for it.
-- **The dashboard is not fed by `--format json`.** It has its own `dashboard.Payload` (`Schema` 2,
+  not recompute how its concept half was read. Payload `Schema` went 1 → 2 for it, and 2 → 3 for
+  `UnusedSeeds`, `Facts.Unusual` and `Unit.Atypical`, which let the Briefing's drift section name
+  the functions that realize a concept unlike its other members instead of only counting them.
+- **The dashboard is not fed by `--format json`.** It has its own `dashboard.Payload` (`Schema` 3,
   independent of `snapshot.Schema`), marshalled by Go and inlined into the page at render time.
   That is worth knowing before assuming the snapshot and the page must agree: they share no type,
   and a field added to one reaches the other only if somebody adds it there too. It also means the
   snapshot's schema-7 additions could not have broken the page even by accident.
 - **`DOPPEL_DASHBOARD_ASSETS=<dir>`** reads the assets off disk instead of the embedded copy, so
-  editing `app.js` and re-running a prebuilt binary is the whole cycle (`task dashboard-dev`).
+  editing a screen's script and re-running a prebuilt binary is the whole cycle (`task dashboard-dev`).
   `TestDevAssetsMatchEmbedded` pins the two paths to the same bytes. Nothing ships depending on it.
 
 Gone with the broadsheet report: the **strip view** (`cmd/strips.go`'s declaration-span

@@ -77,6 +77,7 @@ func buildDashboard(res Result, ov *reporter.Overview, fams []family.Family,
 	p.Facts = dashboardFacts(res, ov, famStats, fams, len(p.Edges), len(reported), suppressed)
 	p.Facts.BodiesOmitted = bodiesDropped
 	p.Facts.DetailOmitted = detailDropped
+	p.UnusedSeeds = res.UnusedSeeds
 	return p
 }
 
@@ -148,6 +149,11 @@ func dashboardUnits(res Result) []dashboard.Unit {
 				d.Fit = round4(fit)
 			}
 			d.Misfit = res.Culture.Misfit(i)
+			for _, id := range parser.ConceptIDs(u.Concepts) {
+				if res.Culture.Atypical(i, id) {
+					d.Atypical = append(d.Atypical, id)
+				}
+			}
 		}
 		out[i] = d
 	}
@@ -443,6 +449,9 @@ func dashboardFacts(res Result, ov *reporter.Overview, famStats family.Stats,
 		NNScored:    res.NN.Scored,
 		NNP50:       round4(res.NN.P50),
 		NNP90:       round4(res.NN.P90),
+	}
+	if res.Culture != nil {
+		f.Unusual = res.Culture.Stats().UnusualRealizations
 	}
 	if ov == nil {
 		return f

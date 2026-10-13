@@ -13,7 +13,7 @@ package dashboard
 // It exists for the page, not for comparability: a stale asset bundle reading a
 // newer payload should say so rather than render half a screen. Nothing diffs
 // two payloads, and nothing should — that is snapshot.Schema's job.
-const Schema = 2
+const Schema = 3
 
 // Payload is one analysis run, as the page receives it.
 //
@@ -37,6 +37,10 @@ type Payload struct {
 	Bodies   []Body       `json:"bodies"`   // by unit ID; bounded, see Facts.BodiesOmitted
 	Families []Family     `json:"families"` // as family.Build ordered them
 	Concepts []ConceptRow `json:"concepts"` // the legend, most-carried first
+
+	// UnusedSeeds are the seed practices this corpus grew no concept for —
+	// the one absence a learned vocabulary can state. Sorted.
+	UnusedSeeds []string `json:"unusedSeeds,omitempty"`
 }
 
 // ConceptRow is one learned concept, with the two counts the legend needs.
@@ -88,6 +92,11 @@ type Facts struct {
 
 	Misfits        int `json:"misfits"`
 	MisfitsExcused int `json:"misfitsExcused"`
+
+	// Unusual counts the (function, concept) memberships culture flags as
+	// atypical corpus-wide — drift from local practice. Unit.Atypical names
+	// them per function.
+	Unusual int `json:"unusual"`
 
 	// The two corpus-health numbers, carried on the page for the same reason
 	// they are carried in the markdown preamble and the JSON snapshot: they
@@ -155,6 +164,10 @@ type Unit struct {
 	Fit    float64 `json:"fit"` // habitat fit; -1 when the package has no model
 	Misfit bool    `json:"misfit"`
 	Test   bool    `json:"test"`
+
+	// Atypical are the concepts this unit carries but realizes unlike the
+	// concept's other members (culture's typicality rule), ascending by ID.
+	Atypical []string `json:"atypical,omitempty"`
 }
 
 // Edge is one scored pair.
