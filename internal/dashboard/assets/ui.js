@@ -14,7 +14,8 @@ var DOPPEL_UI = (function () {
   /* ── Formatting ──────────────────────────────────────────────────────── */
 
   function fixed(v, n) { return (v === undefined || v === null || v < 0) ? "—" : Number(v).toFixed(n === undefined ? 2 : n); }
-  function comma(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+  /* A missing count reads as 0, not "undefined": payloads omit zero fields. */
+  function comma(n) { return String(n === undefined || n === null ? 0 : n).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
   function pct(n, d) { return d > 0 ? Math.round((100 * n) / d) : 0; }
   function plural(n, one, many) { return comma(n) + " " + (n === 1 ? one : (many || one + "s")); }
   function cmp(a, b) { return a < b ? -1 : a > b ? 1 : 0; }

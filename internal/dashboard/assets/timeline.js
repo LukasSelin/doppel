@@ -1,7 +1,8 @@
 /* doppel timeline.
  *
  * A classic script, inlined into a file:// page, no library — the same
- * contract app.js holds, for the same reasons.
+ * contract the dashboard holds, for the same reasons. Formatting and DOM
+ * helpers come from ui.js, which the dashboard and the review page share.
  *
  * The division of labour with Go is also the same: everything arriving in the
  * payload is a raw count, score, key or class name, and every colour, label and
@@ -15,18 +16,9 @@
 
   var DATA = JSON.parse(document.getElementById("doppel-data").textContent);
 
-  var $ = function (id) { return document.getElementById(id); };
+  var U = DOPPEL_UI;
+  var $ = U.$, el = U.el, clear = U.clear, fixed = U.fixed, comma = U.comma, plural = U.plural;
 
-  function el(tag, cls, text) {
-    var n = document.createElement(tag);
-    if (cls) n.className = cls;
-    if (text !== undefined && text !== null) n.textContent = String(text);
-    return n;
-  }
-  function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
-  function fixed(v, n) { return (v === undefined || v === null) ? "—" : Number(v).toFixed(n === undefined ? 2 : n); }
-  function comma(n) { return String(n === undefined || n === null ? 0 : n).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
-  function plural(n, one, many) { return comma(n) + " " + (n === 1 ? one : (many || one + "s")); }
   function signed(n) { return (n > 0 ? "+" : "") + comma(n); }
 
   var steps = DATA.steps || [];

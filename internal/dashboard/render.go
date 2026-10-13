@@ -69,7 +69,7 @@ type page struct {
 
 var (
 	dashboardPage = page{name: "dashboard", shell: shellAsset, css: dashboardCSS, js: dashboardJS}
-	timelinePage  = page{name: "timeline", shell: timelineShell, css: []string{broadsheetCSS, appCSS, timelineCSS}, js: []string{timelineJS}}
+	timelinePage  = page{name: "timeline", shell: timelineShell, css: []string{broadsheetCSS, appCSS, timelineCSS}, js: []string{uiJS, timelineJS}}
 )
 
 // source is where assets are read from: a filesystem plus the prefix the

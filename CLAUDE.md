@@ -158,7 +158,7 @@ internal/
                 timeline.js, timeline.css) is the series page (doppel timeline -o *.html);
                 audit.go + assets/(audit.html, audit.js, audit.css) is the two-run review page
                 (doppel diff -o *.html). render.go inlines each into its shell; all share vendor/
-                and app.css, and the dashboard and review page share ui.js (payload-free helpers)
+                and app.css, and all three load ui.js (the payload-free helpers) ahead of their own script
   bench/        Measurement harness: golden-ranking scorer, the pinned public corpus ladder, per-stage benchmarks, example generator
 examples/       Committed real reports for each corpus rung, plus labels/ (committed golden reviews) — see examples/README.md
 scripts/        timeline.sh: walks a git history and analyses each revision at one pinned operating point.
@@ -2206,7 +2206,10 @@ never learns about `culture`, and `cmd` queries the model.
   hoisted into core the moment doppel's post-edit hook named the second copy. The payload-free
   half of core — formatting, the DOM builders, `bar`, `chip`, `stat`, `scoreKey` — then moved one
   file down into `ui.js` (global `DOPPEL_UI`, re-exported on `DOPPEL`) when the review page needed
-  it and the post-edit hook named its `el`/`comma`/`plural` as copies of core's. Anything that
+  it and the post-edit hook named its `el`/`comma`/`plural` as copies of core's; the timeline page,
+  which had carried its own copies of five of them since it was written, moved onto it in the
+  same change. `comma` reads a missing count as 0, the timeline's rule, because payloads omit
+  zero fields. Anything that
   reads a payload stays in `core.js`; `ui.js` may not.
 - **Routes are the integration surface.** `#triage`, `#triage/pkg/<name>`, `#triage/quad/<id>`,
   `#atlas`, `#atlas/<name>`, `#briefing`, `#briefing/<section>`, `#case/<a>-<b>`, `#fn/<id>`
