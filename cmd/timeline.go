@@ -242,17 +242,7 @@ func timelineTargetName() string {
 	if timelineTarget != "" {
 		return timelineTarget
 	}
-	return workdirName("timeline")
-}
-
-// workdirName is the working directory's base name, which is what a page
-// titles itself with when nobody named the corpus.
-func workdirName(fallback string) string {
-	wd, err := os.Getwd()
-	if err != nil {
-		return fallback
-	}
-	return filepath.Base(wd)
+	return displayRoot(".")
 }
 
 // buildTimeline flattens the snapshots and the chained series into the page's

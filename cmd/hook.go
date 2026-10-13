@@ -780,7 +780,7 @@ func writeSessionReview(deltaPath, root string, base, head snapshot.Snapshot, d 
 		return ""
 	}
 	var buf bytes.Buffer
-	p := buildAudit("session start", "now", filepath.Base(root), base, head, d)
+	p := buildAudit("session start", "now", displayRoot(root), base, head, d)
 	if err := dashboard.PrintAudit(&buf, p); err != nil {
 		_ = os.Remove(path)
 		return ""

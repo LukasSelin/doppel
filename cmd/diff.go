@@ -171,7 +171,7 @@ func writeDeltaFile(cmd *cobra.Command, paths []string, base, head snapshot.Snap
 	if strings.EqualFold(filepath.Ext(diffOutput), ".html") {
 		warnReportCaps(cmd.ErrOrStderr(), head.Params)
 		labels := fileLabels(paths)
-		if err := dashboard.PrintAudit(f, buildAudit(labels[0], labels[1], workdirName("doppel"), base, head, d)); err != nil {
+		if err := dashboard.PrintAudit(f, buildAudit(labels[0], labels[1], displayRoot("."), base, head, d)); err != nil {
 			return err
 		}
 		fmt.Fprintf(cmd.ErrOrStderr(), "Review page written to %s\n", diffOutput)
