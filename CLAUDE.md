@@ -102,7 +102,7 @@ cmd/            CLI commands (Cobra).
   hook.go       doppel hook session-start / user-prompt / pre-tool / post-edit / stop: the five Claude Code
                 hook entry points, plus `hook view` (the plugin mod's read of the Stop hook's report), and baseline file I/O
   postedit.go   doppel hook post-edit: probe the functions an Edit/Write wrote against the post-edit corpus
-  diff.go       doppel diff: match two snapshot files' functions to each other; --output writes the delta report as markdown; exit codes 0/1/2
+  diff.go       doppel diff: match two snapshot files' functions to each other; -o writes the delta report as markdown, or the review page for *.html; exit codes 0/1/2
   timeline.go   doppel timeline: N snapshot files as one steppable history; refuses a series whose steps disagree about the operating point
   timeline_text.go  the terminal form of a series
   version.go    build identity, for deciding whether a baseline is still comparable
@@ -152,11 +152,13 @@ internal/
                 shared / only-A / only-B partition of two, whose masses reproduce the WL Jaccard exactly;
                 labelsource.go is its --label half, the node(s) behind one hash
                 overview.go + mermaid.go render the corpus model into the markdown report only
-  dashboard/    The two HTML pages: payload.go + assets/(shell.html, core.js, one script and one
+  dashboard/    The three HTML pages: payload.go + assets/(shell.html, core.js, one script and one
                 stylesheet per screen — triage, atlas, briefing, case — boot.js, app.css) is the
                 single-run dashboard (--output *.html); timeline.go + assets/(timeline.html,
-                timeline.js, timeline.css) is the series page (doppel timeline -o *.html).
-                render.go inlines either into its shell; both share vendor/ and app.css
+                timeline.js, timeline.css) is the series page (doppel timeline -o *.html);
+                audit.go + assets/(audit.html, audit.js, audit.css) is the two-run review page
+                (doppel diff -o *.html). render.go inlines each into its shell; all share vendor/
+                and app.css, and the dashboard and review page share ui.js (payload-free helpers)
   bench/        Measurement harness: golden-ranking scorer, the pinned public corpus ladder, per-stage benchmarks, example generator
 examples/       Committed real reports for each corpus rung, plus labels/ (committed golden reviews) — see examples/README.md
 scripts/        timeline.sh: walks a git history and analyses each revision at one pinned operating point.
@@ -2191,7 +2193,7 @@ never learns about `culture`, and `cmd` queries the model.
   identity is corpus-relative, so two revisions' `sql.Open+QueryRow` are different objects sharing
   a spelling, and nothing from `culture` is persisted in a snapshot at all.
 - **One script per screen, one shared core, concatenated.** `render.go` lists the scripts
-  (`core.js`, `triage.js`, `atlas.js`, `briefing.js`, `case.js`, `boot.js`) and the stylesheets
+  (`ui.js`, `core.js`, `triage.js`, `atlas.js`, `briefing.js`, `case.js`, `boot.js`) and the stylesheets
   (the vendored design system, `app.css`, then one sheet per screen) and inlines each list as one
   element, so a screen is a file for the people editing it and nothing more for the page.
   `core.js` owns everything two screens would otherwise each compute — the payload indexes, the
@@ -2201,7 +2203,11 @@ never learns about `culture`, and `cmd` queries the model.
   renders. Selectors are prefixed per screen (`.tr-`, `.at-`, `.br-`, `.ca-`) and anything two
   screens style goes in `app.css`. The four screens were written in parallel against that
   contract; the helpers each one grew that another also needed (`scoreKey`, `atlasHref`) were
-  hoisted into core the moment doppel's post-edit hook named the second copy.
+  hoisted into core the moment doppel's post-edit hook named the second copy. The payload-free
+  half of core — formatting, the DOM builders, `bar`, `chip`, `stat`, `scoreKey` — then moved one
+  file down into `ui.js` (global `DOPPEL_UI`, re-exported on `DOPPEL`) when the review page needed
+  it and the post-edit hook named its `el`/`comma`/`plural` as copies of core's. Anything that
+  reads a payload stays in `core.js`; `ui.js` may not.
 - **Routes are the integration surface.** `#triage`, `#triage/pkg/<name>`, `#triage/quad/<id>`,
   `#atlas`, `#atlas/<name>`, `#briefing`, `#briefing/<section>`, `#case/<a>-<b>`, `#fn/<id>`
   (the old `#pair/…` and `#unit/…` still resolve). The router owns `location.hash`, so no screen
@@ -3198,18 +3204,27 @@ key sets and no re-scoring. `identity.Delta` is the pair of halves, and it is wh
 
 **It exists only where two snapshots exist.** `analyze` never reads the session baseline — the
 hard convention — so a plain run's markdown and HTML *cannot* carry this section, and do not.
-Three homes, in the order they matter:
+Four homes, in the order they matter:
 
 1. **The Stop hook digests.** Both of them lead with it; see the hook contract above.
 2. **`doppel diff`'s text form**, where the classification is already the whole output and the pair
    sections follow it under one `Delta since the baseline` title.
-3. **`doppel diff --output <file.md>`**, a markdown form whose first section is the report because
-   it is the only section. The extension selects nothing there — markdown is the command's only
-   file form. **`doppel diff` still has no HTML form**, and the argument for that has not moved:
-   the dashboard is a payload-driven page describing one run, and a page over runs is a different
-   artifact rather than a format of this one. That artifact now exists as `doppel timeline` — a
-   separate command, a separate payload and a separate page, over N runs rather than two. See
-   *The timeline*.
+3. **`doppel diff -o <file.md>`**, a markdown form whose first section is the report because
+   it is the only section.
+4. **`doppel diff -o <file.html>`, the review page** — the extension rule `analyze --output`
+   already uses. It is still not the single-run dashboard with a second run bolted on: that
+   argument has not moved, the dashboard's payload is a per-run index and crosses no runs. The
+   review page is the third sibling (`dashboard.AuditPayload`, its own `AuditSchema`, its own
+   shell), and its payload is the timeline's: one `StepChange`, built by the same `stepChange`
+   with the same bounds, so the two pages cannot disagree about a transition. What differs is
+   the reading. A timeline is stepped through; a review is acted on, so the page leads with a
+   generated net-effect line and the merge-worthy pairs **introduced**, then the ones
+   **removed**, then what happened to each function, with unattributed pairs counted apart and
+   tagged "not this change's doing". Each pair can be copied as a markdown review comment.
+   It carries the head run's operating point and identity's allowed-mismatch notes rather than
+   refusing on them (the timeline refuses; `diff` never has), and warns, as the timeline does,
+   when the snapshots were written with `--top`/`--max-per-func` on. Pair kinds are absent, as
+   they are from every snapshot surface — a `thin wrappers` pair reads merge-worthy here.
 
 **Attribution is the reason the classification leads.** `snapshot.Diff` can say a pair appeared and
 that one side is new; only this can say the side is new *because a function was renamed into it*.

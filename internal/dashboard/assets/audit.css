@@ -1,0 +1,117 @@
+/* doppel review page — `doppel diff a.json b.json -o review.html`.
+ * Selectors are prefixed .au- so this sheet cannot collide with app.css;
+ * the score colours, cards, chips, bars and buttons are app.css's shared
+ * components, so the page reads as the same report as the dashboard. */
+
+.au { display: flex; flex-direction: column; gap: var(--space-6); }
+
+/* The operating point names every language read, which is long; it must wrap
+   rather than widen a phone-width page. */
+#au-sub { overflow-wrap: anywhere; }
+
+/* ── Verdict band ─────────────────────────────────────────────────────── */
+
+.au-verdict {
+  background: var(--color-text);
+  color: var(--color-bg);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-6);
+  display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-6);
+  align-items: center; justify-content: space-between;
+}
+.au-verdict-text { flex: 1 1 480px; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.au-verdict-kicker { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.7; }
+.au-verdict-line { font-family: var(--font-heading); font-size: 24px; line-height: 1.3; margin: 0; }
+.au-tallies { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.au-tally {
+  background: color-mix(in srgb, var(--color-bg) 12%, transparent);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  min-width: 112px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.au-tally-n { font-family: var(--font-heading); font-weight: var(--font-heading-weight); font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; }
+.au-tally-n.up { color: color-mix(in srgb, var(--overlap) 55%, var(--color-bg)); }
+.au-tally-n.down { color: color-mix(in srgb, var(--shape) 45%, var(--color-bg)); }
+.au-tally-l { font-size: 12px; opacity: 0.8; }
+
+/* ── Two columns ──────────────────────────────────────────────────────── */
+
+.au-grid { display: flex; flex-wrap: wrap; gap: var(--space-6); align-items: flex-start; }
+.au-main { flex: 999 1 600px; min-width: 0; display: flex; flex-direction: column; gap: var(--space-6); }
+.au-side { flex: 1 1 300px; max-width: 400px; display: flex; flex-direction: column; gap: var(--space-4); }
+
+.au-section { display: flex; flex-direction: column; gap: var(--space-3); scroll-margin-top: var(--space-4); }
+.au-section-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: var(--space-2); }
+.au-toggle { display: inline-flex; align-items: center; gap: var(--space-2); font-size: 13px; cursor: pointer; min-height: 32px; }
+.au-toggle input { margin: 0; accent-color: var(--color-text); }
+
+/* ── Pair rows ────────────────────────────────────────────────────────── */
+
+.au-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.au-row {
+  width: 100%; text-align: left; cursor: pointer;
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--card); color: var(--color-text);
+  border: 1px solid var(--color-divider); border-radius: var(--radius-lg);
+  font-family: var(--font-body);
+}
+.au-row:hover { border-color: var(--color-neutral-500); }
+.au-row[aria-expanded="true"] { border-color: var(--color-text); border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+.au-edge { width: 5px; align-self: stretch; border-radius: 3px; flex: none; }
+.au-edge.created { background: var(--overlap); }
+.au-edge.dissolved { background: var(--shape); }
+.au-edge.churn { background: var(--color-neutral-400); }
+.au-who { flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.au-fn { font-family: var(--font-mono); font-size: 13.5px; font-weight: 500; overflow-wrap: anywhere; }
+.au-row.gone .au-fn { text-decoration: line-through; color: var(--ink-faint); }
+.au-cause { font-size: 13px; color: var(--ink-soft); }
+.au-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.au-scores { flex: 0 1 220px; min-width: 180px; display: flex; flex-direction: column; gap: var(--space-2); }
+.au-detail {
+  margin-top: -1px; padding: var(--space-3) var(--space-4) var(--space-4) calc(var(--space-4) + 17px);
+  background: var(--card); border: 1px solid var(--color-text); border-top: none;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  display: flex; flex-direction: column; gap: var(--space-2);
+  font-size: 14px; line-height: 1.5;
+}
+.au-detail[hidden] { display: none; }
+.au-loc { font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint); overflow-wrap: anywhere; }
+.au-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.au-more { font-size: 13px; color: var(--ink-faint); }
+
+/* ── Function changes ─────────────────────────────────────────────────── */
+
+.au-classes { display: flex; flex-wrap: wrap; gap: 6px; }
+.au-class {
+  font-family: var(--font-body); font-size: 12px; cursor: pointer; min-height: 32px;
+  padding: 0 var(--space-3); border-radius: var(--radius-md);
+  border: 1px solid var(--color-divider); background: transparent; color: var(--color-text);
+}
+.au-class[aria-pressed="true"] { background: var(--color-text); color: var(--color-bg); border-color: var(--color-text); }
+.au-class:disabled { color: var(--color-neutral-400); cursor: default; }
+.au-changes { display: flex; flex-direction: column; }
+.au-change {
+  display: grid; grid-template-columns: 84px minmax(0, 1fr) 170px; gap: var(--space-3);
+  align-items: baseline; padding: 9px 0; border-top: 1px solid var(--color-divider);
+}
+.au-badge { font-size: 11px; text-align: center; padding: 2px 6px; border: 1px solid currentColor; border-radius: var(--radius-lg); }
+.au-what { font-family: var(--font-mono); font-size: 13px; overflow-wrap: anywhere; }
+.au-what small { display: block; font-family: var(--font-body); font-size: 12px; color: var(--ink-faint); }
+.au-ev { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); text-align: right; }
+
+/* ── Side column ──────────────────────────────────────────────────────── */
+
+.au-share { display: flex; flex-direction: column; gap: 4px; }
+.au-share-row { display: flex; justify-content: space-between; font-size: 13px; gap: var(--space-2); }
+.au-note { font-size: 12px; line-height: 1.5; color: var(--ink-faint); margin: 0; }
+.au-note.warn { color: var(--color-text); }
+
+@media (max-width: 720px) {
+  .au-verdict { padding: var(--space-4); }
+  .au-verdict-line { font-size: 20px; }
+  .au-change { grid-template-columns: 72px minmax(0, 1fr); }
+  .au-ev { grid-column: 2; text-align: left; }
+  .au-side { max-width: none; }
+}

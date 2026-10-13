@@ -218,6 +218,13 @@ func stepLabels(paths []string) []string {
 	if len(timelineLabels) == len(paths) {
 		return timelineLabels
 	}
+	return fileLabels(paths)
+}
+
+// fileLabels names each snapshot after its file: the base name, extension and
+// any series counter stripped. Shared by the timeline and the diff page, which
+// both cite runs by the file a person passed them.
+func fileLabels(paths []string) []string {
 	out := make([]string, len(paths))
 	for i, p := range paths {
 		b := filepath.Base(p)
@@ -235,9 +242,15 @@ func timelineTargetName() string {
 	if timelineTarget != "" {
 		return timelineTarget
 	}
+	return workdirName("timeline")
+}
+
+// workdirName is the working directory's base name, which is what a page
+// titles itself with when nobody named the corpus.
+func workdirName(fallback string) string {
 	wd, err := os.Getwd()
 	if err != nil {
-		return "timeline"
+		return fallback
 	}
 	return filepath.Base(wd)
 }

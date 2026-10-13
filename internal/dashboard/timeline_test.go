@@ -72,26 +72,7 @@ func sampleTimeline() TimelinePayload {
 // second payload, for the same reason: map iteration order would make an
 // unchanged series render different bytes.
 func TestTimelinePayloadHasNoMaps(t *testing.T) {
-	seen := map[reflect.Type]bool{}
-	var walk func(rt reflect.Type, path string)
-	walk = func(rt reflect.Type, path string) {
-		if seen[rt] {
-			return
-		}
-		seen[rt] = true
-		switch rt.Kind() {
-		case reflect.Map:
-			t.Errorf("%s is a map; the payload must use sorted slices", path)
-		case reflect.Slice, reflect.Ptr, reflect.Array:
-			walk(rt.Elem(), path+"[]")
-		case reflect.Struct:
-			for i := 0; i < rt.NumField(); i++ {
-				f := rt.Field(i)
-				walk(f.Type, path+"."+f.Name)
-			}
-		}
-	}
-	walk(reflect.TypeOf(TimelinePayload{}), "TimelinePayload")
+	assertNoMaps(t, reflect.TypeOf(TimelinePayload{}), "TimelinePayload")
 }
 
 func renderTimeline(t *testing.T, p TimelinePayload) string {

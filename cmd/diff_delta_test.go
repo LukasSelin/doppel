@@ -124,3 +124,47 @@ func TestDiffJSONCarriesPairChanges(t *testing.T) {
 		t.Errorf("a consumer reading only the classification must still work: %v %+v", err, r.Counts)
 	}
 }
+
+// An .html --output renders the review page instead of markdown: the same
+// delta, read in a reviewer's order, carrying the created pair with its stored
+// sentence and its location, deterministically.
+func TestDiffHTMLOutput(t *testing.T) {
+	dir := t.TempDir()
+	before := writeSnapshot(t, dir, "before.json", corpusFrom(t, map[string]string{"svc/svc.go": gateSrcBefore}))
+	after := writeSnapshot(t, dir, "after.json", corpusFrom(t, map[string]string{"svc/svc.go": gateSrcAfter}))
+	page := filepath.Join(dir, "review.html")
+
+	_, errOut, code := runDiffCmd(t, before, after, "-o", page)
+	if code != exitDiffOK {
+		t.Fatalf("exit %d, stderr %q", code, errOut)
+	}
+	if !strings.Contains(errOut, "Review page written to") {
+		t.Errorf("stderr should name the page it wrote: %q", errOut)
+	}
+	data, err := os.ReadFile(page)
+	if err != nil {
+		t.Fatalf("read page: %v", err)
+	}
+	got := string(data)
+	if !strings.HasPrefix(got, "<!DOCTYPE html>") {
+		t.Fatalf("an .html output must be the review page, got:\n%.200s", got)
+	}
+	for _, want := range []string{`"head":"after"`, `"base":"before"`, "svc.Clip", "svc.Trim",
+		"identical after rename", `"file":"svc/svc.go"`, `"class":"renamed"`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("page payload is missing %q", want)
+		}
+	}
+
+	page2 := filepath.Join(dir, "review2.html")
+	if _, _, code := runDiffCmd(t, before, after, "-o", page2); code != exitDiffOK {
+		t.Fatalf("second run exited %d", code)
+	}
+	again, err := os.ReadFile(page2)
+	if err != nil {
+		t.Fatalf("read second page: %v", err)
+	}
+	if string(again) != got {
+		t.Error("the review page is not byte-identical across runs")
+	}
+}

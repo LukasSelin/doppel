@@ -5,7 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
+	"sort"
+	"strings"
 
+	"github.com/LukasSelin/doppel/internal/dashboard"
 	"github.com/LukasSelin/doppel/internal/identity"
 	"github.com/LukasSelin/doppel/internal/snapshot"
 	"github.com/spf13/cobra"
@@ -64,13 +68,18 @@ This is not what a session hook reports. ` + "`doppel hook`" + ` measures a sess
 impact on the pair list and deliberately claims nothing it cannot attribute to
 an edit; this command asks the wider question and answers it from bodies.
 
+--output writes the same delta as markdown, or as a self-contained review page
+when the path ends in .html: merge-worthy pairs introduced first, then the ones
+removed, then what happened to each function.
+
 Exit codes: 0 compared, 1 a file could not be read, 2 the two snapshots refuse
 comparison (mismatched schema or canon rule set).`,
 	Example: `  doppel analyze . --format json > before.json
   # ... edit ...
   doppel analyze . --format json > after.json
   doppel diff before.json after.json
-  doppel diff before.json after.json --format json`,
+  doppel diff before.json after.json --format json
+  doppel diff before.json after.json -o review.html   # the review page`,
 	Args: cobra.ExactArgs(2),
 	// A snapshot that cannot be read is a data problem, not a CLI-usage
 	// problem, and printing the flag table under it buries the message.
@@ -100,7 +109,7 @@ func diffExitCode(err error) int {
 func init() {
 	diffCmd.Flags().StringVar(&diffFormat, "format", "text", "Output format: text or json")
 	diffCmd.Flags().BoolVar(&diffUnchanged, "unchanged", false, "List unchanged functions individually instead of only counting them")
-	diffCmd.Flags().StringVar(&diffOutput, "output", "", "Also write the delta report as markdown to this file")
+	diffCmd.Flags().StringVarP(&diffOutput, "output", "o", "", "Also write the delta report to this file: markdown, or the review page when it ends in .html")
 	rootCmd.AddCommand(diffCmd)
 }
 
@@ -132,7 +141,7 @@ func runDiff(cmd *cobra.Command, args []string) error {
 		return incomparableError{reason: d.Reason}
 	}
 
-	if err := writeDeltaMarkdown(cmd, d); err != nil {
+	if err := writeDeltaFile(cmd, args, base, head, d); err != nil {
 		return err
 	}
 
@@ -143,13 +152,14 @@ func runDiff(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// writeDeltaMarkdown honours --output.
+// writeDeltaFile honours --output: the review page when the path ends .html,
+// markdown otherwise — the extension rule `analyze --output` already uses.
 //
-// Unlike `analyze --output`, the extension selects nothing: markdown is the
-// only file form this command has. There is no HTML one because the dashboard
-// is a payload-driven page describing a single run, and a two-run page would be
-// a different artifact rather than a format of this one.
-func writeDeltaMarkdown(cmd *cobra.Command, d identity.Delta) error {
+// The page is not the single-run dashboard with a second run bolted on. That
+// page's payload is a per-run index and crosses no runs; this one is the
+// timeline's transition read as a review, a sibling of both. See
+// dashboard.AuditPayload.
+func writeDeltaFile(cmd *cobra.Command, paths []string, base, head snapshot.Snapshot, d identity.Delta) error {
 	if diffOutput == "" {
 		return nil
 	}
@@ -158,9 +168,90 @@ func writeDeltaMarkdown(cmd *cobra.Command, d identity.Delta) error {
 		return fmt.Errorf("create output file: %w", err)
 	}
 	defer f.Close()
+	if strings.EqualFold(filepath.Ext(diffOutput), ".html") {
+		warnReportCaps(cmd.ErrOrStderr(), head.Params)
+		if err := dashboard.PrintAudit(f, buildAudit(paths, base, head, d)); err != nil {
+			return err
+		}
+		fmt.Fprintf(cmd.ErrOrStderr(), "Review page written to %s\n", diffOutput)
+		return nil
+	}
 	identity.MarkdownDelta(f, d, diffUnchanged)
 	fmt.Fprintf(cmd.ErrOrStderr(), "Delta report written to %s\n", diffOutput)
 	return nil
+}
+
+// buildAudit flattens one delta into the review page's payload. Like
+// buildTimeline it recomputes nothing: stepChange selects and bounds exactly
+// as a timeline step does, and the verdict counts are read off the pair lists.
+func buildAudit(paths []string, base, head snapshot.Snapshot, d identity.Delta) dashboard.AuditPayload {
+	labels := fileLabels(paths)
+	p := dashboard.AuditPayload{
+		Schema:       dashboard.AuditSchema,
+		Target:       workdirName("doppel"),
+		Base:         labels[0],
+		Head:         labels[1],
+		Params:       paramsLine(head.Params),
+		Notes:        d.Notes,
+		OldFunctions: d.OldFunctions,
+		NewFunctions: d.NewFunctions,
+		Change:       stepChange(0, d),
+		Bounds: dashboard.AuditBounds{
+			MaxChanges:       maxStepChanges,
+			MaxPairs:         maxStepPairs,
+			ReportTop:        head.Params.Top,
+			ReportMaxPerFunc: head.Params.MaxPerFunc,
+		},
+	}
+	for _, pc := range d.Created {
+		if pc.MergeWorthy {
+			p.CreatedMergeWorthy++
+		}
+	}
+	for _, pc := range d.Dissolved {
+		if pc.MergeWorthy {
+			p.DissolvedMergeWorthy++
+		}
+		if pc.Attributable() {
+			p.DissolvedAttributable++
+		}
+	}
+	p.Units = auditUnits(base, head, p.Change)
+	return p
+}
+
+// auditUnits locates every key the listed pairs name: a created pair's sides
+// in the head run, a dissolved pair's in the base, sorted by key so the
+// payload is byte-stable.
+func auditUnits(base, head snapshot.Snapshot, sc dashboard.StepChange) []dashboard.AuditUnit {
+	index := func(s snapshot.Snapshot) map[string]snapshot.Unit {
+		m := make(map[string]snapshot.Unit, len(s.Units))
+		for _, u := range s.Units {
+			m[u.Key] = u
+		}
+		return m
+	}
+	seen := map[string]dashboard.AuditUnit{}
+	add := func(units map[string]snapshot.Unit, rows []dashboard.PairRow) {
+		for _, r := range rows {
+			for _, k := range []string{r.A, r.B} {
+				if _, ok := seen[k]; ok {
+					continue
+				}
+				if u, ok := units[k]; ok {
+					seen[k] = dashboard.AuditUnit{Key: k, File: u.File, Line: u.Line}
+				}
+			}
+		}
+	}
+	add(index(head), sc.Created)
+	add(index(base), sc.Dissolved)
+	out := make([]dashboard.AuditUnit, 0, len(seen))
+	for _, u := range seen {
+		out = append(out, u)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Key < out[j].Key })
+	return out
 }
 
 func readSnapshot(path string) (snapshot.Snapshot, error) {
