@@ -3094,6 +3094,19 @@ reason rather than returning a partial delta.
   holds only display state (the last view, the dismissed band) in module variables, re-derived from
   the binary on every load; that is display, not a cache.
 
+  **The pane opens the review page.** When the identity delta is comparable and non-empty, the
+  Stop hook also renders `<hash>.review.html` beside the impact report — `buildAudit` over the
+  baseline and the tree now, labelled `session start` and `now`, the page `doppel diff -o
+  review.html` writes — and records its path as `SessionView.Review`. It costs a render, not a
+  second match: the identity delta is the one the turn already computed. The page is a report like
+  the impact file, written atomically (`writeFileAtomic`) and never read back; `removeReports`
+  removes the two together, so they share the band's lifetime. The pane draws an `open review page`
+  button with the path beneath it. A button and not a `Link`, because the desktop surface sends a
+  pane no link but `https:`, so a `file:` link would be dead text where most sessions draw it. The
+  mod picks the opener from the path's shape — `rundll32 url.dll,FileProtocolHandler` for a drive
+  letter, else `open` then `xdg-open` — as an argument vector with no shell, and toasts the path
+  when none answers. A binary from before the field sends no `review` and the pane shows no button.
+
   **The impact report now has the band's lifetime.** Every silent exit of `runHookStop` after the
   baseline is read — incomparable, `hook-notify: off` or malformed, an empty digest, a failed write —
   removes `<hash>.impact.json`, so the band can never keep describing a delta the session no longer

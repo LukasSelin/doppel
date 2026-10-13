@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { parseView } from '../hooks/register'
+import { openers, parseView } from '../hooks/register'
 
 // The view `doppel hook view` prints after a turn that renamed a function and
 // copied another. Its text is the binary's; the mod must draw it, not compose it.
@@ -262,4 +262,63 @@ test('parseView accepts only the shape `hook view` prints', async () => {
   expect(parseView('Error: unknown command "view" for "doppel hook"')).toBe(null)
   expect(parseView('{"band":"","report":"x"}')).toBe(null)
   expect(parseView('{"band":1,"report":"x"}')).toBe(null)
+})
+
+test('the pane opens the session review page when the binary wrote one', async ($, on) => {
+  const review = 'C:\\Users\\me\\AppData\\Local\\Temp\\doppel\\abc.review.html'
+  const runs: (readonly string[])[] = []
+  on('process.run', ($, e) => {
+    runs.push(e.argv)
+    const stdout = e.argv[1] === 'hook' ? JSON.stringify({ ...VIEW, review }) : ''
+    return { value: { exitCode: 0, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+  })
+  on('classic.Stop', () => ({}))
+  await $.classic.Stop({ session_id: 's', stop_hook_active: false })
+  for (const surface of SURFACES) {
+    runs.length = 0
+    const ui = await $.ui.mount({ ...PANE, surface })
+    // The path is printed beneath the button: a host with no opener still
+    // leaves something to copy.
+    expect(await ui.find({ type: 'Text', text: exactly(review) })).toBeDefined()
+    await ui.press({ key: 'doppel-review' })
+    expect(runs).toEqual([['rundll32', 'url.dll,FileProtocolHandler', review]])
+    await ui.unmount()
+  }
+})
+
+test('with no opener the pane toasts where the page is', async ($, on) => {
+  const review = '/tmp/doppel/abc.review.html'
+  const tried: string[] = []
+  const toasts: string[] = []
+  on('process.run', ($, e) => {
+    if (e.argv[1] === 'hook') {
+      return { value: { exitCode: 0, stdout: JSON.stringify({ ...VIEW, review }), stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+    }
+    tried.push(e.argv[0]!)
+    return { deny: 'ENOENT: ' + e.argv[0] }
+  })
+  on('ui.toast', ($, e) => {
+    toasts.push(e.text)
+    return { value: undefined }
+  })
+  on('classic.Stop', () => ({}))
+  await $.classic.Stop({ session_id: 's', stop_hook_active: false })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  await ui.press({ key: 'doppel-review' })
+  expect(tried).toEqual(['open', 'xdg-open'])
+  expect(toasts).toEqual(['doppel: could not open a browser; the review page is at ' + review])
+})
+
+test('a view without a review page draws no button', async ($, on) => {
+  on('process.run', () => ({ value: { exitCode: 0, stdout: JSON.stringify(VIEW), stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }))
+  on('classic.Stop', () => ({}))
+  await $.classic.Stop({ session_id: 's', stop_hook_active: false })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ key: 'doppel-review' })).toBeUndefined()
+})
+
+test('openers picks the platform from the path, and parseView keeps the review path', async () => {
+  expect(openers('C:\\Users\\me\\x.review.html')).toEqual([['rundll32', 'url.dll,FileProtocolHandler', 'C:\\Users\\me\\x.review.html']])
+  expect(openers('/tmp/a b.html')).toEqual([['open', '/tmp/a b.html'], ['xdg-open', '/tmp/a b.html']])
+  expect(parseView(JSON.stringify({ ...VIEW, review: '/tmp/x.html' }))).toEqual({ ...VIEW, review: '/tmp/x.html' })
 })

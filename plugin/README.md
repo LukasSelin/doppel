@@ -230,6 +230,13 @@ The Stop hook's transcript digest is not the only place you see this. The plugin
   stored `explain:` sentence. It is the same report `doppel diff` prints, and the same lines the
   Stop digests lead with, so the three never disagree. Every opening starts on the overview.
 
+  `open review page`, under the toggle, opens the same delta as a page in your browser — the
+  page `doppel diff -o review.html` writes: merge-worthy pairs introduced first, then the ones
+  removed, then every function, each pair with its score bars, explanation and file locations and
+  a button that copies it as a markdown review comment. The Stop hook writes it beside its report
+  each turn; the button hands it to your system's opener (`rundll32` on Windows, `open` or
+  `xdg-open` elsewhere), and its path is printed beneath the button in case none answers.
+
 Why it exists: the agent note above has to clear a high bar because a Stop hook cannot reach the
 model without continuing the turn. A mod draws in the UI and never touches the model's context, so
 the band and pane cost no tokens and no turns, and can show everything the session did rather than
@@ -288,8 +295,9 @@ than the number suggests. Failing that, remove the Stop hook and keep only Sessi
 ## State
 
 The baseline and the last delta live in `<temp>/doppel-baselines/`, named by a hash of the session
-id. The delta file (`<hash>.impact.json`) also carries the band and pane text under `view`; the
-Stop hook removes it whenever it has nothing to report, so the band cannot outlive the finding. They are never read by `doppel analyze` and never feed any score; losing one costs you a delta
+id. The delta file (`<hash>.impact.json`) also carries the band and pane text under `view`, and
+`<hash>.review.html` is the review page the pane opens; the Stop hook removes both whenever it has
+nothing to report, so neither the band nor the page can outlive the finding. They are never read by `doppel analyze` and never feed any score; losing one costs you a delta
 and nothing else. Files older than seven days are swept at session start.
 
 ## Running the hooks by hand

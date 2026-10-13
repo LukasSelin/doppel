@@ -53,7 +53,7 @@ func TestHookViewShowsWhatStopRecorded(t *testing.T) {
 	baseline := baselinePath(sessionID)
 	t.Cleanup(func() {
 		os.Remove(baseline)
-		os.Remove(deltaPathFor(baseline))
+		removeReports(deltaPathFor(baseline))
 	})
 
 	payload := hookPayload(t, sessionID, dir)
@@ -91,6 +91,23 @@ func TestHookViewShowsWhatStopRecorded(t *testing.T) {
 		}
 	}
 
+	// The view links the session's review page, which is the same delta as
+	// `doppel diff -o review.html` renders: a self-contained page naming the
+	// rename and the created pair, labelled as the session it describes.
+	if want := reviewPathFor(deltaPathFor(baseline)); v.Review != want {
+		t.Fatalf("view.review = %q, want %q", v.Review, want)
+	}
+	page, err := os.ReadFile(v.Review)
+	if err != nil {
+		t.Fatalf("read review page: %v", err)
+	}
+	for _, want := range []string{"<!DOCTYPE html>", `"base":"session start"`, `"head":"now"`,
+		`"class":"renamed"`, "svc.Clip", "identical after rename"} {
+		if !strings.Contains(string(page), want) {
+			t.Errorf("review page is missing %q", want)
+		}
+	}
+
 	// The impact report keeps every key it carried before the view joined it:
 	// the delta is flattened, not nested, so a reader of the old shape is
 	// unaffected.
@@ -114,6 +131,9 @@ func TestHookViewShowsWhatStopRecorded(t *testing.T) {
 	runHook(t, "stop", payload)
 	if _, out, _ := execHookView(t, payload); out != "" {
 		t.Errorf("view after the session reverted itself: %q; want nothing", out)
+	}
+	if _, err := os.Stat(reviewPathFor(deltaPathFor(baseline))); !os.IsNotExist(err) {
+		t.Errorf("the review page outlived the impact report (stat err %v); the two share one lifetime", err)
 	}
 }
 

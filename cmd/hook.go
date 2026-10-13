@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/LukasSelin/doppel/internal/dashboard"
 	"github.com/LukasSelin/doppel/internal/identity"
 	"github.com/LukasSelin/doppel/internal/reporter"
 	"github.com/LukasSelin/doppel/internal/snapshot"
@@ -286,7 +288,7 @@ func runHookStop(cmd *cobra.Command, args []string) error {
 			Snapshot:  head,
 			Head:      gitHead(root),
 		})
-		_ = os.Remove(deltaPath)
+		removeReports(deltaPath)
 		return emitNothing()
 	}
 
@@ -296,7 +298,7 @@ func runHookStop(cmd *cobra.Command, args []string) error {
 	// would read as this session's work. Re-baseline and stay quiet this turn.
 	if b, rebased := followHead(root, base, head); rebased {
 		_ = writeJSONAtomic(path, b)
-		_ = os.Remove(deltaPath)
+		removeReports(deltaPath)
 		return emitNothing()
 	} else if b.Head != base.Head {
 		// HEAD advanced by the session's own commits: keep the origin, and
@@ -311,7 +313,7 @@ func runHookStop(cmd *cobra.Command, args []string) error {
 		// wrong place to learn about it: stderr here reads as a broken tool.
 		// Off silences the band too: it is a user-side surface of this same
 		// measurement, and "off" was not a statement about the transcript only.
-		_ = os.Remove(deltaPath)
+		removeReports(deltaPath)
 		return emitNothing()
 	}
 
@@ -323,18 +325,21 @@ func runHookStop(cmd *cobra.Command, args []string) error {
 
 	digest := reporter.SessionDigest(ident, delta, "")
 	if digest == "" {
-		_ = os.Remove(deltaPath)
+		removeReports(deltaPath)
 		return emitNothing()
 	}
 
 	report := impactFile{Delta: delta}
 	if view, ok := reporter.SessionViewOf(ident, delta); ok {
+		view.Review = writeSessionReview(deltaPath, root, base.Snapshot, head, ident)
 		report.View = &view
+	} else {
+		_ = os.Remove(reviewPathFor(deltaPath))
 	}
 	if err := writeJSONAtomic(deltaPath, report); err == nil {
 		digest = reporter.SessionDigest(ident, delta, deltaPath)
 	} else {
-		_ = os.Remove(deltaPath)
+		removeReports(deltaPath)
 	}
 
 	out := map[string]any{"systemMessage": digest}
@@ -736,13 +741,74 @@ func baselinePath(sessionID string) string {
 }
 
 func deltaPathFor(baseline string) string {
-	return baseline[:len(baseline)-len(".json")] + ".impact.json"
+	return swapSuffix(baseline, ".json", ".impact.json")
+}
+
+// reviewPathFor is the session's review page, beside its impact report.
+func reviewPathFor(delta string) string {
+	return swapSuffix(delta, ".impact.json", ".review.html")
+}
+
+// swapSuffix names one of a session's files after another. Every name here is
+// built by baselinePath, so the old suffix is always there to replace.
+func swapSuffix(path, old, repl string) string {
+	return path[:len(path)-len(old)] + repl
+}
+
+// removeReports removes the Stop hook's two reports together. They have one
+// lifetime — the band's — so a page can never describe a delta the impact
+// report no longer has.
+func removeReports(deltaPath string) {
+	_ = os.Remove(deltaPath)
+	_ = os.Remove(reviewPathFor(deltaPath))
+}
+
+// writeSessionReview renders the session's review page — what `doppel diff -o
+// review.html` writes for the baseline and the tree now — and returns its path,
+// or "" when there is nothing to render or the write failed.
+//
+// It is a report, like the impact file it sits beside: nothing reads it back,
+// and the plugin's pane only links to it. The identity delta is the one this
+// turn already computed, so the page costs a render and no second match. An
+// incomparable or empty identity delta writes nothing, and a stale page from an
+// earlier turn is removed rather than left describing a delta this turn no
+// longer has. Like everything in a hook, every failure is silent.
+func writeSessionReview(deltaPath, root string, base, head snapshot.Snapshot, d identity.Delta) string {
+	path := reviewPathFor(deltaPath)
+	if !d.Comparable || d.Empty() {
+		_ = os.Remove(path)
+		return ""
+	}
+	var buf bytes.Buffer
+	p := buildAudit("session start", "now", filepath.Base(root), base, head, d)
+	if err := dashboard.PrintAudit(&buf, p); err != nil {
+		_ = os.Remove(path)
+		return ""
+	}
+	if err := writeFileAtomic(path, buf.Bytes()); err != nil {
+		_ = os.Remove(path)
+		return ""
+	}
+	return path
 }
 
 // writeJSONAtomic writes via a temp file and a rename, so a reader never sees a
 // half-written baseline. A torn file would be read as "no baseline" anyway, but
 // only after the session it belonged to had already lost its origin.
 func writeJSONAtomic(path string, v any) error {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(v); err != nil {
+		return err
+	}
+	return writeFileAtomic(path, buf.Bytes())
+}
+
+// writeFileAtomic is the temp-file-and-rename half of writeJSONAtomic, shared
+// with the review page so a pane never links to a half-written one either.
+func writeFileAtomic(path string, data []byte) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
 	}
@@ -750,10 +816,7 @@ func writeJSONAtomic(path string, v any) error {
 	if err != nil {
 		return err
 	}
-	enc := json.NewEncoder(tmp)
-	enc.SetEscapeHTML(false)
-	enc.SetIndent("", "  ")
-	if err := enc.Encode(v); err != nil {
+	if _, err := tmp.Write(data); err != nil {
 		tmp.Close()
 		os.Remove(tmp.Name())
 		return err

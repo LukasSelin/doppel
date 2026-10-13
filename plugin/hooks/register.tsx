@@ -16,8 +16,12 @@ import type { EngineInterface as Engine, Register } from 'claude-code'
 // already wrote, through `doppel hook view`, which runs no analysis. One
 // rendering, three surfaces; one pipeline run per turn.
 
-/** What `doppel hook view` prints: the band line, the overview and the full delta report. */
-type View = { band: string; overview: string; report: string }
+/**
+ * What `doppel hook view` prints: the band line, the overview, the full delta
+ * report, and — from a binary that writes one — the path of the session's
+ * review page, the same delta as `doppel diff -o review.html` renders.
+ */
+type View = { band: string; overview: string; report: string; review?: string }
 
 const PANE = 'doppel'
 const PANE_TITLE = 'doppel: since session start'
@@ -44,12 +48,44 @@ export function parseView(stdout: string): View | null {
     if (typeof v?.band === 'string' && v.band !== '' && typeof v?.report === 'string') {
       // A binary from before the overview existed has only the report.
       const overview = typeof v.overview === 'string' && v.overview !== '' ? v.overview : v.report
-      return { band: v.band, overview, report: v.report }
+      const view: View = { band: v.band, overview, report: v.report }
+      // A binary from before the review page has none: the pane shows no link.
+      if (typeof v.review === 'string' && v.review !== '') view.review = v.review
+      return view
     }
   } catch {
     // A binary too old to know `hook view` prints usage text: show nothing.
   }
   return null
+}
+
+/**
+ * openers lists the commands that hand a file to the person's default browser,
+ * by the shape of the path the binary reported: a drive letter means Windows,
+ * anything else macOS first and then the freedesktop opener. Argument vectors,
+ * no shell, so a path with spaces or quotes is one argument whatever it holds.
+ */
+export function openers(path: string): string[][] {
+  if (/^[A-Za-z]:[\\/]/.test(path)) return [['rundll32', 'url.dll,FileProtocolHandler', path]]
+  return [
+    ['open', path],
+    ['xdg-open', path],
+  ]
+}
+
+// openReview tries each opener in turn and stops at the first that succeeds.
+// When none does — a surface with no processes, a host with no opener — the
+// path is already on screen to copy, and a toast says where to look.
+async function openReview($: Engine, path: string): Promise<void> {
+  for (const argv of openers(path)) {
+    try {
+      const run = await $.process.run(argv, { timeoutMs: 10_000 })
+      if (run.exitCode === 0) return
+    } catch {
+      // Try the next opener.
+    }
+  }
+  $.ui.toast('doppel: could not open a browser; the review page is at ' + path)
 }
 
 // refresh asks the binary for the session's view and redraws. Every failure
@@ -181,9 +217,30 @@ export const register: Register = (on, options) => {
           }}
         />
       )
+    // The review page is the same delta as a page: introduced pairs first,
+    // removed ones next, every function after. The binary wrote it beside the
+    // impact report; the mod only opens it. A button rather than a file: link
+    // because the desktop surface sends a pane no link but https:, so a link
+    // would be dead text exactly where most sessions draw this pane. The path
+    // is printed beneath it to copy when no opener answers.
+    const review =
+      view.review === undefined ? null : (
+        <Box flexDirection="column">
+          <Button
+            key="doppel-review"
+            label="open review page"
+            plain
+            onPress={async () => {
+              if (view?.review !== undefined) await openReview($, view.review)
+            }}
+          />
+          <Text dimColor>{view.review}</Text>
+        </Box>
+      )
     return (
       <Box flexDirection="column">
         {toggle}
+        {review}
         {lines.map(line => (
           <Text dimColor={line.startsWith('    ')}>{line === '' ? ' ' : line}</Text>
         ))}

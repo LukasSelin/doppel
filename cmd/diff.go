@@ -170,7 +170,8 @@ func writeDeltaFile(cmd *cobra.Command, paths []string, base, head snapshot.Snap
 	defer f.Close()
 	if strings.EqualFold(filepath.Ext(diffOutput), ".html") {
 		warnReportCaps(cmd.ErrOrStderr(), head.Params)
-		if err := dashboard.PrintAudit(f, buildAudit(paths, base, head, d)); err != nil {
+		labels := fileLabels(paths)
+		if err := dashboard.PrintAudit(f, buildAudit(labels[0], labels[1], workdirName("doppel"), base, head, d)); err != nil {
 			return err
 		}
 		fmt.Fprintf(cmd.ErrOrStderr(), "Review page written to %s\n", diffOutput)
@@ -184,13 +185,15 @@ func writeDeltaFile(cmd *cobra.Command, paths []string, base, head snapshot.Snap
 // buildAudit flattens one delta into the review page's payload. Like
 // buildTimeline it recomputes nothing: stepChange selects and bounds exactly
 // as a timeline step does, and the verdict counts are read off the pair lists.
-func buildAudit(paths []string, base, head snapshot.Snapshot, d identity.Delta) dashboard.AuditPayload {
-	labels := fileLabels(paths)
+//
+// The labels and the target are the caller's: `doppel diff` names the runs
+// after their files, the Stop hook after the session ("session start", "now").
+func buildAudit(baseLabel, headLabel, target string, base, head snapshot.Snapshot, d identity.Delta) dashboard.AuditPayload {
 	p := dashboard.AuditPayload{
 		Schema:       dashboard.AuditSchema,
-		Target:       workdirName("doppel"),
-		Base:         labels[0],
-		Head:         labels[1],
+		Target:       target,
+		Base:         baseLabel,
+		Head:         headLabel,
 		Params:       paramsLine(head.Params),
 		Notes:        d.Notes,
 		OldFunctions: d.OldFunctions,

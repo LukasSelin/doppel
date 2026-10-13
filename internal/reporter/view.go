@@ -30,6 +30,11 @@ type SessionView struct {
 	Band     string `json:"band"`
 	Overview string `json:"overview"`
 	Report   string `json:"report"`
+
+	// Review is the path of the session's review page, when the Stop hook
+	// wrote one: the same delta as Report, as the page `doppel diff -o
+	// review.html` renders. The pane links to it; empty means no page.
+	Review string `json:"review,omitempty"`
 }
 
 // SessionViewOf renders the view, or false exactly when SessionDigest would
