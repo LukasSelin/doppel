@@ -105,7 +105,7 @@ test('after a turn the band shows the binary’s line, read from `hook view`', a
   }
 })
 
-test('the binary path comes from userConfig', { options: { doppel_binary: 'C:/tools/doppel.exe' } }, async ($, on) => {
+test('the binary is doppel on PATH', async ($, on) => {
   const argv: (readonly string[])[] = []
   on('process.run', ($, e) => {
     argv.push(e.argv)
@@ -113,7 +113,7 @@ test('the binary path comes from userConfig', { options: { doppel_binary: 'C:/to
   })
   on('classic.Stop', () => ({}))
   await $.classic.Stop({ session_id: 's', stop_hook_active: false })
-  expect(argv[0]?.[0]).toBe('C:/tools/doppel.exe')
+  expect(argv[0]?.[0]).toBe('doppel')
 })
 
 // No report (hook-notify off, a quiet session, a session the Stop hook removed

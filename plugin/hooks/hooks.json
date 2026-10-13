@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${user_config.doppel_binary}",
+            "command": "doppel",
             "args": ["hook", "session-start"],
             "timeout": 120,
             "statusMessage": "doppel: taking corpus snapshot"
@@ -20,7 +20,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${user_config.doppel_binary}",
+            "command": "doppel",
             "args": ["hook", "user-prompt"],
             "timeout": 120,
             "statusMessage": "doppel: scoping to the request"
@@ -34,7 +34,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${user_config.doppel_binary}",
+            "command": "doppel",
             "args": ["hook", "pre-tool"],
             "timeout": 15,
             "statusMessage": "doppel: checking for twins"
@@ -48,7 +48,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${user_config.doppel_binary}",
+            "command": "doppel",
             "args": ["hook", "post-edit"],
             "timeout": 30,
             "statusMessage": "doppel: probing the edit for near duplicates"
@@ -61,7 +61,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${user_config.doppel_binary}",
+            "command": "doppel",
             "args": ["hook", "stop"],
             "timeout": 120,
             "statusMessage": "doppel: measuring duplication impact"

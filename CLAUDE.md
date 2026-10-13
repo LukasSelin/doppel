@@ -3100,8 +3100,11 @@ reason rather than returning a partial delta.
 
 The plugin itself is `plugin/`, published through the one-entry marketplace at
 `.claude-plugin/marketplace.json`. Its hooks use **exec form** (`command` + `args`), which takes no
-shell and behaves identically on Windows and Unix, and which is also the only form where
-`${user_config.*}` is substituted.
+shell and behaves identically on Windows and Unix. The command is the literal `doppel`, found on
+`PATH`, and the plugin declares **no `userConfig`**: Claude Code (verified in 2.1.296) substitutes
+`${user_config.*}` in a hook command from *saved* options only and never applies the manifest
+default, so a `doppel_binary` option defaulting to `doppel` failed every hook on a fresh install.
+The mod runs the same literal name, so the two cannot run different binaries.
 
 ## Identity matching — `doppel diff`
 
