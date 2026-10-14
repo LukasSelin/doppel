@@ -218,6 +218,13 @@ func stepLabels(paths []string) []string {
 	if len(timelineLabels) == len(paths) {
 		return timelineLabels
 	}
+	return fileLabels(paths)
+}
+
+// fileLabels names each snapshot after its file: the base name, extension and
+// any series counter stripped. Shared by the timeline and the diff page, which
+// both cite runs by the file a person passed them.
+func fileLabels(paths []string) []string {
 	out := make([]string, len(paths))
 	for i, p := range paths {
 		b := filepath.Base(p)
@@ -235,11 +242,7 @@ func timelineTargetName() string {
 	if timelineTarget != "" {
 		return timelineTarget
 	}
-	wd, err := os.Getwd()
-	if err != nil {
-		return "timeline"
-	}
-	return filepath.Base(wd)
+	return displayRoot(".")
 }
 
 // buildTimeline flattens the snapshots and the chained series into the page's

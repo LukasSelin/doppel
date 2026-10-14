@@ -37,14 +37,16 @@ const (
 	appCSS        = "app.css"
 	timelineCSS   = "timeline.css"
 	timelineJS    = "timeline.js"
+	uiJS          = "ui.js"
 )
 
-// The dashboard's scripts, in load order. core.js owns the payload indexes,
+// The dashboard's scripts, in load order. ui.js is the payload-free
+// formatting and DOM helpers the review page shares; core.js owns the payload indexes,
 // the shared helpers and the router; each screen file registers itself on
 // the namespace core.js defines, and boot.js starts the router last. They are
 // concatenated into one inline script, so a screen is a file for the people
 // editing it and nothing more for the page.
-var dashboardJS = []string{"core.js", "triage.js", "atlas.js", "briefing.js", "case.js", "boot.js"}
+var dashboardJS = []string{uiJS, "core.js", "triage.js", "atlas.js", "briefing.js", "case.js", "boot.js"}
 
 // The dashboard's stylesheets after the vendored design system, in cascade
 // order: shared layout first, then one file per screen.
@@ -67,7 +69,7 @@ type page struct {
 
 var (
 	dashboardPage = page{name: "dashboard", shell: shellAsset, css: dashboardCSS, js: dashboardJS}
-	timelinePage  = page{name: "timeline", shell: timelineShell, css: []string{broadsheetCSS, appCSS, timelineCSS}, js: []string{timelineJS}}
+	timelinePage  = page{name: "timeline", shell: timelineShell, css: []string{broadsheetCSS, appCSS, timelineCSS}, js: []string{uiJS, timelineJS}}
 )
 
 // source is where assets are read from: a filesystem plus the prefix the

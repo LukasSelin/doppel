@@ -45,6 +45,13 @@ func samplePayload() Payload {
 // iteration order would make an unchanged tree render different bytes, and a
 // nondeterministic report is a bug in this tool.
 func TestPayloadHasNoMaps(t *testing.T) {
+	assertNoMaps(t, reflect.TypeOf(Payload{}), "Payload")
+}
+
+// assertNoMaps walks a payload type and fails on any map reachable from it.
+// Every page's payload holds to it; one walker, so the rule cannot drift.
+func assertNoMaps(t *testing.T, root reflect.Type, name string) {
+	t.Helper()
 	seen := map[reflect.Type]bool{}
 	var walk func(rt reflect.Type, path string)
 	walk = func(rt reflect.Type, path string) {
@@ -64,7 +71,7 @@ func TestPayloadHasNoMaps(t *testing.T) {
 			}
 		}
 	}
-	walk(reflect.TypeOf(Payload{}), "Payload")
+	walk(root, name)
 }
 
 func render(t *testing.T, p Payload) string {

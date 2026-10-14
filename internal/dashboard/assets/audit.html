@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>doppel review — {{ .Target }}</title>
+  <style>{{ .CSS }}</style>
+</head>
+
+<body>
+  <div class="page">
+
+    <header class="masthead">
+      <div class="rule-heavy"></div>
+      <div class="masthead-row">
+        <div class="masthead-id">
+          <div class="kicker">doppel · review</div>
+          <h1 class="masthead-title" id="au-title">What this change did to the duplication surface</h1>
+          <div class="masthead-sub mono" id="au-sub"></div>
+        </div>
+        <nav class="tabs" aria-label="Review sections">
+          <a class="tab" href="#au-introduced">Introduced</a>
+          <a class="tab" href="#au-removed">Removed</a>
+          <a class="tab" href="#au-functions">Functions</a>
+        </nav>
+      </div>
+      <div class="rule-fine"></div>
+    </header>
+
+    <main class="au" id="au"></main>
+
+    <footer class="colophon" id="colophon"></footer>
+  </div>
+
+  <script type="application/json" id="doppel-data">{{ .Data }}</script>
+  <script>{{ .Script }}</script>
+</body>
+
+</html>
