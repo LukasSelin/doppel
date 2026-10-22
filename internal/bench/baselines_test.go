@@ -242,7 +242,7 @@ func prepareBaselineRunOf(root string, units []parser.CodeUnit) (*baselineRun, e
 	run := Analyze(units, retriever.DefaultOptions())
 	run.Root = root
 	opt := retriever.DefaultOptions()
-	cr := calibrate.Run(run.Units, run.Docs, run.Comp, run.WL, calibrate.DefaultOptions(0.01, opt.MinNodes))
+	cr := calibrate.Run(run.Units, run.Docs, run.Comp, run.WL, calibrate.DefaultOptions(0.01, opt.MinNodes, run.Root))
 	br := &baselineRun{run: run}
 	structMin := 0.0
 	if cr.Applied() {

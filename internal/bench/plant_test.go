@@ -734,7 +734,7 @@ func runReportBatch(t *testing.T, h *plantHost, batch []*plant, opt plantOptions
 	ropt.ChannelK = opt.ChannelK
 	ropt.MinNodes = opt.MinNodesRet
 	structMin := 0.0
-	cal := calibrate.Run(r.Units, r.Docs, r.Comp, r.WL, calibrate.DefaultOptions(opt.Calibrate, opt.MinNodesRet))
+	cal := calibrate.Run(r.Units, r.Docs, r.Comp, r.WL, calibrate.DefaultOptions(opt.Calibrate, opt.MinNodesRet, h.root))
 	if cal.Applied() {
 		ropt.Threshold = cal.Threshold
 		structMin = cal.StructMin

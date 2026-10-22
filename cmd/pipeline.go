@@ -486,7 +486,7 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 		// corpus-weighted code-shape metric scores the random pairs as scores
 		// the real ones, so the derived floor is a quantile of the very
 		// quantity it will be compared against.
-		r := calibrate.Run(units, docs, comp, res.WL, calibrate.DefaultOptions(p.Calibrate, p.MinNodes))
+		r := calibrate.Run(units, docs, comp, res.WL, calibrate.DefaultOptions(p.Calibrate, p.MinNodes, res.Root))
 		res.Calibration = &r
 		printCalibration(progress, r)
 		if r.Applied() {
