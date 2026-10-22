@@ -57,10 +57,32 @@ jobs:
       - name: Test
         run: go test ./...
 
+      # What the cross-platform job compares: the snapshot and the dashboard of
+      # this tree, from every leg. -buildvcs=false makes the recorded build
+      # identity (devel) everywhere, so no leg can differ by a VCS stamp it
+      # alone reads as dirty. _xplat/ is skipped by the walk like any
+      # underscore-prefixed directory, so the second run cannot read the first
+      # one's output.
+      - name: Write cross-platform outputs
+        shell: bash
+        run: |
+          mkdir -p _xplat
+          go run -buildvcs=false . analyze . --format json > _xplat/snapshot.json
+          go run -buildvcs=false . analyze . -o _xplat/report.html > /dev/null
+
+      - name: Upload cross-platform outputs
+        uses: actions/upload-artifact@v5
+        with:
+          name: xplat-${{ matrix.os }}
+          path: _xplat/
+          retention-days: 7
+          if-no-files-found: error
+
       # The JSON snapshot is what the hooks diff, so a schema panic or a
       # nondeterministic field has to fail here rather than in a session.
-      # Determinism is platform-independent, and /tmp, printf and diff are
-      # Git Bash assumptions, so this and the hook check stay on Linux.
+      # Run-to-run determinism is one question on every OS, so one leg answers
+      # it; whether the OSes agree with each other is the cross-platform job's
+      # question, which two runs on one OS cannot see.
       - name: Snapshot is deterministic
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -127,3 +149,38 @@ jobs:
           # An empty artifact is worse than a failed job: it looks like the
           # report was captured.
           if-no-files-found: error
+
+  # The build job's determinism steps run one OS twice, and that cannot see
+  # output that is stable on each platform and different between them, which
+  # is the shape a cross-platform bug here takes. Calibration hashed the walk's
+  # own paths, backslash-separated on Windows, so one commit calibrated to
+  # different floors there than on Linux, and every report downstream of the
+  # floors differed, identically on every run. This compares what each leg
+  # wrote for the same commit, byte for byte.
+  cross-platform:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: xplat-*
+          path: xplat
+
+      - name: Every platform wrote the same bytes
+        run: |
+          status=0
+          for os in windows-latest macos-latest; do
+            for f in snapshot.json report.html; do
+              if ! cmp -s "xplat/xplat-ubuntu-latest/$f" "xplat/xplat-$os/$f"; then
+                echo "::error::$f differs between ubuntu-latest and $os"
+                status=1
+              fi
+            done
+            # The operating point is the first thing to read: a moved floor
+            # changes every pair after it.
+            if ! cmp -s "xplat/xplat-ubuntu-latest/snapshot.json" "xplat/xplat-$os/snapshot.json"; then
+              echo "ubuntu-latest params: $(jq -c .params xplat/xplat-ubuntu-latest/snapshot.json)"
+              echo "$os params: $(jq -c .params "xplat/xplat-$os/snapshot.json")"
+            fi
+          done
+          exit $status
