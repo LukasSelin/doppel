@@ -9,7 +9,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `7e43dba` |
+| doppel | `82e7616` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -22,20 +22,20 @@ The corpus-level models doppel builds before ranking anything, as printed to std
 ```
 Scanning . ...
 Learning concept vocabulary...
-Lexicon: 46 concepts (6 seeded, 40 emergent), 1266/3382 features above 182 df, 76 functions unlabeled
+Lexicon: 46 concepts (6 seeded, 40 emergent), 1267/3381 features above 182 df, 78 functions unlabeled
 Generating concept documents...
 Calibration: rate 0.01 over 20000 null pairs -> threshold 0.40, struct-min 0.47, family-min 0.40
 Found 497 functions. Retrieving candidates...
-Retrieval: shape 209, concept 1637, call 609 -> 2132 unique pairs
-  concept-only 64.3%  call-only 17.2%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1934
-Running structural comparison on 2132 pairs...
-  Concept views: 70 of 2132 compared pairs disagree with the taxonomy (4 vocabulary the tree misses, 66 kinship the vocabularies lack)
+Retrieval: shape 209, concept 1633, call 609 -> 2124 unique pairs
+  concept-only 64.1%  call-only 17.0%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1940
+Running structural comparison on 2124 pairs...
+  Concept views: 70 of 2124 compared pairs disagree with the taxonomy (4 vocabulary the tree misses, 66 kinship the vocabularies lack)
   687 pairs remain after struct-min=0.47 filter
-Culture: 37 concepts modeled, 153 associations, 31 unusual realizations
+Culture: 37 concepts modeled, 151 associations, 30 unusual realizations
 Habitats: 5 modeled, 15 misfits (0 excused by subsystem), 1 subsystems; most uniform binding (norm 0.92), most diverse json (norm 0.63)
 Conventions: strongest c.MustBindWith+gin.*Context.MustBindWith (1.00), loosest gin.*Context.Header+gin.*Context.Set (0.22)
-Ecosystems: 443 profiled (351 dominance, 74 coalition, 0 conflict, 18 weak)
-Families: 33 over 62 components, 180 functions in a family, 249 edges completed
+Ecosystems: 442 profiled (365 dominance, 60 coalition, 0 conflict, 17 weak)
+Families: 34 over 62 components, 183 functions in a family, 250 edges completed
 ```
 
 # Code Similarity Report
@@ -72,7 +72,7 @@ flowchart LR
     s13["validation<br/>22"]
     s14["serialization<br/>33"]
     s15(["control_flow"])
-    s16["concurrency<br/>150"]
+    s16["concurrency<br/>149"]
     s17(["fault_tolerance"])
     s18["retry<br/>absent"]
     s19["circuit_breaker<br/>absent"]
@@ -118,7 +118,7 @@ flowchart LR
     c6(["fault_tolerance"])
     c7(["error_handling"])
     c8["URL.Path+c.Writer<br/>11"]
-    c9["binding+nil<br/>150"]
+    c9["binding+nil<br/>149"]
     c10["c.formCache+c.queryCache<br/>39"]
     c11["c.requestHeader+gin.*Context.requestHeader<br/>53"]
     c12["delims.Left+delims.Right+engine.SetHTMLTemplate<br/>43"]
@@ -152,7 +152,7 @@ The diagram draws the 3 largest concepts on each branch; **36 further concepts**
 
 | Concept | Functions | Convention |
 |---|---:|---|
-| `binding+nil` | 150 | `0.56` (settled) |
+| `binding+nil` | 149 | `0.56` (settled) |
 | `engine.MaxMultipartMemory+c.engine` | 82 | `0.56` (settled) |
 | `c.requestHeader+gin.*Context.requestHeader` | 53 | `0.64` (settled) |
 | `delims.Left+delims.Right+engine.SetHTMLTemplate` | 43 | `0.41` (loose) |
@@ -177,12 +177,12 @@ The diagram draws the 3 largest concepts on each branch; **36 further concepts**
 | `w.WriteHeaderNow+w.ResponseWriter` | 9 | `0.24` (loose) |
 | `bytesconv.StringToBytes+json.API` | 8 | `0.23` (loose) |
 | `cmp+httputil` | 8 | `0.44` (loose) |
-| `field.Tag+Tag.Get` | 8 | `0.41` (loose) |
 | `gin.*Context.Header+gin.*Context.Set` | 8 | `0.22` (loose) |
 | `render.writeContentType+bytes` | 8 | `0.65` (settled) |
 | `c.MustBindWith+gin.*Context.MustBindWith` | 7 | `1.00` (unanimous) |
 | `c.ShouldBindWith+gin.*Context.ShouldBindWith` | 7 | `1.00` (unanimous) |
-| `gin.IsDebugging+gin.debugPrint` | 7 | `0.28` (loose) |
+| `field.Tag+Tag.Get` | 7 | `0.37` (loose) |
+| `gin.IsDebugging+gin.debugPrint` | 7 | `0.24` (loose) |
 | `gin.debugPrint+atomic` | 7 | `0.30` (loose) |
 | `c.hasRequestContext+Request.Context` | 5 | `0.48` (loose) |
 | `flag+atomic` | 5 | `0.57` (settled) |
@@ -208,7 +208,7 @@ Merge-worthy pairs are folded up to their packages: only pairs doppel judges wor
 ```mermaid
 flowchart LR
     p0["fs"]
-    p1["gin<br/>262 internal"]
+    p1["gin<br/>263 internal"]
     p0 ---|"1"| p1
 ```
 
@@ -234,17 +234,17 @@ Most uniform is `binding` (norm `0.92`); most varied is `json` (norm `0.63`). 15
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **2132 candidate pairs** (shape 209, concept 1637, call 609), of which 17% arrived on call evidence alone and 64% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **2124 candidate pairs** (shape 209, concept 1633, call 609), of which 17% arrived on call evidence alone and 64% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
-The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **70 of 2132** pairs the taxonomy and the vocabularies differ by at least 0.50: 4 where the vocabularies agree and the tree cannot see it, 66 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
+The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **70 of 2124** pairs the taxonomy and the vocabularies differ by at least 0.50: 4 where the vocabularies agree and the tree cannot see it, 66 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
 
-Each function is also an arena where its candidate concepts compete for its evidence. 443 functions reached an equilibrium: **351** settled on a single concept, **74** on a coalition, **0** hold concepts this corpus says do not go together.
+Each function is also an arena where its candidate concepts compete for its evidence. 442 functions reached an equilibrium: **365** settled on a single concept, **60** on a coalition, **0** hold concepts this corpus says do not go together.
 
 ### Corpus metrics
 
-**Compression ratio:** `5.28`x — this corpus's canonical function bodies contain **17625 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **3336 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
+**Compression ratio:** `5.31`x — this corpus's canonical function bodies contain **17647 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **3324 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **497 functions**, **463** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.48` / `1.00` / `1.00`, and 70% of them (323 of 463) already clear this run's threshold of `0.40`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 34 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **497 functions**, **463** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.48` / `1.00` / `1.00`, and 69% of them (318 of 463) already clear this run's threshold of `0.40`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 34 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -256,11 +256,11 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 Only what is **distinctive**. A feature earns a row by being carried by this concept's members at least twice as often as by the corpus at large — nearly every Go function has a `return` and an `if`, so prevalence alone would describe the language rather than this codebase. Weights are how much a channel counts toward whether a member looks normal — calls 40, control flow 20, co-occurring tags 15, role 15, package 10.
 
-**`binding+nil`** — 150 functions
+**`binding+nil`** — 149 functions
 
 | Channel | Feature | | Members | vs corpus |
 |---|---|---|---|---|
-| cotags ×15 | `engine.MaxMultipartMemory+c.engine` | `███·······` | 51 of 150 | 2.1× |
+| cotags ×15 | `engine.MaxMultipartMemory+c.engine` | `███·······` | 50 of 149 | 2.0× |
 
 **`engine.MaxMultipartMemory+c.engine`** — 82 functions
 
@@ -268,7 +268,7 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 |---|---|---|---|---|
 | cotags ×15 | `c.requestHeader+gin.*Context.requestHeader` | `██████····` | 48 of 82 | 5.5× |
 |  | `c.formCache+c.queryCache` | `███·······` | 26 of 82 | 4.0× |
-|  | `binding+nil` | `██████····` | 51 of 82 | 2.1× |
+|  | `binding+nil` | `██████····` | 50 of 82 | 2.0× |
 
 **`c.requestHeader+gin.*Context.requestHeader`** — 53 functions
 
@@ -351,36 +351,35 @@ Co-occurrence measured against chance across every function. Only relationships 
 - 5 of 5 `http.Server+engine.Handler` functions also `gin.*Engine.isUnsafeTrustedProxies` — 83× chance
 - 5 of 5 `http.Server+engine.Handler` functions also `gin.debugPrintError` — 83× chance
 - 6 of 8 `gin.*Context.Header+gin.*Context.Set` functions also `gin.*Context.Header` — 47× chance
-- _58 more not listed_
+- _59 more not listed_
 
 **Apart more than chance — tag~tag**
 
 - **no** `delims.Left+delims.Right+engine.SetHTMLTemplate` function has `engine.MaxMultipartMemory+c.engine` — chance alone would give about 7 of 43
-- **no** `binding+nil` function has `group.calculateAbsolutePath+group.engine` — chance alone would give about 7 of 150
-- **no** `binding+nil` function has `gin+template` — chance alone would give about 6 of 150
+- **no** `binding+nil` function has `group.calculateAbsolutePath+group.engine` — chance alone would give about 7 of 149
+- **no** `binding+nil` function has `gin+template` — chance alone would give about 6 of 149
 - **no** `engine.MaxMultipartMemory+c.engine` function has `json.Marshal+json.MarshalIndent` — chance alone would give about 5 of 82
 - **no** `engine.MaxMultipartMemory+c.engine` function has `writermem.WriteHeaderNow+c.writermem` — chance alone would give about 5 of 82
 - **no** `c.requestHeader+gin.*Context.requestHeader` function has `delims.Left+delims.Right+engine.SetHTMLTemplate` — chance alone would give about 5 of 53
-- _18 more not listed_
+- _16 more not listed_
 
 **Apart more than chance — tag~role**
 
 - **no** `json.Marshal+json.MarshalIndent` function has `utility` — chance alone would give about 4 of 33
 - **no** `json.Marshal+json.MarshalIndent` function has `orchestrator` — chance alone would give about 4 of 33
 - **no** `http.Server+engine.Handler` function has `leaf` — chance alone would give about 4 of 5
-- 8 of 150 `binding+nil` functions also `orchestrator` — 0.5× chance
+- 8 of 149 `binding+nil` functions also `orchestrator` — 0.5× chance
 - 1 of 82 `engine.MaxMultipartMemory+c.engine` functions also `orchestrator` — 0.1× chance
 - 1 of 8 `gin.*Context.Header+gin.*Context.Set` functions also `leaf` — 0.2× chance
 - _5 more not listed_
 
 **Apart more than chance — tag~call**
 
-- **no** `binding+nil` function has `gin.*RouterGroup.handle` — chance alone would give about 3 of 150
+- **no** `binding+nil` function has `gin.*RouterGroup.handle` — chance alone would give about 3 of 149
 - **no** `engine.MaxMultipartMemory+c.engine` function has `render.writeContentType` — chance alone would give about 3 of 82
-- **no** `binding+nil` function has `reflect.ValueOf` — chance alone would give about 3 of 150
-- 1 of 150 `binding+nil` functions also `render.writeContentType` — 0.2× chance
-- 1 of 150 `binding+nil` functions also `gin.*Context.Set` — 0.2× chance
-- 2 of 150 `binding+nil` functions also `gin.debugPrint` — 0.4× chance
+- 1 of 149 `binding+nil` functions also `render.writeContentType` — 0.2× chance
+- 1 of 149 `binding+nil` functions also `gin.debugPrint` — 0.2× chance
+- 1 of 149 `binding+nil` functions also `gin.*Context.Set` — 0.2× chance
 
 ### Functions drifting from their own concept
 
@@ -392,14 +391,14 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 | `gin.*Context.Header` <br/>`context.go:1080` | `c.requestHeader+gin.*Context.requestHeader` | `0.23` | `0.80` | no near-duplicate |
 | `binding.*multipartRequest.TrySet` <br/>`binding/multipart_form_mapping.go:27` | `engine.MaxMultipartMemory+c.engine` | `0.09` | `0.66` | no near-duplicate |
 | `render.Redirect.WriteContentType` <br/>`render/redirect.go:29` | `bytesconv.StringToBytes+json.API` | `0.18` | `0.52` | no near-duplicate |
-| `binding.setArray` <br/>`binding/form_mapping.go:490` | `binding+nil` | `0.12` | `0.38` | no near-duplicate |
+| `binding.setArray` <br/>`binding/form_mapping.go:490` | `binding+nil` | `0.12` | `0.39` | no near-duplicate |
 | `gin.*responseWriter.Status` <br/>`response_writer.go:98` | `gin.*Context.Header+gin.*Context.Set` | `0.19` | `0.45` | no near-duplicate |
 | `gin.*Engine.addRoute` <br/>`gin.go:364` | `tree.method+tree.root` | `0.12` | `0.36` | no near-duplicate |
-| `binding.queryBinding.Bind` <br/>`binding/query.go:15` | `binding+nil` | `0.15` | `0.38` | no near-duplicate |
-| `gin.*Context.Next` <br/>`context.go:188` | `binding+nil` | `0.17` | `0.38` | no near-duplicate |
-| `gin.*Context.Stream` <br/>`context.go:1322` | `binding+nil` | `0.18` | `0.38` | no near-duplicate |
+| `binding.queryBinding.Bind` <br/>`binding/query.go:15` | `binding+nil` | `0.15` | `0.39` | no near-duplicate |
+| `gin.*Context.Next` <br/>`context.go:188` | `binding+nil` | `0.17` | `0.39` | no near-duplicate |
+| `gin.*Context.Stream` <br/>`context.go:1322` | `binding+nil` | `0.18` | `0.39` | no near-duplicate |
 
-_21 more unusual realizations not listed._
+_20 more unusual realizations not listed._
 
 A row marked _no near-duplicate_ appears in no reported pair: nothing else in this report explains it, which makes it drift rather than duplication.
 
@@ -422,7 +421,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `425.00` (shape 389.58, concept 2.16, call 33.26)
+**Evidence:** `423.98` (shape 388.56, concept 2.16, call 33.26)
 
 **Trophic:** `1.00`
 
@@ -450,7 +449,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #2 — Code-shape: `0.6790`
+## Match #2 — Code-shape: `0.6788`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -467,7 +466,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.85`
 
-**Evidence:** `286.89` (shape 270.53, concept 4.09, call 12.27)
+**Evidence:** `289.31` (shape 272.95, concept 4.09, call 12.27)
 
 **Trophic:** `0.93`
 
@@ -488,7 +487,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - share patterns: [delims.Left+delims.Right+engine.SetHTMLTemplate, http.Server+engine.Handler]
 - both are orchestrator functions
 - same package
-- callees do related work (0.69): [fmt.Fprintf+runtime, gin.debugPrint+atomic, gin.IsDebugging+gin.debugPrint, delims.Left+delims.Right+engine.SetHTMLTemplate]
+- callees do related work (0.68): [fmt.Fprintf+runtime, gin.debugPrint+atomic, gin.IsDebugging+gin.debugPrint, delims.Left+delims.Right+engine.SetHTMLTemplate]
 - same visibility
 - same receiver type: Engine
 - call into same packages: [gin]
@@ -514,7 +513,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `104.12` (shape 93.99, concept 1.90, call 8.23)
+**Evidence:** `105.68` (shape 95.56, concept 1.89, call 8.23)
 
 **Trophic:** `1.00`
 
@@ -559,7 +558,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `103.59` (shape 100.67, concept 2.93, call 0.00)
+**Evidence:** `103.60` (shape 100.67, concept 2.93, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -603,7 +602,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `103.59` (shape 100.67, concept 2.93, call 0.00)
+**Evidence:** `103.60` (shape 100.67, concept 2.93, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -613,7 +612,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `4.38` — `depth-3 BLOCK`
 - `4.38` — `depth-3 CALL`
 
-**Culture:** B realizes `binding+nil` atypically (typicality 0.17, concept median 0.38, convention 0.56)
+**Culture:** B realizes `binding+nil` atypically (typicality 0.16, concept median 0.39, convention 0.56)
 
 **Concept views:** shape `1.00`, corpus `0.99`, feature `0.99`, a-in-b `1.00`, b-in-a `0.99`
 
@@ -649,7 +648,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `103.59` (shape 100.67, concept 2.93, call 0.00)
+**Evidence:** `103.60` (shape 100.67, concept 2.93, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -659,7 +658,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `4.38` — `depth-3 BLOCK`
 - `4.38` — `depth-3 CALL`
 
-**Culture:** A realizes `binding+nil` atypically (typicality 0.17, concept median 0.38, convention 0.56)
+**Culture:** A realizes `binding+nil` atypically (typicality 0.16, concept median 0.39, convention 0.56)
 
 **Concept views:** shape `1.00`, corpus `0.99`, feature `0.99`, a-in-b `0.99`, b-in-a `1.00`
 
@@ -678,7 +677,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #7 — Code-shape: `0.7507`
+## Match #7 — Code-shape: `0.7504`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -695,7 +694,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.82`
 
-**Evidence:** `225.00` (shape 208.43, concept 4.30, call 12.27)
+**Evidence:** `227.42` (shape 210.85, concept 4.30, call 12.27)
 
 **Trophic:** `0.86`
 
@@ -742,7 +741,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `95.66` (shape 89.18, concept 2.76, call 3.72)
+**Evidence:** `95.67` (shape 89.18, concept 2.76, call 3.72)
 
 **Trophic:** `1.00`
 
@@ -770,7 +769,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #9 — Code-shape: `0.6290`
+## Match #9 — Code-shape: `0.6301`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -787,9 +786,9 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.84` — most of the smaller body's shape is inside the larger
 
-**Evidence:** `294.88` (shape 278.72, concept 3.89, call 12.27)
+**Evidence:** `297.30` (shape 281.14, concept 3.89, call 12.27)
 
-**Trophic:** `0.85`
+**Trophic:** `0.86`
 
 **Shared structure:**
 
@@ -797,7 +796,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `5.67` — `depth-0 CALL` ×2
 - `4.78` — `depth-3 UNARY`
 
-**Concept views:** shape `1.00`, corpus `0.93`, feature `0.94`, a-in-b `1.00`, b-in-a `0.94`
+**Concept views:** shape `1.00`, corpus `0.93`, feature `0.93`, a-in-b `1.00`, b-in-a `0.93`
 
 **Shared vocabulary:** `id:and`, `id:listener`, `id:listen`
 
@@ -815,12 +814,12 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #10 — Code-shape: `0.6576`
+## Match #10 — Code-shape: `0.6575`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
-| **A** | `gin.go:288` | `gin.*Engine.LoadHTMLFiles` | `(...string)` | delims.Left+delims.Right 0.61, delims.Left+delims.Right+engine.SetHTMLTemplate 0.60 |
-| **B** | `gin.go:300` | `gin.*Engine.LoadHTMLFS` | `(http.FileSystem, ...string)` | delims.Left+delims.Right 0.60, delims.Left+delims.Right+engine.SetHTMLTemplate 0.59 |
+| **A** | `gin.go:288` | `gin.*Engine.LoadHTMLFiles` | `(...string)` | delims.Left+delims.Right 0.61, delims.Left+delims.Right+engine.SetHTMLTemplate 0.59 |
+| **B** | `gin.go:300` | `gin.*Engine.LoadHTMLFS` | `(http.FileSystem, ...string)` | delims.Left+delims.Right 0.60, delims.Left+delims.Right+engine.SetHTMLTemplate 0.58 |
 
 **Explain:** differs by two extra call, two extra key-value, one extra composite literal, and 2 more kinds
 
@@ -832,7 +831,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.75`
 
-**Evidence:** `234.18` (shape 206.68, concept 3.79, call 23.71)
+**Evidence:** `233.99` (shape 206.49, concept 3.79, call 23.71)
 
 **Trophic:** `0.84`
 
@@ -862,9 +861,9 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ## Families
 
-33 families, 180 functions in a family, largest 17 members; 249 edges scored here that retrieval never proposed
+34 families, 183 functions in a family, largest 17 members; 250 edges scored here that retrieval never proposed
 
-### Family 1 — 6 members, every pair `>= 0.48` code-shape, evidence `3517`
+### Family 1 — 6 members, every pair `>= 0.48` code-shape, evidence `3551`
 
 ```mermaid
 flowchart LR
@@ -896,7 +895,7 @@ flowchart LR
 | `gin.go:540` | `gin.*Engine.Run` | `(...string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.61, http.Server+engine.Handler 0.49 |
 | `gin.go:561` | `gin.*Engine.RunTLS` | `(string, string, string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.62, http.Server+engine.Handler 0.53 |
 | `gin.go:581` | `gin.*Engine.RunUnix` | `(string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.58, http.Server+engine.Handler 0.47 |
-| `gin.go:607` | `gin.*Engine.RunFd` | `(int) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.56 |
+| `gin.go:607` | `gin.*Engine.RunFd` | `(int) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.55 |
 | `gin.go:630` | `gin.*Engine.RunQUIC` | `(string, string, string) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.63, http.Server+engine.Handler 0.53 |
 | `gin.go:645` | `gin.*Engine.RunListener` | `(net.Listener) (error)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.61, http.Server+engine.Handler 0.51 |
 
@@ -997,10 +996,10 @@ flowchart LR
 | Location | Function | Signature | Concepts |
 |---|---|---|---|
 | `gin.go:272` | `gin.*Engine.LoadHTMLGlob` | `(string)` | delims.Left+delims.Right+engine.SetHTMLTemplate 0.60, delims.Left+delims.Right 0.59 |
-| `gin.go:288` | `gin.*Engine.LoadHTMLFiles` | `(...string)` | delims.Left+delims.Right 0.61, delims.Left+delims.Right+engine.SetHTMLTemplate 0.60 |
-| `gin.go:300` | `gin.*Engine.LoadHTMLFS` | `(http.FileSystem, ...string)` | delims.Left+delims.Right 0.60, delims.Left+delims.Right+engine.SetHTMLTemplate 0.59 |
+| `gin.go:288` | `gin.*Engine.LoadHTMLFiles` | `(...string)` | delims.Left+delims.Right 0.61, delims.Left+delims.Right+engine.SetHTMLTemplate 0.59 |
+| `gin.go:300` | `gin.*Engine.LoadHTMLFS` | `(http.FileSystem, ...string)` | delims.Left+delims.Right 0.60, delims.Left+delims.Right+engine.SetHTMLTemplate 0.58 |
 
-### Family 5 — 7 members, every pair `>= 0.40` code-shape, evidence `590`  (5 edges scored here)
+### Family 5 — 7 members, every pair `>= 0.40` code-shape, evidence `613`  (5 edges scored here)
 
 ```mermaid
 flowchart LR
@@ -1042,7 +1041,7 @@ flowchart LR
 | `context.go:1253` | `gin.*Context.Redirect` | `(int, string)` | Request.URL+req.URL 0.49, c.requestHeader+gin.*Context.requestHeader 0.41, engine.MaxMultipartMemory+c.engine 0.40 |
 | `context.go:1262` | `gin.*Context.Data` | `(int, string, []byte)` | binding+nil 0.59, engine.MaxMultipartMemory+c.engine 0.26 |
 | `context.go:1270` | `gin.*Context.DataFromReader` | `(int, int64, string, io.Reader, map[string]string)` | binding+nil 0.48 |
-| `context.go:1313` | `gin.*Context.SSEvent` | `(string, any)` | binding+nil 0.63, c.requestHeader+gin.*Context.requestHeader 0.35, engine.MaxMultipartMemory+c.engine 0.29 |
+| `context.go:1313` | `gin.*Context.SSEvent` | `(string, any)` | binding+nil 0.63, c.requestHeader+gin.*Context.requestHeader 0.35, engine.MaxMultipartMemory+c.engine 0.30 |
 
-_28 more families not listed._
+_29 more families not listed._
 

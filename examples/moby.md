@@ -9,7 +9,7 @@ container engine; a decade of accretion across daemon, API, and plugin layers
 | Corpus | [moby](https://github.com/moby/moby) |
 | Pinned at | `v28.5.2` (`89c5e8fd66634b6128fc4c0e6f1236e2540e46e0`) |
 | Project since | 2013 |
-| doppel | `7e43dba` |
+| doppel | `82e7616` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -22,23 +22,23 @@ The corpus-level models doppel builds before ranking anything, as printed to std
 ```
 Scanning . ...
 Learning concept vocabulary...
-Lexicon: 519 concepts (12 seeded, 507 emergent), 22469/57681 features above 2817 df, 721 functions unlabeled
+Lexicon: 519 concepts (12 seeded, 507 emergent), 22456/57634 features above 2817 df, 729 functions unlabeled
 Generating concept documents...
 Calibration: rate 0.01 over 20000 null pairs -> threshold 0.35, struct-min 0.31, family-min 0.35
 Found 7658 functions. Retrieving candidates...
-Retrieval: shape 10463, concept 23375, call 12470 -> 41032 unique pairs
-  concept-only 50.3%  call-only 21.5%  suppressed-shape functions: 11  large identity buckets: 2  surviving labels: 34380
-  22 cross test/prod pairs dropped
-  1806 cross build-target pairs dropped (no build compiles both files)
-Running structural comparison on 39204 pairs...
-  Concept views: 2924 of 39204 compared pairs disagree with the taxonomy (393 vocabulary the tree misses, 2531 kinship the vocabularies lack)
-  17729 pairs remain after struct-min=0.31 filter
-Culture: 488 concepts modeled, 3281 associations, 902 unusual realizations
-Habitats: 167 modeled, 71 misfits (94 excused by subsystem), 59 subsystems; most uniform checker (norm 0.97), most diverse suite (norm 0.58)
+Retrieval: shape 10472, concept 23745, call 12470 -> 41383 unique pairs
+  concept-only 50.7%  call-only 21.3%  suppressed-shape functions: 11  large identity buckets: 2  surviving labels: 34353
+  25 cross test/prod pairs dropped
+  1809 cross build-target pairs dropped (no build compiles both files)
+Running structural comparison on 39549 pairs...
+  Concept views: 2956 of 39549 compared pairs disagree with the taxonomy (429 vocabulary the tree misses, 2527 kinship the vocabularies lack)
+  17818 pairs remain after struct-min=0.31 filter
+Culture: 488 concepts modeled, 3272 associations, 897 unusual realizations
+Habitats: 167 modeled, 69 misfits (95 excused by subsystem), 59 subsystems; most uniform checker (norm 0.97), most diverse suite (norm 0.58)
 Conventions: strongest nl.manager+nl.ns (0.98), loosest aSpace.allocated+netiputil.PrefixCompare (0.16)
-Ecosystems: 7325 profiled (4541 dominance, 2781 coalition, 0 conflict, 3 weak)
-Families: 802 over 793 components, 2161 functions in a family, 5967 edges completed
-  2 component(s) skipped as too large or too dense: sizes [146 1236]
+Ecosystems: 7320 profiled (4522 dominance, 2795 coalition, 0 conflict, 3 weak)
+Families: 820 over 789 components, 2149 functions in a family, 5533 edges completed
+  2 component(s) skipped as too large or too dense: sizes [146 1239]
 ```
 
 # Code Similarity Report
@@ -66,21 +66,21 @@ flowchart LR
     s4["grpc_call<br/>absent"]
     s5(["data_store_access"])
     s6["db_access<br/>25"]
-    s7["caching<br/>251"]
+    s7["caching<br/>250"]
     s8["transaction<br/>189"]
-    s9["file_io<br/>407"]
-    s10["logging<br/>238"]
+    s9["file_io<br/>408"]
+    s10["logging<br/>237"]
     s11(["data_transformation"])
     s12["mapping<br/>218"]
-    s13["validation<br/>437"]
-    s14["serialization<br/>309"]
+    s13["validation<br/>435"]
+    s14["serialization<br/>310"]
     s15(["control_flow"])
-    s16["concurrency<br/>688"]
+    s16["concurrency<br/>693"]
     s17(["fault_tolerance"])
     s18["retry<br/>85"]
     s19["circuit_breaker<br/>absent"]
     s20(["error_handling"])
-    s21["error_wrapping<br/>636"]
+    s21["error_wrapping<br/>644"]
     s0 --> s1
     s1 --> s2
     s2 --> s3
@@ -120,25 +120,25 @@ flowchart LR
     c5(["control_flow"])
     c6(["fault_tolerance"])
     c7(["error_handling"])
-    c8["C.__u32+C.int<br/>636"]
-    c9["Config.OpenStdin+Config.StdinOnce<br/>688"]
+    c8["C.__u32+C.int<br/>644"]
+    c9["Config.OpenStdin+Config.StdinOnce<br/>693"]
     c10["Healthcheck.Retries+c.callWithRetry<br/>85"]
-    c11["Isolation.IsValid+PluginObj.PluginReference<br/>437"]
+    c11["Isolation.IsValid+PluginObj.PluginReference<br/>435"]
     c12["LittleEndian.Uint64+tx.onRollback<br/>189"]
-    c13["Store.validateName+bytes.TrimSpace<br/>407"]
+    c13["Store.validateName+bytes.TrimSpace<br/>408"]
     c14["Task.GetContainer+enginemount.Mount<br/>218"]
-    c15["Task.Runtime+c.callWithRetry<br/>309"]
-    c16["c.cache+client.PruneInfo<br/>251"]
+    c15["Task.Runtime+c.callWithRetry<br/>310"]
+    c16["c.cache+client.PruneInfo<br/>250"]
     c17["config.MetaHeaders+config.AuthConfig+p.repoName<br/>80"]
-    c18["config.processIPAM+d.createNetwork<br/>71"]
-    c19["ctr.terminateInvoked+diagnostic.TableObj<br/>238"]
+    c18["config.processIPAM+d.createNetwork<br/>70"]
+    c19["ctr.terminateInvoked+diagnostic.TableObj<br/>237"]
     c20["d.Sock+time.Second<br/>57"]
-    c21["daemon.containerdClient+daemon.imageService<br/>158"]
-    c22["errdefs.Forbidden+errdefs.InvalidParameter<br/>204"]
+    c21["daemon.containerdClient+daemon.imageService<br/>156"]
+    c22["errdefs.Forbidden+errdefs.InvalidParameter<br/>206"]
     c23["http.StatusConflict+http.StatusNotImplemented<br/>50"]
-    c24["img.RawJSON+img.OS<br/>146"]
+    c24["img.RawJSON+img.OS<br/>148"]
     c25["n.hasSpecialDriver+n.ipamType<br/>95"]
-    c26["nat.Port+fmt.Sprintf<br/>86"]
+    c26["nat.Port+fmt.Sprintf<br/>85"]
     c27["options.quota+quota.Size<br/>139"]
     c28["pd.layer+layer.DiffID<br/>93"]
     c0 --> c1
@@ -177,116 +177,117 @@ The diagram draws the 3 largest concepts on each branch; **498 further concepts*
 
 | Concept | Functions | Convention |
 |---|---:|---|
-| `Config.OpenStdin+Config.StdinOnce` | 688 | `0.54` (settled) |
-| `C.__u32+C.int` | 636 | `0.63` (settled) |
-| `Isolation.IsValid+PluginObj.PluginReference` | 437 | `0.60` (settled) |
-| `Store.validateName+bytes.TrimSpace` | 407 | `0.56` (settled) |
-| `Task.Runtime+c.callWithRetry` | 309 | `0.55` (settled) |
-| `c.cache+client.PruneInfo` | 251 | `0.62` (settled) |
-| `ctr.terminateInvoked+diagnostic.TableObj` | 238 | `0.52` (settled) |
+| `Config.OpenStdin+Config.StdinOnce` | 693 | `0.54` (settled) |
+| `C.__u32+C.int` | 644 | `0.63` (settled) |
+| `Isolation.IsValid+PluginObj.PluginReference` | 435 | `0.59` (settled) |
+| `Store.validateName+bytes.TrimSpace` | 408 | `0.56` (settled) |
+| `Task.Runtime+c.callWithRetry` | 310 | `0.55` (settled) |
+| `c.cache+client.PruneInfo` | 250 | `0.62` (settled) |
+| `ctr.terminateInvoked+diagnostic.TableObj` | 237 | `0.52` (settled) |
 | `Task.GetContainer+enginemount.Mount` | 218 | `0.58` (settled) |
-| `errdefs.Forbidden+errdefs.InvalidParameter` | 204 | `0.56` (settled) |
+| `errdefs.Forbidden+errdefs.InvalidParameter` | 206 | `0.56` (settled) |
 | `LittleEndian.Uint64+tx.onRollback` | 189 | `0.53` (settled) |
-| `daemon.containerdClient+daemon.imageService` | 158 | `0.59` (settled) |
-| `img.RawJSON+img.OS` | 146 | `0.62` (settled) |
+| `daemon.containerdClient+daemon.imageService` | 156 | `0.59` (settled) |
+| `img.RawJSON+img.OS` | 148 | `0.62` (settled) |
 | `options.quota+quota.Size` | 139 | `0.57` (settled) |
-| `platforms.Parse+ocispec.Platform` | 139 | `0.55` (settled) |
-| `strconv.FormatInt+strconv.Itoa` | 130 | `0.63` (settled) |
-| `config.Backend+c.config` | 127 | `0.48` (loose) |
+| `platforms.Parse+ocispec.Platform` | 133 | `0.54` (settled) |
+| `strconv.FormatInt+strconv.Itoa` | 131 | `0.63` (settled) |
+| `config.Backend+c.config` | 126 | `0.47` (loose) |
 | `Config.Image+container.Name` | 123 | `0.56` (settled) |
-| `NetworkSettings.Ports+NetworkSettings.SandboxID` | 118 | `0.57` (settled) |
+| `NetworkSettings.Ports+NetworkSettings.SandboxID` | 119 | `0.58` (settled) |
 | `container.StreamConfig+container.Config` | 107 | `0.51` (settled) |
 | `container.RestartManager+container.*Container.Restar…` | 105 | `0.56` (settled) |
-| `n.skipGwAllocIPv4+n.skipGwAllocIPv6+n.inDelete` | 101 | `0.42` (loose) |
 | `n.addrSpace+n.skipGwAllocIPv4` | 99 | `0.37` (loose) |
-| `distribution.Config+i.registryService` | 97 | `0.58` (settled) |
+| `n.skipGwAllocIPv4+n.skipGwAllocIPv6+n.inDelete` | 99 | `0.41` (loose) |
+| `distribution.Config+i.registryService` | 98 | `0.58` (settled) |
 | `n.hasSpecialDriver+n.ipamType` | 95 | `0.43` (loose) |
 | `pd.layer+layer.DiffID` | 93 | `0.59` (settled) |
-| `nat.PortBinding+nat.PortMap` | 87 | `0.58` (settled) |
-| `config.HnsID+d.name` | 86 | `0.53` (settled) |
-| `nat.Port+fmt.Sprintf` | 86 | `0.53` (settled) |
+| `nat.PortBinding+nat.PortMap` | 88 | `0.58` (settled) |
 | `options.size+driver.options` | 86 | `0.50` (settled) |
 | `Healthcheck.Retries+c.callWithRetry` | 85 | `0.52` (settled) |
-| `netlabel.MacAddress+options` | 82 | `0.52` (settled) |
+| `nat.Port+fmt.Sprintf` | 85 | `0.53` (settled) |
+| `config.HnsID+d.name` | 84 | `0.53` (settled) |
 | `config.MetaHeaders+config.AuthConfig+p.repoName` | 80 | `0.52` (settled) |
-| `Gateway.IP+Pool.String` | 75 | `0.60` (settled) |
-| `i.walkPresentChildren+c8dimages.IsIndexType` | 75 | `0.47` (loose) |
-| `types.MediaTypeMultiplexedS…+types.MediaTypeRawStream` | 74 | `0.37` (loose) |
-| `config.processIPAM+d.createNetwork` | 71 | `0.54` (settled) |
+| `netlabel.MacAddress+options` | 80 | `0.52` (settled) |
+| `Gateway.IP+Pool.String` | 74 | `0.60` (settled) |
+| `i.walkPresentChildren+c8dimages.IsIndexType` | 74 | `0.46` (loose) |
+| `types.MediaTypeMultiplexedS…+types.MediaTypeRawStream` | 73 | `0.38` (loose) |
 | `daemon.UsingSystemd+remote` | 71 | `0.50` (settled) |
-| `ep.getDNSNames+ep.svcID` | 70 | `0.44` (loose) |
-| `netlabel.Internal+netlabel.EnableIPv6+netlabel.EnableIPv4` | 70 | `0.38` (loose) |
+| `config.processIPAM+d.createNetwork` | 70 | `0.54` (settled) |
 | `os.Setenv+os.Getenv` | 70 | `0.51` (settled) |
-| `TmpfsOptions.Mode+TmpfsOptions.SizeBytes+m.ReadOnly` | 69 | `0.56` (settled) |
-| `typ.Prefix+typ.Capability` | 67 | `0.48` (loose) |
+| `TmpfsOptions.Mode+TmpfsOptions.SizeBytes+m.ReadOnly` | 69 | `0.58` (settled) |
+| `netlabel.Internal+netlabel.EnableIPv6+netlabel.EnableIPv4` | 69 | `0.39` (loose) |
+| `ep.getDNSNames+ep.svcID` | 68 | `0.44` (loose) |
+| `typ.Prefix+typ.Capability` | 68 | `0.47` (loose) |
+| `ctr.ID+errors.New` | 66 | `0.54` (settled) |
+| `scope.Global+r.RegisterDriver` | 66 | `0.67` (settled) |
 | `config.ProgressOutput+p.repoName` | 64 | `0.51` (settled) |
-| `scope.Global+r.RegisterDriver` | 64 | `0.67` (settled) |
-| `c.Name+log.Fields` | 63 | `0.36` (loose) |
-| `ctr.ID+errors.New` | 62 | `0.54` (settled) |
-| `nlh.AddrAdd+netlink.FAMILY_V4` | 62 | `0.36` (loose) |
+| `nlh.AddrAdd+netlink.FAMILY_V4` | 63 | `0.36` (loose) |
 | `types.MediaTypeMultiplexedS…+types.MediaTypeRawStream+httputils.DecodePlatform` | 62 | `0.41` (loose) |
 | `Config.Hostname+container.Config` | 61 | `0.50` (settled) |
-| `cfg.Root+filepath.Join` | 61 | `0.43` (loose) |
-| `httputils.BoolValueOrDefault+types.MediaTypeMultiplexedS…` | 61 | `0.41` (loose) |
-| `nlh.AddrAdd+netlink.FAMILY_V4+netlink.FAMILY_V6` | 61 | `0.38` (loose) |
-| `m.Options+s.Root` | 60 | `0.49` (loose) |
+| `c.Name+log.Fields` | 61 | `0.37` (loose) |
+| `m.Options+s.Root` | 61 | `0.49` (loose) |
+| `httputils.BoolValueOrDefault+types.MediaTypeMultiplexedS…` | 60 | `0.41` (loose) |
+| `cfg.Root+filepath.Join` | 59 | `0.43` (loose) |
+| `nlh.AddrAdd+netlink.FAMILY_V4+netlink.FAMILY_V6` | 59 | `0.38` (loose) |
 | `types.NotImplementedErrorf+bitmap+overlayutils` | 59 | `0.71` (settled) |
+| `Config.ExposedPorts+nat.Port` | 58 | `0.58` (settled) |
 | `bnd.HostIP+bnd.IP` | 58 | `0.51` (settled) |
 | `d.Sock+time.Second` | 57 | `0.52` (settled) |
+| `n.Scope+scope.Global` | 57 | `0.48` (loose) |
 | `filepath.ToSlash+query.Set` | 56 | `0.34` (loose) |
 | `ocispec.AnnotationRefName+ref.Name` | 56 | `0.47` (loose) |
 | `d.secMap+k.tag` | 55 | `0.35` (loose) |
 | `directory.Size+d.getDiffPath` | 55 | `0.52` (settled) |
-| `n.Scope+scope.Global` | 55 | `0.48` (loose) |
+| `imagetypes.Summary+Config.Labels` | 55 | `0.55` (settled) |
 | `types.NotImplementedErrorf+bitmap` | 55 | `0.76` (unanimous) |
-| `Spec.BindOptions+mp.Spec` | 54 | `0.54` (settled) |
-| `imagetypes.Summary+Config.Labels` | 54 | `0.55` (settled) |
 | `n.skipGwAllocIPv4+n.skipGwAllocIPv6` | 54 | `0.41` (loose) |
 | `daemon.UsingSystemd+initlayer` | 53 | `0.55` (settled) |
-| `img.Platform+fmt.Errorf` | 52 | `0.63` (settled) |
-| `Config.ExposedPorts+nat.Port` | 51 | `0.57` (settled) |
+| `img.Platform+fmt.Errorf` | 53 | `0.63` (settled) |
 | `libnetwork.NetworkOptionIpam+libnetwork.IpamConf+netlabel.EnableIPv6` | 51 | `0.51` (settled) |
-| `config.HnsID+d.name+d.getNetwork` | 50 | `0.52` (settled) |
 | `http.StatusConflict+http.StatusNotImplemented` | 50 | `0.56` (settled) |
-| `span.AddEvent+span.SetAttributes` | 49 | `0.41` (loose) |
+| `discoverapi.Discover+driverapi.Driver+drvRegistry.WalkDrivers` | 49 | `0.43` (loose) |
+| `span.AddEvent+span.SetAttributes` | 49 | `0.40` (loose) |
+| `config.HnsID+d.name+d.getNetwork` | 47 | `0.51` (settled) |
+| `netlabel.Internal+netlabel.EnableIPv6` | 47 | `0.53` (settled) |
 | `portConfig.Name+Endpoint.Ports` | 47 | `0.51` (settled) |
 | `builder.Stderr+c.ShellDependantCmdLine+c.String` | 46 | `0.44` (loose) |
-| `discoverapi.Discover+driverapi.Driver+drvRegistry.WalkDrivers` | 46 | `0.42` (loose) |
 | `fstype.GetFSMagic+overlayutils` | 46 | `0.48` (loose) |
-| `ipam.RequestAddress+ipamapi.ErrNoAvailableIPs` | 46 | `0.47` (loose) |
-| `netlabel.Internal+netlabel.EnableIPv6` | 46 | `0.53` (settled) |
-| `reference.Path+reference.Domain` | 45 | `0.52` (settled) |
+| `ctr.IsPaused+ctr.IsRestarting` | 45 | `0.40` (loose) |
+| `ref.Name+options.Platform` | 45 | `0.45` (loose) |
 | `Process.Args+s.Root` | 44 | `0.53` (settled) |
+| `Spec.BindOptions+mp.Spec` | 44 | `0.51` (settled) |
 | `cgroups.Mode+cgroups.Unified` | 44 | `0.58` (settled) |
 | `config.ProgressOutput+config.ReferenceStore` | 44 | `0.47` (loose) |
 | `containersReplica.ReserveNa…+cerrdefs.IsConflict` | 44 | `0.42` (loose) |
-| `ctr.IsPaused+ctr.IsRestarting` | 44 | `0.40` (loose) |
-| `daemon.setupLinkedContainers+Config.User` | 44 | `0.52` (settled) |
+| `daemon.setupLinkedContainers+Config.User` | 44 | `0.51` (settled) |
+| `ipam.RequestAddress+ipamapi.ErrNoAvailableIPs` | 44 | `0.46` (loose) |
 | `l.is+l.lss+is.Get` | 44 | `0.52` (settled) |
-| `network.config+d.link` | 44 | `0.42` (loose) |
-| `ref.Name+options.Platform` | 44 | `0.45` (loose) |
+| `reference.Path+reference.Domain` | 44 | `0.52` (settled) |
 | `discoverapi.Discover+driverapi.Driver` | 42 | `0.57` (settled) |
+| `network.config+d.link` | 42 | `0.41` (loose) |
 | `Config.Image+Config.Labels` | 41 | `0.47` (loose) |
+| `driverapi.NetworkPluginEndp…+ipamapi.PluginEndpointType+daemon.netController` | 41 | `0.46` (loose) |
 | `errors.Errorf+fluent` | 41 | `0.55` (settled) |
 | `ld.desc+desc.Digest` | 41 | `0.53` (settled) |
-| `task.Networks+Network.Spec` | 41 | `0.47` (loose) |
-| `driverapi.NetworkPluginEndp…+ipamapi.PluginEndpointType+daemon.netController` | 40 | `0.45` (loose) |
 | `ipamapi.PluginEndpointType+driverapi.NetworkPluginEndp…+context.TODO` | 40 | `0.55` (settled) |
+| `subnet.GatewayAddress+hcsshim.HNSNetworkRequest` | 40 | `0.38` (loose) |
+| `task.Networks+Network.Spec` | 40 | `0.46` (loose) |
 | `time.RFC3339+time.Now` | 40 | `0.51` (settled) |
 | `daemon.clusterProvider+fmt.Errorf` | 39 | `0.52` (settled) |
 | `img.RawJSON+img.OS+path.Join` | 39 | `0.57` (settled) |
-| `networktypes.EndpointSettin…+network.EndpointSettings` | 39 | `0.45` (loose) |
 | `options.Signal+options.Timeout` | 39 | `0.51` (settled) |
 | `r.FormValue+pr.backend` | 39 | `0.56` (settled) |
-| `subnet.GatewayAddress+hcsshim.HNSNetworkRequest` | 39 | `0.39` (loose) |
+| `label.Relabel+container.MountLabel` | 38 | `0.50` (loose) |
 | `metrics.ContainerActions+ContainerActions.WithValues` | 38 | `0.41` (loose) |
+| `networktypes.EndpointSettin…+network.EndpointSettings` | 38 | `0.46` (loose) |
 | `txn.First+containers.First` | 38 | `0.41` (loose) |
 | `c.IsRunning+daemon.config` | 37 | `0.49` (loose) |
-| `c.WalkNetworks+libnetwork.*Controller.Walk…` | 37 | `0.52` (settled) |
 | `container.spec+c.spec` | 37 | `0.54` (settled) |
 | `epConfig.IPAMConfig+containertypes.NetworkMode` | 37 | `0.41` (loose) |
-| `label.Relabel+container.MountLabel` | 37 | `0.50` (loose) |
+| `system.Runtime+system` | 37 | `0.59` (settled) |
 | `volumeopts.WithCreateRefere…+volumes.Create` | 37 | `0.54` (settled) |
+| `c.WalkNetworks+libnetwork.*Controller.Walk…` | 36 | `0.52` (settled) |
 | `cfg.AuthorizationPlugins+cfg.Experimental` | 36 | `0.35` (loose) |
 | `containerdlabels.LabelDistr…+source.registryRef` | 36 | `0.49` (loose) |
 | `globalLock.RLock+globalLock.RUnlock` | 36 | `0.51` (settled) |
@@ -298,159 +299,159 @@ The diagram draws the 3 largest concepts on each branch; **498 further concepts*
 | `cerrdefs.IsAlreadyExists+errors.Wrap` | 35 | `0.41` (loose) |
 | `daemon.runAsHyperVContainer+errors.Wrap` | 35 | `0.51` (settled) |
 | `httpstatus.FromError+r.Method` | 35 | `0.48` (loose) |
-| `system.Runtime+system` | 35 | `0.60` (settled) |
 | `compression.DecompressStream+log.G` | 34 | `0.59` (settled) |
 | `errcode.ErrorCodeDenied+f.err` | 34 | `0.54` (settled) |
 | `fmt.Fprintln+fmt.Fprintf` | 34 | `0.42` (loose) |
 | `libnetwork.NetworkOptionIpam+libnetwork.IpamConf+netlabel.EnableIPv4` | 34 | `0.45` (loose) |
 | `Spec.BindOptions+m.Propagation` | 33 | `0.45` (loose) |
-| `canonical.Digest+reference.WithDigest` | 33 | `0.42` (loose) |
-| `ctr.RWLayer+daemon.LogContainerEvent` | 33 | `0.42` (loose) |
-| `gogotypes.DurationFromProto+types.DurationFromProto` | 33 | `0.51` (settled) |
+| `gogotypes.DurationFromProto+types.DurationFromProto` | 33 | `0.52` (settled) |
+| `n.path+netns.GetFromPath` | 33 | `0.34` (loose) |
 | `oci.DefaultSpec+oci` | 33 | `0.53` (settled) |
 | `rp.Name+n.IsHost` | 33 | `0.54` (settled) |
 | `c.MountLabel+idtools.Identity` | 32 | `0.48` (loose) |
+| `canonical.Digest+reference.WithDigest` | 32 | `0.42` (loose) |
 | `ipamapi.PluginEndpointType+driverapi.NetworkPluginEndp…` | 32 | `0.43` (loose) |
-| `n.path+netns.GetFromPath` | 32 | `0.35` (loose) |
 | `netlabel.ExposedPorts+types.TransportPort` | 32 | `0.56` (settled) |
 | `network.config+d.link+config.EnableICC` | 32 | `0.39` (loose) |
+| `sb.containerID+sb.Endpoints` | 32 | `0.37` (loose) |
 | `b.options+state.imageID` | 31 | `0.54` (settled) |
 | `ep.Type+ep.nid` | 31 | `0.65` (settled) |
-| `h.Created+h.CreatedBy` | 31 | `0.52` (settled) |
 | `libnetwork.Network+daemon.FindNetwork` | 31 | `0.48` (loose) |
-| `p.HostPortEnd+p.HostIP+p.HostPort` | 31 | `0.42` (loose) |
 | `sb.controller+sb.containerID+sb.Endpoints` | 31 | `0.40` (loose) |
 | `sysinfo.New+os.Getenv` | 31 | `0.40` (loose) |
+| `config.Tail+config.Follow` | 30 | `0.52` (settled) |
+| `ctr.RWLayer+daemon.LogContainerEvent` | 30 | `0.41` (loose) |
 | `daemonCfg.Rootless+specs.Linux+HostConfig.Privileged` | 30 | `0.47` (loose) |
 | `n.secure+context.TODO` | 30 | `0.36` (loose) |
-| `sb.containerID+sb.Endpoints` | 30 | `0.36` (loose) |
+| `na.tasks+t.Networks` | 30 | `0.56` (settled) |
 | `m.RW+m.Propagation` | 29 | `0.46` (loose) |
-| `na.tasks+t.Networks` | 29 | `0.56` (settled) |
 | `ncfg.Type+ncfg.ID` | 29 | `0.60` (settled) |
+| `p.HostPortEnd+p.HostIP+p.HostPort` | 29 | `0.40` (loose) |
+| `Config.Hostname+ctr.Config` | 28 | `0.52` (settled) |
 | `archiver.Untar+archiver.IDMapping` | 28 | `0.47` (loose) |
 | `daemonCfg.Rootless+specs.Linux` | 28 | `0.50` (loose) |
 | `errdefs.Unknown+errdefs.System` | 28 | `0.43` (loose) |
 | `l.is+l.lss` | 28 | `0.47` (loose) |
 | `libnetwork.Network+nw.ID+nw.Name` | 28 | `0.45` (loose) |
+| `plugingetter.Release+plugins` | 28 | `0.49` (loose) |
 | `sort.Strings+instructions` | 28 | `0.42` (loose) |
 | `BindOptions.ReadOnlyNonRecu…+BindOptions.CreateMountpoint` | 27 | `0.55` (settled) |
-| `Config.Hostname+ctr.Config` | 27 | `0.51` (settled) |
 | `Created.Format+storage.DriverData` | 27 | `0.51` (settled) |
-| `config.Tail+config.Follow` | 27 | `0.52` (settled) |
 | `container.GetRootResourcePa…+container.*Container.GetRoo…` | 27 | `0.43` (loose) |
 | `hostURL.Host+hostURL.Scheme` | 27 | `0.48` (loose) |
 | `httputils.BoolValue+ir.backend` | 27 | `0.39` (loose) |
 | `listener.Close+proxy.listener` | 27 | `0.54` (settled) |
 | `ocispec.History+ocispec.RootFS` | 27 | `0.48` (loose) |
-| `plugingetter.Release+plugins` | 27 | `0.49` (loose) |
 | `resp.Status+http.NewRequestWithContext` | 27 | `0.44` (loose) |
-| `s.backend+httputils.VersionFromContext` | 27 | `0.44` (loose) |
-| `child.Name+linkIndex.children` | 26 | `0.43` (loose) |
-| `libnetwork.Network+nw.ID` | 26 | `0.43` (loose) |
+| `h.Created+h.CreatedBy` | 26 | `0.53` (settled) |
 | `p.Manifest+tlsconfig` | 26 | `0.50` (loose) |
 | `router.NewDeleteRoute+router.NewGetRoute` | 26 | `0.24` (loose) |
+| `s.backend+httputils.VersionFromContext` | 26 | `0.45` (loose) |
+| `Reference.String+p.platform` | 25 | `0.51` (settled) |
 | `b.bytes+l.logStreamName` | 25 | `0.48` (loose) |
 | `container.DetachAndUnmount+daemon.isOnlineFSOperationP…` | 25 | `0.42` (loose) |
 | `db.store+store.Txn` | 25 | `0.40` (loose) |
 | `fmt.Fprint+os.Exit` | 25 | `0.38` (loose) |
+| `libnetwork.Network+nw.ID` | 25 | `0.42` (loose) |
 | `plugins.Handle+plugins.Client` | 25 | `0.47` (loose) |
 | `tracing.Attribute+span.SetAttributes` | 25 | `0.37` (loose) |
-| `Reference.String+p.platform` | 24 | `0.52` (settled) |
+| `GwModeIPv6.isolated+config.GwModeIPv6` | 24 | `0.45` (loose) |
 | `c8dimages.IsLayerType+desc.MediaType` | 24 | `0.39` (loose) |
+| `child.Name+linkIndex.children` | 24 | `0.42` (loose) |
 | `manifestlist.DeserializedMa…+schema1.SignedManifest` | 24 | `0.47` (loose) |
 | `p.platform+p.desc` | 24 | `0.54` (settled) |
 | `runConfig.Cmd+container.Config+build` | 24 | `0.49` (loose) |
 | `v2.*Plugin.GetRefCount+daemon.*Daemon.LogPluginEve…` | 24 | `0.39` (loose) |
-| `GwModeIPv6.isolated+config.GwModeIPv6` | 23 | `0.44` (loose) |
+| `Privileges.AppArmor+Privileges.CredentialSpec` | 23 | `0.51` (settled) |
 | `c.getAgent+context.TODO` | 23 | `0.35` (loose) |
 | `d.call+api` | 23 | `0.62` (settled) |
-| `i.logImageEvent+events.ActionUnTag` | 23 | `0.34` (loose) |
+| `i.logImageEvent+events.ActionUnTag` | 23 | `0.35` (loose) |
 | `i.walkPresentChildren+c8dimages.IsIndexType+c8dimages.IsManifestType` | 23 | `0.29` (loose) |
 | `iPort.Protocol+iPort.PublishedPort` | 23 | `0.35` (loose) |
 | `net.CIDRMask+sb.getGatewayEndpoint` | 23 | `0.38` (loose) |
-| `nlHandle.LinkByName+n.nlHandle` | 23 | `0.36` (loose) |
+| `nlHandle.LinkByName+n.nlHandle` | 23 | `0.37` (loose) |
 | `nlh.LinkAdd+parentLink.Attrs` | 23 | `0.33` (loose) |
 | `nr.config+c.nr` | 23 | `0.33` (loose) |
 | `source.registryRef+reference.Path` | 23 | `0.40` (loose) |
-| `IPNet.String+nlwrap.AddrList+addr.IPNet` | 22 | `0.38` (loose) |
-| `Status.Err+task.Status` | 22 | `0.32` (loose) |
+| `st.Completed+progress.NewFromContext` | 23 | `0.51` (settled) |
 | `d.options+fmt.Errorf` | 22 | `0.57` (settled) |
 | `ep.endpointInGWNetwork+sb.Endpoints` | 22 | `0.43` (loose) |
 | `http.ProxyFromEnvironment+net.Dialer` | 22 | `0.50` (loose) |
 | `opts.WithGetDriver+vol.Driver` | 22 | `0.41` (loose) |
 | `ref.Name+tagged.Tag` | 22 | `0.40` (loose) |
-| `st.Completed+progress.NewFromContext` | 22 | `0.50` (loose) |
 | `t.Chains+t.Family` | 22 | `0.30` (loose) |
-| `Privileges.AppArmor+Privileges.CredentialSpec` | 21 | `0.49` (loose) |
 | `c.LeasesService+lm.Delete` | 21 | `0.42` (loose) |
 | `container.GetResourcePath+stat.IsDir` | 21 | `0.42` (loose) |
-| `daemon.logClusterEvent+task.Networks` | 21 | `0.30` (loose) |
 | `hcsshim.GetLayerMountPath+d.getLayerChain` | 21 | `0.45` (loose) |
 | `libnetwork.ErrNoSuchNetwork+libnetwork.Network` | 21 | `0.45` (loose) |
 | `netip.PrefixFrom+netip.Prefix` | 21 | `0.39` (loose) |
 | `opts.validator+opts.values` | 21 | `0.64` (settled) |
-| `parentLink.Attrs+netlink.Bridge` | 21 | `0.36` (loose) |
+| `parentLink.Attrs+netlink.Bridge` | 21 | `0.37` (loose) |
 | `plugins.ErrNotFound+plugins.Get` | 21 | `0.40` (loose) |
 | `registry.DecodeAuthConfig+registry.AuthHeader` | 21 | `0.44` (loose) |
 | `sb.Labels+sb.getEndpointInGWNetwork` | 21 | `0.41` (loose) |
-| `Platform.Variant+Platform.OSVersion` | 20 | `0.41` (loose) |
+| `IPNet.String+nlwrap.AddrList+addr.IPNet` | 20 | `0.39` (loose) |
+| `Platform.Variant+Platform.OSVersion` | 20 | `0.40` (loose) |
+| `Status.Err+task.Status` | 20 | `0.33` (loose) |
 | `backend.GetNetworks+backend.NetworkListConfig` | 20 | `0.26` (loose) |
 | `builder.Stderr+c.ShellDependantCmdLine` | 20 | `0.46` (loose) |
-| `c8dimages.MediaTypeDockerSc…+ocispec.MediaTypeImageLayer…` | 20 | `0.42` (loose) |
 | `cfg.TLS+log.SetLevel` | 20 | `0.49` (loose) |
 | `cleanups+idtools` | 20 | `0.56` (settled) |
+| `daemon.logClusterEvent+task.Networks` | 20 | `0.30` (loose) |
 | `distribution.Config+i.registryService+streamformatter.NewJSONProg…` | 20 | `0.41` (loose) |
 | `hcsshim.DeactivateLayer+hcsshim.UnprepareLayer` | 20 | `0.47` (loose) |
 | `srslog+loggerutils` | 20 | `0.51` (settled) |
+| `subnetIP.Mask+ip.IP` | 20 | `0.45` (loose) |
 | `swarmtypes.ServiceSpec+spec.TaskTemplate` | 20 | `0.42` (loose) |
-| `Config.Linux+Config.Mounts` | 19 | `0.38` (loose) |
 | `Spec.GetNetwork+ic.Range+network.IPAM` | 19 | `0.40` (loose) |
-| `broadcaster.Write+nDB.broadcaster` | 19 | `0.36` (loose) |
-| `containers.First+c.ImageID` | 19 | `0.33` (loose) |
+| `c8dimages.MediaTypeDockerSc…+ocispec.MediaTypeImageLayer…` | 19 | `0.42` (loose) |
 | `dns.TypeAAAA+dns.TypePTR` | 19 | `0.42` (loose) |
 | `eventsService.Log+i.eventsService` | 19 | `0.32` (loose) |
-| `img.Author+img.OSFeatures` | 19 | `0.44` (loose) |
 | `iptable.Exists+iptable.RawCombinedOutput` | 19 | `0.27` (loose) |
 | `nftables.Enabled+fmt.Errorf` | 19 | `0.41` (loose) |
 | `p.parseMountSpec+lazyregexp` | 19 | `0.51` (settled) |
 | `path.IsAbs+path.Join` | 19 | `0.45` (loose) |
 | `rootless.RunningWithRootles…+log.G` | 19 | `0.40` (loose) |
-| `sb.controller+sb.containerID` | 19 | `0.41` (loose) |
 | `signal.ParseSignal+errdefs.InvalidParameter` | 19 | `0.35` (loose) |
 | `stats+bufio` | 19 | `0.51` (settled) |
 | `testEnv.DaemonInfo+DaemonInfo.OSType` | 19 | `0.41` (loose) |
 | `a.call+api` | 18 | `0.65` (settled) |
+| `broadcaster.Write+nDB.broadcaster` | 18 | `0.36` (loose) |
+| `containers.First+c.ImageID` | 18 | `0.32` (loose) |
+| `d.keys+addr.Mask` | 18 | `0.32` (loose) |
+| `ep.Delete+context.WithoutCancel+fmt.Errorf` | 18 | `0.36` (loose) |
+| `img.Author+img.OSFeatures` | 18 | `0.43` (loose) |
 | `ipam.ReleaseAddress+context.TODO` | 18 | `0.28` (loose) |
 | `link.Attrs+n.nlHandle` | 18 | `0.41` (loose) |
 | `loggerutils.DefaultTemplate+info.ExtraAttributes` | 18 | `0.44` (loose) |
+| `sb.controller+sb.containerID` | 18 | `0.40` (loose) |
 | `strconv.FormatBool+strconv.Itoa` | 18 | `0.36` (loose) |
-| `subnetIP.Mask+ip.IP` | 18 | `0.43` (loose) |
+| `Config.Linux+Config.Mounts` | 17 | `0.37` (loose) |
 | `HostInfoFunctions.WithValues+metrics.HostInfoFunctions` | 17 | `0.27` (loose) |
-| `Spec.GetContainer+task.Spec` | 17 | `0.43` (loose) |
 | `c.newNS+unix.Gettid` | 17 | `0.30` (loose) |
 | `containertypes.Isolation+defaultIsolation.IsHyperV` | 17 | `0.39` (loose) |
-| `d.keys+addr.Mask` | 17 | `0.29` (loose) |
 | `dns.TypeAAAA+dns.A` | 17 | `0.46` (loose) |
-| `driverapi.NetworkPluginEndp…+ipamapi.PluginEndpointType` | 17 | `0.39` (loose) |
-| `ec.User+Container.ID` | 17 | `0.37` (loose) |
-| `ep.Delete+context.WithoutCancel+fmt.Errorf` | 17 | `0.34` (loose) |
+| `ec.User+Container.ID` | 17 | `0.38` (loose) |
 | `fs.GetMetadata+fs.SetMetadata` | 17 | `0.42` (loose) |
+| `imgID.Digest+referenceStore.References` | 17 | `0.38` (loose) |
 | `md.NDotsFrom+md.NSOverride` | 17 | `0.41` (loose) |
 | `reference.ParseNamed+reference.Digested` | 17 | `0.33` (loose) |
-| `GwModeIPv4.isolated+config.GwModeIPv4` | 16 | `0.46` (loose) |
-| `addr.Unmap+netip.AddrFromSlice` | 16 | `0.35` (loose) |
+| `GwModeIPv4.isolated+config.GwModeIPv4` | 16 | `0.45` (loose) |
+| `Spec.GetContainer+task.Spec` | 16 | `0.42` (loose) |
+| `addr.Unmap+netip.AddrFromSlice` | 16 | `0.34` (loose) |
 | `addr.Unmap+netip.AddrFromSlice+fmt.Errorf` | 16 | `0.34` (loose) |
-| `container.name+c.container` | 16 | `0.65` (settled) |
-| `containers.List+daemon.containers` | 16 | `0.49` (loose) |
+| `container.name+c.container` | 16 | `0.66` (settled) |
+| `driverapi.NetworkPluginEndp…+ipamapi.PluginEndpointType` | 16 | `0.38` (loose) |
 | `e.backend+e.dependencies` | 16 | `0.45` (loose) |
-| `imgID.Digest+referenceStore.References` | 16 | `0.37` (loose) |
 | `libnetwork.NetworkOptionIpam+libnetwork.IpamConf` | 16 | `0.34` (loose) |
-| `nw.IPAM+Driver.Options` | 16 | `0.43` (loose) |
-| `options+containers` | 16 | `0.55` (settled) |
+| `options+containers` | 16 | `0.56` (settled) |
 | `p.DefaultCopyMode+VolumeOptions.NoCopy` | 16 | `0.43` (loose) |
+| `parentLink.Attrs+netlink.LinkAttrs` | 16 | `0.49` (loose) |
+| `r.FormValue+output.Flushed` | 16 | `0.36` (loose) |
 | `sctp.ListenSCTP+net.ListenTCP` | 16 | `0.30` (loose) |
 | `client.TaskList+inspect.State` | 15 | `0.46` (loose) |
 | `connection.sysObj+sysObj.Call` | 15 | `0.40` (loose) |
+| `containers.List+daemon.containers` | 15 | `0.47` (loose) |
 | `http.StatusNoContent+io.Writer` | 15 | `0.40` (loose) |
 | `i.Address+i.AddressIPv6` | 15 | `0.36` (loose) |
 | `i.StorageDriver+client.LeasesService+client.SnapshotService` | 15 | `0.47` (loose) |
@@ -461,13 +462,14 @@ The diagram draws the 3 largest concepts on each branch; **498 further concepts*
 | `ncfg.ContainerIfacePrefix+ncfg.DefaultBindingIP+ncfg.DefaultBridge` | 15 | `0.50` (loose) |
 | `netlabel.ExposedPorts+netlabel.PortMap` | 15 | `0.33` (loose) |
 | `netlabel.ExposedPorts+netlabel.PortMap+types.TransportPort` | 15 | `0.40` (loose) |
+| `nw.IPAM+Driver.Options` | 15 | `0.42` (loose) |
 | `ordinal.Load+r.maxOrdinal` | 15 | `0.35` (loose) |
 | `os.NewFile+sctp` | 15 | `0.43` (loose) |
-| `parentLink.Attrs+netlink.LinkAttrs` | 15 | `0.47` (loose) |
-| `r.FormValue+output.Flushed` | 15 | `0.35` (loose) |
+| `plugingetter.CompatPlugin+plugins` | 15 | `0.41` (loose) |
 | `reference.IsNameOnly+reference.WithTag` | 15 | `0.36` (loose) |
 | `ts.h+ts.tHash` | 15 | `0.58` (settled) |
 | `txn.OnCommit+conf.IsValueSet` | 15 | `0.34` (loose) |
+| `Config.NetworkDisabled+ctr.Config` | 14 | `0.40` (loose) |
 | `Runtimes.Default+cfg.Runtimes` | 14 | `0.54` (settled) |
 | `cmd.Command+icmd.Cmd` | 14 | `0.34` (loose) |
 | `config.RegistryService+endpoint.URL` | 14 | `0.34` (loose) |
@@ -480,54 +482,53 @@ The diagram draws the 3 largest concepts on each branch; **498 further concepts*
 | `list+pools` | 14 | `0.54` (settled) |
 | `na.networks+n.ID` | 14 | `0.53` (settled) |
 | `na.services+vip.Addr` | 14 | `0.48` (loose) |
-| `net.SplitHostPort+net.ParseIP` | 14 | `0.44` (loose) |
-| `nlh.LinkAdd+netlink.Bridge` | 14 | `0.34` (loose) |
+| `net.SplitHostPort+net.ParseIP` | 14 | `0.45` (loose) |
+| `nlh.LinkAdd+netlink.Bridge` | 14 | `0.32` (loose) |
 | `otelhttp.NewTransport+http.Transport` | 14 | `0.40` (loose) |
-| `plugingetter.CompatPlugin+plugins` | 14 | `0.41` (loose) |
 | `strconv.ParseInt+fmt.Errorf` | 14 | `0.44` (loose) |
 | `t.Task+remote.wrapError` | 14 | `0.58` (settled) |
-| `v.value+v.deleting` | 14 | `0.39` (loose) |
+| `v.value+v.deleting` | 14 | `0.38` (loose) |
 | `Config.Domainname+Config.Hostname` | 13 | `0.42` (loose) |
-| `Config.NetworkDisabled+ctr.Config` | 13 | `0.38` (loose) |
+| `Created.Unix+Config.Labels` | 13 | `0.50` (settled) |
 | `bufio.NewReader+bufio` | 13 | `0.50` (settled) |
 | `daemon.runAsHyperVContainer+daemon.*Daemon.runAsHyperVC…` | 13 | `0.48` (loose) |
-| `gogotypes.DurationProto+fmt.Errorf` | 13 | `0.37` (loose) |
 | `h.fromsvc+h.tosvc` | 13 | `0.44` (loose) |
 | `h.head+h.unselected` | 13 | `0.46` (loose) |
-| `info.cg2Controllers+info.Warnings` | 13 | `0.50` (loose) |
 | `n.IsBridge+n.IsDefault` | 13 | `0.67` (settled) |
 | `n.Meta+s.Meta` | 13 | `0.39` (loose) |
 | `net.IPAddr+sctp.SCTPAddr` | 13 | `0.37` (loose) |
 | `netlink.SCOPE_UNIVERSE+nlHandle.RouteAdd` | 13 | `0.34` (loose) |
 | `netlink.XFRM_MODE_TRANSPORT+netlink.XFRM_PROTO_ESP` | 13 | `0.34` (loose) |
 | `network.NetworkHost+network.NetworkNone` | 13 | `0.39` (loose) |
-| `once.Do+unix` | 13 | `0.43` (loose) |
+| `once.Do+unix` | 13 | `0.42` (loose) |
 | `out.WriteProgress+remotes.MakeRefKey` | 13 | `0.29` (loose) |
 | `p.GetTypes+v2.*Plugin.GetTypes` | 13 | `0.30` (loose) |
-| `path.Split+fmt.Errorf` | 13 | `0.40` (loose) |
+| `path.Split+fmt.Errorf` | 13 | `0.39` (loose) |
 | `pool.Addr+pool.Bits` | 13 | `0.33` (loose) |
 | `r.RegisterDriver+scope.Global` | 13 | `0.62` (settled) |
 | `s.config+s.mu` | 13 | `0.43` (loose) |
 | `sb.makeHostsRecs+config.hostsPath` | 13 | `0.33` (loose) |
 | `sctp.ListenSCTP+net.ListenTCP+net.ListenUDP` | 13 | `0.33` (loose) |
 | `w.Opt+mod` | 13 | `0.83` (unanimous) |
-| `Created.Unix+Config.Labels` | 12 | `0.53` (settled) |
 | `Subnet.Addr+k.AddressSpace` | 12 | `0.21` (loose) |
 | `addr.Mask+d.advertiseAddress` | 12 | `0.34` (loose) |
-| `b.HostPort+b.Port` | 12 | `0.24` (loose) |
+| `b.HostPort+b.Port` | 12 | `0.27` (loose) |
 | `binding.HostIP+HostConfig.PortBindings` | 12 | `0.35` (loose) |
 | `c.stdin+c.stdinPipe` | 12 | `0.33` (loose) |
 | `config.Config4+config.Config6` | 12 | `0.45` (loose) |
 | `config.IpvlanFlag+config.IpvlanMode` | 12 | `0.42` (loose) |
 | `config.Mirrors+registry.IndexInfo` | 12 | `0.45` (loose) |
 | `ctr.MountLabel+ctr.ImageID` | 12 | `0.43` (loose) |
+| `gogotypes.DurationProto+fmt.Errorf` | 12 | `0.35` (loose) |
+| `info.cg2Controllers+info.Warnings` | 12 | `0.51` (settled) |
 | `io.NopCloser+bytes` | 12 | `0.39` (loose) |
+| `lcs.authConfig+challenge` | 12 | `0.52` (settled) |
 | `mounttypes.TypeImage+m.Spec` | 12 | `0.41` (loose) |
 | `nDB.networkNodes+v2` | 12 | `0.59` (settled) |
 | `net.Conn+net` | 12 | `0.41` (loose) |
 | `nl.manager+nl.ns` | 12 | `0.98` (unanimous) |
-| `nlwrap.NewHandleAt+syscall.NETLINK_ROUTE` | 12 | `0.23` (loose) |
-| `resolvconf.Parse+bytes.NewBuffer` | 12 | `0.25` (loose) |
+| `resolvconf.Parse+bytes.NewBuffer` | 12 | `0.26` (loose) |
+| `t.Method+t.NumMethod` | 12 | `0.32` (loose) |
 | `tlsconfig.Client+tlsconfig.Options` | 12 | `0.34` (loose) |
 | `types+network` | 12 | `0.47` (loose) |
 | `v.Components+types.ComponentVersion` | 12 | `0.32` (loose) |
@@ -539,14 +540,14 @@ The diagram draws the 3 largest concepts on each branch; **498 further concepts*
 | `filepath.Join+shimopts` | 11 | `0.43` (loose) |
 | `http.Request+sha512` | 11 | `0.31` (loose) |
 | `ipamutils.NetworkToSplit.Ov…+ipbits` | 11 | `0.39` (loose) |
-| `lcs.authConfig+challenge` | 11 | `0.49` (loose) |
+| `netip.AddrFromSlice+portmapper.*PortMapper.Unmap` | 11 | `0.27` (loose) |
+| `nlwrap.NewHandleAt+syscall.NETLINK_ROUTE` | 11 | `0.23` (loose) |
 | `overlayutils.VXLANUDPPort+ns.NlHandle` | 11 | `0.30` (loose) |
 | `r.cancelPull+r.checkClosed` | 11 | `0.39` (loose) |
 | `s.FinishedAt+s.Pid` | 11 | `0.22` (loose) |
-| `t.Method+t.NumMethod` | 11 | `0.34` (loose) |
 | `IPAM.Config+network.IPAM` | 10 | `0.35` (loose) |
-| `IPNet.String+nlwrap.AddrList` | 10 | `0.26` (loose) |
 | `a.eMount+a.scopePath` | 10 | `0.81` (unanimous) |
+| `bnd.HostIP+bnd.IP+defHostIP.To4` | 10 | `0.40` (loose) |
 | `client.SnapshotService+i.client` | 10 | `0.48` (loose) |
 | `containersReplica.ReserveNa…+cerrdefs.IsConflict+daemon.containersReplica` | 10 | `0.28` (loose) |
 | `d.create+opts.StorageOpt` | 10 | `0.42` (loose) |
@@ -555,9 +556,7 @@ The diagram draws the 3 largest concepts on each branch; **498 further concepts*
 | `ipbits.Add+bitmap.*Bitmap.Bits` | 10 | `0.28` (loose) |
 | `nDB.RLock+nDB.RUnlock` | 10 | `0.31` (loose) |
 | `net.HardwareAddr+fmt.Errorf` | 10 | `0.33` (loose) |
-| `netip.AddrFromSlice+portmapper.*PortMapper.Unmap` | 10 | `0.25` (loose) |
 | `os.IsPathSeparator+unsafe` | 10 | `0.31` (loose) |
-| `portallocator.Get+portallocator` | 10 | `0.39` (loose) |
 | `rm.hijacked+rm.rw` | 10 | `0.34` (loose) |
 | `s.Meta+s.Endpoint` | 10 | `0.35` (loose) |
 | `scanner.Err+scanner.Text` | 10 | `0.38` (loose) |
@@ -567,9 +566,9 @@ The diagram draws the 3 largest concepts on each branch; **498 further concepts*
 | `windows.UTF16PtrFromString+windows` | 10 | `0.48` (loose) |
 | `BridgeConfig.Iface+conf.BridgeConfig` | 9 | `0.40` (loose) |
 | `C.__u64+errno.Error` | 9 | `0.50` (loose) |
+| `IPNet.String+nlwrap.AddrList` | 9 | `0.25` (loose) |
 | `Timestamp.UnixNano+msg.Timestamp` | 9 | `0.26` (loose) |
 | `TmpfsOptions.Mode+TmpfsOptions.SizeBytes` | 9 | `0.56` (settled) |
-| `bnd.HostIP+bnd.IP+defHostIP.To4` | 9 | `0.43` (loose) |
 | `d.deleteNetwork+Pool.String` | 9 | `0.31` (loose) |
 | `daemon.execCommands+term` | 9 | `0.31` (loose) |
 | `epi.dstName+epi.routes` | 9 | `0.43` (loose) |
@@ -578,6 +577,7 @@ The diagram draws the 3 largest concepts on each branch; **498 further concepts*
 | `info.ContainerImageName+info.ContainerImageID` | 9 | `0.48` (loose) |
 | `jinfo.AddStaticRoute+iNames.SetNames` | 9 | `0.26` (loose) |
 | `o.cfg+initlayer` | 9 | `0.68` (settled) |
+| `portallocator.Get+portallocator` | 9 | `0.39` (loose) |
 | `pp.Call+plugins.WithRequestTimeout` | 9 | `0.75` (settled) |
 | `runConfig.Cmd+container.Config` | 9 | `0.46` (loose) |
 | `runtime.SetFinalizer+j.j` | 9 | `0.18` (loose) |
@@ -609,9 +609,8 @@ The diagram draws the 3 largest concepts on each branch; **498 further concepts*
 | `BindOptions.ReadOnlyNonRecu…+BindOptions.NonRecursive` | 7 | `0.31` (loose) |
 | `Logger.SetOutput+L.Logger` | 7 | `0.31` (loose) |
 | `Privileges.AppArmor+Privileges.CredentialSpec+Privileges.NoNewPrivileges` | 7 | `0.34` (loose) |
-| `ef.fuzzyMatchName+events.*Filter.fuzzyMatchNa…` | 7 | `0.94` (unanimous) |
+| `ef.fuzzyMatchName+events.*Filter.fuzzyMatchNa…` | 7 | `0.96` (unanimous) |
 | `mountinfo.Mounted+mountinfo` | 7 | `0.44` (loose) |
-| `netController.Networks+daemon.netController` | 7 | `0.34` (loose) |
 | `ocispec.ImageConfig+ocispec.MediaTypeImageConfig` | 7 | `0.42` (loose) |
 | `osl.createNetworkNamespace+osl.createNamespaceFile` | 7 | `0.55` (settled) |
 | `p.OSVersion+p.Variant` | 7 | `0.37` (loose) |
@@ -631,10 +630,11 @@ The diagram draws the 3 largest concepts on each branch; **498 further concepts*
 | `eventtypes.Message+pubsub` | 6 | `0.30` (loose) |
 | `format+unicode` | 6 | `0.56` (settled) |
 | `httputils.ArchiveFormValues+v.Path` | 6 | `0.20` (loose) |
-| `info.cgMounts+info.Warnings` | 6 | `0.35` (loose) |
+| `info.cgMounts+info.Warnings` | 6 | `0.32` (loose) |
 | `ld.digest+ocischema` | 6 | `0.53` (settled) |
 | `log.FatalLevel+log.PanicLevel` | 6 | `0.29` (loose) |
 | `mountinfo.GetMounts+mountinfo` | 6 | `0.30` (loose) |
+| `netController.Networks+daemon.netController` | 6 | `0.30` (loose) |
 | `platforms.Normalize+platforms` | 6 | `0.30` (loose) |
 | `sliceutil.Dedup+sliceutil` | 6 | `0.33` (loose) |
 | `txn.Get+iter.Next` | 6 | `0.40` (loose) |
@@ -709,14 +709,14 @@ flowchart LR
     p1["macvlan<br/>22 internal"]
     p0 ---|"104"| p1
     p2["container<br/>386 internal"]
-    p3["swarm<br/>127 internal"]
+    p3["swarm<br/>126 internal"]
     p2 ---|"44"| p3
     p4["image<br/>43 internal"]
     p2 ---|"40"| p4
-    p5["plugin<br/>50 internal"]
+    p5["plugin<br/>51 internal"]
     p2 ---|"29"| p5
     p6["brmanager<br/>7 internal"]
-    p7["cnmallocator<br/>16 internal"]
+    p7["cnmallocator<br/>17 internal"]
     p6 ---|"27"| p7
     p8["diagnostic<br/>5 internal"]
     p9["libnetwork<br/>294 internal"]
@@ -732,7 +732,7 @@ flowchart LR
     p7 ---|"22"| p12
 ```
 
-_409 further package pairs are connected by duplication and are not drawn._
+_406 further package pairs are connected by duplication and are not drawn._
 
 ### How settled each package is
 
@@ -743,36 +743,36 @@ flowchart TD
     h0["suite<br/>7 functions · norm 0.58<br/>3 misfits"]
     h1["vfs<br/>27 functions · norm 0.59"]
     h2["boltdb<br/>8 functions · norm 0.63<br/>3 misfits"]
-    h3["testutils<br/>33 functions · norm 0.66<br/>2 misfits"]
+    h3["testutils<br/>33 functions · norm 0.67<br/>2 misfits"]
     h4["null<br/>23 functions · norm 0.69"]
     h5["lazyregexp<br/>13 functions · norm 0.69"]
-    h6["oci<br/>11 functions · norm 0.70<br/>4 misfits"]
+    h6["oci<br/>11 functions · norm 0.71<br/>4 misfits"]
     h7["errdefs<br/>55 functions · norm 0.72<br/>16 misfits"]
-    h8["progress<br/>13 functions · norm 0.73"]
-    h9["syscall-test<br/>9 functions · norm 0.73"]
-    h10["brmanager<br/>16 functions · norm 0.73<br/>5 misfits"]
-    h11["ivmanager<br/>16 functions · norm 0.73<br/>5 misfits"]
+    h8["ovmanager<br/>18 functions · norm 0.73<br/>3 misfits"]
+    h9["progress<br/>13 functions · norm 0.73"]
+    h10["syscall-test<br/>9 functions · norm 0.73"]
+    h11["brmanager<br/>16 functions · norm 0.73<br/>5 misfits"]
     classDef good fill:#d7ecd9,color:#1b3d20
     classDef warn fill:#fbeecb,color:#4a3a12
     classDef hot fill:#f7d6d6,color:#4a1c1c
     class h0,h1,h2,h3,h4,h5,h6,h7,h8,h9,h10,h11 warn
 ```
 
-_155 further packages are modeled and not drawn._ Most uniform is `checker` (norm `0.97`); most varied is `suite` (norm `0.58`). 71 functions are alien to their package and to the subsystem around it. A further 94 fit poorly in their package but match the wider subsystem, so they are not reported.
+_155 further packages are modeled and not drawn._ Most uniform is `checker` (norm `0.97`); most varied is `suite` (norm `0.58`). 69 functions are alien to their package and to the subsystem around it. A further 95 fit poorly in their package but match the wider subsystem, so they are not reported.
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **41032 candidate pairs** (shape 10463, concept 23375, call 12470), of which 22% arrived on call evidence alone and 50% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **41383 candidate pairs** (shape 10472, concept 23745, call 12470), of which 21% arrived on call evidence alone and 51% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
-The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **2924 of 39204** pairs the taxonomy and the vocabularies differ by at least 0.50: 393 where the vocabularies agree and the tree cannot see it, 2531 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
+The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **2956 of 39549** pairs the taxonomy and the vocabularies differ by at least 0.50: 429 where the vocabularies agree and the tree cannot see it, 2527 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
 
-Each function is also an arena where its candidate concepts compete for its evidence. 7325 functions reached an equilibrium: **4541** settled on a single concept, **2781** on a coalition, **0** hold concepts this corpus says do not go together.
+Each function is also an arena where its candidate concepts compete for its evidence. 7320 functions reached an equilibrium: **4522** settled on a single concept, **2795** on a coalition, **0** hold concepts this corpus says do not go together.
 
 ### Corpus metrics
 
-**Compression ratio:** `8.59`x — this corpus's canonical function bodies contain **570200 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **66390 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
+**Compression ratio:** `8.67`x — this corpus's canonical function bodies contain **570994 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **65895 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **7658 functions**, **7450** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.45` / `1.00` / `1.00`, and 79% of them (5881 of 7450) already clear this run's threshold of `0.35`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 208 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **7658 functions**, **7467** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.45` / `1.00` / `1.00`, and 79% of them (5888 of 7467) already clear this run's threshold of `0.35`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 191 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -784,39 +784,41 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 Only what is **distinctive**. A feature earns a row by being carried by this concept's members at least twice as often as by the corpus at large — nearly every Go function has a `return` and an `if`, so prevalence alone would describe the language rather than this codebase. Weights are how much a channel counts toward whether a member looks normal — calls 40, control flow 20, co-occurring tags 15, role 15, package 10.
 
-**`Config.OpenStdin+Config.StdinOnce`** — 688 functions
+**`Config.OpenStdin+Config.StdinOnce`** — 693 functions
 
 | Channel | Feature | | Members | vs corpus |
 |---|---|---|---|---|
-| calls ×40 | `sdjournal.noCopy.Unlock` | `███████···` | 458 of 688 | 7.7× |
-| flow ×20 | `defer` | `█████·····` | 363 of 688 | 3.9× |
+| calls ×40 | `sdjournal.noCopy.Unlock` | `███████···` | 458 of 693 | 7.7× |
+| flow ×20 | `defer` | `█████·····` | 364 of 693 | 3.9× |
 
-**`C.__u32+C.int`** — 636 functions
+**`C.__u32+C.int`** — 644 functions
+
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| calls ×40 | `fmt.Errorf` | `███·······` | 162 of 644 | 2.4× |
+
+**`Isolation.IsValid+PluginObj.PluginReference`** — 435 functions
 
 Nothing distinctive: its members do what the rest of the corpus does. The tag groups them; a shared way of writing them does not.
 
-**`Isolation.IsValid+PluginObj.PluginReference`** — 437 functions
-
-Nothing distinctive: its members do what the rest of the corpus does. The tag groups them; a shared way of writing them does not.
-
-**`Store.validateName+bytes.TrimSpace`** — 407 functions
+**`Store.validateName+bytes.TrimSpace`** — 408 functions
 
 | Channel | Feature | | Members | vs corpus |
 |---|---|---|---|---|
-| calls ×40 | `path/filepath.Join` | `███·······` | 116 of 407 | 9.1× |
-| flow ×20 | `defer` | `███·······` | 122 of 407 | 2.2× |
-| cotags ×15 | `C.__u32+C.int` | `███·······` | 134 of 407 | 4.0× |
+| calls ×40 | `path/filepath.Join` | `███·······` | 116 of 408 | 9.1× |
+| flow ×20 | `defer` | `███·······` | 123 of 408 | 2.2× |
+| cotags ×15 | `C.__u32+C.int` | `███·······` | 138 of 408 | 4.0× |
 
-**`Task.Runtime+c.callWithRetry`** — 309 functions
+**`Task.Runtime+c.callWithRetry`** — 310 functions
 
 | Channel | Feature | | Members | vs corpus |
 |---|---|---|---|---|
-| calls ×40 | `client.ensureReaderClosed` | `███·······` | 86 of 309 | 23× |
-|  | `encoding/json.Marshal` | `███·······` | 80 of 309 | 18× |
-| flow ×20 | `defer` | `███·······` | 88 of 309 | 2.1× |
-| package ×10 | `client` | `████······` | 114 of 309 | 12× |
+| calls ×40 | `client.ensureReaderClosed` | `███·······` | 86 of 310 | 23× |
+|  | `encoding/json.Marshal` | `███·······` | 79 of 310 | 18× |
+| flow ×20 | `defer` | `███·······` | 87 of 310 | 2.1× |
+| package ×10 | `client` | `████······` | 114 of 310 | 12× |
 
-**`c.cache+client.PruneInfo`** — 251 functions
+**`c.cache+client.PruneInfo`** — 250 functions
 
 Nothing distinctive: its members do what the rest of the corpus does. The tag groups them; a shared way of writing them does not.
 
@@ -834,7 +836,7 @@ _Showing 12 of 519 concepts — those in the strongest pairings, taken strongest
 | **`Isolation.IsValid+PluginObj.PluginReference`** |  | − | | | | | | | | | |
 | **`config.MetaHeaders+config.AuthConfig+p.repoName`** | never | never | never | | | | | | | | |
 | **`container.StreamConfig+container.Config`** | never | − | never |  | | | | | | | |
-| **`img.RawJSON+img.OS`** |  | never | never |  |  | | | | | | |
+| **`img.RawJSON+img.OS`** | − | never | never |  |  | | | | | | |
 | **`n.addrSpace+n.skipGwAllocIPv4`** | never |  | never |  |  |  | | | | | |
 | **`n.hasSpecialDriver+n.ipamType`** | never | + | never |  |  |  | ++ | | | | |
 | **`n.skipGwAllocIPv4+n.skipGwAllocIPv6+n.inDelete`** | never | − | never |  |  |  | ++ | ++ | | | |
@@ -851,20 +853,20 @@ Co-occurrence measured against chance across every function. Only relationships 
 - 27 of 28 `daemonCfg.Rootless+specs.Linux` functions also `daemonCfg.Rootless+specs.Linux+HostConfig.Privileged` — 246× chance
 - 41 of 44 `cgroups.Mode+cgroups.Unified` functions also `daemon.UsingSystemd+initlayer` — 135× chance
 - 47 of 55 `types.NotImplementedErrorf+bitmap` functions also `types.NotImplementedErrorf+bitmap+overlayutils` — 111× chance
-- 23 of 24 `Reference.String+p.platform` functions also `p.platform+p.desc` — 306× chance
+- 23 of 24 `p.platform+p.desc` functions also `Reference.String+p.platform` — 294× chance
 - 19 of 20 `hcsshim.DeactivateLayer+hcsshim.UnprepareLayer` functions also `hcsshim.GetLayerMountPath+d.getLayerChain` — 346× chance
 - 17 of 17 `dns.TypeAAAA+dns.A` functions also `dns.TypeAAAA+dns.TypePTR` — 403× chance
-- _1042 more not listed_
+- _1032 more not listed_
 
 **Together more than chance — tag~role**
 
 - 51 of 62 `types.MediaTypeMultiplexedS…+types.MediaTypeRawStream+httputils.DecodePlatform` functions also `orchestrator` — 3.4× chance
-- 48 of 61 `httputils.BoolValueOrDefault+types.MediaTypeMultiplexedS…` functions also `orchestrator` — 3.3× chance
+- 48 of 60 `httputils.BoolValueOrDefault+types.MediaTypeMultiplexedS…` functions also `orchestrator` — 3.3× chance
+- 55 of 73 `types.MediaTypeMultiplexedS…+types.MediaTypeRawStream` functions also `orchestrator` — 3.1× chance
 - 34 of 39 `options.Signal+options.Timeout` functions also `orchestrator` — 3.6× chance
-- 55 of 74 `types.MediaTypeMultiplexedS…+types.MediaTypeRawStream` functions also `orchestrator` — 3.1× chance
 - 5 of 10 `s.Meta+s.Endpoint` functions also `passthrough` — 9.3× chance
 - 21 of 27 `httputils.BoolValue+ir.backend` functions also `orchestrator` — 3.2× chance
-- _143 more not listed_
+- _141 more not listed_
 
 **Together more than chance — tag~call**
 
@@ -874,36 +876,36 @@ Co-occurrence measured against chance across every function. Only relationships 
 - 12 of 12 `nl.manager+nl.ns` functions also `daemon.withDefaultNamespace` — 511× chance
 - 13 of 20 `builder.Stderr+c.ShellDependantCmdLine` functions also `dockerfile.*Builder.commit` — 356× chance
 - 9 of 9 `C.__u64+errno.Error` functions also `golang.org/x/sys/unix.Syscall` — 766× chance
-- _1524 more not listed_
+- _1525 more not listed_
 
 **Apart more than chance — tag~tag**
 
-- **no** `Config.OpenStdin+Config.StdinOnce` function has `img.RawJSON+img.OS` — chance alone would give about 13 of 688
-- **no** `Config.OpenStdin+Config.StdinOnce` function has `platforms.Parse+ocispec.Platform` — chance alone would give about 12 of 688
-- **no** `C.__u32+C.int` function has `container.StreamConfig+container.Config` — chance alone would give about 9 of 636
-- **no** `C.__u32+C.int` function has `n.skipGwAllocIPv4+n.skipGwAllocIPv6+n.inDelete` — chance alone would give about 8 of 636
-- **no** `Isolation.IsValid+PluginObj.PluginReference` function has `img.RawJSON+img.OS` — chance alone would give about 8 of 437
-- **no** `C.__u32+C.int` function has `n.addrSpace+n.skipGwAllocIPv4` — chance alone would give about 8 of 636
-- _287 more not listed_
+- **no** `Config.OpenStdin+Config.StdinOnce` function has `img.RawJSON+img.OS` — chance alone would give about 13 of 693
+- **no** `Config.OpenStdin+Config.StdinOnce` function has `platforms.Parse+ocispec.Platform` — chance alone would give about 12 of 693
+- **no** `C.__u32+C.int` function has `container.StreamConfig+container.Config` — chance alone would give about 9 of 644
+- **no** `Isolation.IsValid+PluginObj.PluginReference` function has `img.RawJSON+img.OS` — chance alone would give about 8 of 435
+- **no** `C.__u32+C.int` function has `n.addrSpace+n.skipGwAllocIPv4` — chance alone would give about 8 of 644
+- **no** `C.__u32+C.int` function has `n.skipGwAllocIPv4+n.skipGwAllocIPv6+n.inDelete` — chance alone would give about 8 of 644
+- _292 more not listed_
 
 **Apart more than chance — tag~role**
 
 - **no** `types.NotImplementedErrorf+bitmap+overlayutils` function has `orchestrator` — chance alone would give about 14 of 59
 - **no** `types.NotImplementedErrorf+bitmap` function has `orchestrator` — chance alone would give about 13 of 55
+- **no** `parentLink.Attrs+netlink.LinkAttrs` function has `leaf` — chance alone would give about 9 of 16
 - **no** `globalLock.RLock+globalLock.RUnlock` function has `orchestrator` — chance alone would give about 9 of 36
+- **no** `httputils.BoolValueOrDefault+types.MediaTypeMultiplexedS…` function has `utility` — chance alone would give about 9 of 60
 - **no** `types.NotImplementedErrorf+bitmap+overlayutils` function has `utility` — chance alone would give about 8 of 59
-- **no** `parentLink.Attrs+netlink.LinkAttrs` function has `leaf` — chance alone would give about 8 of 15
-- **no** `errcode.ErrorCodeDenied+f.err` function has `orchestrator` — chance alone would give about 8 of 34
-- _233 more not listed_
+- _230 more not listed_
 
 **Apart more than chance — tag~call**
 
-- **no** `Config.OpenStdin+Config.StdinOnce` function has `client.*Client.post` — chance alone would give about 4 of 688
-- **no** `C.__u32+C.int` function has `types.InvalidParameterErrorf` — chance alone would give about 4 of 636
-- **no** `Config.OpenStdin+Config.StdinOnce` function has `github.com/distribution/reference.FamiliarString` — chance alone would give about 4 of 688
-- **no** `Config.OpenStdin+Config.StdinOnce` function has `versions.LessThan` — chance alone would give about 4 of 688
-- **no** `C.__u32+C.int` function has `client.*Client.post` — chance alone would give about 4 of 636
-- **no** `Config.OpenStdin+Config.StdinOnce` function has `authorization.*responseModifier.WriteHeader` — chance alone would give about 4 of 688
+- **no** `Config.OpenStdin+Config.StdinOnce` function has `client.*Client.post` — chance alone would give about 4 of 693
+- **no** `C.__u32+C.int` function has `types.InvalidParameterErrorf` — chance alone would give about 4 of 644
+- **no** `Config.OpenStdin+Config.StdinOnce` function has `github.com/distribution/reference.FamiliarString` — chance alone would give about 4 of 693
+- **no** `Config.OpenStdin+Config.StdinOnce` function has `versions.LessThan` — chance alone would give about 4 of 693
+- **no** `C.__u32+C.int` function has `client.*Client.post` — chance alone would give about 4 of 644
+- **no** `Config.OpenStdin+Config.StdinOnce` function has `authorization.*responseModifier.WriteHeader` — chance alone would give about 4 of 693
 - _16 more not listed_
 
 ### Functions drifting from their own concept
@@ -923,13 +925,13 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 | `environment.restoreDefaultBridge` <br/>`testutil/environment/protect_others.go:16` | `network.NetworkHost+network.NetworkNone` | `0.07` | `0.55` | no near-duplicate |
 | `plugins.IsNotFound` <br/>`pkg/plugins/errors.go:20` | `http.StatusConflict+http.StatusNotImplemented` | `0.09` | `0.55` | no near-duplicate |
 
-_892 more unusual realizations not listed._
+_887 more unusual realizations not listed._
 
 A row marked _no near-duplicate_ appears in no reported pair: nothing else in this report explains it, which makes it drift rather than duplication.
 
 ---
 
-## Match #1 — Code-shape: `0.9131`
+## Match #1 — Code-shape: `0.9129`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -942,11 +944,11 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Profile B:** `ctr.terminateInvoked+diagnostic.TableObj` 1.00 (dominance)
 
-**Code similarity:** `wl 0.86  flow 1.00  nesting 1.00  sig 1.00  size 0.99`
+**Code similarity:** `wl 0.85  flow 1.00  nesting 1.00  sig 1.00  size 0.99`
 
 **Containment:** `0.93`
 
-**Evidence:** `1160.17` (shape 1112.94, concept 2.83, call 44.39)
+**Evidence:** `1160.07` (shape 1112.85, concept 2.84, call 44.39)
 
 **Trophic:** `0.94`
 
@@ -974,7 +976,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #2 — Code-shape: `0.9660`
+## Match #2 — Code-shape: `0.9659`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -987,7 +989,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.98`
 
-**Evidence:** `1165.38` (shape 1158.52, concept 0.00, call 6.86)
+**Evidence:** `1165.45` (shape 1158.59, concept 0.00, call 6.86)
 
 **Trophic:** `0.99`
 
@@ -1031,7 +1033,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `690.18` (shape 669.16, concept 2.60, call 18.42)
+**Evidence:** `690.28` (shape 669.26, concept 2.60, call 18.42)
 
 **Trophic:** `1.00`
 
@@ -1058,7 +1060,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #4 — Code-shape: `0.9030`
+## Match #4 — Code-shape: `0.9031`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1077,7 +1079,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.92`
 
-**Evidence:** `871.95` (shape 857.96, concept 3.63, call 10.37)
+**Evidence:** `883.19` (shape 869.19, concept 3.63, call 10.37)
 
 **Trophic:** `1.00`
 
@@ -1085,7 +1087,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 - `15.84` — `depth-3 EXPRSTMT` ×2
 - `15.84` — `depth-3 CALL` ×2
-- `15.84` — `depth-2 CALL` ×2
+- `15.84` — `depth-3 IF` ×2
 
 **Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
 
@@ -1104,7 +1106,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #5 — Code-shape: `0.9134`
+## Match #5 — Code-shape: `0.9132`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1123,7 +1125,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.92`
 
-**Evidence:** `717.51` (shape 670.19, concept 2.92, call 44.39)
+**Evidence:** `717.48` (shape 670.16, concept 2.93, call 44.39)
 
 **Trophic:** `0.99`
 
@@ -1160,15 +1162,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Explain:** identical after rename, commutative-reorder
 
-**Profile A:** `parentLink.Attrs+netlink.LinkAttrs` 0.42, `parentLink.Attrs+netlink.Bridge` 0.38, `nlh.LinkAdd+parentLink.Attrs` 0.21 (coalition)
+**Profile A:** `parentLink.Attrs+netlink.LinkAttrs` 0.41, `parentLink.Attrs+netlink.Bridge` 0.38, `nlh.LinkAdd+parentLink.Attrs` 0.21 (coalition)
 
-**Profile B:** `parentLink.Attrs+netlink.LinkAttrs` 0.42, `parentLink.Attrs+netlink.Bridge` 0.38, `nlh.LinkAdd+parentLink.Attrs` 0.21 (coalition)
+**Profile B:** `parentLink.Attrs+netlink.LinkAttrs` 0.41, `parentLink.Attrs+netlink.Bridge` 0.38, `nlh.LinkAdd+parentLink.Attrs` 0.21 (coalition)
 
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `1.00`
 
-**Evidence:** `600.51` (shape 574.01, concept 10.66, call 15.84)
+**Evidence:** `605.23` (shape 578.75, concept 10.64, call 15.84)
 
 **Trophic:** `1.00`
 
@@ -1188,7 +1190,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - overlapping call-graph neighborhoods (0.96): 73 shared
 - share patterns: [nlh.LinkAdd+parentLink.Attrs, parentLink.Attrs+netlink.Bridge, parentLink.Attrs+netlink.LinkAttrs]
 - both are orchestrator functions
-- callers do related work (0.94): [d.getNetworks+nw.config]
+- callers do related work (0.93): [d.getNetworks+nw.config]
 - callees do related work (1.00): [containerimage+exptypes, nlHandle.LinkByName+n.nlHandle, n.path+netns.GetFromPath, nlh.AddrAdd+netlink.FAMILY_V4, Healthcheck.Retries+c.callWithRetry, img.RawJSON+img.OS, c.cache+client.PruneInfo]
 - same visibility
 - same receiver type: plain functions
@@ -1196,7 +1198,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #7 — Code-shape: `0.7909`
+## Match #7 — Code-shape: `0.7908`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1215,9 +1217,9 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.92` — most of the smaller body's shape is inside the larger
 
-**Evidence:** `1380.62` (shape 1315.06, concept 7.60, call 57.96)
+**Evidence:** `1389.57` (shape 1324.02, concept 7.59, call 57.96)
 
-**Trophic:** `0.87`
+**Trophic:** `0.88`
 
 **Shared structure:**
 
@@ -1259,7 +1261,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.89`
 
-**Evidence:** `636.75` (shape 603.18, concept 1.97, call 31.60)
+**Evidence:** `636.86` (shape 603.29, concept 1.97, call 31.60)
 
 **Trophic:** `0.94`
 
@@ -1306,7 +1308,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `487.43` (shape 319.02, concept 7.90, call 160.52)
+**Evidence:** `487.80` (shape 319.39, concept 7.90, call 160.52)
 
 **Trophic:** `1.00`
 
@@ -1338,7 +1340,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
-| **A** | `libnetwork/drivers/ipvlan/ipvlan_endpoint.go:62` | `ipvlan.*driver.DeleteEndpoint` | `(string, string) (error)` | Isolation.IsValid+PluginObj.PluginReference 0.57 |
+| **A** | `libnetwork/drivers/ipvlan/ipvlan_endpoint.go:62` | `ipvlan.*driver.DeleteEndpoint` | `(string, string) (error)` | Isolation.IsValid+PluginObj.PluginReference 0.56 |
 | **B** | `libnetwork/drivers/macvlan/macvlan_endpoint.go:67` | `macvlan.*driver.DeleteEndpoint` | `(string, string) (error)` | Isolation.IsValid+PluginObj.PluginReference 0.56 |
 
 **Kind:** interface implementations — both implement `DeleteEndpoint(string, string) (error)` on `*driver` and `*driver`, sibling packages `ipvlan` and `macvlan`
@@ -1353,7 +1355,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `553.52` (shape 541.13, concept 2.02, call 10.37)
+**Evidence:** `553.69` (shape 541.31, concept 2.01, call 10.37)
 
 **Trophic:** `1.00`
 
@@ -1363,7 +1365,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `10.79` — `depth-2 SEL` ×2
 - `10.79` — `depth-1 SEL` ×2
 
-**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
+**Concept views:** shape `1.00`, corpus `0.99`, feature `0.99`, a-in-b `0.99`, b-in-a `1.00`
 
 **Shared vocabulary:** `call:bitmap.*Bitmap.validateOrdinal`, `call:client.*Client.ContainerList`, `call:client.*Client.ImageList`
 
@@ -1382,9 +1384,9 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ## Families
 
-802 families, 2161 functions in a family, largest 52 members; 5967 edges scored here that retrieval never proposed
+820 families, 2149 functions in a family, largest 52 members; 5533 edges scored here that retrieval never proposed
 
-### Family 1 — 12 members, every pair `>= 0.35` code-shape, evidence `28839`  (15 edges scored here)
+### Family 1 — 12 members, every pair `>= 0.35` code-shape, evidence `28838`  (15 edges scored here)
 
 _Not drawn: 12 members is 66 connections. Every one of them holds — that is what makes this a family._
 
@@ -1403,7 +1405,7 @@ _Not drawn: 12 members is 66 connections. Every one of them holds — that is wh
 
 _2 more members not listed._
 
-### Family 2 — 14 members, every pair `>= 0.36` code-shape, evidence `17844`  (41 edges scored here)
+### Family 2 — 14 members, every pair `>= 0.36` code-shape, evidence `17827`  (41 edges scored here)
 
 _Not drawn: 14 members is 91 connections. Every one of them holds — that is what makes this a family._
 
@@ -1411,7 +1413,7 @@ _Not drawn: 14 members is 91 connections. Every one of them holds — that is wh
 |---|---|---|---|
 | `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:306` | `dbclient.doReady` | `([]string)` | Config.OpenStdin+Config.StdinOnce 0.64 |
 | `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:320` | `dbclient.doJoin` | `([]string)` | Config.OpenStdin+Config.StdinOnce 0.57 |
-| `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:336` | `dbclient.doClusterPeers` | `([]string, []string)` | Config.OpenStdin+Config.StdinOnce 0.58, Healthcheck.Retries+c.callWithRetry 0.47 |
+| `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:336` | `dbclient.doClusterPeers` | `([]string, []string)` | Config.OpenStdin+Config.StdinOnce 0.58, Healthcheck.Retries+c.callWithRetry 0.48 |
 | `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:368` | `dbclient.doJoinNetwork` | `([]string, []string)` | Config.OpenStdin+Config.StdinOnce 0.63 |
 | `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:382` | `dbclient.doLeaveNetwork` | `([]string, []string)` | Config.OpenStdin+Config.StdinOnce 0.64 |
 | `libnetwork/cmd/networkdb-test/dbclient/ndbClient.go:396` | `dbclient.doNetworkPeers` | `([]string, []string)` | Config.OpenStdin+Config.StdinOnce 0.58, Healthcheck.Retries+c.callWithRetry 0.47 |
@@ -1422,7 +1424,7 @@ _Not drawn: 14 members is 91 connections. Every one of them holds — that is wh
 
 _4 more members not listed._
 
-### Family 3 — 10 members, every pair `>= 0.35` code-shape, evidence `17440`  (13 edges scored here)
+### Family 3 — 10 members, every pair `>= 0.36` code-shape, evidence `17440`  (13 edges scored here)
 
 _Not drawn: 10 members is 45 connections. Every one of them holds — that is what makes this a family._
 
@@ -1439,23 +1441,23 @@ _Not drawn: 10 members is 45 connections. Every one of them holds — that is wh
 | `libnetwork/networkdb/networkdbdiagnostic.go:372` | `networkdb.*NetworkDB.dbGetTable` | `(http.ResponseWriter, *http.Request)` | ctr.terminateInvoked+diagnostic.TableObj 0.67 |
 | `libnetwork/networkdb/networkdbdiagnostic.go:420` | `networkdb.*NetworkDB.dbNetworkStats` | `(http.ResponseWriter, *http.Request)` | ctr.terminateInvoked+diagnostic.TableObj 0.62 |
 
-### Family 4 — 9 members, every pair `>= 0.42` code-shape, evidence `14180`  (4 edges scored here)
+### Family 4 — 9 members, every pair `>= 0.42` code-shape, evidence `14143`  (4 edges scored here)
 
 _Not drawn: 9 members is 36 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Concepts |
 |---|---|---|---|
-| `daemon/graphdriver/graphtest/graphbench_unix.go:16` | `graphtest.DriverBenchExists` | `(*testing.B, string, ...string)` | Store.validateName+bytes.TrimSpace 0.56, Isolation.IsValid+PluginObj.PluginReference 0.43 |
+| `daemon/graphdriver/graphtest/graphbench_unix.go:16` | `graphtest.DriverBenchExists` | `(*testing.B, string, ...string)` | Store.validateName+bytes.TrimSpace 0.57, Isolation.IsValid+PluginObj.PluginReference 0.44 |
 | `daemon/graphdriver/graphtest/graphbench_unix.go:35` | `graphtest.DriverBenchGetEmpty` | `(*testing.B, string, ...string)` | Store.validateName+bytes.TrimSpace 0.56, Isolation.IsValid+PluginObj.PluginReference 0.42 |
 | `daemon/graphdriver/graphtest/graphbench_unix.go:60` | `graphtest.DriverBenchDiffBase` | `(*testing.B, string, ...string)` | Store.validateName+bytes.TrimSpace 0.60 |
 | `daemon/graphdriver/graphtest/graphbench_unix.go:89` | `graphtest.DriverBenchDiffN` | `(*testing.B, int, int, string, ...string)` | Store.validateName+bytes.TrimSpace 0.59 |
 | `daemon/graphdriver/graphtest/graphbench_unix.go:124` | `graphtest.DriverBenchDiffApplyN` | `(*testing.B, int, string, ...string)` | Store.validateName+bytes.TrimSpace 0.49 |
 | `daemon/graphdriver/graphtest/graphbench_unix.go:190` | `graphtest.DriverBenchDeepLayerDiff` | `(*testing.B, int, string, ...string)` | Store.validateName+bytes.TrimSpace 0.58 |
-| `daemon/graphdriver/graphtest/graphbench_unix.go:223` | `graphtest.DriverBenchDeepLayerRead` | `(*testing.B, int, string, ...string)` | Store.validateName+bytes.TrimSpace 0.52, Isolation.IsValid+PluginObj.PluginReference 0.42 |
-| `daemon/graphdriver/graphtest/graphtest_unix.go:144` | `graphtest.DriverTestDeepLayerRead` | `(testing.TB, int, string, ...string)` | Store.validateName+bytes.TrimSpace 0.47, Isolation.IsValid+PluginObj.PluginReference 0.43 |
-| `daemon/graphdriver/graphtest/graphtest_unix.go:265` | `graphtest.DriverTestChanges` | `(testing.TB, string, ...string)` | Store.validateName+bytes.TrimSpace 0.47, Isolation.IsValid+PluginObj.PluginReference 0.44 |
+| `daemon/graphdriver/graphtest/graphbench_unix.go:223` | `graphtest.DriverBenchDeepLayerRead` | `(*testing.B, int, string, ...string)` | Store.validateName+bytes.TrimSpace 0.53, Isolation.IsValid+PluginObj.PluginReference 0.42 |
+| `daemon/graphdriver/graphtest/graphtest_unix.go:144` | `graphtest.DriverTestDeepLayerRead` | `(testing.TB, int, string, ...string)` | Store.validateName+bytes.TrimSpace 0.47, Isolation.IsValid+PluginObj.PluginReference 0.42 |
+| `daemon/graphdriver/graphtest/graphtest_unix.go:265` | `graphtest.DriverTestChanges` | `(testing.TB, string, ...string)` | Store.validateName+bytes.TrimSpace 0.48, Isolation.IsValid+PluginObj.PluginReference 0.44 |
 
-### Family 5 — 8 members, every pair `>= 0.38` code-shape, evidence `13349`  (5 edges scored here)
+### Family 5 — 8 members, every pair `>= 0.38` code-shape, evidence `13348`  (5 edges scored here)
 
 ```mermaid
 flowchart LR
@@ -1503,12 +1505,12 @@ flowchart LR
 | `daemon/graphdriver/graphtest/graphbench_unix.go:89` | `graphtest.DriverBenchDiffN` | `(*testing.B, int, int, string, ...string)` | Store.validateName+bytes.TrimSpace 0.59 |
 | `daemon/graphdriver/graphtest/graphbench_unix.go:124` | `graphtest.DriverBenchDiffApplyN` | `(*testing.B, int, string, ...string)` | Store.validateName+bytes.TrimSpace 0.49 |
 | `daemon/graphdriver/graphtest/graphbench_unix.go:190` | `graphtest.DriverBenchDeepLayerDiff` | `(*testing.B, int, string, ...string)` | Store.validateName+bytes.TrimSpace 0.58 |
-| `daemon/graphdriver/graphtest/graphbench_unix.go:223` | `graphtest.DriverBenchDeepLayerRead` | `(*testing.B, int, string, ...string)` | Store.validateName+bytes.TrimSpace 0.52, Isolation.IsValid+PluginObj.PluginReference 0.42 |
-| `daemon/graphdriver/graphtest/graphtest_unix.go:144` | `graphtest.DriverTestDeepLayerRead` | `(testing.TB, int, string, ...string)` | Store.validateName+bytes.TrimSpace 0.47, Isolation.IsValid+PluginObj.PluginReference 0.43 |
+| `daemon/graphdriver/graphtest/graphbench_unix.go:223` | `graphtest.DriverBenchDeepLayerRead` | `(*testing.B, int, string, ...string)` | Store.validateName+bytes.TrimSpace 0.53, Isolation.IsValid+PluginObj.PluginReference 0.42 |
+| `daemon/graphdriver/graphtest/graphtest_unix.go:144` | `graphtest.DriverTestDeepLayerRead` | `(testing.TB, int, string, ...string)` | Store.validateName+bytes.TrimSpace 0.47, Isolation.IsValid+PluginObj.PluginReference 0.42 |
 | `daemon/graphdriver/graphtest/graphtest_unix.go:174` | `graphtest.DriverTestDiffApply` | `(testing.TB, int, string, ...string)` | Store.validateName+bytes.TrimSpace 0.46 |
-| `daemon/graphdriver/graphtest/graphtest_unix.go:265` | `graphtest.DriverTestChanges` | `(testing.TB, string, ...string)` | Store.validateName+bytes.TrimSpace 0.47, Isolation.IsValid+PluginObj.PluginReference 0.44 |
+| `daemon/graphdriver/graphtest/graphtest_unix.go:265` | `graphtest.DriverTestChanges` | `(testing.TB, string, ...string)` | Store.validateName+bytes.TrimSpace 0.48, Isolation.IsValid+PluginObj.PluginReference 0.44 |
 
-_797 more families not listed._
+_815 more families not listed._
 
-_2 component(s) too large or too dense to enumerate (sizes 146, 1236); their families are not reported._
+_2 component(s) too large or too dense to enumerate (sizes 146, 1239); their families are not reported._
 

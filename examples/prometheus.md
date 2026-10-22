@@ -9,7 +9,7 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `783a0d4` |
+| doppel | `82e7616` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -22,23 +22,23 @@ The corpus-level models doppel builds before ranking anything, as printed to std
 ```
 Scanning . ...
 Learning concept vocabulary...
-Lexicon: 390 concepts (12 seeded, 378 emergent), 17323/43540 features above 2068 df, 650 functions unlabeled
+Lexicon: 390 concepts (12 seeded, 378 emergent), 17324/43509 features above 2068 df, 660 functions unlabeled
 Generating concept documents...
 Calibration: rate 0.01 over 20000 null pairs -> threshold 0.33, struct-min 0.34, family-min 0.33
 Found 5623 functions. Retrieving candidates...
-Retrieval: shape 8068, concept 17036, call 8171 -> 29105 unique pairs
-  concept-only 50.7%  call-only 18.8%  suppressed-shape functions: 12  large identity buckets: 0  surviving labels: 30355
-  123 cross test/prod pairs dropped
+Retrieval: shape 8050, concept 17022, call 8171 -> 29068 unique pairs
+  concept-only 50.7%  call-only 18.8%  suppressed-shape functions: 12  large identity buckets: 0  surviving labels: 30362
+  125 cross test/prod pairs dropped
   66 cross build-target pairs dropped (no build compiles both files)
-Running structural comparison on 28916 pairs...
-  Concept views: 1736 of 28916 compared pairs disagree with the taxonomy (177 vocabulary the tree misses, 1559 kinship the vocabularies lack)
-  13027 pairs remain after struct-min=0.34 filter
-Culture: 360 concepts modeled, 2597 associations, 737 unusual realizations
-Habitats: 97 modeled, 115 misfits (58 excused by subsystem), 22 subsystems; most uniform graphite (norm 1.00), most diverse src (norm 0.65)
+Running structural comparison on 28877 pairs...
+  Concept views: 1729 of 28877 compared pairs disagree with the taxonomy (184 vocabulary the tree misses, 1545 kinship the vocabularies lack)
+  13018 pairs remain after struct-min=0.34 filter
+Culture: 360 concepts modeled, 2597 associations, 739 unusual realizations
+Habitats: 97 modeled, 116 misfits (58 excused by subsystem), 22 subsystems; most uniform graphite (norm 1.00), most diverse src (norm 0.65)
 Conventions: strongest b.Bytes+b.Len (0.98), loosest n.StartOrEnd+n.Func (0.13)
-Ecosystems: 5273 profiled (2739 dominance, 2495 coalition, 0 conflict, 39 weak)
-Families: 904 over 635 components, 1995 functions in a family, 7935 edges completed
-  2 component(s) skipped as too large or too dense: sizes [231 695]
+Ecosystems: 5268 profiled (2720 dominance, 2510 coalition, 0 conflict, 38 weak)
+Families: 916 over 626 components, 2039 functions in a family, 8414 edges completed
+  2 component(s) skipped as too large or too dense: sizes [233 661]
 ```
 
 # Code Similarity Report
@@ -66,21 +66,21 @@ flowchart LR
     s4["grpc_call<br/>absent"]
     s5(["data_store_access"])
     s6["db_access<br/>120"]
-    s7["caching<br/>362"]
-    s8["transaction<br/>93"]
+    s7["caching<br/>351"]
+    s8["transaction<br/>92"]
     s9["file_io<br/>121"]
-    s10["logging<br/>325"]
+    s10["logging<br/>324"]
     s11(["data_transformation"])
-    s12["mapping<br/>102"]
-    s13["validation<br/>257"]
+    s12["mapping<br/>103"]
+    s13["validation<br/>255"]
     s14["serialization<br/>71"]
     s15(["control_flow"])
-    s16["concurrency<br/>368"]
+    s16["concurrency<br/>367"]
     s17(["fault_tolerance"])
-    s18["retry<br/>109"]
+    s18["retry<br/>105"]
     s19["circuit_breaker<br/>absent"]
     s20(["error_handling"])
-    s21["error_wrapping<br/>468"]
+    s21["error_wrapping<br/>465"]
     s0 --> s1
     s1 --> s2
     s2 --> s3
@@ -121,24 +121,24 @@ flowchart LR
     c6(["fault_tolerance"])
     c7(["error_handling"])
     c8["Expr.Pretty+e.Op<br/>189"]
-    c9["FH.Schema+H.Schema<br/>325"]
-    c10["HTTPClientConfig.OAuth2+binary.Uvarint<br/>257"]
-    c11["Retention.Percentage+Retention.Size<br/>368"]
-    c12["Status.State+buf1.PutBE32int<br/>468"]
-    c13["attribute.Int+span.SetAttributes<br/>57"]
-    c14["c.EC2SDConfig+c.ECSSDConfig<br/>362"]
+    c9["FH.Schema+H.Schema<br/>324"]
+    c10["HTTPClientConfig.OAuth2+binary.Uvarint<br/>255"]
+    c11["Retention.Percentage+Retention.Size<br/>367"]
+    c12["Status.State+buf1.PutBE32int<br/>465"]
+    c13["attribute.Int+span.SetAttributes<br/>56"]
+    c14["c.EC2SDConfig+c.ECSSDConfig<br/>351"]
     c15["cp.Close+fd.Close<br/>121"]
-    c16["g.interval+codes<br/>65"]
-    c17["h.ST+h.Ref<br/>114"]
-    c18["h.mtx+h.config<br/>154"]
-    c19["h.updateMinMaxTime+ooo.oooMmappedChunks<br/>116"]
+    c16["g.interval+codes<br/>67"]
+    c17["h.ST+h.Ref<br/>117"]
+    c18["h.mtx+h.config<br/>155"]
+    c19["h.updateMinMaxTime+ooo.oooMmappedChunks<br/>119"]
     c20["h.wbl+h.wal<br/>51"]
     c21["httpClient.Transport+request.WithContext<br/>35"]
-    c22["m.desiredNumShards+m.droppedExemplarsTotal<br/>109"]
-    c23["mc.maxTime+mc.minTime<br/>176"]
-    c24["minTime.Store+minValidTime.Store<br/>142"]
+    c22["m.desiredNumShards+m.droppedExemplarsTotal<br/>105"]
+    c23["mc.maxTime+mc.minTime<br/>178"]
+    c24["minTime.Store+minValidTime.Store<br/>141"]
     c25["parser.ValueTypeScalar+parser.ValueTypeVector<br/>40"]
-    c26["promql.FPoint+labels.FromStrings<br/>87"]
+    c26["promql.FPoint+labels.FromStrings<br/>88"]
     c27["strings.SplitSeq+profile<br/>155"]
     c28["toc.LabelIndices+toc.Series<br/>114"]
     c0 --> c1
@@ -177,195 +177,195 @@ The diagram draws the 3 largest concepts on each branch; **369 further concepts*
 
 | Concept | Functions | Convention |
 |---|---:|---|
-| `Status.State+buf1.PutBE32int` | 468 | `0.56` (settled) |
-| `Retention.Percentage+Retention.Size` | 368 | `0.44` (loose) |
-| `c.EC2SDConfig+c.ECSSDConfig` | 362 | `0.53` (settled) |
-| `FH.Schema+H.Schema` | 325 | `0.50` (loose) |
-| `HTTPClientConfig.OAuth2+binary.Uvarint` | 257 | `0.53` (settled) |
+| `Status.State+buf1.PutBE32int` | 465 | `0.56` (settled) |
+| `Retention.Percentage+Retention.Size` | 367 | `0.44` (loose) |
+| `c.EC2SDConfig+c.ECSSDConfig` | 351 | `0.53` (settled) |
+| `FH.Schema+H.Schema` | 324 | `0.50` (loose) |
+| `HTTPClientConfig.OAuth2+binary.Uvarint` | 255 | `0.53` (settled) |
 | `Expr.Pretty+e.Op` | 189 | `0.55` (settled) |
-| `mc.maxTime+mc.minTime` | 176 | `0.58` (settled) |
-| `strings.SplitSeq+profile` | 155 | `0.61` (settled) |
-| `h.mtx+h.config` | 154 | `0.60` (settled) |
-| `minTime.Store+minValidTime.Store` | 142 | `0.50` (settled) |
-| `appErrs.numDuplicates+appErrs.numExemplarOutOfOrd…` | 134 | `0.51` (settled) |
-| `cp.Close+fd.Close` | 121 | `0.47` (loose) |
+| `mc.maxTime+mc.minTime` | 178 | `0.58` (settled) |
+| `h.mtx+h.config` | 155 | `0.60` (settled) |
+| `strings.SplitSeq+profile` | 155 | `0.60` (settled) |
+| `appErrs.numDuplicates+appErrs.numExemplarOutOfOrd…` | 142 | `0.51` (settled) |
+| `minTime.Store+minValidTime.Store` | 141 | `0.51` (settled) |
+| `cp.Close+fd.Close` | 121 | `0.48` (loose) |
 | `api.enableAdmin+autoCompactMtx.Lock` | 120 | `0.45` (loose) |
-| `h.updateMinMaxTime+ooo.oooMmappedChunks` | 116 | `0.50` (loose) |
-| `h.ST+h.Ref` | 114 | `0.51` (settled) |
+| `h.updateMinMaxTime+ooo.oooMmappedChunks` | 119 | `0.50` (loose) |
+| `h.ST+h.Ref` | 117 | `0.51` (settled) |
 | `toc.LabelIndices+toc.Series` | 114 | `0.54` (settled) |
-| `m.desiredNumShards+m.droppedExemplarsTotal` | 109 | `0.42` (loose) |
-| `http.HandlerFunc+http.ResponseWriter` | 105 | `0.61` (settled) |
-| `result.TotalSamples+ss.Floats` | 103 | `0.48` (loose) |
-| `c.ConvertClassicHistogramsT…+convertnhcb.GetHistogramMet…` | 102 | `0.54` (settled) |
-| `ev.matrixIterSlice+storage.NewBuffer` | 98 | `0.51` (settled) |
-| `fmt.Errorf+encoding.*Encbuf.PutBE32` | 95 | `0.51` (settled) |
-| `appender.Commit+appender.Rollback` | 93 | `0.53` (settled) |
-| `api.parseMatchersParam+r.ParseForm` | 91 | `0.44` (loose) |
-| `OutOfOrderTimeWindow.Load+h.appendableMinValidTime` | 90 | `0.49` (loose) |
-| `promql.FPoint+labels.FromStrings` | 87 | `0.53` (settled) |
-| `e.Op+ev.endTimestamp` | 85 | `0.56` (settled) |
+| `http.HandlerFunc+http.ResponseWriter` | 106 | `0.61` (settled) |
+| `m.desiredNumShards+m.droppedExemplarsTotal` | 105 | `0.41` (loose) |
+| `c.ConvertClassicHistogramsT…+convertnhcb.GetHistogramMet…` | 103 | `0.55` (settled) |
+| `result.TotalSamples+ss.Floats` | 101 | `0.48` (loose) |
+| `ev.matrixIterSlice+storage.NewBuffer` | 98 | `0.52` (settled) |
+| `fmt.Errorf+encoding.*Encbuf.PutBE32` | 94 | `0.51` (settled) |
+| `appender.Commit+appender.Rollback` | 92 | `0.53` (settled) |
+| `api.parseMatchersParam+r.ParseForm` | 90 | `0.44` (loose) |
+| `OutOfOrderTimeWindow.Load+h.appendableMinValidTime` | 89 | `0.49` (loose) |
+| `promql.FPoint+labels.FromStrings` | 88 | `0.53` (settled) |
+| `e.Op+ev.endTimestamp` | 84 | `0.55` (settled) |
 | `kingpin.New+HelpFlag.Short` | 83 | `0.57` (settled) |
-| `r.labels+ts.Sub` | 79 | `0.45` (loose) |
-| `it.Seek+it.AtFloatHistogram` | 78 | `0.55` (settled) |
-| `api.parseMatchersParam+Queryable.Querier` | 75 | `0.42` (loose) |
-| `set.At+set.Warnings` | 73 | `0.47` (loose) |
-| `engine.NewInstantQuery+promql.Scalar` | 72 | `0.49` (loose) |
+| `it.Seek+it.AtFloatHistogram` | 79 | `0.55` (settled) |
+| `r.labels+ts.Sub` | 78 | `0.44` (loose) |
+| `api.parseMatchersParam+Queryable.Querier` | 74 | `0.42` (loose) |
+| `engine.NewInstantQuery+promql.Scalar` | 74 | `0.49` (loose) |
 | `json.MarshalIndent+json.NewDecoder` | 71 | `0.44` (loose) |
-| `querier.Close+errors.Join` | 69 | `0.57` (settled) |
-| `result.TotalSamples+it.Reset+ss.Floats` | 68 | `0.50` (settled) |
-| `engine.NewInstantQuery+promql.Scalar+q.Exec` | 66 | `0.52` (settled) |
-| `g.interval+codes` | 65 | `0.49` (loose) |
-| `storage.Close+embed` | 64 | `0.49` (loose) |
+| `set.At+set.Warnings` | 71 | `0.47` (loose) |
+| `result.TotalSamples+it.Reset+ss.Floats` | 70 | `0.51` (settled) |
+| `g.interval+codes` | 67 | `0.49` (loose) |
+| `querier.Close+errors.Join` | 67 | `0.58` (settled) |
+| `engine.NewInstantQuery+promql.Scalar+q.Exec` | 64 | `0.52` (settled) |
 | `b.commonSearchPostProps+yaml.ScalarNode` | 63 | `0.57` (settled) |
-| `time.Nanosecond+time.Millisecond` | 63 | `0.47` (loose) |
-| `attribute.Int+span.SetAttributes` | 57 | `0.48` (loose) |
-| `chunks.Iterator+tsdb.*memChunk.len` | 57 | `0.41` (loose) |
+| `storage.Close+embed` | 63 | `0.49` (loose) |
+| `time.Nanosecond+time.Millisecond` | 63 | `0.48` (loose) |
+| `chunks.Iterator+tsdb.*memChunk.len` | 60 | `0.41` (loose) |
 | `r.vector+vector.String` | 57 | `0.38` (loose) |
-| `p.chunksFromIterable+p.chunksFromIterableIdx` | 56 | `0.61` (settled) |
+| `attribute.Int+span.SetAttributes` | 56 | `0.47` (loose) |
 | `StartTimestamps.Floats+enh.StartTimestamps` | 55 | `0.50` (settled) |
-| `math.NaN+math.Inf` | 55 | `0.42` (loose) |
+| `math.NaN+math.Inf` | 55 | `0.43` (loose) |
+| `p.chunksFromIterable+p.chunksFromIterableIdx` | 55 | `0.62` (settled) |
 | `promql.FPoint+promql.Matrix` | 53 | `0.54` (settled) |
 | `discovery.RegisterConfig+config` | 52 | `0.23` (loose) |
-| `lb.Reset+lb.Labels` | 52 | `0.44` (loose) |
 | `time.Minute+rules` | 52 | `0.61` (settled) |
 | `api.respond+api.CORSOrigin` | 51 | `0.45` (loose) |
 | `h.wbl+h.wal` | 51 | `0.52` (settled) |
 | `it.current+it.postings` | 50 | `0.50` (settled) |
-| `ll.storage+embed` | 49 | `0.47` (loose) |
-| `it.Seek+b.lastTime` | 48 | `0.53` (settled) |
+| `lb.Reset+lb.Labels` | 50 | `0.43` (loose) |
+| `it.Seek+b.lastTime` | 49 | `0.54` (settled) |
+| `result.TotalSamples+it.Reset` | 49 | `0.41` (loose) |
+| `ll.storage+embed` | 47 | `0.48` (loose) |
+| `expr.Pretty+p.ParseExpr` | 46 | `0.40` (loose) |
 | `p.lvs+p.m` | 46 | `0.42` (loose) |
-| `result.TotalSamples+it.Reset` | 46 | `0.42` (loose) |
-| `expr.Pretty+p.ParseExpr` | 45 | `0.40` (loose) |
 | `parent.type+node.parent` | 45 | `0.47` (loose) |
 | `base.Example+examples.Set` | 44 | `0.52` (settled) |
+| `stats.GetSpanTimer+ng.metrics` | 43 | `0.47` (loose) |
 | `Expr.PositionRange+p.lex` | 42 | `0.47` (loose) |
 | `c.CustomValues+c.ZeroThreshold` | 42 | `0.44` (loose) |
 | `sb.WriteString+s.String` | 42 | `0.47` (loose) |
-| `stats.GetSpanTimer+ng.metrics` | 42 | `0.47` (loose) |
 | `enh.resetSigsPresent+parser.CardManyToMany` | 41 | `0.36` (loose) |
+| `currMeta.Chunk+p.currMeta` | 40 | `0.65` (settled) |
 | `parser.ValueTypeScalar+parser.ValueTypeVector` | 40 | `0.51` (settled) |
-| `currMeta.Chunk+p.currMeta` | 38 | `0.64` (settled) |
 | `prometheus.ExponentialBucke…+prometheus.NewGaugeFunc` | 38 | `0.56` (settled) |
-| `strings.HasSuffix+strings.HasPrefix` | 38 | `0.42` (loose) |
+| `strings.HasSuffix+strings.HasPrefix` | 38 | `0.43` (loose) |
 | `annotations.NewHistogramCou…+annotations.HistogramSub` | 37 | `0.49` (loose) |
 | `histogram.UnknownCounterRes…+histogram.GaugeType` | 37 | `0.52` (settled) |
-| `querier.Select+storage.SelectHints` | 37 | `0.46` (loose) |
-| `c.curH+series.floats` | 36 | `0.60` (settled) |
+| `querier.Select+storage.SelectHints` | 37 | `0.47` (loose) |
+| `c.curH+series.floats` | 36 | `0.61` (settled) |
 | `prometheus.NewGaugeVec+prometheus.NewHistogramVec` | 36 | `0.58` (settled) |
-| `set.Warnings+c.set` | 36 | `0.46` (loose) |
-| `BigEndian.PutUint16+a.b` | 35 | `0.29` (loose) |
-| `b.Bytes+ls.syms` | 35 | `0.32` (loose) |
 | `byteSlice.Len+byteSlice.Range` | 35 | `0.47` (loose) |
 | `e.PosRange+posrange` | 35 | `0.64` (settled) |
 | `httpClient.Transport+request.WithContext` | 35 | `0.35` (loose) |
+| `ix.Postings+labels.MustNewMatcher` | 35 | `0.42` (loose) |
 | `math.Sqrt+natsort` | 35 | `0.44` (loose) |
-| `s.f+fh.Copy` | 35 | `0.57` (settled) |
-| `ix.Postings+labels.MustNewMatcher` | 34 | `0.41` (loose) |
+| `s.f+fh.Copy` | 35 | `0.58` (settled) |
+| `ls.data+l.Name` | 34 | `0.31` (loose) |
+| `set.Warnings+c.set` | 34 | `0.45` (loose) |
+| `BigEndian.PutUint16+a.b` | 33 | `0.30` (loose) |
 | `c.builder+builder.Set` | 33 | `0.44` (loose) |
-| `ls.data+l.Name` | 33 | `0.31` (loose) |
-| `m.contains+m.prefixes` | 33 | `0.45` (loose) |
+| `m.contains+m.prefixes` | 33 | `0.44` (loose) |
 | `p.hasTS+p.val` | 33 | `0.45` (loose) |
 | `props.Set+base.DynamicValue+base.SchemaProxy` | 33 | `0.54` (settled) |
 | `s.seen+d.Skip` | 33 | `0.37` (loose) |
-| `labels.labelSize+tsdb.*memChunk.len` | 32 | `0.35` (loose) |
+| `b.Bytes+ls.syms` | 32 | `0.32` (loose) |
 | `node.to+node.from` | 32 | `0.51` (settled) |
 | `prometheus.MustRegister+flag` | 32 | `0.39` (loose) |
 | `annotations.HistogramAgg+annotations.NewNativeHistog…` | 31 | `0.41` (loose) |
-| `crc32.Checksum+binary.BigEndian` | 31 | `0.39` (loose) |
 | `fh.Count+fh.ZeroCount` | 31 | `0.35` (loose) |
 | `hOld.NegativeBuckets+hOld.NegativeSpans` | 31 | `0.59` (settled) |
+| `labels.labelSize+tsdb.*memChunk.len` | 31 | `0.35` (loose) |
 | `result.finalizer+api.Queryable` | 31 | `0.36` (loose) |
+| `annotations.HistogramAgg+annotations.NewHistogramCou…+annotations.NewMismatchedCu…` | 30 | `0.48` (loose) |
 | `base.Range+b.base+b.del` | 30 | `0.31` (loose) |
 | `c.curH+series.floats+series.histograms` | 30 | `0.63` (settled) |
-| `chunkenc.EncFloatHistogram+chunkenc.EncFloatHistogramST` | 30 | `0.51` (settled) |
+| `crc32.Checksum+binary.BigEndian` | 30 | `0.39` (loose) |
 | `prometheus.NewSummaryVec+prometheus.NewHistogramVec` | 30 | `0.25` (loose) |
 | `r.labels+r.name` | 30 | `0.46` (loose) |
 | `s.f+s.fh` | 30 | `0.60` (settled) |
 | `annotations.HistogramAgg+annotations.HistogramAdd` | 29 | `0.32` (loose) |
-| `annotations.HistogramAgg+annotations.NewHistogramCou…+annotations.NewMismatchedCu…` | 29 | `0.49` (loose) |
-| `hOld.NegativeBuckets+hOld.NegativeSpans+hOld.PositiveBuckets~2` | 29 | `0.26` (loose) |
+| `chunkenc.EncFloatHistogram+chunkenc.EncFloatHistogramST` | 29 | `0.53` (settled) |
+| `h.WriteString+xxhash.New` | 29 | `0.31` (loose) |
 | `it.AtHistogram+it.AtST` | 29 | `0.48` (loose) |
 | `Expr.PositionRange+e.Expr` | 28 | `0.68` (settled) |
 | `buf.PutBEFloat64+buf.PutUvarint64` | 28 | `0.28` (loose) |
-| `h.WriteString+xxhash.New` | 28 | `0.32` (loose) |
 | `it.AtST+b.lastTime` | 28 | `0.54` (settled) |
 | `ix.Postings+labels.MatchType` | 28 | `0.33` (loose) |
 | `ix.Postings+m.Matches` | 28 | `0.40` (loose) |
 | `b.Bytes+b.Len+ls.syms` | 27 | `0.45` (loose) |
-| `config.JoinDir+HTTPClientConfig.SetDirecto…` | 27 | `0.47` (loose) |
-| `ev.useStartTimestamps+result.TotalSamples` | 27 | `0.33` (loose) |
+| `config.JoinDir+HTTPClientConfig.SetDirecto…` | 27 | `0.48` (loose) |
+| `ev.useStartTimestamps+result.TotalSamples` | 27 | `0.34` (loose) |
+| `h.GetCountInt+h.GetNegativeDeltas` | 27 | `0.44` (loose) |
+| `hOld.NegativeBuckets+hOld.NegativeSpans+hOld.PositiveBuckets~2` | 27 | `0.25` (loose) |
 | `yaml.ScalarNode+yaml.Node` | 27 | `0.45` (loose) |
-| `annotations.HistogramAgg+annotations.NewHistogramCou…` | 26 | `0.42` (loose) |
 | `buf1.PutUvarint+buf.PutUvarint` | 26 | `0.31` (loose) |
 | `c.CustomValues+c.ZeroThreshold+c.NegativeSpans` | 26 | `0.50` (settled) |
-| `h.GetCountInt+h.GetNegativeDeltas` | 26 | `0.43` (loose) |
-| `histogram.IsExponentialSche…+Appender.AppendHistogram` | 26 | `0.43` (loose) |
+| `ev.eval+ev.enableDelayedNameRemoval` | 26 | `0.40` (loose) |
+| `histogram.IsExponentialSche…+Appender.AppendHistogram` | 26 | `0.42` (loose) |
 | `m.AddToLabels+p.enableTypeAndUnitLabels` | 26 | `0.44` (loose) |
 | `strings.HasPrefix+promqltest.parseSeries` | 26 | `0.50` (settled) |
 | `b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2` | 25 | `0.64` (settled) |
 | `ch.lastMmapRef+ch.postings` | 25 | `0.67` (settled) |
 | `m.failuresCount+prometheus.NewSummary` | 25 | `0.31` (loose) |
 | `props.Set+base.DynamicValue` | 25 | `0.58` (settled) |
+| `slices.Clone+tsdb.*memChunk.len` | 25 | `0.45` (loose) |
 | `h.updateMinOOOMaxOOOTime+ooo.oooHeadChunk` | 24 | `0.32` (loose) |
 | `hints.Filter+hints.OrderBy` | 24 | `0.58` (settled) |
+| `index.AllPostingsKey+errors.New` | 24 | `0.49` (loose) |
 | `it.list+it.cur` | 24 | `0.57` (settled) |
 | `require.Equal+require.NotNil` | 24 | `0.28` (loose) |
-| `series.Histograms+series.Floats` | 24 | `0.41` (loose) |
-| `ev.eval+ev.enableDelayedNameRemoval` | 23 | `0.39` (loose) |
+| `series.Histograms+series.Floats` | 24 | `0.45` (loose) |
+| `annotations.HistogramAgg+annotations.NewHistogramCou…` | 23 | `0.41` (loose) |
 | `f.F+annotations.NewHistogramIgn…` | 23 | `0.33` (loose) |
-| `index.AllPostingsKey+errors.New` | 23 | `0.49` (loose) |
-| `lb.Del+lb.Set` | 23 | `0.35` (loose) |
 | `os.Getenv+fmt.Errorf` | 23 | `0.42` (loose) |
 | `p.mtype+p.series` | 23 | `0.44` (loose) |
 | `parser.UnaryExpr+n.Args` | 23 | `0.38` (loose) |
 | `q.chunks+q.tombstones` | 23 | `0.61` (settled) |
-| `slices.Clone+tsdb.*memChunk.len` | 23 | `0.45` (loose) |
-| `syntax.OpConcat+syntax.OpAlternate` | 23 | `0.38` (loose) |
-| `FillValues.LHS+FillValues.RHS` | 22 | `0.46` (loose) |
-| `annotations.NewNativeHistog…+annotations.New` | 22 | `0.39` (loose) |
-| `b.AvailableBuffer+b.Write` | 22 | `0.24` (loose) |
-| `b.Sort+b.Add` | 22 | `0.41` (loose) |
+| `syntax.OpConcat+syntax.OpAlternate` | 23 | `0.39` (loose) |
+| `annotations.NewNativeHistog…+annotations.New` | 22 | `0.40` (loose) |
 | `b.nums+syms.nameTable` | 22 | `0.13` (loose) |
 | `chk.minTime+chk.maxTime` | 22 | `0.40` (loose) |
 | `model.MetricTypeStateset+model.MetricTypeInfo+model.MetricTypeGaugeHistog…` | 22 | `0.37` (loose) |
+| `b.AvailableBuffer+b.Write` | 21 | `0.24` (loose) |
+| `b.Sort+b.Add` | 21 | `0.41` (loose) |
+| `hOld.NegativeBuckets+hOld.NegativeSpans+hOld.PositiveBuckets` | 21 | `0.44` (loose) |
+| `lb.Del+lb.Set` | 21 | `0.35` (loose) |
 | `s.EndPos+s.PosRange` | 21 | `0.38` (loose) |
+| `FillValues.LHS+FillValues.RHS` | 20 | `0.51` (settled) |
 | `crc32.Reset+binary.PutUvarint` | 20 | `0.32` (loose) |
-| `it.AtT+b.lastTime` | 20 | `0.55` (settled) |
+| `it.AtT+b.lastTime` | 20 | `0.57` (settled) |
 | `it.atHistogramCalled+it.nFloatBuckets+it.pFloatBuckets` | 20 | `0.33` (loose) |
 | `it.atHistogramCalled+it.nFloatBuckets+it.pFloatBuckets~2` | 20 | `0.53` (settled) |
 | `labels.MatchType+labels.MatchNotEqual` | 20 | `0.41` (loose) |
+| `q.querier+v2` | 20 | `0.52` (settled) |
+| `relabel.ProcessBuilder+lb.Labels` | 20 | `0.31` (loose) |
 | `a.writeVDelta+a.tDelta` | 19 | `0.22` (loose) |
-| `annotations.NewMixedFloatsH…+H.CounterResetHint` | 19 | `0.43` (loose) |
 | `e.EndPos+Expr.PositionRange` | 19 | `0.52` (settled) |
+| `enh.StartTimestamps+annotations.NewMixedFloatsH…` | 19 | `0.34` (loose) |
 | `f.histograms+f.samples+f.idx` | 19 | `0.49` (loose) |
 | `h.maxt+h.mint` | 19 | `0.60` (settled) |
-| `it.Iter+v2` | 19 | `0.74` (settled) |
 | `ix.Postings+model.MetricTypeLabel` | 19 | `0.39` (loose) |
 | `path.Join+url.Parse` | 19 | `0.48` (loose) |
 | `promql.simpleFloatFunc+natsort` | 19 | `0.94` (unanimous) |
-| `q.querier+v2` | 19 | `0.55` (settled) |
 | `txs.add+o.useHistogramST` | 19 | `0.39` (loose) |
 | `Range.Seconds+ms.Range` | 18 | `0.39` (loose) |
 | `b.searchDefaultLimit+exampleTime.Add+v3.Parameter` | 18 | `0.70` (settled) |
 | `chunkenc.Appender+chunkenc.NewEmptyChunk` | 18 | `0.38` (loose) |
-| `enh.StartTimestamps+annotations.NewMixedFloatsH…` | 18 | `0.33` (loose) |
 | `it.stDiff+it.baselineV` | 18 | `0.55` (settled) |
 | `labels.MustNewMatcher+n.LabelMatchers` | 18 | `0.34` (loose) |
-| `relabel.ProcessBuilder+lb.Labels` | 18 | `0.29` (loose) |
-| `s.Offset+s.Length` | 18 | `0.31` (loose) |
+| `strings.IndexByte+syntax` | 18 | `0.37` (loose) |
 | `client.Get+d.config` | 17 | `0.54` (settled) |
-| `hOld.NegativeBuckets+hOld.NegativeSpans+hOld.PositiveBuckets` | 17 | `0.40` (loose) |
-| `p.H+p.F` | 17 | `0.35` (loose) |
+| `it.Iter+v2` | 17 | `0.74` (settled) |
 | `strings.Builder+model.Duration` | 17 | `0.51` (settled) |
-| `strings.IndexByte+syntax` | 17 | `0.38` (loose) |
 | `Metric.Hash+ev.errorf` | 16 | `0.39` (loose) |
 | `ValueType.scalar+ValueType.vector` | 16 | `0.38` (loose) |
+| `annotations.NewMixedFloatsH…+H.CounterResetHint` | 16 | `0.44` (loose) |
 | `br.buffer+br.readBit+it.baselineV` | 16 | `0.42` (loose) |
 | `dec.GetCounter+dec.GetSummary+p.fieldsDone` | 16 | `0.38` (loose) |
 | `math.Abs+math.IsNaN` | 16 | `0.35` (loose) |
 | `p.F+p.T` | 16 | `0.35` (loose) |
+| `p.H+p.F` | 16 | `0.35` (loose) |
 | `page.alloc+w.page` | 16 | `0.47` (loose) |
-| `s.rs+cmp` | 16 | `0.72` (settled) |
+| `s.Offset+s.Length` | 16 | `0.28` (loose) |
+| `s.rs+cmp` | 16 | `0.79` (unanimous) |
 | `strconv.ParseFloat+labels.BucketLabel` | 16 | `0.27` (loose) |
 | `api.respond+api.CORSOrigin+httputil.SetCORS` | 15 | `0.31` (loose) |
 | `b.nums+syms.nameTable+base.Range` | 15 | `0.16` (loose) |
@@ -374,38 +374,39 @@ The diagram draws the 3 largest concepts on each branch; **369 further concepts*
 | `chunks.Inc+chunksCreated.Inc` | 15 | `0.29` (loose) |
 | `context.metricName+node.to` | 15 | `0.45` (loose) |
 | `formatTime+settingsSlice` | 15 | `0.57` (settled) |
-| `iter.At+iter.Next` | 15 | `0.37` (loose) |
+| `iter.At+iter.Next` | 15 | `0.36` (loose) |
 | `l.input+l.pos` | 15 | `0.30` (loose) |
 | `posrange.Pos+l.input` | 15 | `0.33` (loose) |
 | `require.Equal+require.True` | 15 | `0.55` (settled) |
+| `syntax.OpEmptyMatch+syntax.OpBeginText` | 15 | `0.42` (loose) |
 | `utf8.Valid+p.nextToken` | 15 | `0.37` (loose) |
 | `a.tDelta+a.t` | 14 | `0.26` (loose) |
 | `api.parser+parser.ParseExpr` | 14 | `0.36` (loose) |
 | `b.nums+syms.nameTable+b.syms` | 14 | `0.31` (loose) |
 | `b.prevTime+b.lastTime` | 14 | `0.50` (loose) |
-| `br.buffer+it.stDiff` | 14 | `0.35` (loose) |
+| `br.buffer+it.stDiff` | 14 | `0.36` (loose) |
 | `c.Bytes+BigEndian.Uint16` | 14 | `0.38` (loose) |
 | `c.ignoredSamples+prompb.Sample` | 14 | `0.48` (loose) |
 | `data.data+styles` | 14 | `0.63` (settled) |
 | `ep.ToExemplar+hp.IsFloatHistogram` | 14 | `0.36` (loose) |
+| `heap.Pop+heap.Push` | 14 | `0.36` (loose) |
 | `l.gotColon+l.histogramState+l.seriesDesc` | 14 | `0.24` (loose) |
 | `lex.input+p.parseGenerated` | 14 | `0.30` (loose) |
 | `m.contains+m.stringMatcher` | 14 | `0.42` (loose) |
 | `n.StartOrEnd+n.OriginalOffset` | 14 | `0.29` (loose) |
 | `series.getByHash+head.series` | 14 | `0.40` (loose) |
 | `sort.Reverse+sort.Sort` | 14 | `0.37` (loose) |
-| `syntax.OpEmptyMatch+syntax.OpBeginText` | 14 | `0.41` (loose) |
 | `alignmentRqmts.memoryAlign+alignmentRqmts.offsetAlign` | 13 | `0.52` (settled) |
 | `chk.maxTime+chunk.Bytes` | 13 | `0.38` (loose) |
+| `ls.syms+ls.data` | 13 | `0.37` (loose) |
 | `r.rdr+r.writeIndex` | 13 | `0.51` (settled) |
-| `ss.Warnings+series.Iterator` | 13 | `0.43` (loose) |
+| `ss.Warnings+series.Iterator` | 13 | `0.42` (loose) |
 | `Range.Seconds+ms.Range+ms.VectorSelector` | 12 | `0.37` (loose) |
 | `a.writeVDelta+a.v` | 12 | `0.22` (loose) |
 | `annotations.NewHistogramIgn…+annotations.New` | 12 | `0.37` (loose) |
 | `b.base+b.del+b.Name` | 12 | `0.45` (loose) |
 | `b.f+b.alignmentRqmts` | 12 | `0.30` (loose) |
 | `dec.GetCounter+dec.GetSummary+h.GetBucket` | 12 | `0.40` (loose) |
-| `heap.Pop+heap.Push` | 12 | `0.33` (loose) |
 | `http.StatusNotFound+http.Error` | 12 | `0.36` (loose) |
 | `index.Intersect+selectedSeriesRefs.sortedBy…` | 12 | `0.45` (loose) |
 | `it.stDiff+br.buffer` | 12 | `0.26` (loose) |
@@ -413,7 +414,6 @@ The diagram draws the 3 largest concepts on each branch; **369 further concepts*
 | `l.gotColon+l.histogramState` | 12 | `0.35` (loose) |
 | `l.gotColon+l.histogramState+l.bracketOpen` | 12 | `0.32` (loose) |
 | `l.gotColon+l.histogramState+l.bracketOpen~2` | 12 | `0.26` (loose) |
-| `ls.syms+ls.data` | 12 | `0.44` (loose) |
 | `n.StartOrEnd+parser.UnaryExpr` | 12 | `0.27` (loose) |
 | `p.buf+p.alloc` | 12 | `0.47` (loose) |
 | `prometheus.NewHistogramVec+prometheus.NewSummaryVec` | 12 | `0.32` (loose) |
@@ -480,11 +480,9 @@ The diagram draws the 3 largest concepts on each branch; **369 further concepts*
 | `p.curr+v2` | 8 | `0.83` (unanimous) |
 | `r.delta+r.i` | 8 | `0.26` (loose) |
 | `r.dependencyRules+r.dependentRules` | 8 | `0.56` (settled) |
-| `re.Sub+re.Op` | 8 | `0.31` (loose) |
-| `unsafe.Pointer+syscall` | 8 | `0.36` (loose) |
+| `unsafe.Pointer+syscall` | 8 | `0.37` (loose) |
 | `Table.Th+Table.Tbody` | 7 | `0.64` (settled) |
 | `a.tDelta+a.t+b.writeBits` | 7 | `0.15` (loose) |
-| `annotations.HistogramAdd+annotations.HistogramSub` | 7 | `0.15` (loose) |
 | `b.buffer+b.valid` | 7 | `0.44` (loose) |
 | `b.commonSearchPostProps+base.DynamicValue` | 7 | `0.54` (settled) |
 | `codes.Set+v3.Responses` | 7 | `0.41` (loose) |
@@ -500,6 +498,7 @@ The diagram draws the 3 largest concepts on each branch; **369 further concepts*
 | `this.lint+complete` | 7 | `0.74` (settled) |
 | `time.Time+promql.dateWrapper` | 7 | `0.94` (unanimous) |
 | `Expr.Pretty+e.String` | 6 | `0.43` (loose) |
+| `annotations.HistogramAdd+annotations.HistogramSub` | 6 | `0.13` (loose) |
 | `fs.Blocks+fs.Bsize` | 6 | `0.89` (unanimous) |
 | `h.floatBucketIterator+h.Schema` | 6 | `0.44` (loose) |
 | `it.nBucketsLeading+it.nBucketsTrailing` | 6 | `0.48` (loose) |
@@ -508,6 +507,7 @@ The diagram draws the 3 largest concepts on each branch; **369 further concepts*
 | `node.Expr+Expr.String` | 6 | `0.60` (settled) |
 | `qs.Interval+qs.StartTimestamp` | 6 | `0.37` (loose) |
 | `r.add+r.fBuf` | 6 | `0.22` (loose) |
+| `re.Sub+re.Op` | 6 | `0.29` (loose) |
 | `regexp.Compile+fmt.Errorf` | 6 | `0.30` (loose) |
 | `s.EndPos+s.PosRange+PosRange.End~2` | 6 | `0.76` (unanimous) |
 | `syntax.OpEmptyMatch+syntax.OpAlternate` | 6 | `0.31` (loose) |
@@ -576,16 +576,16 @@ Merge-worthy pairs are folded up to their packages: only pairs doppel judges wor
 ```mermaid
 flowchart LR
     p0["rules<br/>83 internal"]
-    p1["scrape<br/>69 internal"]
-    p0 ---|"35"| p1
+    p1["scrape<br/>70 internal"]
+    p0 ---|"34"| p1
     p2["agent<br/>22 internal"]
     p3["tsdb<br/>319 internal"]
     p2 ---|"17"| p3
     p0 ---|"13"| p3
-    p4["aws<br/>152 internal"]
-    p5["linode"]
-    p4 ---|"12"| p5
-    p6["azure<br/>5 internal"]
+    p4["aws<br/>151 internal"]
+    p5["azure<br/>5 internal"]
+    p4 ---|"11"| p5
+    p6["linode"]
     p4 ---|"11"| p6
     p7["moby<br/>8 internal"]
     p4 ---|"11"| p7
@@ -594,17 +594,18 @@ flowchart LR
     p8 ---|"11"| p9
     p10["openstack<br/>3 internal"]
     p4 ---|"9"| p10
-    p11["promql<br/>390 internal"]
-    p12["storage<br/>263 internal"]
+    p11["promql<br/>380 internal"]
+    p12["storage<br/>259 internal"]
     p11 ---|"9"| p12
-    p13["remote<br/>63 internal"]
+    p13["remote<br/>62 internal"]
     p13 ---|"9"| p3
     p12 ---|"9"| p3
-    p14["ionos"]
-    p4 ---|"8"| p14
+    p14["graph<br/>12 internal"]
+    p15["query<br/>6 internal"]
+    p14 ---|"8"| p15
 ```
 
-_391 further package pairs are connected by duplication and are not drawn._
+_387 further package pairs are connected by duplication and are not drawn._
 
 ### How settled each package is
 
@@ -631,21 +632,21 @@ flowchart TD
     class h0,h1,h2,h3,h4,h5,h6,h7 warn
 ```
 
-_85 further packages are modeled and not drawn._ Most uniform is `graphite` (norm `1.00`); most varied is `src` (norm `0.65`). 115 functions are alien to their package and to the subsystem around it. A further 58 fit poorly in their package but match the wider subsystem, so they are not reported.
+_85 further packages are modeled and not drawn._ Most uniform is `graphite` (norm `1.00`); most varied is `src` (norm `0.65`). 116 functions are alien to their package and to the subsystem around it. A further 58 fit poorly in their package but match the wider subsystem, so they are not reported.
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **29105 candidate pairs** (shape 8068, concept 17036, call 8171), of which 19% arrived on call evidence alone and 51% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **29068 candidate pairs** (shape 8050, concept 17022, call 8171), of which 19% arrived on call evidence alone and 51% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
-The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **1736 of 28916** pairs the taxonomy and the vocabularies differ by at least 0.50: 177 where the vocabularies agree and the tree cannot see it, 1559 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
+The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **1729 of 28877** pairs the taxonomy and the vocabularies differ by at least 0.50: 184 where the vocabularies agree and the tree cannot see it, 1545 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
 
-Each function is also an arena where its candidate concepts compete for its evidence. 5273 functions reached an equilibrium: **2739** settled on a single concept, **2495** on a coalition, **0** hold concepts this corpus says do not go together.
+Each function is also an arena where its candidate concepts compete for its evidence. 5268 functions reached an equilibrium: **2720** settled on a single concept, **2510** on a coalition, **0** hold concepts this corpus says do not go together.
 
 ### Corpus metrics
 
-**Compression ratio:** `8.93`x — this corpus's canonical function bodies contain **483640 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **54134 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
+**Compression ratio:** `8.98`x — this corpus's canonical function bodies contain **484201 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **53916 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **5623 functions**, **5372** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.51` / `1.00` / `1.00`, and 84% of them (4492 of 5372) already clear this run's threshold of `0.33`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 251 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **5623 functions**, **5366** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.51` / `1.00` / `1.00`, and 84% of them (4484 of 5366) already clear this run's threshold of `0.33`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 257 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -657,54 +658,54 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 Only what is **distinctive**. A feature earns a row by being carried by this concept's members at least twice as often as by the corpus at large — nearly every Go function has a `return` and an `if`, so prevalence alone would describe the language rather than this codebase. Weights are how much a channel counts toward whether a member looks normal — calls 40, control flow 20, co-occurring tags 15, role 15, package 10.
 
-**`Status.State+buf1.PutBE32int`** — 468 functions
+**`Status.State+buf1.PutBE32int`** — 465 functions
 
 | Channel | Feature | | Members | vs corpus |
 |---|---|---|---|---|
-| calls ×40 | `fmt.Errorf` | `██████····` | 275 of 468 | 5.7× |
+| calls ×40 | `fmt.Errorf` | `██████····` | 275 of 465 | 5.8× |
 
-**`Retention.Percentage+Retention.Size`** — 368 functions
-
-| Channel | Feature | | Members | vs corpus |
-|---|---|---|---|---|
-| calls ×40 | `tsdbutil.*DirLocker.Lock` | `██████····` | 220 of 368 | 12× |
-| flow ×20 | `defer` | `██████····` | 208 of 368 | 7.0× |
-| cotags ×15 | `FH.Schema+H.Schema` | `███·······` | 109 of 368 | 5.1× |
-| role ×15 | `orchestrator` | `████······` | 163 of 368 | 2.2× |
-
-**`c.EC2SDConfig+c.ECSSDConfig`** — 362 functions
+**`Retention.Percentage+Retention.Size`** — 367 functions
 
 | Channel | Feature | | Members | vs corpus |
 |---|---|---|---|---|
-| cotags ×15 | `FH.Schema+H.Schema` | `███·······` | 91 of 362 | 4.3× |
-|  | `Status.State+buf1.PutBE32int` | `███·······` | 107 of 362 | 3.6× |
-| package ×10 | `kubernetes` | `███·······` | 106 of 362 | 14× |
-|  | `aws` | `███·······` | 100 of 362 | 12× |
+| calls ×40 | `tsdbutil.*DirLocker.Lock` | `██████····` | 220 of 367 | 12× |
+| flow ×20 | `defer` | `██████····` | 208 of 367 | 7.0× |
+| cotags ×15 | `FH.Schema+H.Schema` | `███·······` | 109 of 367 | 5.2× |
+| role ×15 | `orchestrator` | `████······` | 163 of 367 | 2.2× |
 
-**`FH.Schema+H.Schema`** — 325 functions
-
-| Channel | Feature | | Members | vs corpus |
-|---|---|---|---|---|
-| flow ×20 | `defer` | `███·······` | 109 of 325 | 4.2× |
-|  | `funclit` | `███·······` | 83 of 325 | 2.9× |
-|  | `range` | `████······` | 121 of 325 | 2.0× |
-| cotags ×15 | `Retention.Percentage+Retention.Size` | `███·······` | 109 of 325 | 5.1× |
-|  | `c.EC2SDConfig+c.ECSSDConfig` | `███·······` | 91 of 325 | 4.3× |
-|  | `Status.State+buf1.PutBE32int` | `███·······` | 89 of 325 | 3.3× |
-| role ×15 | `orchestrator` | `████······` | 136 of 325 | 2.1× |
-
-**`HTTPClientConfig.OAuth2+binary.Uvarint`** — 257 functions
+**`c.EC2SDConfig+c.ECSSDConfig`** — 351 functions
 
 | Channel | Feature | | Members | vs corpus |
 |---|---|---|---|---|
-| calls ×40 | `errors.New` | `███·······` | 72 of 257 | 6.7× |
-|  | `fmt.Errorf` | `████······` | 93 of 257 | 3.5× |
+| cotags ×15 | `FH.Schema+H.Schema` | `███·······` | 88 of 351 | 4.4× |
+|  | `Status.State+buf1.PutBE32int` | `███·······` | 108 of 351 | 3.7× |
+| package ×10 | `kubernetes` | `███·······` | 104 of 351 | 14× |
+|  | `aws` | `███·······` | 99 of 351 | 12× |
+
+**`FH.Schema+H.Schema`** — 324 functions
+
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| flow ×20 | `defer` | `███·······` | 109 of 324 | 4.2× |
+|  | `funclit` | `███·······` | 83 of 324 | 2.9× |
+|  | `range` | `████······` | 119 of 324 | 2.0× |
+| cotags ×15 | `Retention.Percentage+Retention.Size` | `███·······` | 109 of 324 | 5.2× |
+|  | `c.EC2SDConfig+c.ECSSDConfig` | `███·······` | 88 of 324 | 4.4× |
+|  | `Status.State+buf1.PutBE32int` | `███·······` | 88 of 324 | 3.3× |
+| role ×15 | `orchestrator` | `████······` | 136 of 324 | 2.1× |
+
+**`HTTPClientConfig.OAuth2+binary.Uvarint`** — 255 functions
+
+| Channel | Feature | | Members | vs corpus |
+|---|---|---|---|---|
+| calls ×40 | `errors.New` | `███·······` | 71 of 255 | 6.7× |
+|  | `fmt.Errorf` | `████······` | 93 of 255 | 3.6× |
 
 **`Expr.Pretty+e.Op`** — 189 functions
 
 | Channel | Feature | | Members | vs corpus |
 |---|---|---|---|---|
-| calls ×40 | `fmt.Sprintf` | `██████····` | 104 of 189 | 18× |
+| calls ×40 | `fmt.Sprintf` | `██████····` | 105 of 189 | 18× |
 
 _354 further concepts are modeled and not described._
 
@@ -736,11 +737,11 @@ Co-occurrence measured against chance across every function. Only relationships 
 
 - 28 of 30 `c.curH+series.floats+series.histograms` functions also `c.curH+series.floats` — 146× chance
 - 30 of 36 `prometheus.NewGaugeVec+prometheus.NewHistogramVec` functions also `prometheus.ExponentialBucke…+prometheus.NewGaugeFunc` — 123× chance
+- 41 of 47 `ll.storage+embed` functions also `storage.Close+embed` — 78× chance
 - 26 of 26 `c.CustomValues+c.ZeroThreshold+c.NegativeSpans` functions also `c.CustomValues+c.ZeroThreshold` — 134× chance
-- 41 of 49 `ll.storage+embed` functions also `storage.Close+embed` — 74× chance
-- 59 of 75 `api.parseMatchersParam+Queryable.Querier` functions also `api.parseMatchersParam+r.ParseForm` — 49× chance
+- 58 of 74 `api.parseMatchersParam+Queryable.Querier` functions also `api.parseMatchersParam+r.ParseForm` — 49× chance
 - 28 of 32 `node.to+node.from` functions also `parent.type+node.parent` — 109× chance
-- _757 more not listed_
+- _760 more not listed_
 
 **Together more than chance — tag~role**
 
@@ -749,8 +750,8 @@ Co-occurrence measured against chance across every function. Only relationships 
 - 4 of 4 `buf.PutBEFloat64+buf.PutUvarint` functions also `passthrough` — 19× chance
 - 18 of 18 `b.searchDefaultLimit+exampleTime.Add+v3.Parameter` functions also `orchestrator` — 4.9× chance
 - 15 of 15 `b.searchDefaultLimit+exampleTime.Add` functions also `orchestrator` — 4.9× chance
-- 163 of 368 `Retention.Percentage+Retention.Size` functions also `orchestrator` — 2.2× chance
-- _122 more not listed_
+- 163 of 367 `Retention.Percentage+Retention.Size` functions also `orchestrator` — 2.2× chance
+- _121 more not listed_
 
 **Together more than chance — tag~call**
 
@@ -760,16 +761,16 @@ Co-occurrence measured against chance across every function. Only relationships 
 - 22 of 25 `b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2` functions also `v1.responsesWithErrorExamples` — 171× chance
 - 22 of 35 `math.Sqrt+natsort` functions also `promql.simpleFloatFunc` — 147× chance
 - 16 of 18 `b.searchDefaultLimit+exampleTime.Add+v3.Parameter` functions also `v1.queryParamWithExample` — 238× chance
-- _1281 more not listed_
+- _1282 more not listed_
 
 **Apart more than chance — tag~tag**
 
-- **no** `c.EC2SDConfig+c.ECSSDConfig` function has `mc.maxTime+mc.minTime` — chance alone would give about 11 of 362
-- **no** `Retention.Percentage+Retention.Size` function has `strings.SplitSeq+profile` — chance alone would give about 10 of 368
-- **no** `c.EC2SDConfig+c.ECSSDConfig` function has `h.mtx+h.config` — chance alone would give about 10 of 362
-- **no** `c.EC2SDConfig+c.ECSSDConfig` function has `minTime.Store+minValidTime.Store` — chance alone would give about 9 of 362
-- **no** `FH.Schema+H.Schema` function has `strings.SplitSeq+profile` — chance alone would give about 9 of 325
-- **no** `Status.State+buf1.PutBE32int` function has `http.HandlerFunc+http.ResponseWriter` — chance alone would give about 9 of 468
+- **no** `c.EC2SDConfig+c.ECSSDConfig` function has `mc.maxTime+mc.minTime` — chance alone would give about 11 of 351
+- **no** `Retention.Percentage+Retention.Size` function has `strings.SplitSeq+profile` — chance alone would give about 10 of 367
+- **no** `c.EC2SDConfig+c.ECSSDConfig` function has `h.mtx+h.config` — chance alone would give about 10 of 351
+- **no** `FH.Schema+H.Schema` function has `strings.SplitSeq+profile` — chance alone would give about 9 of 324
+- **no** `c.EC2SDConfig+c.ECSSDConfig` function has `minTime.Store+minValidTime.Store` — chance alone would give about 9 of 351
+- **no** `Status.State+buf1.PutBE32int` function has `http.HandlerFunc+http.ResponseWriter` — chance alone would give about 9 of 465
 - _213 more not listed_
 
 **Apart more than chance — tag~role**
@@ -780,14 +781,14 @@ Co-occurrence measured against chance across every function. Only relationships 
 - **no** `b.searchDefaultLimit+exampleTime.Add` function has `leaf` — chance alone would give about 9 of 15
 - **no** `l.gotColon+l.histogramState+l.seriesDesc` function has `leaf` — chance alone would give about 9 of 14
 - **no** `annotations.NewHistogramCou…+annotations.HistogramSub` function has `orchestrator` — chance alone would give about 8 of 37
-- _190 more not listed_
+- _187 more not listed_
 
 **Apart more than chance — tag~call**
 
-- **no** `Status.State+buf1.PutBE32int` function has `chunkenc.*bstream.bytes` — chance alone would give about 3 of 468
-- **no** `Status.State+buf1.PutBE32int` function has `value.IsStaleNaN` — chance alone would give about 3 of 468
-- **no** `Status.State+buf1.PutBE32int` function has `v1.stringSchema` — chance alone would give about 3 of 468
-- 1 of 368 `Retention.Percentage+Retention.Size` functions also `strconv.Itoa` — 0.3× chance
+- **no** `Status.State+buf1.PutBE32int` function has `chunkenc.*bstream.bytes` — chance alone would give about 3 of 465
+- **no** `Status.State+buf1.PutBE32int` function has `value.IsStaleNaN` — chance alone would give about 3 of 465
+- **no** `Status.State+buf1.PutBE32int` function has `v1.stringSchema` — chance alone would give about 3 of 465
+- 1 of 367 `Retention.Percentage+Retention.Size` functions also `strconv.Itoa` — 0.3× chance
 
 ### Functions drifting from their own concept
 
@@ -795,24 +796,24 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 | Function | Concept | Typicality | Concept median | |
 |---|---|---:|---:|---|
+| `remote.*concreteSeriesIterator.setCurrentHistogram` <br/>`storage/remote/codec.go:491` | `c.curH+series.floats` | `0.21` | `0.80` | no near-duplicate |
 | `tsdbutil.NewDirLocker` <br/>`tsdb/tsdbutil/dir_locker.go:44` | `prometheus.ExponentialBucke…+prometheus.NewGaugeFunc` | `0.15` | `0.72` | no near-duplicate |
 | `storage.expandSamples` <br/>`storage/series.go:480` | `it.AtST+b.lastTime` | `0.16` | `0.68` | no near-duplicate |
 | `parser.ChildrenIter` <br/>`promql/parser/ast.go:402` | `parser.UnaryExpr+n.Args` | `0.14` | `0.65` | no near-duplicate |
 | `storage.*errAfterSliceSet.Err` <br/>`storage/generic.go:212` | `s.err+annotations` | `0.33` | `0.82` | no near-duplicate |
-| `storage.expandSamples` <br/>`storage/series.go:480` | `hOld.NegativeBuckets+hOld.NegativeSpans+hOld.PositiveBuckets~2` | `0.07` | `0.56` | no near-duplicate |
-| `scrape.*Target.LabelsRange` <br/>`scrape/target.go:198` | `r.labels+r.name` | `0.12` | `0.58` | no near-duplicate |
 | `remote.*concreteSeries.Iterator` <br/>`storage/remote/codec.go:385` | `c.curH+series.floats` | `0.34` | `0.80` | no near-duplicate |
 | `storage.MergeSearchResultSets` <br/>`storage/generic.go:548` | `hints.Filter+hints.OrderBy` | `0.25` | `0.67` | no near-duplicate |
 | `parser.*parser.addParseErr` <br/>`promql/parser/parse.go:299` | `p.Close+p.parseGenerated` | `0.20` | `0.61` | no near-duplicate |
 | `scrape.isSeriesPartOfFamily` <br/>`scrape/scrape.go:1900` | `model.MetricTypeStateset+model.MetricTypeInfo` | `0.23` | `0.63` | no near-duplicate |
+| `storage.expandSamples` <br/>`storage/series.go:480` | `it.AtHistogram+it.AtST` | `0.12` | `0.51` | no near-duplicate |
 
-_727 more unusual realizations not listed._
+_729 more unusual realizations not listed._
 
 A row marked _no near-duplicate_ appears in no reported pair: nothing else in this report explains it, which makes it drift rather than duplication.
 
 ---
 
-## Match #1 — Code-shape: `0.9174`
+## Match #1 — Code-shape: `0.9176`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -829,15 +830,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.93`
 
-**Evidence:** `1237.21` (shape 1180.25, concept 1.93, call 55.03)
+**Evidence:** `1249.45` (shape 1192.49, concept 1.93, call 55.03)
 
 **Trophic:** `0.98`
 
 **Shared structure:**
 
+- `12.95` — `depth-3 IF` ×2
 - `12.64` — `depth-3 IF` ×2
-- `12.14` — `depth-2 IF` ×2
-- `11.93` — `depth-3 IF` ×2
+- `12.37` — `depth-2 IF` ×2
 
 **Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
 
@@ -863,10 +864,10 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
-| **A** | `storage/remote/queue_manager.go:844` | `remote.*QueueManager.AppendHistograms` | `([]record.RefHistogramSample) (bool)` | m.desiredNumShards+m.droppedExemplarsTotal 0.72, FH.Schema+H.Schema 0.60, Retention.Percentage+Retention.Size 0.56 |
-| **B** | `storage/remote/queue_manager.go:906` | `remote.*QueueManager.AppendFloatHistograms` | `([]record.RefFloatHistogramSample) (bool)` | m.desiredNumShards+m.droppedExemplarsTotal 0.72, FH.Schema+H.Schema 0.60, Retention.Percentage+Retention.Size 0.56 |
+| **A** | `storage/remote/queue_manager.go:844` | `remote.*QueueManager.AppendHistograms` | `([]record.RefHistogramSample) (bool)` | m.desiredNumShards+m.droppedExemplarsTotal 0.71, FH.Schema+H.Schema 0.60, Retention.Percentage+Retention.Size 0.56 |
+| **B** | `storage/remote/queue_manager.go:906` | `remote.*QueueManager.AppendFloatHistograms` | `([]record.RefFloatHistogramSample) (bool)` | m.desiredNumShards+m.droppedExemplarsTotal 0.71, FH.Schema+H.Schema 0.60, Retention.Percentage+Retention.Size 0.56 |
 
-**Explain:** identical after rename, negation-flip, commutative-reorder
+**Explain:** identical after rename, negation-flip, tail-guard-form, commutative-reorder
 
 **Profile A:** `m.desiredNumShards+m.droppedExemplarsTotal` 1.00 (dominance)
 
@@ -876,7 +877,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `1035.92` (shape 1003.03, concept 7.35, call 25.54)
+**Evidence:** `1037.21` (shape 1004.30, concept 7.36, call 25.54)
 
 **Trophic:** `1.00`
 
@@ -949,24 +950,24 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #4 — Code-shape: `0.7476`
+## Match #4 — Code-shape: `0.7478`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
 | **A** | `discovery/kubernetes/endpoints.go:63` | `kubernetes.NewEndpoints` | `(*slog.Logger, cache.SharedIndexInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, bool, bool, bool, *prometheus.CounterVec) (*Endpoints)` | c.EC2SDConfig+c.ECSSDConfig 0.62, FH.Schema+H.Schema 0.50 |
 | **B** | `discovery/kubernetes/endpointslice.go:62` | `kubernetes.NewEndpointSlice` | `(*slog.Logger, cache.SharedIndexInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, cache.SharedInformer, bool, bool, bool, *prometheus.CounterVec) (*EndpointSlice)` | c.EC2SDConfig+c.ECSSDConfig 0.65, FH.Schema+H.Schema 0.51 |
 
-**Explain:** differs by five extra if, four extra assign, one extra range, and 17 more kinds
+**Explain:** differs by five extra if, four extra assign, three extra return, and 17 more kinds
 
-**Profile A:** `FH.Schema+H.Schema` 0.53, `c.EC2SDConfig+c.ECSSDConfig` 0.47 (coalition)
+**Profile A:** `c.EC2SDConfig+c.ECSSDConfig` 0.52, `FH.Schema+H.Schema` 0.48 (coalition)
 
-**Profile B:** `FH.Schema+H.Schema` 0.51, `c.EC2SDConfig+c.ECSSDConfig` 0.49 (coalition)
+**Profile B:** `c.EC2SDConfig+c.ECSSDConfig` 0.53, `FH.Schema+H.Schema` 0.47 (coalition)
 
 **Code similarity:** `wl 0.66  flow 0.99  nesting 1.00  sig 0.71  size 0.84`
 
 **Containment:** `0.86`
 
-**Evidence:** `2063.38` (shape 2031.82, concept 3.94, call 27.62)
+**Evidence:** `2064.43` (shape 2032.84, concept 3.97, call 27.62)
 
 **Trophic:** `0.88`
 
@@ -976,7 +977,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `48.64` — `depth-1 KV` ×10
 - `38.84` — `depth-3 ASSIGN` ×6
 
-**Concept views:** shape `1.00`, corpus `0.96`, feature `0.96`, a-in-b `1.00`, b-in-a `0.96`
+**Concept views:** shape `1.00`, corpus `0.97`, feature `0.97`, a-in-b `1.00`, b-in-a `0.97`
 
 **Shared vocabulary:** `call:kubernetes.*clientAdapter.CoreV1`, `call:kubernetes.convertToService`, `call:scrape.isSeriesPartOfFamily`
 
@@ -997,7 +998,188 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #5 — Code-shape: `0.8778`
+## Match #5 — Code-shape: `0.9249`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `discovery/aws/msk.go:226` | `aws.*MSKDiscovery.initMskClient` | `(context.Context) (error)` | Status.State+buf1.PutBE32int 0.68, c.EC2SDConfig+c.ECSSDConfig 0.68, FH.Schema+H.Schema 0.62 |
+| **B** | `discovery/aws/rds.go:339` | `aws.*RDSDiscovery.initRdsClient` | `(context.Context) (error)` | Status.State+buf1.PutBE32int 0.69, c.EC2SDConfig+c.ECSSDConfig 0.68, FH.Schema+H.Schema 0.62 |
+
+**Explain:** differs by four extra call
+
+**Profile A:** `FH.Schema+H.Schema` 0.80, `c.EC2SDConfig+c.ECSSDConfig` 0.20 (dominance)
+
+**Profile B:** `c.EC2SDConfig+c.ECSSDConfig` 1.00 (dominance)
+
+**Code similarity:** `wl 0.87  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Containment:** `0.93`
+
+**Evidence:** `1211.22` (shape 1119.00, concept 6.76, call 85.46)
+
+**Trophic:** `0.98`
+
+**Shared structure:**
+
+- `27.16` — `depth-3 BIN` ×5
+- `27.16` — `depth-2 BIN` ×5
+- `13.76` — `depth-3 BLOCK` ×2
+
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
+
+**Shared vocabulary:** `call:kubernetes.*clientAdapter.CoreV1`, `call:kubernetes.convertToService`, `call:scrape.isSeriesPartOfFamily`
+
+**Structural overlap:** `0.81` (merge-worthy)
+
+- share 18 callees: [Error, append, aws.NewCredentialsCache, aws.String, awsConfig.LoadDefaultConfig, awsConfig.WithCredentialsProvider, awsConfig.WithHTTPClient, awsConfig.WithRegion, awsConfig.WithSharedConfigProfile, cancel, config.NewClientFromConfig, context.WithTimeout, credentials.NewStaticCredentialsProvider, fmt.Errorf, loadRegion, string, sts.NewFromConfig, stscreds.NewAssumeRoleProvider]
+- overlapping call-graph neighborhoods (0.57): 8 shared
+- share patterns: [FH.Schema+H.Schema, Status.State+buf1.PutBE32int, c.EC2SDConfig+c.ECSSDConfig]
+- both are orchestrator functions
+- same package
+- callers do related work (0.99): [Status.State+buf1.PutBE32int]
+- callees do related work (0.99): [FH.Schema+H.Schema, c.EC2SDConfig+c.ECSSDConfig, Status.State+buf1.PutBE32int]
+- same visibility
+- both are methods, on *MSKDiscovery and *RDSDiscovery
+- called from same packages: [aws]
+- call into same packages: [aws]
+
+---
+
+## Match #6 — Code-shape: `0.9000`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `util/strutil/jarowinkler.go:57` | `strutil.jaroWinklerString` | `(string, string) (float64)` | — |
+| **B** | `util/strutil/jarowinkler.go:125` | `strutil.jaroWinklerRunes` | `([]rune, []rune) (float64)` | — |
+
+**Explain:** identical after rename, commutative-reorder
+
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
+
+**Containment:** `1.00`
+
+**Evidence:** `1277.02` (shape 1277.02, concept 0.00, call 0.00)
+
+**Trophic:** `1.00`
+
+**Shared structure:**
+
+- `14.33` — `depth-3 UNARY` ×2
+- `14.33` — `depth-2 UNARY` ×2
+- `14.31` — `depth-1 ASSIGN` ×3
+
+**Concept views:** shape `0.00`, corpus `0.00`, feature `0.00`, a-in-b `0.00`, b-in-a `0.00`
+
+**Structural overlap:** `0.77` (merge-worthy)
+
+- share 5 callees: [float64, len, make, max, min]
+- share 1 callers: [strutil.*JaroWinklerMatcher.Score]
+- overlapping call-graph neighborhoods (1.00): 1040 shared
+- both are leaf functions
+- same package
+- callees do related work (1.00): [h.wbl+h.wal, h.updateMinMaxTime+ooo.oooMmappedChunks, minTime.Store+minValidTime.Store]
+- same visibility
+- same receiver type: plain functions
+- called from same packages: [strutil]
+- call into same packages: [tsdb]
+
+---
+
+## Match #7 — Code-shape: `0.9246`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `discovery/aws/elasticache.go:315` | `aws.*ElasticacheDiscovery.initElasticacheClient` | `(context.Context) (error)` | c.EC2SDConfig+c.ECSSDConfig 0.68, Status.State+buf1.PutBE32int 0.67, FH.Schema+H.Schema 0.61 |
+| **B** | `discovery/aws/msk.go:226` | `aws.*MSKDiscovery.initMskClient` | `(context.Context) (error)` | Status.State+buf1.PutBE32int 0.68, c.EC2SDConfig+c.ECSSDConfig 0.68, FH.Schema+H.Schema 0.62 |
+
+**Explain:** differs by four extra call
+
+**Profile A:** `FH.Schema+H.Schema` 0.79, `c.EC2SDConfig+c.ECSSDConfig` 0.21 (dominance)
+
+**Profile B:** `FH.Schema+H.Schema` 0.80, `c.EC2SDConfig+c.ECSSDConfig` 0.20 (dominance)
+
+**Code similarity:** `wl 0.87  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Containment:** `0.93`
+
+**Evidence:** `1211.19` (shape 1119.00, concept 6.72, call 85.46)
+
+**Trophic:** `0.98`
+
+**Shared structure:**
+
+- `27.16` — `depth-3 BIN` ×5
+- `27.16` — `depth-2 BIN` ×5
+- `13.76` — `depth-3 BLOCK` ×2
+
+**Concept views:** shape `1.00`, corpus `0.99`, feature `0.99`, a-in-b `1.00`, b-in-a `0.99`
+
+**Shared vocabulary:** `call:kubernetes.*clientAdapter.CoreV1`, `call:kubernetes.convertToService`, `call:scrape.isSeriesPartOfFamily`
+
+**Structural overlap:** `0.77` (merge-worthy)
+
+- share 18 callees: [Error, append, aws.NewCredentialsCache, aws.String, awsConfig.LoadDefaultConfig, awsConfig.WithCredentialsProvider, awsConfig.WithHTTPClient, awsConfig.WithRegion, awsConfig.WithSharedConfigProfile, cancel, config.NewClientFromConfig, context.WithTimeout, credentials.NewStaticCredentialsProvider, fmt.Errorf, loadRegion, string, sts.NewFromConfig, stscreds.NewAssumeRoleProvider]
+- overlapping call-graph neighborhoods (0.40): 6 shared
+- share patterns: [FH.Schema+H.Schema, Status.State+buf1.PutBE32int, c.EC2SDConfig+c.ECSSDConfig]
+- both are orchestrator functions
+- same package
+- callers do related work (0.28): [Status.State+buf1.PutBE32int]
+- callees do related work (0.95): [FH.Schema+H.Schema, c.EC2SDConfig+c.ECSSDConfig, Status.State+buf1.PutBE32int]
+- same visibility
+- both are methods, on *ElasticacheDiscovery and *MSKDiscovery
+- called from same packages: [aws]
+- call into same packages: [aws]
+
+---
+
+## Match #8 — Code-shape: `0.9251`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `discovery/aws/elasticache.go:315` | `aws.*ElasticacheDiscovery.initElasticacheClient` | `(context.Context) (error)` | c.EC2SDConfig+c.ECSSDConfig 0.68, Status.State+buf1.PutBE32int 0.67, FH.Schema+H.Schema 0.61 |
+| **B** | `discovery/aws/rds.go:339` | `aws.*RDSDiscovery.initRdsClient` | `(context.Context) (error)` | Status.State+buf1.PutBE32int 0.69, c.EC2SDConfig+c.ECSSDConfig 0.68, FH.Schema+H.Schema 0.62 |
+
+**Explain:** differs by four extra call
+
+**Profile A:** `FH.Schema+H.Schema` 0.79, `c.EC2SDConfig+c.ECSSDConfig` 0.21 (dominance)
+
+**Profile B:** `c.EC2SDConfig+c.ECSSDConfig` 1.00 (dominance)
+
+**Code similarity:** `wl 0.88  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Containment:** `0.93`
+
+**Evidence:** `1211.19` (shape 1119.00, concept 6.73, call 85.46)
+
+**Trophic:** `0.98`
+
+**Shared structure:**
+
+- `27.16` — `depth-3 BIN` ×5
+- `27.16` — `depth-2 BIN` ×5
+- `13.76` — `depth-3 BLOCK` ×2
+
+**Concept views:** shape `1.00`, corpus `0.99`, feature `0.99`, a-in-b `1.00`, b-in-a `0.99`
+
+**Shared vocabulary:** `call:kubernetes.*clientAdapter.CoreV1`, `call:kubernetes.convertToService`, `call:scrape.isSeriesPartOfFamily`
+
+**Structural overlap:** `0.77` (merge-worthy)
+
+- share 18 callees: [Error, append, aws.NewCredentialsCache, aws.String, awsConfig.LoadDefaultConfig, awsConfig.WithCredentialsProvider, awsConfig.WithHTTPClient, awsConfig.WithRegion, awsConfig.WithSharedConfigProfile, cancel, config.NewClientFromConfig, context.WithTimeout, credentials.NewStaticCredentialsProvider, fmt.Errorf, loadRegion, string, sts.NewFromConfig, stscreds.NewAssumeRoleProvider]
+- overlapping call-graph neighborhoods (0.40): 6 shared
+- share patterns: [FH.Schema+H.Schema, Status.State+buf1.PutBE32int, c.EC2SDConfig+c.ECSSDConfig]
+- both are orchestrator functions
+- same package
+- callers do related work (0.28): [Status.State+buf1.PutBE32int]
+- callees do related work (0.94): [FH.Schema+H.Schema, c.EC2SDConfig+c.ECSSDConfig, Status.State+buf1.PutBE32int]
+- same visibility
+- both are methods, on *ElasticacheDiscovery and *RDSDiscovery
+- called from same packages: [aws]
+- call into same packages: [aws]
+
+---
+
+## Match #9 — Code-shape: `0.8623`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1006,13 +1188,13 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Explain:** differs by four extra assign, two extra selector, two extra ident
 
-**Code similarity:** `wl 0.92  flow 1.00  nesting 1.00  sig 0.50  size 0.99`
+**Code similarity:** `wl 0.90  flow 1.00  nesting 1.00  sig 0.50  size 0.99`
 
-**Containment:** `0.96`
+**Containment:** `0.95`
 
-**Evidence:** `1614.10` (shape 1606.85, concept 0.00, call 7.25)
+**Evidence:** `1541.51` (shape 1534.26, concept 0.00, call 7.25)
 
-**Trophic:** `0.96`
+**Trophic:** `0.97`
 
 **Shared structure:**
 
@@ -1037,188 +1219,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #6 — Code-shape: `0.9000`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `util/strutil/jarowinkler.go:57` | `strutil.jaroWinklerString` | `(string, string) (float64)` | — |
-| **B** | `util/strutil/jarowinkler.go:125` | `strutil.jaroWinklerRunes` | `([]rune, []rune) (float64)` | — |
-
-**Explain:** identical after rename, commutative-reorder
-
-**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
-
-**Containment:** `1.00`
-
-**Evidence:** `1274.54` (shape 1274.54, concept 0.00, call 0.00)
-
-**Trophic:** `1.00`
-
-**Shared structure:**
-
-- `14.31` — `depth-1 ASSIGN` ×3
-- `13.76` — `depth-3 UNARY` ×2
-- `13.76` — `depth-3 BIN` ×2
-
-**Concept views:** shape `0.00`, corpus `0.00`, feature `0.00`, a-in-b `0.00`, b-in-a `0.00`
-
-**Structural overlap:** `0.77` (merge-worthy)
-
-- share 5 callees: [float64, len, make, max, min]
-- share 1 callers: [strutil.*JaroWinklerMatcher.Score]
-- overlapping call-graph neighborhoods (1.00): 1040 shared
-- both are leaf functions
-- same package
-- callees do related work (1.00): [h.wbl+h.wal, h.updateMinMaxTime+ooo.oooMmappedChunks, minTime.Store+minValidTime.Store]
-- same visibility
-- same receiver type: plain functions
-- called from same packages: [strutil]
-- call into same packages: [tsdb]
-
----
-
-## Match #7 — Code-shape: `0.9247`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `discovery/aws/msk.go:226` | `aws.*MSKDiscovery.initMskClient` | `(context.Context) (error)` | Status.State+buf1.PutBE32int 0.68, c.EC2SDConfig+c.ECSSDConfig 0.68, FH.Schema+H.Schema 0.62 |
-| **B** | `discovery/aws/rds.go:339` | `aws.*RDSDiscovery.initRdsClient` | `(context.Context) (error)` | Status.State+buf1.PutBE32int 0.69, c.EC2SDConfig+c.ECSSDConfig 0.68, FH.Schema+H.Schema 0.62 |
-
-**Explain:** differs by four extra call
-
-**Profile A:** `FH.Schema+H.Schema` 0.92, `c.EC2SDConfig+c.ECSSDConfig` 0.08 (dominance)
-
-**Profile B:** `c.EC2SDConfig+c.ECSSDConfig` 0.98 (dominance)
-
-**Code similarity:** `wl 0.87  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
-
-**Containment:** `0.93`
-
-**Evidence:** `1212.96` (shape 1120.75, concept 6.75, call 85.46)
-
-**Trophic:** `0.98`
-
-**Shared structure:**
-
-- `32.59` — `depth-3 BIN` ×6
-- `32.59` — `depth-2 BIN` ×6
-- `14.80` — `depth-2 IF` ×3
-
-**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
-
-**Shared vocabulary:** `call:kubernetes.*clientAdapter.CoreV1`, `call:kubernetes.convertToService`, `call:scrape.isSeriesPartOfFamily`
-
-**Structural overlap:** `0.79` (merge-worthy)
-
-- share 18 callees: [Error, append, aws.NewCredentialsCache, aws.String, awsConfig.LoadDefaultConfig, awsConfig.WithCredentialsProvider, awsConfig.WithHTTPClient, awsConfig.WithRegion, awsConfig.WithSharedConfigProfile, cancel, config.NewClientFromConfig, context.WithTimeout, credentials.NewStaticCredentialsProvider, fmt.Errorf, loadRegion, string, sts.NewFromConfig, stscreds.NewAssumeRoleProvider]
-- overlapping call-graph neighborhoods (0.57): 8 shared
-- share patterns: [FH.Schema+H.Schema, Status.State+buf1.PutBE32int, c.EC2SDConfig+c.ECSSDConfig]
-- both are orchestrator functions
-- same package
-- callers do related work (0.56): [Status.State+buf1.PutBE32int]
-- callees do related work (0.99): [FH.Schema+H.Schema, c.EC2SDConfig+c.ECSSDConfig, Status.State+buf1.PutBE32int]
-- same visibility
-- both are methods, on *MSKDiscovery and *RDSDiscovery
-- called from same packages: [aws]
-- call into same packages: [aws]
-
----
-
-## Match #8 — Code-shape: `0.9244`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `discovery/aws/elasticache.go:315` | `aws.*ElasticacheDiscovery.initElasticacheClient` | `(context.Context) (error)` | c.EC2SDConfig+c.ECSSDConfig 0.68, Status.State+buf1.PutBE32int 0.68, FH.Schema+H.Schema 0.61 |
-| **B** | `discovery/aws/msk.go:226` | `aws.*MSKDiscovery.initMskClient` | `(context.Context) (error)` | Status.State+buf1.PutBE32int 0.68, c.EC2SDConfig+c.ECSSDConfig 0.68, FH.Schema+H.Schema 0.62 |
-
-**Explain:** differs by four extra call
-
-**Profile A:** `FH.Schema+H.Schema` 0.92, `c.EC2SDConfig+c.ECSSDConfig` 0.08 (dominance)
-
-**Profile B:** `FH.Schema+H.Schema` 0.92, `c.EC2SDConfig+c.ECSSDConfig` 0.08 (dominance)
-
-**Code similarity:** `wl 0.87  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
-
-**Containment:** `0.93`
-
-**Evidence:** `1212.92` (shape 1120.75, concept 6.72, call 85.46)
-
-**Trophic:** `0.98`
-
-**Shared structure:**
-
-- `32.59` — `depth-3 BIN` ×6
-- `32.59` — `depth-2 BIN` ×6
-- `14.80` — `depth-2 IF` ×3
-
-**Concept views:** shape `1.00`, corpus `0.99`, feature `0.99`, a-in-b `1.00`, b-in-a `0.99`
-
-**Shared vocabulary:** `call:kubernetes.*clientAdapter.CoreV1`, `call:kubernetes.convertToService`, `call:scrape.isSeriesPartOfFamily`
-
-**Structural overlap:** `0.78` (merge-worthy)
-
-- share 18 callees: [Error, append, aws.NewCredentialsCache, aws.String, awsConfig.LoadDefaultConfig, awsConfig.WithCredentialsProvider, awsConfig.WithHTTPClient, awsConfig.WithRegion, awsConfig.WithSharedConfigProfile, cancel, config.NewClientFromConfig, context.WithTimeout, credentials.NewStaticCredentialsProvider, fmt.Errorf, loadRegion, string, sts.NewFromConfig, stscreds.NewAssumeRoleProvider]
-- overlapping call-graph neighborhoods (0.40): 6 shared
-- share patterns: [FH.Schema+H.Schema, Status.State+buf1.PutBE32int, c.EC2SDConfig+c.ECSSDConfig]
-- both are orchestrator functions
-- same package
-- callers do related work (0.50): [c.EC2SDConfig+c.ECSSDConfig, Status.State+buf1.PutBE32int]
-- callees do related work (0.95): [FH.Schema+H.Schema, c.EC2SDConfig+c.ECSSDConfig, Status.State+buf1.PutBE32int]
-- same visibility
-- both are methods, on *ElasticacheDiscovery and *MSKDiscovery
-- called from same packages: [aws]
-- call into same packages: [aws]
-
----
-
-## Match #9 — Code-shape: `0.9249`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `discovery/aws/elasticache.go:315` | `aws.*ElasticacheDiscovery.initElasticacheClient` | `(context.Context) (error)` | c.EC2SDConfig+c.ECSSDConfig 0.68, Status.State+buf1.PutBE32int 0.68, FH.Schema+H.Schema 0.61 |
-| **B** | `discovery/aws/rds.go:339` | `aws.*RDSDiscovery.initRdsClient` | `(context.Context) (error)` | Status.State+buf1.PutBE32int 0.69, c.EC2SDConfig+c.ECSSDConfig 0.68, FH.Schema+H.Schema 0.62 |
-
-**Explain:** differs by four extra call
-
-**Profile A:** `FH.Schema+H.Schema` 0.92, `c.EC2SDConfig+c.ECSSDConfig` 0.08 (dominance)
-
-**Profile B:** `c.EC2SDConfig+c.ECSSDConfig` 0.98 (dominance)
-
-**Code similarity:** `wl 0.87  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
-
-**Containment:** `0.93`
-
-**Evidence:** `1212.93` (shape 1120.75, concept 6.72, call 85.46)
-
-**Trophic:** `0.98`
-
-**Shared structure:**
-
-- `32.59` — `depth-3 BIN` ×6
-- `32.59` — `depth-2 BIN` ×6
-- `14.80` — `depth-2 IF` ×3
-
-**Concept views:** shape `1.00`, corpus `0.99`, feature `0.99`, a-in-b `1.00`, b-in-a `0.99`
-
-**Shared vocabulary:** `call:kubernetes.*clientAdapter.CoreV1`, `call:kubernetes.convertToService`, `call:scrape.isSeriesPartOfFamily`
-
-**Structural overlap:** `0.77` (merge-worthy)
-
-- share 18 callees: [Error, append, aws.NewCredentialsCache, aws.String, awsConfig.LoadDefaultConfig, awsConfig.WithCredentialsProvider, awsConfig.WithHTTPClient, awsConfig.WithRegion, awsConfig.WithSharedConfigProfile, cancel, config.NewClientFromConfig, context.WithTimeout, credentials.NewStaticCredentialsProvider, fmt.Errorf, loadRegion, string, sts.NewFromConfig, stscreds.NewAssumeRoleProvider]
-- overlapping call-graph neighborhoods (0.40): 6 shared
-- share patterns: [FH.Schema+H.Schema, Status.State+buf1.PutBE32int, c.EC2SDConfig+c.ECSSDConfig]
-- both are orchestrator functions
-- same package
-- callers do related work (0.28): [Status.State+buf1.PutBE32int]
-- callees do related work (0.94): [FH.Schema+H.Schema, c.EC2SDConfig+c.ECSSDConfig, Status.State+buf1.PutBE32int]
-- same visibility
-- both are methods, on *ElasticacheDiscovery and *RDSDiscovery
-- called from same packages: [aws]
-- call into same packages: [aws]
-
----
-
-## Match #10 — Code-shape: `0.7552`
+## Match #10 — Code-shape: `0.7526`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1227,15 +1228,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Kind:** diverged copy — `*scrapeLoopAppender.append` and `*scrapeLoopAppenderV2.append` share the stem `scrapeLoopAppender` in package `scrape`
 
-**Explain:** differs by nine extra assign, three extra case, one extra branch, and 15 more kinds
+**Explain:** differs by nine extra assign, four extra branch, three extra case, and 16 more kinds
 
 **Profile A:** `b.nums+syms.nameTable+b.syms` 0.38, `b.base+b.del` 0.36, `b.nums+syms.nameTable` 0.26 (coalition)
 
 **Code similarity:** `wl 0.59  flow 1.00  nesting 0.99  sig 1.00  size 0.91`
 
-**Containment:** `0.78`
+**Containment:** `0.79`
 
-**Evidence:** `3406.24` (shape 3295.55, concept 0.00, call 110.69)
+**Evidence:** `3412.93` (shape 3302.24, concept 0.00, call 110.69)
 
 **Trophic:** `0.83`
 
@@ -1262,7 +1263,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ## Families
 
-904 families, 1995 functions in a family, largest 74 members; 7935 edges scored here that retrieval never proposed
+916 families, 2039 functions in a family, largest 74 members; 8414 edges scored here that retrieval never proposed
 
 ### Family 1 — 73 members, every pair `>= 0.34` code-shape, evidence `50365`  (2205 edges scored here)
 
@@ -1302,7 +1303,7 @@ _Not drawn: 73 members is 2628 connections. Every one of them holds — that is 
 
 _63 more members not listed._
 
-### Family 3 — 60 members, every pair `>= 0.34` code-shape, evidence `48244`  (1439 edges scored here)
+### Family 3 — 60 members, every pair `>= 0.34` code-shape, evidence `48243`  (1439 edges scored here)
 
 _Not drawn: 60 members is 1770 connections. Every one of them holds — that is what makes this a family._
 
@@ -1340,7 +1341,7 @@ _Not drawn: 74 members is 2701 connections. Every one of them holds — that is 
 
 _64 more members not listed._
 
-### Family 5 — 74 members, every pair `>= 0.33` code-shape, evidence `44902`  (2262 edges scored here)
+### Family 5 — 74 members, every pair `>= 0.33` code-shape, evidence `44901`  (2262 edges scored here)
 
 _Not drawn: 74 members is 2701 connections. Every one of them holds — that is what makes this a family._
 
@@ -1359,7 +1360,7 @@ _Not drawn: 74 members is 2701 connections. Every one of them holds — that is 
 
 _64 more members not listed._
 
-_899 more families not listed._
+_911 more families not listed._
 
-_2 component(s) too large or too dense to enumerate (sizes 231, 695); their families are not reported._
+_2 component(s) too large or too dense to enumerate (sizes 233, 661); their families are not reported._
 
