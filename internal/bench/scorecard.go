@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/LukasSelin/doppel/internal/analyzer"
-	"github.com/LukasSelin/doppel/internal/snapshot"
+	"github.com/LukasSelin/doppel/internal/parser"
 )
 
 // Absence reasons a labeled pair can carry instead of a rank.
@@ -180,7 +180,7 @@ func (r *Run) scoredPair(p analyzer.SimilarPair) scoredPair {
 	return scoredPair{
 		key:   pairKey(qualifiedName(a), qualifiedName(b)),
 		nameA: qualifiedName(a), nameB: qualifiedName(b),
-		fileA: snapshot.RelSlash(r.Root, a.File), fileB: snapshot.RelSlash(r.Root, b.File),
+		fileA: parser.RelSlash(r.Root, a.File), fileB: parser.RelSlash(r.Root, b.File),
 	}
 }
 

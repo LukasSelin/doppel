@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -234,4 +235,25 @@ func (e Excludes) Patterns() []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// RelSlash is the path rule every surface shares: a path relative to the
+// analysis root, slash-separated, so a run rooted at an absolute cwd reads the
+// same as one run at ".", and a run on Windows reads the same as one on Linux.
+// An empty root, or a path filepath.Rel cannot relate to it, falls back to the
+// path itself, slash-separated.
+//
+// It lives beside the walk that produces the paths it relates, and below
+// snapshot, because calibrate hashes it into every unit's identity and must
+// not import snapshot (which imports analyzer). cmd, reporter, snapshot,
+// calibrate and bench all call it rather than keeping their own copies.
+func RelSlash(root, path string) string {
+	if root == "" {
+		return filepath.ToSlash(path)
+	}
+	rel, err := filepath.Rel(root, path)
+	if err != nil {
+		return filepath.ToSlash(path)
+	}
+	return filepath.ToSlash(rel)
 }

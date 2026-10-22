@@ -12,7 +12,6 @@ import (
 	"github.com/LukasSelin/doppel/internal/family"
 	"github.com/LukasSelin/doppel/internal/parser"
 	"github.com/LukasSelin/doppel/internal/reporter"
-	"github.com/LukasSelin/doppel/internal/snapshot"
 )
 
 // The two payload budgets.
@@ -129,7 +128,7 @@ func dashboardUnits(res Result) []dashboard.Unit {
 			Key:     qn,
 			Name:    u.Name,
 			Package: u.Package,
-			File:    snapshot.RelSlash(res.Root, u.File),
+			File:    parser.RelSlash(res.Root, u.File),
 			Line:    u.StartLine,
 			Nodes:   u.Fingerprint.Nodes,
 			Fit:     -1,

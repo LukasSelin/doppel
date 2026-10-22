@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/LukasSelin/doppel/internal/parser"
-	"github.com/LukasSelin/doppel/internal/snapshot"
 )
 
 // Method 8 of examples/baselines.md: an external clone detector, mapped onto
@@ -78,7 +77,7 @@ func clonePairs(br *baselineRun, cf cloneFile) ([]ref, []float64) {
 	r := br.run
 	byFile := map[string][]unitSpan{}
 	for i, u := range r.Units {
-		f := snapshot.RelSlash(r.Root, u.File)
+		f := parser.RelSlash(r.Root, u.File)
 		byFile[f] = append(byFile[f], unitSpan{i, u.StartLine, unitEnd(u)})
 	}
 	type cover struct{ idx, lines int }
