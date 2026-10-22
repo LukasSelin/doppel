@@ -181,7 +181,16 @@ import (
 // later now carry an ordinal (`@file#2`). A schema-11 baseline holds the
 // collapsed key, so against it every such function would read as newly added
 // by a session that never touched it; refusing is the honest answer.
-const Schema = 12
+//
+// 13 changes no field either: it changes what a type is. The Go frontend now
+// renders a function-typed parameter or result without the names inside it —
+// func(f *flag.FlagSet) bool reads func(*flag.FlagSet) bool, which is Go's
+// own type identity — so Fingerprint.Types moves for every function whose
+// signature carries a named function type. Digest hashes Types, so against a
+// schema-12 baseline each such function would read as edited by a session
+// that never touched it, and Pair.Score moves for every pair one of them is
+// in. Both are the movement a version exists to refuse.
+const Schema = 13
 
 // Snapshot is one full analysis run.
 //

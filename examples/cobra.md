@@ -9,7 +9,7 @@ CLI framework; one dominant type with a long method set, plus shell-completion g
 | Corpus | [cobra](https://github.com/spf13/cobra) |
 | Pinned at | `v1.10.2` (`88b30ab89da2d0d0abb153818746c5a2d30eccec`) |
 | Project since | 2015 |
-| doppel | `a7601b6` |
+| doppel | `7e43dba` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -926,12 +926,12 @@ flowchart LR
 
 | Location | Function | Signature | Concepts |
 |---|---|---|---|
-| `command.go:464` | `cobra.*Command.getUsageTemplateFunc` | `() (func(w io.Writer, data interface{}) error)` | c.PrintErrln+c.Parent 0.54, c.Parent+c.HasParent 0.43 |
-| `command.go:505` | `cobra.*Command.getHelpTemplateFunc` | `() (func(w io.Writer, data interface{}) error)` | c.PrintErrln+c.Parent 0.53, c.Parent+c.HasParent 0.44, c.Deprecated+c.Runnable 0.36 |
+| `command.go:464` | `cobra.*Command.getUsageTemplateFunc` | `() (func(io.Writer, interface{}) error)` | c.PrintErrln+c.Parent 0.54, c.Parent+c.HasParent 0.43 |
+| `command.go:505` | `cobra.*Command.getHelpTemplateFunc` | `() (func(io.Writer, interface{}) error)` | c.PrintErrln+c.Parent 0.53, c.Parent+c.HasParent 0.44, c.Deprecated+c.Runnable 0.36 |
 | `command.go:592` | `cobra.*Command.UsageTemplate` | `() (string)` | c.PrintErrln+c.Parent 0.54, c.Parent+c.HasParent 0.44, cmd.Name+c.commands 0.32 |
 | `command.go:605` | `cobra.*Command.HelpTemplate` | `() (string)` | c.PrintErrln+c.Parent 0.53, c.Parent+c.HasParent 0.45 |
 | `command.go:618` | `cobra.*Command.VersionTemplate` | `() (string)` | c.PrintErrln+c.Parent 0.52, c.Parent+c.HasParent 0.44 |
-| `command.go:631` | `cobra.*Command.getVersionTemplateFunc` | `() (func(w io.Writer, data interface{}) error)` | c.PrintErrln+c.Parent 0.52, c.Parent+c.HasParent 0.43 |
+| `command.go:631` | `cobra.*Command.getVersionTemplateFunc` | `() (func(io.Writer, interface{}) error)` | c.PrintErrln+c.Parent 0.52, c.Parent+c.HasParent 0.43 |
 
 ### Family 4 — 5 members, every pair `>= 0.45` code-shape, evidence `884`  (3 edges scored here)
 

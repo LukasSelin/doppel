@@ -204,12 +204,120 @@ func extractReceiverType(fd *ast.FuncDecl) string {
 // fingerprint works on the neutral IR and never sees a type expression, it
 // belongs here, where the go/ast dependency already is. An unprintable
 // expression yields "".
+//
+// Parameter and result names inside a function type are dropped first (see
+// unnameFuncTypes), so the text is the type and not the type as spelled: this
+// one string is both what the signature component of code-shape scores and
+// what the sig: line prints.
 func printType(expr ast.Expr) string {
 	var buf bytes.Buffer
-	if err := printer.Fprint(&buf, token.NewFileSet(), expr); err != nil {
+	if err := printer.Fprint(&buf, token.NewFileSet(), unnameFuncTypes(expr)); err != nil {
 		return ""
 	}
 	return strings.Join(strings.Fields(buf.String()), " ")
+}
+
+// unnameFuncTypes returns expr with the parameter and result names removed
+// from every function type inside it, one unnamed field per declared name:
+// func(f *flag.FlagSet, name string) flag.NormalizedName reads
+// func(*flag.FlagSet, string) flag.NormalizedName. Go type identity ignores
+// those names, and keeping them made a rename-only copy of a function with a
+// func-typed parameter score 0.85 on code-shape instead of 1.00. Struct field
+// names, method names in an interface and embedded types are part of the type
+// and are kept.
+//
+// It copies the nodes on the way down and never writes to expr, which is the
+// declaration every other reader of this file shares. canon.Clone would copy
+// too, but it zeroes positions, and go/printer reads position validity to
+// decide layout — struct{} prints as "struct { }" from a position-free tree.
+// Keeping positions keeps every type with no function inside it
+// byte-identical to its old rendering.
+func unnameFuncTypes(expr ast.Expr) ast.Expr {
+	switch n := expr.(type) {
+	case *ast.FuncType:
+		c := *n
+		c.Params = unnamedFields(n.Params)
+		c.Results = unnamedFields(n.Results)
+		return &c
+	case *ast.StarExpr:
+		c := *n
+		c.X = unnameFuncTypes(n.X)
+		return &c
+	case *ast.ParenExpr:
+		c := *n
+		c.X = unnameFuncTypes(n.X)
+		return &c
+	case *ast.Ellipsis:
+		c := *n
+		c.Elt = unnameFuncTypes(n.Elt)
+		return &c
+	case *ast.ArrayType:
+		c := *n
+		c.Elt = unnameFuncTypes(n.Elt)
+		return &c
+	case *ast.MapType:
+		c := *n
+		c.Key = unnameFuncTypes(n.Key)
+		c.Value = unnameFuncTypes(n.Value)
+		return &c
+	case *ast.ChanType:
+		c := *n
+		c.Value = unnameFuncTypes(n.Value)
+		return &c
+	case *ast.StructType:
+		c := *n
+		c.Fields = namedFields(n.Fields)
+		return &c
+	case *ast.InterfaceType:
+		c := *n
+		c.Methods = namedFields(n.Methods)
+		return &c
+	case *ast.IndexExpr:
+		c := *n
+		c.Index = unnameFuncTypes(n.Index)
+		return &c
+	case *ast.IndexListExpr:
+		c := *n
+		c.Indices = make([]ast.Expr, len(n.Indices))
+		for i, x := range n.Indices {
+			c.Indices[i] = unnameFuncTypes(x)
+		}
+		return &c
+	}
+	return expr
+}
+
+// unnamedFields is a function type's parameter or result list with its names
+// gone. "a, b int" becomes two unnamed int fields rather than one, so arity
+// survives exactly as goParams keeps it for the declaration's own parameters.
+func unnamedFields(fl *ast.FieldList) *ast.FieldList {
+	if fl == nil {
+		return nil
+	}
+	out := &ast.FieldList{Opening: fl.Opening, Closing: fl.Closing}
+	for _, f := range fl.List {
+		t := unnameFuncTypes(f.Type)
+		for range max(len(f.Names), 1) {
+			out.List = append(out.List, &ast.Field{Type: t})
+		}
+	}
+	return out
+}
+
+// namedFields copies a struct's fields or an interface's methods with their
+// names, tags and comments intact, rewriting only the function types inside
+// their types.
+func namedFields(fl *ast.FieldList) *ast.FieldList {
+	if fl == nil {
+		return nil
+	}
+	out := &ast.FieldList{Opening: fl.Opening, Closing: fl.Closing, List: make([]*ast.Field, len(fl.List))}
+	for i, f := range fl.List {
+		c := *f
+		c.Type = unnameFuncTypes(f.Type)
+		out.List[i] = &c
+	}
+	return out
 }
 
 // extractCallees walks the function body and returns a sorted, deduplicated list
