@@ -18,9 +18,12 @@
 //     nil check that guarded the operand next to it no longer guards it.
 //   - Sorting the operands of + reverses string concatenation, and reorders
 //     any operand whose evaluation has a side effect.
-//   - Swapping the branches of a negated if, and lifting an else block out
-//     from behind an early return, both preserve control flow — but only
-//     because the rules refuse to fire when they would not.
+//   - Swapping the branches of a negated if, lifting an else block out from
+//     behind an early return, and lifting a trailing if's body out from
+//     behind a negated one all preserve control flow — but only because the
+//     rules refuse to fire when they would not.
+//   - Negating an ordering comparison flips its operator, and `!(a < b)` is
+//     not `a >= b` when either side is NaN.
 //
 // Two functions that canonicalize to the same tree are alike in shape. They
 // are not thereby interchangeable, and nothing downstream may claim they are.
@@ -35,29 +38,36 @@
 //  2. RuleUnwrapBlock     — a bare { … } inside a block is spliced into it.
 //  3. RuleNegatedIf       — if !c {A} else {B} becomes if c {B} else {A}.
 //  4. RuleGuardReturn     — an if/else with one leaving branch becomes an early return.
-//  5. RuleIncDec          — x = x + 1 and x += 1 become x++ (likewise --).
-//  6. RuleCommutativeSort — operands of + * == != & | ^ && || are ordered.
+//  5. RuleTailGuard       — a trailing if with no else, where the block's end is a bare
+//     return or continue, becomes an early exit followed by its body.
+//  6. RuleIncDec          — x = x + 1 and x += 1 become x++ (likewise --).
+//  7. RuleCommutativeSort — operands of + * == != & | ^ && || are ordered.
 //
 // Alpha-renaming leads because the commutative sort orders operands by their
 // rendered form, and renaming changes that form: sorting first would freeze
 // an order that reflects the original names. RuleNegatedIf precedes
 // RuleGuardReturn so that `if !c {A} else {return}` reaches the early-return
-// form in one round rather than two. RuleIncDec precedes RuleCommutativeSort
-// for the same reason renaming does, and additionally matches `1 + x` as well
-// as `x + 1`, so it is correct whichever side the sort would have chosen.
+// form in one round rather than two, and RuleTailGuard follows RuleGuardReturn
+// for the same reason: lifting an else out can leave a trailing if behind it.
+// RuleIncDec precedes RuleCommutativeSort for the same reason renaming does,
+// and additionally matches `1 + x` as well as `x + 1`, so it is correct
+// whichever side the sort would have chosen.
 //
-// The two branch rules are the pair that interact, and the interaction is
+// The two if/else rules are the pair that interact, and the interaction is
 // load-bearing rather than incidental: RuleNegatedIf declines to swap a
 // guard that already sits in the then-branch, because doing so would move it
 // where RuleGuardReturn can no longer lift anything out. Each rule's doc
 // carries the argument; changing one without the other reintroduces a case
-// where the same guard written two ways canonicalizes two ways.
+// where the same guard written two ways canonicalizes two ways. RuleTailGuard
+// works only on an if with no else and writes none, so neither of the pair
+// can see what it produces.
 //
 // # Termination
 //
 // Every rule is individually terminating, each on its own strictly
 // decreasing measure: RuleUnwrapBlock removes a block, RuleNegatedIf removes
 // a leading "!" from an if condition, RuleGuardReturn removes an else,
+// RuleTailGuard removes an else-less if whose body does not leave,
 // RuleIncDec removes an assignment, RuleCommutativeSort is a single
 // bottom-up pass that leaves every commutative node ordered, and
 // RuleAlphaRename is a fixed point after one application because binding
@@ -85,7 +95,11 @@ import (
 // that persist canonical forms compare on it and refuse to compare across
 // versions — two trees canonicalized under different rule sets answer
 // different questions.
-const Version = "1"
+//
+// "2" added RuleTailGuard and taught the shared negation to strip a "!" and
+// flip a comparison rather than wrap either, which moves RuleGuardReturn's
+// output too.
+const Version = "2"
 
 // A RuleID names one rewrite. The strings are stable API: they are recorded
 // per function, will be serialized, and are rendered in explanations. Rename
@@ -97,6 +111,7 @@ const (
 	RuleUnwrapBlock     RuleID = "unwrap-block"
 	RuleNegatedIf       RuleID = "negated-if"
 	RuleGuardReturn     RuleID = "guard-return"
+	RuleTailGuard       RuleID = "tail-guard"
 	RuleIncDec          RuleID = "incdec"
 	RuleCommutativeSort RuleID = "commutative-sort"
 )
@@ -134,6 +149,11 @@ func Rules() []Rule {
 			ID:    RuleGuardReturn,
 			Doc:   "an if/else with exactly one leaving branch becomes an early return followed by the other",
 			Apply: flattenGuards,
+		},
+		{
+			ID:    RuleTailGuard,
+			Doc:   "a trailing if c { B } with no else, ending a function with no results or a loop body, becomes if !c { return } (or continue) followed by B",
+			Apply: liftTailIfs,
 		},
 		{
 			ID:    RuleIncDec,

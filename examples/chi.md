@@ -9,7 +9,7 @@ HTTP router; a narrow core with a middleware package beside it
 | Corpus | [chi](https://github.com/go-chi/chi) |
 | Pinned at | `v5.3.2` (`38939062c5df4d3e8814aad1a488983112627ced`) |
 | Project since | 2015 |
-| doppel | `783a0d4` |
+| doppel | `82e7616` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -22,20 +22,20 @@ The corpus-level models doppel builds before ranking anything, as printed to std
 ```
 Scanning . ...
 Learning concept vocabulary...
-Lexicon: 21 concepts (0 seeded, 21 emergent), 717/1935 features above 67 df, 34 functions unlabeled
+Lexicon: 21 concepts (0 seeded, 21 emergent), 714/1941 features above 67 df, 35 functions unlabeled
 Generating concept documents...
 Calibration: rate 0.01 over 9045 shape / 16653 overlap null pairs -> threshold 0.45, struct-min 0.51, family-min 0.45
 Found 183 functions. Retrieving candidates...
-Retrieval: shape 86, concept 532, call 357 -> 814 unique pairs
-  concept-only 48.4%  call-only 29.5%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1340
-Running structural comparison on 814 pairs...
-  Concept views: 0 of 814 compared pairs disagree with the taxonomy (0 vocabulary the tree misses, 0 kinship the vocabularies lack)
-  124 pairs remain after struct-min=0.51 filter
-Culture: 20 concepts modeled, 71 associations, 6 unusual realizations
+Retrieval: shape 84, concept 529, call 357 -> 811 unique pairs
+  concept-only 48.3%  call-only 29.7%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1326
+Running structural comparison on 811 pairs...
+  Concept views: 1 of 811 compared pairs disagree with the taxonomy (1 vocabulary the tree misses, 0 kinship the vocabularies lack)
+  125 pairs remain after struct-min=0.51 filter
+Culture: 20 concepts modeled, 69 associations, 7 unusual realizations
 Habitats: 2 modeled, 0 misfits; most uniform chi (norm 0.92), most diverse middleware (norm 0.90)
 Conventions: strongest mx.handle+chi.*Mux.handle (0.89), loosest mx.inline+mx.handler (0.23)
-Ecosystems: 162 profiled (121 dominance, 41 coalition, 0 conflict, 0 weak)
-Families: 6 over 16 components, 28 functions in a family, 9 edges completed
+Ecosystems: 162 profiled (120 dominance, 42 coalition, 0 conflict, 0 weak)
+Families: 6 over 15 components, 28 functions in a family, 9 edges completed
   3 pairs suppressed by max-per-func=2
 ```
 
@@ -139,25 +139,25 @@ The diagram draws the 3 largest concepts on each branch; **18 further concepts**
 
 | Concept | Functions | Convention |
 |---|---:|---|
-| `b.ResponseWriter+b.discard` | 28 | `0.43` (loose) |
-| `http.StatusUnsupportedMedia…+chi.RouteContext` | 23 | `0.59` (settled) |
+| `b.ResponseWriter+b.discard` | 28 | `0.46` (loose) |
+| `http.StatusUnsupportedMedia…+chi.RouteContext` | 23 | `0.60` (settled) |
 | `cw.ResponseWriter+cw.writer` | 20 | `0.44` (loose) |
 | `h.handler+n.endpoints` | 20 | `0.50` (settled) |
-| `http.StatusUnsupportedMedia…+Header.Get+context.WithValue` | 16 | `0.43` (loose) |
+| `http.StatusUnsupportedMedia…+Header.Get+context.WithValue` | 15 | `0.43` (loose) |
 | `context.WithValue+r.WithContext` | 13 | `0.32` (loose) |
 | `mx.tree+rctx.RoutePath` | 13 | `0.39` (loose) |
 | `URL.RawPath+chi.RouteContext` | 11 | `0.59` (settled) |
 | `buf.String+bytes.Buffer` | 11 | `0.31` (loose) |
 | `fmt.Sprintf+r.Context` | 11 | `0.35` (loose) |
-| `http.StatusUnsupportedMedia…+Header.Get` | 11 | `0.31` (loose) |
+| `http.StatusUnsupportedMedia…+Header.Get` | 10 | `0.32` (loose) |
+| `http.StatusUnsupportedMedia…+strings.ToLower` | 10 | `0.39` (loose) |
 | `mx.handle+chi.*Mux.handle` | 10 | `0.89` (unanimous) |
-| `http.StatusUnsupportedMedia…+strings.ToLower` | 9 | `0.38` (loose) |
-| `http.StatusUnsupportedMedia…+w.WriteHeader` | 8 | `0.26` (loose) |
+| `http.StatusUnsupportedMedia…+w.WriteHeader` | 8 | `0.27` (loose) |
 | `rctx.URLParams+URLParams.Keys` | 8 | `0.38` (loose) |
 | `mx.inline+mx.handler` | 7 | `0.23` (loose) |
 | `netip.Addr+context.WithValue` | 7 | `0.32` (loose) |
 | `r.Context+http.Handler` | 7 | `0.40` (loose) |
-| `w.Header+http.Handler` | 6 | `0.37` (loose) |
+| `w.Header+http.Handler` | 7 | `0.41` (loose) |
 | `strings.Cut+chi.*Mux.Get` | 5 | `0.44` (loose) |
 | `strings.TrimSpace+space` | 3 | — |
 
@@ -185,19 +185,19 @@ Most uniform is `chi` (norm `0.92`); most varied is `middleware` (norm `0.90`).
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **814 candidate pairs** (shape 86, concept 532, call 357), of which 29% arrived on call evidence alone and 48% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **811 candidate pairs** (shape 84, concept 529, call 357), of which 30% arrived on call evidence alone and 48% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
-The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **0 of 814** pairs the taxonomy and the vocabularies differ by at least 0.50: 0 where the vocabularies agree and the tree cannot see it, 0 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
+The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **1 of 811** pairs the taxonomy and the vocabularies differ by at least 0.50: 1 where the vocabularies agree and the tree cannot see it, 0 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
 
-Each function is also an arena where its candidate concepts compete for its evidence. 162 functions reached an equilibrium: **121** settled on a single concept, **41** on a coalition, **0** hold concepts this corpus says do not go together.
+Each function is also an arena where its candidate concepts compete for its evidence. 162 functions reached an equilibrium: **120** settled on a single concept, **42** on a coalition, **0** hold concepts this corpus says do not go together.
 
 _3 further pairs were held back so no single function fills the report._
 
 ### Corpus metrics
 
-**Compression ratio:** `5.32`x — this corpus's canonical function bodies contain **11155 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **2097 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
+**Compression ratio:** `5.35`x — this corpus's canonical function bodies contain **11169 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **2089 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **183 functions**, **173** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.42` / `0.90` / `1.00`, and 42% of them (73 of 173) already clear this run's threshold of `0.45`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 10 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **183 functions**, **172** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.41` / `0.90` / `1.00`, and 41% of them (71 of 172) already clear this run's threshold of `0.45`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 11 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -213,7 +213,7 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 
 | Channel | Feature | | Members | vs corpus |
 |---|---|---|---|---|
-| cotags ×15 | `cw.ResponseWriter+cw.writer` | `████······` | 10 of 28 | 3.3× |
+| cotags ×15 | `cw.ResponseWriter+cw.writer` | `████······` | 11 of 28 | 3.6× |
 
 **`http.StatusUnsupportedMedia…+chi.RouteContext`** — 23 functions
 
@@ -222,7 +222,7 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 | calls ×40 | `net/http.HandlerFunc` | `█████████·` | 21 of 23 | 4.8× |
 | flow ×20 | `funclit` | `██████████` | 23 of 23 | 4.4× |
 | cotags ×15 | `URL.RawPath+chi.RouteContext` | `████······` | 10 of 23 | 7.2× |
-|  | `http.StatusUnsupportedMedia…+Header.Get+context.WithValue` | `███·······` | 7 of 23 | 3.5× |
+|  | `http.StatusUnsupportedMedia…+Header.Get+context.WithValue` | `███·······` | 6 of 23 | 3.2× |
 
 **`cw.ResponseWriter+cw.writer`** — 20 functions
 
@@ -231,7 +231,7 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 | calls ×40 | `errors.New` | `███·······` | 5 of 20 | 9.2× |
 |  | `middleware.*compressResponseWriter.writer` | `███·······` | 5 of 20 | 9.2× |
 | cotags ×15 | `buf.String+bytes.Buffer` | `███·······` | 6 of 20 | 5.0× |
-|  | `b.ResponseWriter+b.discard` | `█████·····` | 10 of 20 | 3.3× |
+|  | `b.ResponseWriter+b.discard` | `██████····` | 11 of 20 | 3.6× |
 
 **`h.handler+n.endpoints`** — 20 functions
 
@@ -240,21 +240,19 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 | flow ×20 | `for` | `████······` | 7 of 20 | 4.6× |
 | package ×10 | `chi` | `██████████` | 20 of 20 | 2.4× |
 
-**`http.StatusUnsupportedMedia…+Header.Get+context.WithValue`** — 16 functions
+**`http.StatusUnsupportedMedia…+Header.Get+context.WithValue`** — 15 functions
 
 | Channel | Feature | | Members | vs corpus |
 |---|---|---|---|---|
-| calls ×40 | `context.WithValue` | `████······` | 7 of 16 | 8.9× |
-|  | `strings.ToLower` | `███·······` | 4 of 16 | 5.1× |
-|  | `net/http.HandlerFunc` | `█████████·` | 15 of 16 | 4.9× |
-|  | `chi.*Mux.Get` | `███·······` | 5 of 16 | 4.8× |
-| flow ×20 | `funclit` | `█████████·` | 15 of 16 | 4.1× |
-|  | `range` | `████······` | 6 of 16 | 2.6× |
-| cotags ×15 | `context.WithValue+r.WithContext` | `██████····` | 10 of 16 | 8.8× |
-|  | `netip.Addr+context.WithValue` | `███·······` | 4 of 16 | 6.5× |
-|  | `http.StatusUnsupportedMedia…+Header.Get` | `███·······` | 5 of 16 | 5.2× |
-|  | `http.StatusUnsupportedMedia…+chi.RouteContext` | `████······` | 7 of 16 | 3.5× |
-| role ×15 | `orchestrator` | `███·······` | 5 of 16 | 2.1× |
+| calls ×40 | `context.WithValue` | `█████·····` | 7 of 15 | 9.5× |
+|  | `chi.*Mux.Get` | `███·······` | 5 of 15 | 5.1× |
+|  | `net/http.HandlerFunc` | `█████████·` | 14 of 15 | 4.9× |
+| flow ×20 | `funclit` | `█████████·` | 14 of 15 | 4.1× |
+|  | `range` | `███·······` | 5 of 15 | 2.3× |
+| cotags ×15 | `context.WithValue+r.WithContext` | `███████···` | 10 of 15 | 9.4× |
+|  | `netip.Addr+context.WithValue` | `███·······` | 4 of 15 | 7.0× |
+|  | `http.StatusUnsupportedMedia…+chi.RouteContext` | `████······` | 6 of 15 | 3.2× |
+| role ×15 | `orchestrator` | `███·······` | 5 of 15 | 2.3× |
 
 **`context.WithValue+r.WithContext`** — 13 functions
 
@@ -264,8 +262,8 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 |  | `net/http.HandlerFunc` | `███████···` | 9 of 13 | 3.6× |
 | flow ×20 | `funclit` | `███████···` | 9 of 13 | 3.0× |
 | cotags ×15 | `netip.Addr+context.WithValue` | `█████·····` | 6 of 13 | 12× |
-|  | `http.StatusUnsupportedMedia…+Header.Get+context.WithValue` | `████████··` | 10 of 13 | 8.8× |
-|  | `http.StatusUnsupportedMedia…+chi.RouteContext` | `████······` | 5 of 13 | 3.1× |
+|  | `http.StatusUnsupportedMedia…+Header.Get+context.WithValue` | `████████··` | 10 of 13 | 9.4× |
+|  | `http.StatusUnsupportedMedia…+chi.RouteContext` | `███·······` | 4 of 13 | 2.4× |
 | role ×15 | `orchestrator` | `███·······` | 4 of 13 | 2.1× |
 
 _14 further concepts are modeled and not described._
@@ -284,7 +282,7 @@ _Showing 12 of 21 concepts — those in the strongest pairings, taken strongest 
 | **`cw.ResponseWriter+cw.writer`** |  | + | ++ |  | | | | | | | |
 | **`h.handler+n.endpoints`** |  | never |  |  |  | | | | | | |
 | **`http.StatusUnsupportedMedia…+Header.Get`** |  |  |  |  |  |  | | | | | |
-| **`http.StatusUnsupportedMedia…+Header.Get+context.WithValue`** |  |  |  | ++ |  |  | ++ | | | | |
+| **`http.StatusUnsupportedMedia…+Header.Get+context.WithValue`** |  |  |  | ++ |  |  | + | | | | |
 | **`http.StatusUnsupportedMedia…+chi.RouteContext`** | ++ | never |  | + |  |  |  | + | | | |
 | **`http.StatusUnsupportedMedia…+strings.ToLower`** | ++ |  |  |  |  |  | ++ |  | + | | |
 | **`netip.Addr+context.WithValue`** |  |  |  | ++ |  |  |  | ++ |  |  | |
@@ -296,21 +294,22 @@ Co-occurrence measured against chance across every function. Only relationships 
 
 **Together more than chance — tag~tag**
 
-- 10 of 13 `context.WithValue+r.WithContext` functions also `http.StatusUnsupportedMedia…+Header.Get+context.WithValue` — 8.8× chance
+- 10 of 13 `context.WithValue+r.WithContext` functions also `http.StatusUnsupportedMedia…+Header.Get+context.WithValue` — 9.4× chance
 - 6 of 7 `netip.Addr+context.WithValue` functions also `context.WithValue+r.WithContext` — 12× chance
 - 10 of 11 `URL.RawPath+chi.RouteContext` functions also `http.StatusUnsupportedMedia…+chi.RouteContext` — 7.2× chance
+- 6 of 10 `http.StatusUnsupportedMedia…+Header.Get` functions also `http.StatusUnsupportedMedia…+strings.ToLower` — 11× chance
 - 5 of 7 `r.Context+http.Handler` functions also `buf.String+bytes.Buffer` — 12× chance
-- 5 of 9 `http.StatusUnsupportedMedia…+strings.ToLower` functions also `http.StatusUnsupportedMedia…+Header.Get` — 9.2× chance
-- 6 of 11 `buf.String+bytes.Buffer` functions also `cw.ResponseWriter+cw.writer` — 5.0× chance
-- _13 more not listed_
+- 11 of 20 `cw.ResponseWriter+cw.writer` functions also `b.ResponseWriter+b.discard` — 3.6× chance
+- _12 more not listed_
 
 **Together more than chance — tag~role**
 
 - 5 of 8 `rctx.URLParams+URLParams.Keys` functions also `utility` — 4.2× chance
 - 3 of 7 `mx.inline+mx.handler` functions also `utility` — 2.9× chance
-- 5 of 16 `http.StatusUnsupportedMedia…+Header.Get+context.WithValue` functions also `orchestrator` — 2.1× chance
+- 5 of 15 `http.StatusUnsupportedMedia…+Header.Get+context.WithValue` functions also `orchestrator` — 2.3× chance
 - 4 of 13 `context.WithValue+r.WithContext` functions also `orchestrator` — 2.1× chance
 - 4 of 13 `mx.tree+rctx.RoutePath` functions also `orchestrator` — 2.1× chance
+- 3 of 10 `http.StatusUnsupportedMedia…+Header.Get` functions also `orchestrator` — 2.0× chance
 
 **Together more than chance — tag~call**
 
@@ -318,9 +317,9 @@ Co-occurrence measured against chance across every function. Only relationships 
 - 5 of 5 `strings.Cut+chi.*Mux.Get` functions also `strings.Cut` — 30× chance
 - 10 of 11 `fmt.Sprintf+r.Context` functions also `fmt.Sprintf` — 13× chance
 - 8 of 13 `context.WithValue+r.WithContext` functions also `context.WithValue` — 13× chance
-- 7 of 11 `http.StatusUnsupportedMedia…+Header.Get` functions also `strings.ToLower` — 13× chance
+- 7 of 10 `http.StatusUnsupportedMedia…+Header.Get` functions also `strings.ToLower` — 14× chance
 - 5 of 11 `buf.String+bytes.Buffer` functions also `middleware.cW` — 17× chance
-- _31 more not listed_
+- _29 more not listed_
 
 **Apart more than chance — tag~tag**
 
@@ -329,16 +328,16 @@ Co-occurrence measured against chance across every function. Only relationships 
 
 **Apart more than chance — tag~role**
 
-- **no** `b.ResponseWriter+b.discard` function has `orchestrator` — chance alone would give about 4 of 28
 - **no** `http.StatusUnsupportedMedia…+chi.RouteContext` function has `utility` — chance alone would give about 3 of 23
 - 2 of 8 `rctx.URLParams+URLParams.Keys` functions also `leaf` — 0.4× chance
 - 1 of 7 `mx.inline+mx.handler` functions also `leaf` — 0.2× chance
-- 2 of 28 `b.ResponseWriter+b.discard` functions also `utility` — 0.5× chance
+- 1 of 28 `b.ResponseWriter+b.discard` functions also `orchestrator` — 0.2× chance
+- 1 of 28 `b.ResponseWriter+b.discard` functions also `utility` — 0.2× chance
 
 **Apart more than chance — tag~call**
 
-- **no** `b.ResponseWriter+b.discard` function has `net/http.HandlerFunc` — chance alone would give about 5 of 28
 - **no** `h.handler+n.endpoints` function has `net/http.HandlerFunc` — chance alone would give about 4 of 20
+- 1 of 28 `b.ResponseWriter+b.discard` functions also `net/http.HandlerFunc` — 0.2× chance
 - 1 of 20 `cw.ResponseWriter+cw.writer` functions also `net/http.HandlerFunc` — 0.3× chance
 
 ### Functions drifting from their own concept
@@ -347,10 +346,11 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 | Function | Concept | Typicality | Concept median | |
 |---|---|---:|---:|---|
-| `middleware.RequestLogger` <br/>`middleware/logger.go:44` | `http.StatusUnsupportedMedia…+chi.RouteContext` | `0.29` | `0.62` | no near-duplicate |
+| `middleware.*Compressor.Handler` <br/>`middleware/compress.go:199` | `b.ResponseWriter+b.discard` | `0.21` | `0.60` | no near-duplicate |
 | `chi.patNextSegment` <br/>`tree.go:735` | `h.handler+n.endpoints` | `0.23` | `0.55` | no near-duplicate |
+| `middleware.RequestLogger` <br/>`middleware/logger.go:44` | `http.StatusUnsupportedMedia…+chi.RouteContext` | `0.30` | `0.62` | no near-duplicate |
+| `middleware.Recoverer` <br/>`middleware/recoverer.go:22` | `http.StatusUnsupportedMedia…+chi.RouteContext` | `0.30` | `0.62` | no near-duplicate |
 | `chi.*Mux.ServeHTTP` <br/>`mux.go:63` | `context.WithValue+r.WithContext` | `0.25` | `0.55` | no near-duplicate |
-| `middleware.*Compressor.Handler` <br/>`middleware/compress.go:199` | `cw.ResponseWriter+cw.writer` | `0.19` | `0.45` | no near-duplicate |
 | `middleware.RequestLogger` <br/>`middleware/logger.go:44` | `r.Context+http.Handler` | `0.13` | `0.34` | no near-duplicate |
 | `chi.*node.addChild` <br/>`tree.go:244` | `h.handler+n.endpoints` | `0.26` | `0.55` |  |
 
@@ -358,32 +358,32 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #1 — Code-shape: `0.8418`
+## Match #1 — Code-shape: `0.8410`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
-| **A** | `mux.go:203` | `chi.*Mux.NotFound` | `(http.HandlerFunc)` | mx.tree+rctx.RoutePath 0.51, mx.inline+mx.handler 0.50 |
+| **A** | `mux.go:203` | `chi.*Mux.NotFound` | `(http.HandlerFunc)` | mx.tree+rctx.RoutePath 0.50, mx.inline+mx.handler 0.50 |
 | **B** | `mux.go:223` | `chi.*Mux.MethodNotAllowed` | `(http.HandlerFunc)` | mx.tree+rctx.RoutePath 0.51, mx.inline+mx.handler 0.50 |
 
 **Explain:** differs by two extra call
 
 **Profile A:** `mx.inline+mx.handler` 0.55, `mx.tree+rctx.RoutePath` 0.45 (coalition)
 
-**Profile B:** `mx.inline+mx.handler` 0.54, `mx.tree+rctx.RoutePath` 0.46 (coalition)
+**Profile B:** `mx.inline+mx.handler` 0.55, `mx.tree+rctx.RoutePath` 0.45 (coalition)
 
-**Code similarity:** `wl 0.74  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+**Code similarity:** `wl 0.73  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `0.85`
 
-**Evidence:** `261.69` (shape 245.37, concept 3.18, call 13.14)
+**Evidence:** `261.38` (shape 245.06, concept 3.17, call 13.14)
 
-**Trophic:** `0.95`
+**Trophic:** `0.97`
 
 **Shared structure:**
 
+- `4.84` — `depth-3 BIN` ×2
+- `4.84` — `depth-2 BIN` ×2
 - `4.83` — `depth-1 ASSIGN` ×3
-- `4.68` — `depth-3 ASSIGN` ×2
-- `4.68` — `depth-2 ASSIGN` ×2
 
 **Concept views:** shape `1.00`, corpus `0.99`, feature `0.99`, a-in-b `1.00`, b-in-a `0.99`
 
@@ -406,7 +406,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #2 — Code-shape: `0.7890`
+## Match #2 — Code-shape: `0.7888`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -423,7 +423,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.97`
 
-**Evidence:** `422.29` (shape 421.12, concept 1.17, call 0.00)
+**Evidence:** `420.63` (shape 419.45, concept 1.17, call 0.00)
 
 **Trophic:** `0.94`
 
@@ -448,12 +448,12 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #3 — Code-shape: `0.6878`
+## Match #3 — Code-shape: `0.6877`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
 | **A** | `middleware/recoverer.go:132` | `middleware.prettyStack.decorateFuncCallLine` | `(string, bool, int) (string, error)` | buf.String+bytes.Buffer 0.47, cw.ResponseWriter+cw.writer 0.44 |
-| **B** | `middleware/recoverer.go:172` | `middleware.prettyStack.decorateSourceLine` | `(string, bool, int) (string, error)` | buf.String+bytes.Buffer 0.49, cw.ResponseWriter+cw.writer 0.45 |
+| **B** | `middleware/recoverer.go:172` | `middleware.prettyStack.decorateSourceLine` | `(string, bool, int) (string, error)` | buf.String+bytes.Buffer 0.49, cw.ResponseWriter+cw.writer 0.46 |
 
 **Explain:** differs by four extra assign, one extra if, five extra binary, and 7 more kinds
 
@@ -465,7 +465,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.67`
 
-**Evidence:** `516.80` (shape 499.09, concept 2.58, call 15.13)
+**Evidence:** `516.97` (shape 499.26, concept 2.58, call 15.13)
 
 **Trophic:** `0.76`
 
@@ -495,7 +495,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #4 — Code-shape: `0.6883`
+## Match #4 — Code-shape: `0.6887`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -508,21 +508,21 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Profile B:** `URL.RawPath+chi.RouteContext` 0.57, `http.StatusUnsupportedMedia…+chi.RouteContext` 0.43 (coalition)
 
-**Code similarity:** `wl 0.49  flow 0.97  nesting 0.96  sig 1.00  size 0.83`
+**Code similarity:** `wl 0.50  flow 0.97  nesting 0.96  sig 1.00  size 0.83`
 
 **Containment:** `0.74`
 
-**Evidence:** `316.31` (shape 312.02, concept 2.64, call 1.65)
+**Evidence:** `315.25` (shape 310.96, concept 2.64, call 1.65)
 
 **Trophic:** `0.83`
 
 **Shared structure:**
 
-- `4.53` — `depth-2 BLOCK` ×2
+- `4.68` — `depth-2 BLOCK` ×2
 - `4.21` — `depth-3 BIN`
 - `4.21` — `depth-3 IF`
 
-**Concept views:** shape `1.00`, corpus `0.86`, feature `0.86`, a-in-b `0.86`, b-in-a `1.00`
+**Concept views:** shape `1.00`, corpus `0.86`, feature `0.85`, a-in-b `0.85`, b-in-a `1.00`
 
 **Shared vocabulary:** `lit:GET`, `sel:URL.RawPath`, `id:raw`
 
@@ -537,24 +537,24 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #5 — Code-shape: `0.6090`
+## Match #5 — Code-shape: `0.6082`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
-| **A** | `middleware/content_encoding.go:10` | `middleware.AllowContentEncoding` | `(...string) (func(next http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+Header.Get 0.53, http.StatusUnsupportedMedia…+w.WriteHeader 0.51, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.50 |
-| **B** | `middleware/content_type.go:20` | `middleware.AllowContentType` | `(...string) (func(http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+Header.Get 0.51, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.49, http.StatusUnsupportedMedia…+w.WriteHeader 0.49 |
+| **A** | `middleware/content_encoding.go:10` | `middleware.AllowContentEncoding` | `(...string) (func(next http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+strings.ToLower 0.54, http.StatusUnsupportedMedia…+Header.Get 0.53, http.StatusUnsupportedMedia…+w.WriteHeader 0.51 |
+| **B** | `middleware/content_type.go:20` | `middleware.AllowContentType` | `(...string) (func(http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+Header.Get 0.52, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.50, http.StatusUnsupportedMedia…+w.WriteHeader 0.49 |
 
 **Explain:** differs by two extra assign, one extra range, two extra call, and 6 more kinds
 
-**Profile A:** `http.StatusUnsupportedMedia…+Header.Get` 0.51, `http.StatusUnsupportedMedia…+w.WriteHeader` 0.46 (coalition)
+**Profile A:** `http.StatusUnsupportedMedia…+Header.Get` 0.56, `http.StatusUnsupportedMedia…+strings.ToLower` 0.38, `http.StatusUnsupportedMedia…+w.WriteHeader` 0.06 (coalition)
 
-**Profile B:** `http.StatusUnsupportedMedia…+Header.Get` 0.86, `http.StatusUnsupportedMedia…+Header.Get+context.WithValue` 0.14 (dominance)
+**Profile B:** `http.StatusUnsupportedMedia…+Header.Get` 0.98 (dominance)
 
 **Code similarity:** `wl 0.52  flow 0.98  nesting 0.98  sig 0.33  size 0.98`
 
 **Containment:** `0.70`
 
-**Evidence:** `370.75` (shape 357.89, concept 4.60, call 8.27)
+**Evidence:** `368.00` (shape 356.43, concept 3.31, call 8.27)
 
 **Trophic:** `0.79`
 
@@ -564,14 +564,14 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `7.61` — `depth-2 STRUCTTYPE` ×2
 - `7.61` — `depth-1 STRUCTTYPE` ×2
 
-**Concept views:** shape `1.00`, corpus `0.96`, feature `0.96`, a-in-b `0.96`, b-in-a `1.00`
+**Concept views:** shape `0.67`, corpus `0.64`, feature `0.67`, a-in-b `0.88`, b-in-a `0.73`
 
 **Shared vocabulary:** `id:media`, `id:unsupported`, `sel:http.StatusUnsupportedMediaType`
 
-**Structural overlap:** `0.65` (merge-worthy)
+**Structural overlap:** `0.59` (merge-worthy)
 
 - share 7 callees: [http.HandlerFunc, len, make, next.ServeHTTP, strings.ToLower, strings.TrimSpace, w.WriteHeader]
-- share patterns: [http.StatusUnsupportedMedia…+Header.Get, http.StatusUnsupportedMedia…+Header.Get+context.WithValue, http.StatusUnsupportedMedia…+w.WriteHeader]
+- share patterns: [http.StatusUnsupportedMedia…+Header.Get, http.StatusUnsupportedMedia…+w.WriteHeader]
 - both are leaf functions
 - same package
 - same visibility
@@ -579,24 +579,24 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #6 — Code-shape: `0.6414`
+## Match #6 — Code-shape: `0.6417`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
-| **A** | `middleware/route_headers.go:48` | `middleware.HeaderRouter.Route` | `(string, string, func(next http.Handler) http.Handler) (HeaderRouter)` | http.StatusUnsupportedMedia…+Header.Get 0.52, http.StatusUnsupportedMedia…+strings.ToLower 0.50 |
-| **B** | `middleware/route_headers.go:58` | `middleware.HeaderRouter.RouteAny` | `(string, []string, func(next http.Handler) http.Handler) (HeaderRouter)` | http.StatusUnsupportedMedia…+Header.Get 0.51, http.StatusUnsupportedMedia…+strings.ToLower 0.50 |
+| **A** | `middleware/route_headers.go:48` | `middleware.HeaderRouter.Route` | `(string, string, func(next http.Handler) http.Handler) (HeaderRouter)` | http.StatusUnsupportedMedia…+Header.Get 0.50, http.StatusUnsupportedMedia…+strings.ToLower 0.48 |
+| **B** | `middleware/route_headers.go:58` | `middleware.HeaderRouter.RouteAny` | `(string, []string, func(next http.Handler) http.Handler) (HeaderRouter)` | http.StatusUnsupportedMedia…+Header.Get 0.50, http.StatusUnsupportedMedia…+strings.ToLower 0.48 |
 
 **Explain:** differs by two extra assign, one extra range, one extra call, and 4 more kinds
 
-**Profile A:** `http.StatusUnsupportedMedia…+Header.Get` 0.57, `http.StatusUnsupportedMedia…+strings.ToLower` 0.43 (coalition)
+**Profile A:** `http.StatusUnsupportedMedia…+Header.Get` 0.58, `http.StatusUnsupportedMedia…+strings.ToLower` 0.42 (coalition)
 
-**Profile B:** `http.StatusUnsupportedMedia…+Header.Get` 0.57, `http.StatusUnsupportedMedia…+strings.ToLower` 0.43 (coalition)
+**Profile B:** `http.StatusUnsupportedMedia…+Header.Get` 0.58, `http.StatusUnsupportedMedia…+strings.ToLower` 0.42 (coalition)
 
 **Code similarity:** `wl 0.53  flow 0.82  nesting 1.00  sig 0.75  size 0.74`
 
 **Containment:** `0.81` — most of the smaller body's shape is inside the larger
 
-**Evidence:** `186.54` (shape 175.74, concept 3.27, call 7.53)
+**Evidence:** `186.83` (shape 176.15, concept 3.16, call 7.53)
 
 **Trophic:** `0.86`
 
@@ -606,7 +606,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `7.26` — `depth-2 INDEX` ×4
 - `7.26` — `depth-1 INDEX` ×4
 
-**Concept views:** shape `1.00`, corpus `0.99`, feature `0.99`, a-in-b `0.99`, b-in-a `1.00`
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
 
 **Shared vocabulary:** `id:media`, `id:unsupported`, `sel:http.StatusUnsupportedMediaType`
 
@@ -643,7 +643,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `61.31` (shape 59.92, concept 1.38, call 0.00)
+**Evidence:** `61.32` (shape 59.92, concept 1.39, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -687,7 +687,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `61.31` (shape 59.92, concept 1.38, call 0.00)
+**Evidence:** `61.32` (shape 59.92, concept 1.39, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -731,7 +731,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `61.31` (shape 59.92, concept 1.38, call 0.00)
+**Evidence:** `61.32` (shape 59.92, concept 1.39, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -775,7 +775,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `56.64` (shape 55.21, concept 1.43, call 0.00)
+**Evidence:** `56.65` (shape 55.21, concept 1.44, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -804,7 +804,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 6 families, 28 functions in a family, largest 10 members; 9 edges scored here that retrieval never proposed
 
-### Family 1 — 5 members, every pair `>= 0.47` code-shape, evidence `1507`
+### Family 1 — 5 members, every pair `>= 0.47` code-shape, evidence `1496`
 
 ```mermaid
 flowchart LR
@@ -870,9 +870,9 @@ flowchart LR
 
 | Location | Function | Signature | Concepts |
 |---|---|---|---|
-| `middleware/middleware.go:6` | `middleware.New` | `(http.Handler) (func(next http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+chi.RouteContext 0.63, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.59, context.WithValue+r.WithContext 0.55 |
-| `middleware/request_size.go:9` | `middleware.RequestSize` | `(int64) (func(http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+chi.RouteContext 0.56, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.54, context.WithValue+r.WithContext 0.50 |
-| `middleware/value.go:9` | `middleware.WithValue` | `(interface{}, interface{}) (func(next http.Handler) http.Handler)` | context.WithValue+r.WithContext 0.63, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.62, http.StatusUnsupportedMedia…+chi.RouteContext 0.60 |
+| `middleware/middleware.go:6` | `middleware.New` | `(http.Handler) (func(next http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+chi.RouteContext 0.63, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.60, context.WithValue+r.WithContext 0.55 |
+| `middleware/request_size.go:9` | `middleware.RequestSize` | `(int64) (func(http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+chi.RouteContext 0.56, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.55, context.WithValue+r.WithContext 0.50 |
+| `middleware/value.go:9` | `middleware.WithValue` | `(interface{}, interface{}) (func(next http.Handler) http.Handler)` | context.WithValue+r.WithContext 0.63, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.63, http.StatusUnsupportedMedia…+chi.RouteContext 0.60 |
 
 ### Family 4 — 3 members, every pair `>= 0.48` code-shape, evidence `220`
 
@@ -888,7 +888,7 @@ flowchart LR
 
 | Location | Function | Signature | Concepts |
 |---|---|---|---|
-| `middleware/compress.go:365` | `middleware.*compressResponseWriter.Hijack` | `() (net.Conn, *bufio.ReadWriter, error)` | b.ResponseWriter+b.discard 0.64, cw.ResponseWriter+cw.writer 0.60 |
+| `middleware/compress.go:365` | `middleware.*compressResponseWriter.Hijack` | `() (net.Conn, *bufio.ReadWriter, error)` | b.ResponseWriter+b.discard 0.64, cw.ResponseWriter+cw.writer 0.61 |
 | `middleware/compress.go:372` | `middleware.*compressResponseWriter.Push` | `(string, *http.PushOptions) (error)` | cw.ResponseWriter+cw.writer 0.59, b.ResponseWriter+b.discard 0.56 |
 | `middleware/compress.go:379` | `middleware.*compressResponseWriter.Close` | `() (error)` | cw.ResponseWriter+cw.writer 0.63, b.ResponseWriter+b.discard 0.57 |
 

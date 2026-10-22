@@ -225,15 +225,178 @@ func flattenGuards(fd *ast.FuncDecl) bool {
 	return changed
 }
 
-// negate wraps a condition in "!", parenthesizing anything whose own
-// operator binds looser than unary not so the rendered tree stays readable
-// and re-parses to the same shape.
+// negate returns the logical negation of a condition in the spelling a person
+// would have written it: a leading "!" is removed rather than doubled, a
+// comparison flips its operator (`x == nil` becomes `x != nil`, `n > 0`
+// becomes `n <= 0`), and anything else gains a "!", parenthesized when its own
+// operator binds looser than unary not so the rendered tree stays readable and
+// re-parses to the same shape.
+//
+// The first two cases are what let a negation a rule wrote meet the guard a
+// person wrote. `if found { … }` lifted by RuleTailGuard must read
+// `if !found { return }`, and `if x == nil { … }` must read
+// `if x != nil { return }`: wrapping either in a fresh "!" would be correct and
+// would canonicalize the two spellings apart, which defeats the rule. Flipping
+// an ordering comparison is not exact — `!(a < b)` and `a >= b` disagree when
+// either side is NaN — which is the package doc's caveat once more. && and ||
+// are not pushed through by De Morgan: a person negating a conjunction writes
+// it either way, so there is no one spelling to aim for.
+//
+// Parentheses around the condition, and around a stripped "!"'s operand, are
+// dropped: they are how the condition was written, not what it is, and the
+// hand-written guard does not carry them.
 func negate(cond ast.Expr) ast.Expr {
-	switch cond.(type) {
-	case *ast.Ident, *ast.CallExpr, *ast.SelectorExpr, *ast.ParenExpr, *ast.IndexExpr:
-		return &ast.UnaryExpr{Op: token.NOT, X: cond}
+	switch c := unparen(cond).(type) {
+	case *ast.UnaryExpr:
+		if c.Op == token.NOT {
+			return unparen(c.X)
+		}
+	case *ast.BinaryExpr:
+		if op, ok := negatedComparison[c.Op]; ok {
+			return &ast.BinaryExpr{X: c.X, Op: op, Y: c.Y}
+		}
+	case *ast.Ident, *ast.CallExpr, *ast.SelectorExpr, *ast.IndexExpr:
+		return &ast.UnaryExpr{Op: token.NOT, X: c}
 	}
-	return &ast.UnaryExpr{Op: token.NOT, X: &ast.ParenExpr{X: cond}}
+	return &ast.UnaryExpr{Op: token.NOT, X: &ast.ParenExpr{X: unparen(cond)}}
+}
+
+// negatedComparison maps each comparison operator to the one that holds
+// exactly when it does not (NaN aside; see negate).
+var negatedComparison = map[token.Token]token.Token{
+	token.EQL: token.NEQ,
+	token.NEQ: token.EQL,
+	token.LSS: token.GEQ,
+	token.GEQ: token.LSS,
+	token.GTR: token.LEQ,
+	token.LEQ: token.GTR,
+}
+
+// unparen strips every layer of parentheses around an expression.
+func unparen(e ast.Expr) ast.Expr {
+	for {
+		p, ok := e.(*ast.ParenExpr)
+		if !ok {
+			return e
+		}
+		e = p.X
+	}
+}
+
+// liftTailIfs rewrites an if with no else that ends a block whose end is a
+// bare exit into the early-return form: the condition is negated behind that
+// exit, and the if's body is lifted out to follow it.
+//
+//	func f() { …; if c { B } }   ->  func f() { …; if !c { return }; B }
+//	for … { …; if c { B } }      ->  for … { …; if !c { continue }; B }
+//
+// It is RuleGuardReturn's implicit-else case. Falling off the end of a
+// function with no results does what a bare return does, and falling off the
+// end of a loop body does what continue does, so a trailing if with no else
+// already has an else — the empty rest of the block — and that else is the
+// branch that leaves. RuleGuardReturn cannot see it, because it works on an
+// IfStmt's Else field and there is none, so without this rule a body written
+// with the guard (`if !found { return }; …`) and the same body written nested
+// (`if found { … }`) never meet. The direction is RuleGuardReturn's: towards
+// the early return, never into the nest.
+//
+// Conditions, each of which the rule would be wrong without:
+//
+//   - The if must be the last statement of its block. Anywhere else the
+//     statements after it run whether or not c holds, and lifting B in
+//     front of them behind an exit would skip them when it does not.
+//   - The block must be a function body (declaration or literal) with no
+//     results, or the body of a for or range loop. Those are the blocks
+//     whose end is a single statement: return, which needs no operands only
+//     when there are no results, and continue. A function with results
+//     cannot end in an if with no else at all — the language requires a
+//     terminating statement — and a bare return written into one would be a
+//     statement the language rejects. Every other block either has no
+//     statement that leaves just it (an if body, a bare block) or has one
+//     nobody writes a guard with (break in a case clause), so there is no
+//     second spelling there to converge with.
+//   - The if must have no else. With one, the path where c is false is the
+//     else rather than the rest of the block, so the premise is gone; an
+//     if/else with a leaving branch is RuleGuardReturn's, and an else-if is
+//     a chain rather than a guard.
+//   - The if must have no init statement. `if x := f(); c { … x … }` puts x
+//     out of scope once the body is lifted out, and the hand-written guard
+//     cannot have the shape the rule would produce anyway: it has to bind x
+//     before the guard, as a statement of its own.
+//   - The body must not already leave. `if err != nil { return }` as the
+//     last statement is the guard shape itself; lifting it would negate an
+//     already-canonical guard into `if err == nil { return }; return`. It is
+//     also the condition the measure below rests on. In a loop it costs one
+//     equivalence, deliberately: `for … { if c { B; return x } }` has a
+//     second spelling, `if !c { continue }; B; return x`, which this rule does
+//     not reach. Reaching it would rewrite every trailing
+//     `if err != nil { return err }` in a loop into a negated continue — a
+//     spelling nobody writes — to meet one rarer than the form it replaced.
+//
+// The block is re-examined after each firing, so a nest of trailing ifs
+// flattens into a run of guards in one pass, the last lifted body's own tail
+// being next in line. Binding order is unchanged — B is moved to sit directly
+// after the if, the exit binds nothing — so RuleAlphaRename stays a fixed point.
+//
+// Measure: each firing turns one else-less if whose body does not leave into
+// one whose body does, moving the statements it lifts without rewriting them,
+// so the number of else-less ifs with a non-leaving body strictly decreases.
+// No other rule raises it — RuleGuardReturn's output ifs keep a leaving body,
+// RuleNegatedIf works only on ifs that keep an else, and RuleUnwrapBlock can
+// only turn a body ending in a bare block into one ending in what it held —
+// and this rule writes no else, so it never feeds RuleGuardReturn's measure,
+// nor puts a "!" where RuleNegatedIf, which needs an else, could see it. So it
+// terminates.
+func liftTailIfs(fd *ast.FuncDecl) bool {
+	changed := false
+	ast.Inspect(fd, func(n ast.Node) bool {
+		switch x := n.(type) {
+		case *ast.FuncDecl:
+			if x.Body != nil && x.Type.Results.NumFields() == 0 {
+				changed = liftTail(&x.Body.List, token.RETURN) || changed
+			}
+		case *ast.FuncLit:
+			if x.Type.Results.NumFields() == 0 {
+				changed = liftTail(&x.Body.List, token.RETURN) || changed
+			}
+		case *ast.ForStmt:
+			changed = liftTail(&x.Body.List, token.CONTINUE) || changed
+		case *ast.RangeStmt:
+			changed = liftTail(&x.Body.List, token.CONTINUE) || changed
+		}
+		// Inspect walks a node's children after this returns, so the lifted
+		// statements are visited in this same pass.
+		return true
+	})
+	return changed
+}
+
+// liftTail applies liftTailIfs's rewrite to one block until its last statement
+// no longer qualifies. exit is the statement the block's end stands for:
+// token.RETURN or token.CONTINUE.
+func liftTail(list *[]ast.Stmt, exit token.Token) bool {
+	changed := false
+	for {
+		n := len(*list)
+		if n == 0 {
+			return changed
+		}
+		ifs, ok := (*list)[n-1].(*ast.IfStmt)
+		if !ok || ifs.Else != nil || ifs.Init != nil || terminates(ifs.Body) {
+			return changed
+		}
+		lifted := ifs.Body.List
+		var leave ast.Stmt = &ast.ReturnStmt{}
+		if exit == token.CONTINUE {
+			leave = &ast.BranchStmt{Tok: token.CONTINUE}
+		}
+		ifs.Cond = negate(ifs.Cond)
+		ifs.Body.List = []ast.Stmt{leave}
+		out := make([]ast.Stmt, 0, n+len(lifted))
+		out = append(out, (*list)...)
+		*list = append(out, lifted...)
+		changed = true
+	}
 }
 
 // guardIndex returns the index of the first statement in list that is an

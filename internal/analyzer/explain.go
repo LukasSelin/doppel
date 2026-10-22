@@ -138,6 +138,8 @@ func CanonWord(id string) string {
 		return "negation-flip"
 	case canon.RuleGuardReturn:
 		return "guard-form"
+	case canon.RuleTailGuard:
+		return "tail-guard-form"
 	case canon.RuleIncDec:
 		return "increment-form"
 	case canon.RuleCommutativeSort:
