@@ -9,7 +9,7 @@ CLI framework; one dominant type with a long method set, plus shell-completion g
 | Corpus | [cobra](https://github.com/spf13/cobra) |
 | Pinned at | `v1.10.2` (`88b30ab89da2d0d0abb153818746c5a2d30eccec`) |
 | Project since | 2015 |
-| doppel | `7e43dba` |
+| doppel | `e172f63` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -22,20 +22,20 @@ The corpus-level models doppel builds before ranking anything, as printed to std
 ```
 Scanning . ...
 Learning concept vocabulary...
-Lexicon: 26 concepts (2 seeded, 24 emergent), 992/2492 features above 98 df, 59 functions unlabeled
+Lexicon: 26 concepts (2 seeded, 24 emergent), 994/2488 features above 98 df, 59 functions unlabeled
 Generating concept documents...
 Calibration: rate 0.01 over 14535 shape / 20000 overlap null pairs -> threshold 0.44, struct-min 0.52, family-min 0.44
 Found 269 functions. Retrieving candidates...
-Retrieval: shape 135, concept 811, call 712 -> 1401 unique pairs
-  concept-only 44.0%  call-only 37.8%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1705
-Running structural comparison on 1401 pairs...
-  Concept views: 42 of 1401 compared pairs disagree with the taxonomy (1 vocabulary the tree misses, 41 kinship the vocabularies lack)
-  258 pairs remain after struct-min=0.52 filter
-Culture: 26 concepts modeled, 184 associations, 10 unusual realizations
-Habitats: 2 modeled, 0 misfits; most uniform cobra (norm 0.93), most diverse doc (norm 0.93)
-Conventions: strongest f.Name+flag.ContinueOnError+flag.NewFlagSet (0.59), loosest Value.Type+flag.Value (0.23)
-Ecosystems: 235 profiled (171 dominance, 62 coalition, 0 conflict, 2 weak)
-Families: 20 over 44 components, 60 functions in a family, 11 edges completed
+Retrieval: shape 135, concept 819, call 712 -> 1407 unique pairs
+  concept-only 44.2%  call-only 37.6%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1714
+Running structural comparison on 1407 pairs...
+  Concept views: 41 of 1407 compared pairs disagree with the taxonomy (1 vocabulary the tree misses, 40 kinship the vocabularies lack)
+  261 pairs remain after struct-min=0.52 filter
+Culture: 26 concepts modeled, 183 associations, 11 unusual realizations
+Habitats: 2 modeled, 0 misfits; most uniform cobra (norm 0.93), most diverse doc (norm 0.92)
+Conventions: strongest f.Name+flag.ContinueOnError+flag.NewFlagSet (0.59), loosest Value.Type+flag.Value (0.24)
+Ecosystems: 234 profiled (171 dominance, 60 coalition, 0 conflict, 3 weak)
+Families: 21 over 43 components, 62 functions in a family, 8 edges completed
 ```
 
 # Code Similarity Report
@@ -69,7 +69,7 @@ flowchart LR
     s10["logging<br/>absent"]
     s11(["data_transformation"])
     s12["mapping<br/>absent"]
-    s13["validation<br/>52"]
+    s13["validation<br/>51"]
     s14["serialization<br/>absent"]
     s15(["control_flow"])
     s16["concurrency<br/>absent"]
@@ -117,9 +117,9 @@ flowchart LR
     c5(["control_flow"])
     c6(["fault_tolerance"])
     c7(["error_handling"])
-    c8["c.AddCommand+c.RemoveCommand<br/>25"]
+    c8["c.AddCommand+c.RemoveCommand<br/>26"]
     c9["c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand<br/>23"]
-    c10["c.DisableFlagParsing+sort.Strings<br/>52"]
+    c10["c.DisableFlagParsing+sort.Strings<br/>51"]
     c11["c.Parent+c.HasParent<br/>17"]
     c12["c.PrintErrln+c.Parent<br/>19"]
     c13["cmd.Name+c.commands<br/>36"]
@@ -146,28 +146,28 @@ The diagram draws the 3 largest concepts on each branch; **19 further concepts**
 
 | Concept | Functions | Convention |
 |---|---:|---|
-| `c.DisableFlagParsing+sort.Strings` | 52 | `0.42` (loose) |
-| `cmd.Name+c.commands` | 36 | `0.44` (loose) |
+| `c.DisableFlagParsing+sort.Strings` | 51 | `0.42` (loose) |
+| `cmd.Name+c.commands` | 36 | `0.45` (loose) |
 | `f.Annotations+c.flagErrorBuf` | 32 | `0.34` (loose) |
-| `c.AddCommand+c.RemoveCommand` | 25 | `0.41` (loose) |
+| `c.AddCommand+c.RemoveCommand` | 26 | `0.39` (loose) |
 | `c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand` | 23 | `0.26` (loose) |
 | `c.AddCommand+c.Find+c.RemoveCommand` | 21 | `0.39` (loose) |
-| `subCmd.Name+strings.HasPrefix` | 21 | `0.38` (loose) |
 | `c.PrintErrln+c.Parent` | 19 | `0.43` (loose) |
+| `subCmd.Name+strings.HasPrefix` | 19 | `0.37` (loose) |
 | `c.Parent+c.HasParent` | 17 | `0.55` (settled) |
 | `c.DisableAutoGenTag+cmd.VisitParents` | 16 | `0.32` (loose) |
 | `c.Deprecated+c.Runnable` | 15 | `0.43` (loose) |
 | `cmd.Root+fmt.Sprintf` | 15 | `0.30` (loose) |
 | `f.Name+flag.ContinueOnError` | 15 | `0.25` (loose) |
-| `flags.HasAvailableFlags+cmd.InheritedFlags` | 15 | `0.31` (loose) |
 | `c.AddCommand+c.Find` | 14 | `0.40` (loose) |
-| `cobra.WriteStringAndCheck+header.Section` | 11 | `0.27` (loose) |
+| `flags.HasAvailableFlags+cmd.InheritedFlags` | 14 | `0.31` (loose) |
 | `reflect+template` | 11 | `0.41` (loose) |
 | `c.PersistentFlags+c.parentsPflags` | 10 | `0.38` (loose) |
+| `cobra.WriteStringAndCheck+header.Section` | 10 | `0.27` (loose) |
+| `Value.Type+flag.Value` | 8 | `0.24` (loose) |
 | `io.WriteString+filepath.Join` | 8 | `0.48` (loose) |
-| `Value.Type+flag.Value` | 7 | `0.23` (loose) |
 | `c.DisableAutoGenTag+cmd.VisitParents+cobra.Command` | 7 | `0.30` (loose) |
-| `flag.Usage+flag.Shorthand` | 7 | `0.24` (loose) |
+| `flag.Usage+flag.Shorthand` | 7 | `0.27` (loose) |
 | `f.Name+flag.ContinueOnError+flag.NewFlagSet` | 6 | `0.59` (settled) |
 | `c.DisableAutoGenTag+child.IsAdditionalHelpTopic…` | 5 | `0.55` (settled) |
 | `c.LocalFlags+cobra.*Command.LocalFlags` | 5 | `0.40` (loose) |
@@ -185,7 +185,7 @@ A package with at least five functions gets a habitat model: doppel learns what 
 
 ```mermaid
 flowchart TD
-    h0["doc<br/>30 functions · norm 0.93"]
+    h0["doc<br/>30 functions · norm 0.92"]
     h1["cobra<br/>239 functions · norm 0.93"]
     classDef good fill:#d7ecd9,color:#1b3d20
     classDef warn fill:#fbeecb,color:#4a3a12
@@ -193,21 +193,21 @@ flowchart TD
     class h0,h1 good
 ```
 
-Most uniform is `cobra` (norm `0.93`); most varied is `doc` (norm `0.93`).
+Most uniform is `cobra` (norm `0.93`); most varied is `doc` (norm `0.92`).
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **1401 candidate pairs** (shape 135, concept 811, call 712), of which 38% arrived on call evidence alone and 44% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **1407 candidate pairs** (shape 135, concept 819, call 712), of which 38% arrived on call evidence alone and 44% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
-The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **42 of 1401** pairs the taxonomy and the vocabularies differ by at least 0.50: 1 where the vocabularies agree and the tree cannot see it, 41 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
+The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **41 of 1407** pairs the taxonomy and the vocabularies differ by at least 0.50: 1 where the vocabularies agree and the tree cannot see it, 40 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
 
-Each function is also an arena where its candidate concepts compete for its evidence. 235 functions reached an equilibrium: **171** settled on a single concept, **62** on a coalition, **0** hold concepts this corpus says do not go together.
+Each function is also an arena where its candidate concepts compete for its evidence. 234 functions reached an equilibrium: **171** settled on a single concept, **60** on a coalition, **0** hold concepts this corpus says do not go together.
 
 ### Corpus metrics
 
-**Compression ratio:** `5.51`x — this corpus's canonical function bodies contain **14587 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **2649 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
+**Compression ratio:** `5.52`x — this corpus's canonical function bodies contain **14675 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **2658 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **269 functions**, **251** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.48` / `1.00` / `1.00`, and 57% of them (143 of 251) already clear this run's threshold of `0.44`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 18 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **269 functions**, **251** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.48` / `1.00` / `1.00`, and 56% of them (141 of 251) already clear this run's threshold of `0.44`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 18 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -219,12 +219,12 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 Only what is **distinctive**. A feature earns a row by being carried by this concept's members at least twice as often as by the corpus at large — nearly every Go function has a `return` and an `if`, so prevalence alone would describe the language rather than this codebase. Weights are how much a channel counts toward whether a member looks normal — calls 40, control flow 20, co-occurring tags 15, role 15, package 10.
 
-**`c.DisableFlagParsing+sort.Strings`** — 52 functions
+**`c.DisableFlagParsing+sort.Strings`** — 51 functions
 
 | Channel | Feature | | Members | vs corpus |
 |---|---|---|---|---|
-| calls ×40 | `cobra.*Command.Flags` | `███·······` | 16 of 52 | 3.0× |
-| cotags ×15 | `f.Annotations+c.flagErrorBuf` | `███·······` | 14 of 52 | 2.3× |
+| calls ×40 | `cobra.*Command.Flags` | `███·······` | 16 of 51 | 3.0× |
+| cotags ×15 | `f.Annotations+c.flagErrorBuf` | `███·······` | 14 of 51 | 2.3× |
 
 **`cmd.Name+c.commands`** — 36 functions
 
@@ -244,14 +244,14 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 |  | `c.DisableFlagParsing+sort.Strings` | `████······` | 14 of 32 | 2.3× |
 | role ×15 | `passthrough` | `████······` | 12 of 32 | 2.8× |
 
-**`c.AddCommand+c.RemoveCommand`** — 25 functions
+**`c.AddCommand+c.RemoveCommand`** — 26 functions
 
 | Channel | Feature | | Members | vs corpus |
 |---|---|---|---|---|
-| calls ×40 | `strings.HasPrefix` | `███·······` | 8 of 25 | 8.6× |
-| cotags ×15 | `c.AddCommand+c.Find` | `███·······` | 8 of 25 | 6.1× |
-|  | `c.AddCommand+c.Find+c.RemoveCommand` | `████······` | 11 of 25 | 5.6× |
-|  | `subCmd.Name+strings.HasPrefix` | `████······` | 9 of 25 | 4.6× |
+| calls ×40 | `strings.HasPrefix` | `███·······` | 8 of 26 | 8.3× |
+| cotags ×15 | `c.AddCommand+c.Find` | `███·······` | 8 of 26 | 5.9× |
+|  | `subCmd.Name+strings.HasPrefix` | `████······` | 10 of 26 | 5.4× |
+|  | `c.AddCommand+c.Find+c.RemoveCommand` | `████······` | 11 of 26 | 5.4× |
 
 **`c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand`** — 23 functions
 
@@ -276,7 +276,7 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 |  | `cobra.*Command.Name` | `████······` | 8 of 21 | 2.9× |
 |  | `fmt.Sprintf` | `███·······` | 6 of 21 | 2.1× |
 | cotags ×15 | `c.AddCommand+c.Find` | `██████····` | 12 of 21 | 11× |
-|  | `c.AddCommand+c.RemoveCommand` | `█████·····` | 11 of 21 | 5.6× |
+|  | `c.AddCommand+c.RemoveCommand` | `█████·····` | 11 of 21 | 5.4× |
 |  | `cmd.Root+fmt.Sprintf` | `███·······` | 6 of 21 | 5.1× |
 
 _20 further concepts are modeled and not described._
@@ -287,16 +287,16 @@ _20 further concepts are modeled and not described._
 
 _Showing 12 of 26 concepts — those in the strongest pairings, taken strongest first by lift weighted by how many functions it speaks for. Every cell between them is shown; the other 14 concepts are not on the grid._
 
-| | `Value.Type+flag.Value` | `c.AddCommand+c.Find` | `c.AddCommand+c.Find+c.RemoveCommand` | `c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand` | `c.DisableAutoGenTag+cmd.VisitParents` | `c.DisableFlagParsing+sort.Strings` | `c.Parent+c.HasParent` | `c.PrintErrln+c.Parent` | `f.Annotations+c.flagErrorBuf` | `f.Name+flag.ContinueOnError` | `f.Name+flag.ContinueOnError+flag.NewFlagSet` |
+| | `Value.Type+flag.Value` | `c.AddCommand+c.Find` | `c.AddCommand+c.Find+c.RemoveCommand` | `c.AddCommand+c.RemoveCommand` | `c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand` | `c.DisableFlagParsing+sort.Strings` | `c.Parent+c.HasParent` | `c.PrintErrln+c.Parent` | `f.Annotations+c.flagErrorBuf` | `f.Name+flag.ContinueOnError` | `f.Name+flag.ContinueOnError+flag.NewFlagSet` |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | **`c.AddCommand+c.Find`** |  | | | | | | | | | | |
 | **`c.AddCommand+c.Find+c.RemoveCommand`** |  | ++ | | | | | | | | | |
-| **`c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand`** |  |  |  | | | | | | | | |
-| **`c.DisableAutoGenTag+cmd.VisitParents`** |  |  |  | ++ | | | | | | | |
+| **`c.AddCommand+c.RemoveCommand`** |  | ++ | ++ | | | | | | | | |
+| **`c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand`** |  |  |  |  | | | | | | | |
 | **`c.DisableFlagParsing+sort.Strings`** |  |  | − | − | − | | | | | | |
-| **`c.Parent+c.HasParent`** |  |  |  | + |  | never | | | | | |
+| **`c.Parent+c.HasParent`** |  |  |  |  | + | never | | | | | |
 | **`c.PrintErrln+c.Parent`** |  |  |  |  |  | never | ++ | | | | |
-| **`f.Annotations+c.flagErrorBuf`** |  |  |  |  |  | + |  |  | | | |
+| **`f.Annotations+c.flagErrorBuf`** |  |  |  | never |  | + |  |  | | | |
 | **`f.Name+flag.ContinueOnError`** |  |  |  |  |  |  |  |  | ++ | | |
 | **`f.Name+flag.ContinueOnError+flag.NewFlagSet`** |  |  |  |  |  |  |  |  | ++ | ++ | |
 | **`flag.Usage+flag.Shorthand`** | ++ |  |  |  |  |  |  |  |  |  |  |
@@ -308,20 +308,20 @@ Co-occurrence measured against chance across every function. Only relationships 
 **Together more than chance — tag~tag**
 
 - 15 of 17 `c.Parent+c.HasParent` functions also `c.PrintErrln+c.Parent` — 12× chance
+- 6 of 7 `flag.Usage+flag.Shorthand` functions also `Value.Type+flag.Value` — 29× chance
 - 12 of 14 `c.AddCommand+c.Find` functions also `c.AddCommand+c.Find+c.RemoveCommand` — 11× chance
-- 5 of 7 `Value.Type+flag.Value` functions also `flag.Usage+flag.Shorthand` — 27× chance
 - 6 of 6 `f.Name+flag.ContinueOnError+flag.NewFlagSet` functions also `f.Name+flag.ContinueOnError` — 18× chance
 - 10 of 16 `c.DisableAutoGenTag+cmd.VisitParents` functions also `c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand` — 7.3× chance
 - 11 of 15 `f.Name+flag.ContinueOnError` functions also `f.Annotations+c.flagErrorBuf` — 6.2× chance
-- _19 more not listed_
+- _18 more not listed_
 
 **Together more than chance — tag~role**
 
 - 10 of 15 `f.Name+flag.ContinueOnError` functions also `passthrough` — 5.0× chance
 - 5 of 6 `f.Name+flag.ContinueOnError+flag.NewFlagSet` functions also `passthrough` — 6.2× chance
+- 11 of 14 `flags.HasAvailableFlags+cmd.InheritedFlags` functions also `orchestrator` — 3.4× chance
 - 8 of 16 `c.DisableAutoGenTag+cmd.VisitParents` functions also `passthrough` — 3.7× chance
 - 4 of 5 `c.DisableAutoGenTag+child.IsAdditionalHelpTopic…` functions also `passthrough` — 6.0× chance
-- 11 of 15 `flags.HasAvailableFlags+cmd.InheritedFlags` functions also `orchestrator` — 3.1× chance
 - 10 of 23 `c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand` functions also `passthrough` — 3.2× chance
 - _10 more not listed_
 
@@ -333,17 +333,17 @@ Co-occurrence measured against chance across every function. Only relationships 
 - 6 of 6 `f.Name+flag.ContinueOnError+flag.NewFlagSet` functions also `cobra.*Command.SetOutput` — 34× chance
 - 16 of 17 `c.Parent+c.HasParent` functions also `cobra.*Command.HasParent` — 10× chance
 - 4 of 5 `c.DisableAutoGenTag+child.IsAdditionalHelpTopic…` functions also `doc.hasSeeAlso` — 54× chance
-- _116 more not listed_
+- _115 more not listed_
 
 **Apart more than chance — tag~tag**
 
-- **no** `c.DisableFlagParsing+sort.Strings` function has `c.PrintErrln+c.Parent` — chance alone would give about 4 of 52
-- **no** `c.DisableFlagParsing+sort.Strings` function has `c.Parent+c.HasParent` — chance alone would give about 3 of 52
+- **no** `c.DisableFlagParsing+sort.Strings` function has `c.PrintErrln+c.Parent` — chance alone would give about 4 of 51
+- **no** `c.DisableFlagParsing+sort.Strings` function has `c.Parent+c.HasParent` — chance alone would give about 3 of 51
+- **no** `c.AddCommand+c.RemoveCommand` function has `f.Annotations+c.flagErrorBuf` — chance alone would give about 3 of 26
 - 1 of 23 `c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand` functions also `c.DisableFlagParsing+sort.Strings` — 0.2× chance
-- 1 of 21 `c.AddCommand+c.Find+c.RemoveCommand` functions also `c.DisableFlagParsing+sort.Strings` — 0.2× chance
-- 2 of 25 `c.AddCommand+c.RemoveCommand` functions also `c.DisableFlagParsing+sort.Strings` — 0.4× chance
-- 1 of 25 `c.AddCommand+c.RemoveCommand` functions also `cmd.Name+c.commands` — 0.3× chance
-- _1 more not listed_
+- 2 of 26 `c.AddCommand+c.RemoveCommand` functions also `c.DisableFlagParsing+sort.Strings` — 0.4× chance
+- 1 of 21 `c.AddCommand+c.Find+c.RemoveCommand` functions also `c.DisableFlagParsing+sort.Strings` — 0.3× chance
+- _2 more not listed_
 
 **Apart more than chance — tag~role**
 
@@ -357,8 +357,8 @@ Co-occurrence measured against chance across every function. Only relationships 
 
 **Apart more than chance — tag~call**
 
-- **no** `c.DisableFlagParsing+sort.Strings` function has `cobra.*Command.HasParent` — chance alone would give about 5 of 52
-- **no** `c.DisableFlagParsing+sort.Strings` function has `cobra.*Command.IsAvailableCommand` — chance alone would give about 3 of 52
+- **no** `c.DisableFlagParsing+sort.Strings` function has `cobra.*Command.HasParent` — chance alone would give about 5 of 51
+- **no** `c.DisableFlagParsing+sort.Strings` function has `cobra.*Command.IsAvailableCommand` — chance alone would give about 3 of 51
 - 2 of 36 `cmd.Name+c.commands` functions also `fmt.Sprintf` — 0.4× chance
 - 1 of 36 `cmd.Name+c.commands` functions also `cobra.*Command.Flags` — 0.3× chance
 
@@ -371,13 +371,15 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 | `cobra.*Command.HasParent` <br/>`command.go:1677` | `c.Parent+c.HasParent` | `0.36` | `0.82` | no near-duplicate |
 | `cobra.*Command.Usage` <br/>`command.go:478` | `c.PrintErrln+c.Parent` | `0.32` | `0.72` | no near-duplicate |
 | `cobra.*Command.Parent` <br/>`command.go:1892` | `c.PrintErrln+c.Parent` | `0.35` | `0.72` | no near-duplicate |
-| `doc.GenMarkdown` <br/>`doc/md_docs.go:52` | `flags.HasAvailableFlags+cmd.InheritedFlags` | `0.16` | `0.38` | no near-duplicate |
+| `doc.GenMarkdown` <br/>`doc/md_docs.go:52` | `flags.HasAvailableFlags+cmd.InheritedFlags` | `0.16` | `0.42` | no near-duplicate |
 | `cobra.defaultHelpFunc` <br/>`command.go:2047` | `fmt.Fprint+fprint` | `0.20` | `0.41` | no near-duplicate |
-| `cobra.WriteStringAndCheck` <br/>`cobra.go:243` | `cobra.WriteStringAndCheck+header.Section` | `0.09` | `0.25` | no near-duplicate |
+| `cobra.WriteStringAndCheck` <br/>`cobra.go:243` | `cobra.WriteStringAndCheck+header.Section` | `0.08` | `0.25` | no near-duplicate |
 | `cobra.*Command.UsageFunc` <br/>`command.go:444` | `c.PrintErrln+c.Parent` | `0.31` | `0.72` |  |
 | `doc.genMan` <br/>`doc/man_docs.go:202` | `c.DisableAutoGenTag+cmd.VisitParents+cobra.Command` | `0.30` | `0.63` |  |
 | `doc.GenReSTCustom` <br/>`doc/rest_docs.go:62` | `c.DisableAutoGenTag+cmd.VisitParents+cobra.Command` | `0.31` | `0.63` |  |
-| `cobra.getFlagNameCompletions` <br/>`completions.go:596` | `flag.Usage+flag.Shorthand` | `0.24` | `0.51` |  |
+| `cobra.getFlagNameCompletions` <br/>`completions.go:596` | `flag.Usage+flag.Shorthand` | `0.24` | `0.52` |  |
+
+_1 more unusual realizations not listed._
 
 A row marked _no near-duplicate_ appears in no reported pair: nothing else in this report explains it, which makes it drift rather than duplication.
 
@@ -387,7 +389,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
-| **A** | `flag_groups.go:33` | `cobra.*Command.MarkFlagsRequiredTogether` | `(...string)` | f.Annotations+c.flagErrorBuf 0.61, c.DisableFlagParsing+sort.Strings 0.48 |
+| **A** | `flag_groups.go:33` | `cobra.*Command.MarkFlagsRequiredTogether` | `(...string)` | f.Annotations+c.flagErrorBuf 0.61, c.DisableFlagParsing+sort.Strings 0.47 |
 | **B** | `flag_groups.go:49` | `cobra.*Command.MarkFlagsOneRequired` | `(...string)` | f.Annotations+c.flagErrorBuf 0.61, c.DisableFlagParsing+sort.Strings 0.50 |
 
 **Explain:** identical after rename, commutative-reorder
@@ -400,7 +402,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `291.79` (shape 278.15, concept 2.76, call 10.87)
+**Evidence:** `292.20` (shape 278.56, concept 2.76, call 10.87)
 
 **Trophic:** `1.00`
 
@@ -432,7 +434,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
-| **A** | `flag_groups.go:33` | `cobra.*Command.MarkFlagsRequiredTogether` | `(...string)` | f.Annotations+c.flagErrorBuf 0.61, c.DisableFlagParsing+sort.Strings 0.48 |
+| **A** | `flag_groups.go:33` | `cobra.*Command.MarkFlagsRequiredTogether` | `(...string)` | f.Annotations+c.flagErrorBuf 0.61, c.DisableFlagParsing+sort.Strings 0.47 |
 | **B** | `flag_groups.go:65` | `cobra.*Command.MarkFlagsMutuallyExclusive` | `(...string)` | f.Annotations+c.flagErrorBuf 0.61, c.DisableFlagParsing+sort.Strings 0.45 |
 
 **Explain:** identical after rename, commutative-reorder
@@ -445,7 +447,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `291.72` (shape 278.15, concept 2.69, call 10.87)
+**Evidence:** `292.13` (shape 278.56, concept 2.70, call 10.87)
 
 **Trophic:** `1.00`
 
@@ -490,7 +492,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `291.72` (shape 278.15, concept 2.69, call 10.87)
+**Evidence:** `292.13` (shape 278.56, concept 2.70, call 10.87)
 
 **Trophic:** `1.00`
 
@@ -518,11 +520,11 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #4 — Code-shape: `0.6492`
+## Match #4 — Code-shape: `0.6506`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
-| **A** | `doc/md_docs.go:57` | `doc.GenMarkdownCustom` | `(*cobra.Command, io.Writer, func(string) string) (error)` | c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand 0.60, c.DisableAutoGenTag+cmd.VisitParents 0.53, c.DisableAutoGenTag+child.IsAdditionalHelpTopic… 0.53 |
+| **A** | `doc/md_docs.go:57` | `doc.GenMarkdownCustom` | `(*cobra.Command, io.Writer, func(string) string) (error)` | c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand 0.59, c.DisableAutoGenTag+cmd.VisitParents 0.53, c.DisableAutoGenTag+child.IsAdditionalHelpTopic… 0.53 |
 | **B** | `doc/rest_docs.go:62` | `doc.GenReSTCustom` | `(*cobra.Command, io.Writer, func(string, string) string) (error)` | c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand 0.59, c.DisableAutoGenTag+child.IsAdditionalHelpTopic… 0.53, c.DisableAutoGenTag+cmd.VisitParents+cobra.Command 0.44 |
 
 **Explain:** differs by two extra assign, 11 extra call, 10 extra literal, and 4 more kinds
@@ -535,9 +537,9 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.74`
 
-**Evidence:** `1001.03` (shape 938.74, concept 4.32, call 57.97)
+**Evidence:** `1011.56` (shape 949.28, concept 4.31, call 57.97)
 
-**Trophic:** `0.82`
+**Trophic:** `0.83`
 
 **Shared structure:**
 
@@ -558,7 +560,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - both are passthrough functions
 - same package
 - callers do related work (0.67): [io.WriteString+filepath.Join]
-- callees do related work (0.99): [c.DisableAutoGenTag+child.IsAdditionalHelpTopic…, flags.HasAvailableFlags+cmd.InheritedFlags, c.Deprecated+c.Runnable, c.AddCommand+c.Find, c.Parent+c.HasParent, c.PrintErrln+c.Parent, c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand, c.AddCommand+c.Find+c.RemoveCommand]
+- callees do related work (0.99): [flags.HasAvailableFlags+cmd.InheritedFlags, c.Deprecated+c.Runnable, c.AddCommand+c.Find, c.DisableAutoGenTag+cmd.VisitParents, c.Parent+c.HasParent, c.PrintErrln+c.Parent, c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand, c.AddCommand+c.Find+c.RemoveCommand]
 - same visibility
 - same receiver type: plain functions
 - called from same packages: [doc]
@@ -583,7 +585,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.87`
 
-**Evidence:** `319.60` (shape 303.93, concept 1.79, call 13.88)
+**Evidence:** `319.62` (shape 303.93, concept 1.81, call 13.88)
 
 **Trophic:** `0.91`
 
@@ -613,7 +615,55 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #6 — Code-shape: `0.7643`
+## Match #6 — Code-shape: `1.0000`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `command.go:1688` | `cobra.*Command.Flags` | `() (*flag.FlagSet)` | f.Annotations+c.flagErrorBuf 0.61, f.Name+flag.ContinueOnError 0.58, f.Name+flag.ContinueOnError+flag.NewFlagSet 0.57 |
+| **B** | `command.go:1775` | `cobra.*Command.PersistentFlags` | `() (*flag.FlagSet)` | f.Annotations+c.flagErrorBuf 0.61, f.Name+flag.ContinueOnError 0.58, f.Name+flag.ContinueOnError+flag.NewFlagSet 0.56 |
+
+**Explain:** identical after rename, commutative-reorder
+
+**Profile A:** `f.Name+flag.ContinueOnError+flag.NewFlagSet` 0.98 (dominance)
+
+**Profile B:** `f.Name+flag.ContinueOnError+flag.NewFlagSet` 0.98 (dominance)
+
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Containment:** `1.00`
+
+**Evidence:** `161.57` (shape 145.52, concept 5.86, call 10.19)
+
+**Trophic:** `1.00`
+
+**Shared structure:**
+
+- `4.45` — `depth-3 BLOCK`
+- `4.45` — `depth-2 BLOCK`
+- `4.39` — `depth-3 BIN` ×2
+
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
+
+**Shared vocabulary:** `id:normalize`, `sel:f.Name`, `lit:Failed`
+
+**Structural overlap:** `0.85` (merge-worthy)
+
+- share 4 callees: [SetOutput, c.DisplayName, flag.NewFlagSet, new]
+- share 3 callers: [cobra.*Command.LocalFlags, cobra.*Command.SetGlobalNormalizationFunc, cobra.*Command.mergePersistentFlags]
+- overlapping call-graph neighborhoods (0.42): 43 shared
+- share patterns: [f.Annotations+c.flagErrorBuf, f.Name+flag.ContinueOnError, f.Name+flag.ContinueOnError+flag.NewFlagSet]
+- both are passthrough functions
+- same package
+- callers do related work (0.49): [c.PersistentFlags+c.parentsPflags, f.Name+flag.ContinueOnError, f.Annotations+c.flagErrorBuf, c.DisableFlagParsing+sort.Strings, c.AddCommand+c.Find ≈ cmd.Name+c.commands, c.AddCommand+c.Find+c.RemoveCommand ≈ f.Name+flag.ContinueOnError+flag.NewFlagSet]
+- callees do related work (1.00): [c.DisableAutoGenTag+cmd.VisitParents, f.Annotations+c.flagErrorBuf, cmd.Name+c.commands]
+- same visibility
+- same receiver type: Command
+- called from same packages: [cobra]
+- call into same packages: [cobra]
+
+---
+
+## Match #7 — Code-shape: `0.7636`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -630,15 +680,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.79`
 
-**Evidence:** `340.41` (shape 311.73, concept 1.90, call 26.78)
+**Evidence:** `339.03` (shape 310.36, concept 1.90, call 26.78)
 
 **Trophic:** `0.94`
 
 **Shared structure:**
 
 - `6.93` — `depth-1 IF` ×3
-- `6.46` — `depth-3 BIN` ×4
-- `6.46` — `depth-2 BIN` ×4
+- `6.83` — `depth-3 BIN` ×4
+- `6.83` — `depth-2 BIN` ×4
 
 **Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
 
@@ -659,166 +709,26 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #7 — Code-shape: `1.0000`
+## Match #8 — Code-shape: `0.7400`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
-| **A** | `command.go:1688` | `cobra.*Command.Flags` | `() (*flag.FlagSet)` | f.Annotations+c.flagErrorBuf 0.61, f.Name+flag.ContinueOnError 0.59, f.Name+flag.ContinueOnError+flag.NewFlagSet 0.56 |
-| **B** | `command.go:1775` | `cobra.*Command.PersistentFlags` | `() (*flag.FlagSet)` | f.Annotations+c.flagErrorBuf 0.61, f.Name+flag.ContinueOnError 0.59, f.Name+flag.ContinueOnError+flag.NewFlagSet 0.56 |
-
-**Explain:** identical after rename, commutative-reorder
-
-**Profile A:** `f.Name+flag.ContinueOnError+flag.NewFlagSet` 0.97 (dominance)
-
-**Profile B:** `f.Name+flag.ContinueOnError+flag.NewFlagSet` 0.97 (dominance)
-
-**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
-
-**Containment:** `1.00`
-
-**Evidence:** `160.57` (shape 144.50, concept 5.88, call 10.19)
-
-**Trophic:** `1.00`
-
-**Shared structure:**
-
-- `4.50` — `depth-3 BIN` ×2
-- `4.50` — `depth-2 BIN` ×2
-- `4.45` — `depth-3 BLOCK`
-
-**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
-
-**Shared vocabulary:** `lit:Failed`, `sel:f.Annotations`, `id:normalize`
-
-**Structural overlap:** `0.85` (merge-worthy)
-
-- share 4 callees: [SetOutput, c.DisplayName, flag.NewFlagSet, new]
-- share 3 callers: [cobra.*Command.LocalFlags, cobra.*Command.SetGlobalNormalizationFunc, cobra.*Command.mergePersistentFlags]
-- overlapping call-graph neighborhoods (0.42): 43 shared
-- share patterns: [f.Annotations+c.flagErrorBuf, f.Name+flag.ContinueOnError, f.Name+flag.ContinueOnError+flag.NewFlagSet]
-- both are passthrough functions
-- same package
-- callers do related work (0.49): [c.PersistentFlags+c.parentsPflags, f.Name+flag.ContinueOnError, f.Annotations+c.flagErrorBuf, c.DisableFlagParsing+sort.Strings, c.AddCommand+c.Find ≈ cmd.Name+c.commands, c.AddCommand+c.Find+c.RemoveCommand ≈ f.Name+flag.ContinueOnError+flag.NewFlagSet]
-- callees do related work (1.00): [c.DisableAutoGenTag+cmd.VisitParents, f.Annotations+c.flagErrorBuf, cmd.Name+c.commands]
-- same visibility
-- same receiver type: Command
-- called from same packages: [cobra]
-- call into same packages: [cobra]
-
----
-
-## Match #8 — Code-shape: `0.7505`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `doc/md_docs.go:133` | `doc.GenMarkdownTreeCustom` | `(*cobra.Command, string, func(string) string, func(string) string) (error)` | io.WriteString+filepath.Join 0.50 |
-| **B** | `doc/yaml_docs.go:60` | `doc.GenYamlTreeCustom` | `(*cobra.Command, string, func(string) string, func(string) string) (error)` | io.WriteString+filepath.Join 0.50 |
-
-**Explain:** differs by four extra call, one extra literal, one extra ident
-
-**Profile A:** `io.WriteString+filepath.Join` 1.00 (dominance)
-
-**Profile B:** `io.WriteString+filepath.Join` 1.00 (dominance)
-
-**Code similarity:** `wl 0.58  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
-
-**Containment:** `0.74`
-
-**Evidence:** `318.17` (shape 289.49, concept 1.90, call 26.78)
-
-**Trophic:** `0.90`
-
-**Shared structure:**
-
-- `6.93` — `depth-1 IF` ×3
-- `6.46` — `depth-3 BIN` ×4
-- `6.46` — `depth-2 BIN` ×4
-
-**Concept views:** shape `1.00`, corpus `0.99`, feature `0.99`, a-in-b `0.99`, b-in-a `1.00`
-
-**Shared vocabulary:** `call:io.WriteString`, `id:prepender`, `sel:io.WriteString`
-
-**Structural overlap:** `0.79` (merge-worthy)
-
-- share 10 callees: [c.IsAdditionalHelpTopicCommand, c.IsAvailableCommand, cmd.CommandPath, cmd.Commands, f.Close, filePrepender, filepath.Join, io.WriteString, os.Create, strings.ReplaceAll]
-- overlapping call-graph neighborhoods (0.83): 35 shared
-- share patterns: [io.WriteString+filepath.Join]
-- both are orchestrator functions
-- same package
-- callees do related work (0.97): [c.DisableAutoGenTag+child.IsAdditionalHelpTopic…, c.Deprecated+c.Runnable, c.DisableAutoGenTag+cmd.VisitParents, c.Parent+c.HasParent, c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand, f.Annotations+c.flagErrorBuf, cmd.Name+c.commands, c.DisableFlagParsing+sort.Strings]
-- same visibility
-- same receiver type: plain functions
-- called from same packages: [doc]
-- call into same packages: [cobra, doc]
-
----
-
-## Match #9 — Code-shape: `0.7216`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `doc/md_docs.go:133` | `doc.GenMarkdownTreeCustom` | `(*cobra.Command, string, func(string) string, func(string) string) (error)` | io.WriteString+filepath.Join 0.50 |
-| **B** | `doc/rest_docs.go:145` | `doc.GenReSTTreeCustom` | `(*cobra.Command, string, func(string) string, func(string, string) string) (error)` | io.WriteString+filepath.Join 0.50 |
-
-**Explain:** differs by four extra call, one extra literal, one extra ident
-
-**Profile A:** `io.WriteString+filepath.Join` 1.00 (dominance)
-
-**Profile B:** `io.WriteString+filepath.Join` 1.00 (dominance)
-
-**Code similarity:** `wl 0.59  flow 1.00  nesting 1.00  sig 0.80  size 1.00`
-
-**Containment:** `0.74`
-
-**Evidence:** `318.17` (shape 289.49, concept 1.91, call 26.78)
-
-**Trophic:** `0.90`
-
-**Shared structure:**
-
-- `6.93` — `depth-1 IF` ×3
-- `6.46` — `depth-3 BIN` ×4
-- `6.46` — `depth-2 BIN` ×4
-
-**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
-
-**Shared vocabulary:** `call:io.WriteString`, `id:prepender`, `sel:io.WriteString`
-
-**Structural overlap:** `0.79` (merge-worthy)
-
-- share 10 callees: [c.IsAdditionalHelpTopicCommand, c.IsAvailableCommand, cmd.CommandPath, cmd.Commands, f.Close, filePrepender, filepath.Join, io.WriteString, os.Create, strings.ReplaceAll]
-- overlapping call-graph neighborhoods (0.90): 36 shared
-- share patterns: [io.WriteString+filepath.Join]
-- both are orchestrator functions
-- same package
-- callees do related work (0.87): [c.DisableAutoGenTag+child.IsAdditionalHelpTopic…, c.Deprecated+c.Runnable, c.DisableAutoGenTag+cmd.VisitParents, c.Parent+c.HasParent, c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand, cmd.Name+c.commands, c.DisableFlagParsing+sort.Strings]
-- same visibility
-- same receiver type: plain functions
-- called from same packages: [doc]
-- call into same packages: [cobra, doc]
-
----
-
-## Match #10 — Code-shape: `0.7300`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `command.go:1716` | `cobra.*Command.LocalFlags` | `() (*flag.FlagSet)` | f.Name+flag.ContinueOnError 0.54, f.Annotations+c.flagErrorBuf 0.50, f.Name+flag.ContinueOnError+flag.NewFlagSet 0.50 |
-| **B** | `command.go:1744` | `cobra.*Command.InheritedFlags` | `() (*flag.FlagSet)` | f.Name+flag.ContinueOnError 0.54, f.Annotations+c.flagErrorBuf 0.50, f.Name+flag.ContinueOnError+flag.NewFlagSet 0.50 |
+| **A** | `command.go:1716` | `cobra.*Command.LocalFlags` | `() (*flag.FlagSet)` | f.Name+flag.ContinueOnError 0.53, f.Annotations+c.flagErrorBuf 0.50, f.Name+flag.ContinueOnError+flag.NewFlagSet 0.50 |
+| **B** | `command.go:1744` | `cobra.*Command.InheritedFlags` | `() (*flag.FlagSet)` | f.Name+flag.ContinueOnError 0.52, f.Name+flag.ContinueOnError+flag.NewFlagSet 0.50, f.Annotations+c.flagErrorBuf 0.49 |
 
 **Explain:** differs by one extra assign, six extra selector, five extra call, and 3 more kinds
 
 **Profile A:** `f.Name+flag.ContinueOnError` 0.98 (dominance)
 
-**Profile B:** `f.Name+flag.ContinueOnError+flag.NewFlagSet` 0.61, `f.Name+flag.ContinueOnError` 0.39 (dominance)
+**Profile B:** `f.Name+flag.ContinueOnError+flag.NewFlagSet` 0.62, `f.Name+flag.ContinueOnError` 0.38 (dominance)
 
-**Code similarity:** `wl 0.55  flow 1.00  nesting 1.00  sig 1.00  size 0.86`
+**Code similarity:** `wl 0.57  flow 1.00  nesting 1.00  sig 1.00  size 0.86`
 
-**Containment:** `0.78`
+**Containment:** `0.79`
 
-**Evidence:** `368.02` (shape 349.56, concept 5.15, call 13.30)
+**Evidence:** `397.20` (shape 378.81, concept 5.08, call 13.30)
 
-**Trophic:** `0.82`
+**Trophic:** `0.84`
 
 **Shared structure:**
 
@@ -847,11 +757,121 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
+## Match #9 — Code-shape: `0.7497`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `doc/md_docs.go:133` | `doc.GenMarkdownTreeCustom` | `(*cobra.Command, string, func(string) string, func(string) string) (error)` | io.WriteString+filepath.Join 0.50 |
+| **B** | `doc/yaml_docs.go:60` | `doc.GenYamlTreeCustom` | `(*cobra.Command, string, func(string) string, func(string) string) (error)` | io.WriteString+filepath.Join 0.50 |
+
+**Explain:** differs by four extra call, one extra literal, one extra ident
+
+**Profile A:** `io.WriteString+filepath.Join` 1.00 (dominance)
+
+**Profile B:** `io.WriteString+filepath.Join` 1.00 (dominance)
+
+**Code similarity:** `wl 0.58  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+
+**Containment:** `0.74`
+
+**Evidence:** `316.79` (shape 288.12, concept 1.90, call 26.78)
+
+**Trophic:** `0.90`
+
+**Shared structure:**
+
+- `6.93` — `depth-1 IF` ×3
+- `6.83` — `depth-3 BIN` ×4
+- `6.83` — `depth-2 BIN` ×4
+
+**Concept views:** shape `1.00`, corpus `0.99`, feature `0.99`, a-in-b `0.99`, b-in-a `1.00`
+
+**Shared vocabulary:** `call:io.WriteString`, `id:prepender`, `sel:io.WriteString`
+
+**Structural overlap:** `0.79` (merge-worthy)
+
+- share 10 callees: [c.IsAdditionalHelpTopicCommand, c.IsAvailableCommand, cmd.CommandPath, cmd.Commands, f.Close, filePrepender, filepath.Join, io.WriteString, os.Create, strings.ReplaceAll]
+- overlapping call-graph neighborhoods (0.83): 35 shared
+- share patterns: [io.WriteString+filepath.Join]
+- both are orchestrator functions
+- same package
+- callees do related work (0.97): [c.DisableAutoGenTag+child.IsAdditionalHelpTopic…, c.Deprecated+c.Runnable, c.DisableAutoGenTag+cmd.VisitParents, c.Parent+c.HasParent, c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand, f.Annotations+c.flagErrorBuf, cmd.Name+c.commands, c.DisableFlagParsing+sort.Strings]
+- same visibility
+- same receiver type: plain functions
+- called from same packages: [doc]
+- call into same packages: [cobra, doc]
+
+---
+
+## Match #10 — Code-shape: `0.7208`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `doc/md_docs.go:133` | `doc.GenMarkdownTreeCustom` | `(*cobra.Command, string, func(string) string, func(string) string) (error)` | io.WriteString+filepath.Join 0.50 |
+| **B** | `doc/rest_docs.go:145` | `doc.GenReSTTreeCustom` | `(*cobra.Command, string, func(string) string, func(string, string) string) (error)` | io.WriteString+filepath.Join 0.50 |
+
+**Explain:** differs by four extra call, one extra literal, one extra ident
+
+**Profile A:** `io.WriteString+filepath.Join` 1.00 (dominance)
+
+**Profile B:** `io.WriteString+filepath.Join` 1.00 (dominance)
+
+**Code similarity:** `wl 0.58  flow 1.00  nesting 1.00  sig 0.80  size 1.00`
+
+**Containment:** `0.74`
+
+**Evidence:** `316.80` (shape 288.12, concept 1.91, call 26.78)
+
+**Trophic:** `0.90`
+
+**Shared structure:**
+
+- `6.93` — `depth-1 IF` ×3
+- `6.83` — `depth-3 BIN` ×4
+- `6.83` — `depth-2 BIN` ×4
+
+**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
+
+**Shared vocabulary:** `call:io.WriteString`, `id:prepender`, `sel:io.WriteString`
+
+**Structural overlap:** `0.79` (merge-worthy)
+
+- share 10 callees: [c.IsAdditionalHelpTopicCommand, c.IsAvailableCommand, cmd.CommandPath, cmd.Commands, f.Close, filePrepender, filepath.Join, io.WriteString, os.Create, strings.ReplaceAll]
+- overlapping call-graph neighborhoods (0.90): 36 shared
+- share patterns: [io.WriteString+filepath.Join]
+- both are orchestrator functions
+- same package
+- callees do related work (0.87): [c.DisableAutoGenTag+child.IsAdditionalHelpTopic…, c.Deprecated+c.Runnable, c.DisableAutoGenTag+cmd.VisitParents, c.Parent+c.HasParent, c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand, cmd.Name+c.commands, c.DisableFlagParsing+sort.Strings]
+- same visibility
+- same receiver type: plain functions
+- called from same packages: [doc]
+- call into same packages: [cobra, doc]
+
+---
+
 ## Families
 
-20 families, 60 functions in a family, largest 6 members; 11 edges scored here that retrieval never proposed
+21 families, 62 functions in a family, largest 6 members; 8 edges scored here that retrieval never proposed
 
-### Family 1 — 4 members, every pair `>= 0.44` code-shape, evidence `1577`
+### Family 1 — 3 members, every pair `>= 0.44` code-shape, evidence `2186`
+
+```mermaid
+flowchart LR
+    m0["doc.genMan"]
+    m1["doc.GenMarkdownCustom"]
+    m2["doc.GenReSTCustom"]
+    m0 --- m1
+    m0 --- m2
+    m1 --- m2
+```
+
+| Location | Function | Signature | Concepts |
+|---|---|---|---|
+| `doc/man_docs.go:202` | `doc.genMan` | `(*cobra.Command, *GenManHeader) ([]byte)` | c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand 0.56, c.DisableAutoGenTag+child.IsAdditionalHelpTopic… 0.50, c.DisableAutoGenTag+cmd.VisitParents+cobra.Command 0.46 |
+| `doc/md_docs.go:57` | `doc.GenMarkdownCustom` | `(*cobra.Command, io.Writer, func(string) string) (error)` | c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand 0.59, c.DisableAutoGenTag+cmd.VisitParents 0.53, c.DisableAutoGenTag+child.IsAdditionalHelpTopic… 0.53 |
+| `doc/rest_docs.go:62` | `doc.GenReSTCustom` | `(*cobra.Command, io.Writer, func(string, string) string) (error)` | c.DisableAutoGenTag+child.IsAdditionalHelpTopic…+child.IsAvailableCommand 0.59, c.DisableAutoGenTag+child.IsAdditionalHelpTopic… 0.53, c.DisableAutoGenTag+cmd.VisitParents+cobra.Command 0.44 |
+
+### Family 2 — 4 members, every pair `>= 0.44` code-shape, evidence `1567`
 
 ```mermaid
 flowchart LR
@@ -874,7 +894,7 @@ flowchart LR
 | `doc/rest_docs.go:145` | `doc.GenReSTTreeCustom` | `(*cobra.Command, string, func(string) string, func(string, string) string) (error)` | io.WriteString+filepath.Join 0.50 |
 | `doc/yaml_docs.go:60` | `doc.GenYamlTreeCustom` | `(*cobra.Command, string, func(string) string, func(string) string) (error)` | io.WriteString+filepath.Join 0.50 |
 
-### Family 2 — 4 members, every pair `>= 0.54` code-shape, evidence `1124`
+### Family 3 — 4 members, every pair `>= 0.53` code-shape, evidence `1158`
 
 ```mermaid
 flowchart LR
@@ -892,12 +912,12 @@ flowchart LR
 
 | Location | Function | Signature | Concepts |
 |---|---|---|---|
-| `command.go:1688` | `cobra.*Command.Flags` | `() (*flag.FlagSet)` | f.Annotations+c.flagErrorBuf 0.61, f.Name+flag.ContinueOnError 0.59, f.Name+flag.ContinueOnError+flag.NewFlagSet 0.56 |
-| `command.go:1716` | `cobra.*Command.LocalFlags` | `() (*flag.FlagSet)` | f.Name+flag.ContinueOnError 0.54, f.Annotations+c.flagErrorBuf 0.50, f.Name+flag.ContinueOnError+flag.NewFlagSet 0.50 |
-| `command.go:1744` | `cobra.*Command.InheritedFlags` | `() (*flag.FlagSet)` | f.Name+flag.ContinueOnError 0.54, f.Annotations+c.flagErrorBuf 0.50, f.Name+flag.ContinueOnError+flag.NewFlagSet 0.50 |
-| `command.go:1775` | `cobra.*Command.PersistentFlags` | `() (*flag.FlagSet)` | f.Annotations+c.flagErrorBuf 0.61, f.Name+flag.ContinueOnError 0.59, f.Name+flag.ContinueOnError+flag.NewFlagSet 0.56 |
+| `command.go:1688` | `cobra.*Command.Flags` | `() (*flag.FlagSet)` | f.Annotations+c.flagErrorBuf 0.61, f.Name+flag.ContinueOnError 0.58, f.Name+flag.ContinueOnError+flag.NewFlagSet 0.57 |
+| `command.go:1716` | `cobra.*Command.LocalFlags` | `() (*flag.FlagSet)` | f.Name+flag.ContinueOnError 0.53, f.Annotations+c.flagErrorBuf 0.50, f.Name+flag.ContinueOnError+flag.NewFlagSet 0.50 |
+| `command.go:1744` | `cobra.*Command.InheritedFlags` | `() (*flag.FlagSet)` | f.Name+flag.ContinueOnError 0.52, f.Name+flag.ContinueOnError+flag.NewFlagSet 0.50, f.Annotations+c.flagErrorBuf 0.49 |
+| `command.go:1775` | `cobra.*Command.PersistentFlags` | `() (*flag.FlagSet)` | f.Annotations+c.flagErrorBuf 0.61, f.Name+flag.ContinueOnError 0.58, f.Name+flag.ContinueOnError+flag.NewFlagSet 0.56 |
 
-### Family 3 — 6 members, every pair `>= 0.50` code-shape, evidence `921`
+### Family 4 — 6 members, every pair `>= 0.50` code-shape, evidence `924`
 
 ```mermaid
 flowchart LR
@@ -933,36 +953,7 @@ flowchart LR
 | `command.go:618` | `cobra.*Command.VersionTemplate` | `() (string)` | c.PrintErrln+c.Parent 0.52, c.Parent+c.HasParent 0.44 |
 | `command.go:631` | `cobra.*Command.getVersionTemplateFunc` | `() (func(io.Writer, interface{}) error)` | c.PrintErrln+c.Parent 0.52, c.Parent+c.HasParent 0.43 |
 
-### Family 4 — 5 members, every pair `>= 0.45` code-shape, evidence `884`  (3 edges scored here)
-
-```mermaid
-flowchart LR
-    m0["cobra.MinimumNArgs"]
-    m1["cobra.MaximumNArgs"]
-    m2["cobra.ExactArgs"]
-    m3["cobra.RangeArgs"]
-    m4["cobra.MatchAll"]
-    m0 --- m1
-    m0 --- m2
-    m0 --- m3
-    m0 --- m4
-    m1 --- m2
-    m1 --- m3
-    m1 --- m4
-    m2 --- m3
-    m2 --- m4
-    m3 --- m4
-```
-
-| Location | Function | Signature | Concepts |
-|---|---|---|---|
-| `args.go:74` | `cobra.MinimumNArgs` | `(int) (PositionalArgs)` | c.DisableFlagParsing+sort.Strings 0.43 |
-| `args.go:84` | `cobra.MaximumNArgs` | `(int) (PositionalArgs)` | c.DisableFlagParsing+sort.Strings 0.43 |
-| `args.go:94` | `cobra.ExactArgs` | `(int) (PositionalArgs)` | c.DisableFlagParsing+sort.Strings 0.40 |
-| `args.go:104` | `cobra.RangeArgs` | `(int, int) (PositionalArgs)` | c.DisableFlagParsing+sort.Strings 0.44 |
-| `args.go:114` | `cobra.MatchAll` | `(...PositionalArgs) (PositionalArgs)` | c.DisableFlagParsing+sort.Strings 0.37, cmd.Name+c.commands 0.33 |
-
-### Family 5 — 3 members, every pair `>= 1.00` code-shape, evidence `875`
+### Family 5 — 3 members, every pair `>= 1.00` code-shape, evidence `876`
 
 ```mermaid
 flowchart LR
@@ -976,9 +967,9 @@ flowchart LR
 
 | Location | Function | Signature | Concepts |
 |---|---|---|---|
-| `flag_groups.go:33` | `cobra.*Command.MarkFlagsRequiredTogether` | `(...string)` | f.Annotations+c.flagErrorBuf 0.61, c.DisableFlagParsing+sort.Strings 0.48 |
+| `flag_groups.go:33` | `cobra.*Command.MarkFlagsRequiredTogether` | `(...string)` | f.Annotations+c.flagErrorBuf 0.61, c.DisableFlagParsing+sort.Strings 0.47 |
 | `flag_groups.go:49` | `cobra.*Command.MarkFlagsOneRequired` | `(...string)` | f.Annotations+c.flagErrorBuf 0.61, c.DisableFlagParsing+sort.Strings 0.50 |
 | `flag_groups.go:65` | `cobra.*Command.MarkFlagsMutuallyExclusive` | `(...string)` | f.Annotations+c.flagErrorBuf 0.61, c.DisableFlagParsing+sort.Strings 0.45 |
 
-_15 more families not listed._
+_16 more families not listed._
 

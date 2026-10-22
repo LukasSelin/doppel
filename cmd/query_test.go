@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/parser"
 	"github.com/LukasSelin/doppel/internal/reporter"
 	"github.com/LukasSelin/doppel/internal/retriever"
@@ -48,50 +47,6 @@ func TestWrapSnippetGarbageYieldsNoUnits(t *testing.T) {
 	}
 	if len(units) != 0 {
 		t.Fatalf("garbage parsed into %d units", len(units))
-	}
-}
-
-func localityFixture(t *testing.T) ([]parser.CodeUnit, *concepter.Graph) {
-	t.Helper()
-	src := `package p
-
-func Probe() { Mid() }
-func Mid()   { Leaf() }
-func Leaf()  {}
-func Far()   {}
-`
-	units, err := parser.ParseSource("p.go", []byte(src))
-	if err != nil || len(units) != 4 {
-		t.Fatalf("fixture: units=%d err=%v", len(units), err)
-	}
-	return units, concepter.BuildCallGraph(units)
-}
-
-func TestLocalityGradesByNeighborhoodMembership(t *testing.T) {
-	units, g := localityFixture(t)
-	ball := neighborhoodSet(g, units[0]) // Probe's ball: {Mid, Leaf}
-	if len(ball) != 2 {
-		t.Fatalf("probe ball = %v, want {p.Mid, p.Leaf}", ball)
-	}
-
-	// Mid is in the ball and its own ball covers it entirely: maximal.
-	if got := locality(ball, g, units[1]); got != 1.0 {
-		t.Errorf("locality(Mid) = %v, want 1.0", got)
-	}
-	// Leaf is in the ball; its ball {Mid, Probe} adds Mid: also full coverage.
-	if got := locality(ball, g, units[2]); got != 1.0 {
-		t.Errorf("locality(Leaf) = %v, want 1.0", got)
-	}
-	// Far shares nothing.
-	if got := locality(ball, g, units[3]); got != 0.0 {
-		t.Errorf("locality(Far) = %v, want 0.0", got)
-	}
-}
-
-func TestLocalityEmptyBallIsNeutral(t *testing.T) {
-	units, g := localityFixture(t)
-	if got := locality(nil, g, units[1]); got != 0.0 {
-		t.Errorf("locality with empty probe ball = %v, want 0.0", got)
 	}
 }
 

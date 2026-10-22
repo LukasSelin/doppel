@@ -122,7 +122,9 @@ func TestOutlineNamesAndTruncates(t *testing.T) {
 	tree := shapeOf(t, chainSrc)
 	full := Outline(tree, -1)
 	joined := strings.Join(full, "\n")
-	for _, want := range []string{"CALL/Errorf", "ASSIGN/:=", "BIN/>", "RANGE", "FUNCLIT"} {
+	// BIN/<= rather than the source's >: Shape is the canonical tree, where
+	// the loop's trailing if has become a negated guard and a continue.
+	for _, want := range []string{"CALL/Errorf", "ASSIGN/:=", "BIN/<=", "RANGE", "FUNCLIT"} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("outline missing %q:\n%s", want, joined)
 		}

@@ -9,7 +9,7 @@ static site generator; a large monolith with heavy template and resource subsyst
 | Corpus | [hugo](https://github.com/gohugoio/hugo) |
 | Pinned at | `v0.165.0` (`76a5e1880ab46688155b02e99bab9be2a6134492`) |
 | Project since | 2013 |
-| doppel | `7e43dba` |
+| doppel | `e172f63` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -22,22 +22,22 @@ The corpus-level models doppel builds before ranking anything, as printed to std
 ```
 Scanning . ...
 Learning concept vocabulary...
-Lexicon: 547 concepts (9 seeded, 538 emergent), 14865/41801 features above 2110 df, 361 functions unlabeled
+Lexicon: 547 concepts (9 seeded, 538 emergent), 14869/41767 features above 2110 df, 358 functions unlabeled
 Generating concept documents...
 Calibration: rate 0.01 over 20000 null pairs -> threshold 0.34, struct-min 0.31, family-min 0.34
 Found 5737 functions. Retrieving candidates...
-Retrieval: shape 7042, concept 20716, call 8634 -> 32240 unique pairs
-  concept-only 56.0%  call-only 18.8%  suppressed-shape functions: 19  large identity buckets: 0  surviving labels: 24465
-  343 cross test/prod pairs dropped
-Running structural comparison on 31897 pairs...
-  Concept views: 2218 of 31897 compared pairs disagree with the taxonomy (149 vocabulary the tree misses, 2069 kinship the vocabularies lack)
-  13571 pairs remain after struct-min=0.31 filter
-Culture: 501 concepts modeled, 2599 associations, 1138 unusual realizations
-Habitats: 129 modeled, 416 misfits (62 excused by subsystem), 33 subsystems; most uniform dartsass (norm 0.98), most diverse page (norm 0.66)
+Retrieval: shape 7055, concept 20730, call 8634 -> 32251 unique pairs
+  concept-only 56.0%  call-only 18.8%  suppressed-shape functions: 19  large identity buckets: 0  surviving labels: 24438
+  344 cross test/prod pairs dropped
+Running structural comparison on 31907 pairs...
+  Concept views: 2250 of 31907 compared pairs disagree with the taxonomy (161 vocabulary the tree misses, 2089 kinship the vocabularies lack)
+  13593 pairs remain after struct-min=0.31 filter
+Culture: 502 concepts modeled, 2587 associations, 1127 unusual realizations
+Habitats: 129 modeled, 416 misfits (63 excused by subsystem), 33 subsystems; most uniform dartsass (norm 0.98), most diverse page (norm 0.66)
 Conventions: strongest Symbol.toPrimitive+prim.call (1.00), loosest d.ExpiryDate+d.PublishDate (0.14)
-Ecosystems: 5544 profiled (3227 dominance, 2310 coalition, 0 conflict, 7 weak)
-Families: 609 over 619 components, 2053 functions in a family, 7137 edges completed
-  2 component(s) skipped as too large or too dense: sizes [145 611]
+Ecosystems: 5546 profiled (3227 dominance, 2312 coalition, 0 conflict, 7 weak)
+Families: 515 over 615 components, 1894 functions in a family, 6390 edges completed
+  3 component(s) skipped as too large or too dense: sizes [139 145 642]
 ```
 
 # Code Similarity Report
@@ -61,25 +61,25 @@ flowchart LR
     s0(["concept"])
     s1(["io_operation"])
     s2(["remote_io"])
-    s3["http_call<br/>84"]
+    s3["http_call<br/>88"]
     s4["grpc_call<br/>absent"]
     s5(["data_store_access"])
     s6["db_access<br/>absent"]
     s7["caching<br/>242"]
     s8["transaction<br/>absent"]
-    s9["file_io<br/>152"]
-    s10["logging<br/>128"]
+    s9["file_io<br/>153"]
+    s10["logging<br/>126"]
     s11(["data_transformation"])
     s12["mapping<br/>207"]
-    s13["validation<br/>205"]
+    s13["validation<br/>204"]
     s14["serialization<br/>50"]
     s15(["control_flow"])
-    s16["concurrency<br/>209"]
+    s16["concurrency<br/>210"]
     s17(["fault_tolerance"])
     s18["retry<br/>absent"]
     s19["circuit_breaker<br/>absent"]
     s20(["error_handling"])
-    s21["error_wrapping<br/>258"]
+    s21["error_wrapping<br/>256"]
     s0 --> s1
     s1 --> s2
     s2 --> s3
@@ -119,21 +119,21 @@ flowchart LR
     c5(["control_flow"])
     c6(["fault_tolerance"])
     c7(["error_handling"])
-    c8["Body.Close+api.OnLoadArgs<br/>152"]
+    c8["Body.Close+api.OnLoadArgs<br/>153"]
     c9["C.BaseURL+conf.C<br/>233"]
     c10["Config.Sorted+c.C<br/>203"]
     c11["Config.Sorted+c.C+c.Languages<br/>108"]
     c12["Converters.GetHighlighter+c.applyTransformations<br/>207"]
     c13["ResourceSpec.FileCaches+c.isExpired<br/>242"]
-    c14["c.getNestedKeyAndMap+c.root<br/>36"]
-    c15["c.hasBeenInitialized+call.done<br/>209"]
-    c16["fn.IsValid+htmltemplate.Must<br/>205"]
+    c14["c.getNestedKeyAndMap+c.root<br/>37"]
+    c15["c.hasBeenInitialized+call.done<br/>210"]
+    c16["fn.IsValid+htmltemplate.Must<br/>204"]
     c17["fw.Close+helpers.OpenFilesForWriting<br/>129"]
-    c18["h.allSites+Conf.Watching<br/>35"]
-    c19["http+io<br/>84"]
+    c18["h.allSites+Conf.Watching<br/>33"]
+    c19["http+io<br/>88"]
     c20["init.data+init.gitInfo<br/>162"]
-    c21["m.Version+m.Owner<br/>99"]
-    c22["mnt.init+typ.In<br/>258"]
+    c21["m.Version+m.Owner<br/>95"]
+    c22["mnt.init+typ.In<br/>256"]
     c23["pageOutput.pco+ps.pageOutput<br/>144"]
     c0 --> c1
     c1 --> c2
@@ -166,211 +166,213 @@ The diagram draws the 3 largest concepts on each branch; **531 further concepts*
 
 | Concept | Functions | Convention |
 |---|---:|---|
-| `mnt.init+typ.In` | 258 | `0.61` (settled) |
-| `ResourceSpec.FileCaches+c.isExpired` | 242 | `0.64` (settled) |
+| `mnt.init+typ.In` | 256 | `0.61` (settled) |
+| `ResourceSpec.FileCaches+c.isExpired` | 242 | `0.65` (settled) |
 | `C.BaseURL+conf.C` | 233 | `0.71` (settled) |
-| `c.hasBeenInitialized+call.done` | 209 | `0.60` (settled) |
+| `c.hasBeenInitialized+call.done` | 210 | `0.60` (settled) |
 | `Converters.GetHighlighter+c.applyTransformations` | 207 | `0.65` (settled) |
-| `fn.IsValid+htmltemplate.Must` | 205 | `0.55` (settled) |
+| `fn.IsValid+htmltemplate.Must` | 204 | `0.55` (settled) |
 | `Config.Sorted+c.C` | 203 | `0.78` (unanimous) |
 | `init.data+init.gitInfo` | 162 | `0.62` (settled) |
-| `Body.Close+api.OnLoadArgs` | 152 | `0.59` (settled) |
+| `Body.Close+api.OnLoadArgs` | 153 | `0.59` (settled) |
 | `pageOutput.pco+ps.pageOutput` | 144 | `0.66` (settled) |
 | `fw.Close+helpers.OpenFilesForWriting` | 129 | `0.62` (settled) |
-| `Config.Sorted+c.copyStatic` | 128 | `0.57` (settled) |
+| `Config.Sorted+c.copyStatic` | 126 | `0.56` (settled) |
 | `pageConfigSource.Content+p.wrapError` | 120 | `0.59` (settled) |
-| `cast.ToStringSlice+strings.ToLower` | 119 | `0.52` (settled) |
-| `s.insertTemplate+opts.PathParser` | 115 | `0.57` (settled) |
+| `cast.ToStringSlice+strings.ToLower` | 118 | `0.51` (settled) |
+| `s.insertTemplate+opts.PathParser` | 116 | `0.57` (settled) |
 | `Config.Sorted+c.C+c.Languages` | 108 | `0.59` (settled) |
-| `c.pi+c.pco` | 105 | `0.63` (settled) |
-| `d.Name+fs` | 104 | `0.62` (settled) |
-| `m.Version+m.Owner` | 99 | `0.57` (settled) |
-| `console.log+this.console` | 94 | `0.55` (settled) |
-| `text.Position+text` | 92 | `0.65` (settled) |
-| `hugo.CurrentVersion+v.String` | 91 | `0.61` (settled) |
+| `c.pi+c.pco` | 106 | `0.63` (settled) |
+| `d.Name+fs` | 103 | `0.62` (settled) |
+| `m.Version+m.Owner` | 95 | `0.57` (settled) |
+| `console.log+this.console` | 93 | `0.55` (settled) |
+| `hugo.CurrentVersion+v.String` | 92 | `0.60` (settled) |
+| `text.Position+text` | 91 | `0.65` (settled) |
 | `Build.Render+pagemeta.Never` | 89 | `0.62` (settled) |
-| `h.PathSpec+PathSpec.BaseFs` | 87 | `0.58` (settled) |
-| `language.Lang+publisher` | 85 | `0.63` (settled) |
-| `http+io` | 84 | `0.61` (settled) |
-| `p.Path+hugofs.FileMetaInfo` | 84 | `0.58` (settled) |
-| `vv.noBaseOf+s.treeShortcodes` | 84 | `0.56` (settled) |
+| `p.Path+hugofs.FileMetaInfo` | 89 | `0.58` (settled) |
+| `vv.noBaseOf+s.treeShortcodes` | 89 | `0.55` (settled) |
+| `http+io` | 88 | `0.61` (settled) |
+| `output.Formats+f.Name` | 83 | `0.62` (settled) |
+| `c.serverPorts+c.serverInterface` | 82 | `0.55` (settled) |
+| `h.PathSpec+PathSpec.BaseFs` | 82 | `0.57` (settled) |
+| `language.Lang+publisher` | 82 | `0.64` (settled) |
 | `Proc.Cfg+Proc.Codec` | 81 | `0.52` (settled) |
-| `c.serverPorts+c.serverInterface` | 81 | `0.55` (settled) |
-| `a.m+cnh.GetIdentity` | 80 | `0.55` (settled) |
-| `output.Formats+f.Name` | 79 | `0.62` (settled) |
-| `doctree.LockTypeRead+m.treePages+doctree.NodeShiftTreeWalker` | 78 | `0.55` (settled) |
-| `loggers.TimeTrackf+l.WithField` | 78 | `0.52` (settled) |
+| `a.m+cnh.GetIdentity` | 79 | `0.56` (settled) |
+| `doctree.LockTypeRead+m.treePages+doctree.NodeShiftTreeWalker` | 77 | `0.54` (settled) |
+| `loggers.TimeTrackf+l.WithField` | 77 | `0.53` (settled) |
 | `b.configOptions+b.dependencyManager` | 73 | `0.59` (settled) |
 | `conf.OutputFormats+init.taxonomies` | 73 | `0.57` (settled) |
 | `i.ReadSeekCloser+i.Format` | 72 | `0.50` (settled) |
 | `this.options+livereload.start` | 72 | `0.55` (settled) |
-| `d.Name+overlayfs` | 70 | `0.61` (settled) |
 | `this.window+livereload.generateCacheBus…` | 67 | `0.53` (settled) |
 | `i.getResourcePaths+i.hash` | 66 | `0.56` (settled) |
+| `slices.Contains+fmt.Sprintf` | 66 | `0.52` (settled) |
 | `hstrings.GetOrCompileRegexp+cast.ToIntE+hreflect.Indirect` | 65 | `0.51` (settled) |
-| `pageConfigSource.Content+b.Bytes` | 64 | `0.52` (settled) |
-| `slices.Contains+fmt.Sprintf` | 63 | `0.52` (settled) |
-| `b.Grow+b.WriteString+utf8.DecodeRuneInString` | 59 | `0.41` (loose) |
-| `strings.Trim+strings.Join` | 59 | `0.45` (loose) |
-| `types.LowHigh+strings.Index` | 59 | `0.55` (settled) |
-| `Conf.IsMultilingual+Conf.IsMultihost+s.Language` | 58 | `0.55` (settled) |
-| `b.Grow+b.WriteString` | 58 | `0.40` (loose) |
+| `pageConfigSource.Content+b.Bytes` | 64 | `0.53` (settled) |
+| `d.Name+overlayfs` | 62 | `0.59` (settled) |
+| `b.Grow+b.WriteString+utf8.DecodeRuneInString` | 61 | `0.42` (loose) |
+| `strings.Trim+strings.Join` | 61 | `0.45` (loose) |
+| `types.LowHigh+strings.Index` | 60 | `0.55` (settled) |
+| `Conf.IsMultilingual+Conf.IsMultihost+s.Language` | 59 | `0.55` (settled) |
+| `b.Grow+b.WriteString` | 59 | `0.41` (loose) |
 | `console.log+this.console+this.options` | 58 | `0.58` (settled) |
 | `s.s+s.Language` | 58 | `0.97` (unanimous) |
-| `of.MediaType+goldmark_config` | 56 | `0.60` (settled) |
+| `of.MediaType+goldmark_config` | 57 | `0.61` (settled) |
 | `ExecHelper.Sec+rs.ExecHelper` | 54 | `0.57` (settled) |
-| `doctree.NodeShiftTreeWalker+w.Walk` | 54 | `0.51` (settled) |
-| `kinds.KindPage+kinds.KindSection` | 54 | `0.58` (settled) |
-| `ShouldListLocal.And+pagePredicates.KindPage+pageMap.getPagesInSection` | 53 | `0.60` (settled) |
-| `depsFinder.Contains+identity.FinderConfig` | 53 | `0.46` (loose) |
+| `d.Fs+lockedfile` | 53 | `0.60` (settled) |
+| `doctree.NodeShiftTreeWalker+w.Walk` | 53 | `0.51` (settled) |
+| `kinds.KindPage+kinds.KindSection` | 53 | `0.58` (settled) |
 | `pageConfigSource.Content+Content.Markup` | 53 | `0.52` (settled) |
-| `d.Fs+lockedfile` | 52 | `0.60` (settled) |
-| `doctree.LockTypeRead+m.treePages` | 50 | `0.54` (settled) |
+| `ShouldListLocal.And+pagePredicates.KindPage+pageMap.getPagesInSection` | 52 | `0.59` (settled) |
+| `afero.Walk+info.IsDir` | 51 | `0.49` (loose) |
+| `depsFinder.Contains+identity.FinderConfig` | 51 | `0.47` (loose) |
+| `doctree.LockTypeRead+m.treePages` | 51 | `0.54` (settled) |
+| `openapi3+resources` | 51 | `0.54` (settled) |
 | `htmlFormat.MediaType+s.htmlFormat` | 50 | `0.52` (settled) |
 | `json.MarshalIndent+json.NewDecoder` | 50 | `0.54` (settled) |
 | `strings.ReplaceAll+hugofs.FileMetaInfo` | 50 | `0.53` (settled) |
-| `s.inPath+strings.Index` | 49 | `0.52` (settled) |
-| `s.C+s.H` | 48 | `0.56` (settled) |
+| `testing.Short+t.Skip+t.Skipf~2` | 49 | `0.38` (loose) |
+| `l.spec+mime` | 48 | `0.63` (settled) |
 | `s.CheckReady+i18n` | 48 | `0.63` (settled) |
-| `testing.Short+t.Skip+t.Skipf~2` | 48 | `0.37` (loose) |
-| `afero.Walk+info.IsDir` | 47 | `0.47` (loose) |
-| `pi.Ext+fi.Meta` | 47 | `0.62` (settled) |
 | `r.Cfg+Cfg.GetConfigSection` | 47 | `0.53` (settled) |
-| `Conf.NewIdentityManager+s.Conf` | 46 | `0.57` (settled) |
+| `s.C+s.H` | 47 | `0.56` (settled) |
+| `s.inPath+strings.Index` | 47 | `0.51` (settled) |
 | `ast.Heading+n.Kind` | 46 | `0.53` (settled) |
-| `l.spec+mime` | 46 | `0.63` (settled) |
+| `pi.Ext+fi.Meta` | 46 | `0.63` (settled) |
+| `Conf.NewIdentityManager+s.Conf` | 45 | `0.57` (settled) |
 | `LoadingInfo.ConfigFiles+configs.LoadingInfo` | 45 | `0.45` (loose) |
-| `cfg.MarkupConfig+fmt.Errorf` | 45 | `0.51` (settled) |
 | `Build.Render+m.cascadeCompiled` | 44 | `0.66` (settled) |
+| `cfg.MarkupConfig+fmt.Errorf` | 44 | `0.52` (settled) |
+| `content.pi+pi.contentSource` | 44 | `0.52` (settled) |
 | `hugofs.NewFrom+afero.NewMemMapFs` | 44 | `0.48` (loose) |
 | `pathInfo.Unnormalized+kinds.KindTerm` | 44 | `0.58` (settled) |
-| `content.pi+pi.contentSource` | 43 | `0.52` (settled) |
-| `openapi3+resources` | 43 | `0.59` (settled) |
-| `s.build+s.Cfg` | 43 | `0.54` (settled) |
-| `arguments.length+_add-to-unscopables` | 42 | `0.55` (settled) |
-| `filepath.Abs+hugofs.Os` | 41 | `0.54` (settled) |
+| `arguments.length+_add-to-unscopables` | 43 | `0.54` (settled) |
+| `filepath.Abs+hugofs.Os` | 43 | `0.52` (settled) |
+| `s.build+s.Cfg` | 43 | `0.53` (settled) |
+| `Matrix.Languages+Sites.Matrix` | 41 | `0.51` (settled) |
+| `Meta.InclusionFilter+Meta.Rename` | 41 | `0.47` (loose) |
 | `lv.Index+lv.Kind+lv.Len` | 41 | `0.29` (loose) |
-| `Matrix.Languages+Sites.Matrix` | 40 | `0.50` (settled) |
-| `Meta.InclusionFilter+Meta.Rename` | 40 | `0.47` (loose) |
 | `Source.MkdirAll+s.C` | 40 | `0.45` (loose) |
 | `cast.ToFloat64+cast.ToInt` | 40 | `0.42` (loose) |
 | `doctree.WalkContext+cnh.isBranchNode` | 40 | `0.44` (loose) |
-| `anim.GetFrames+h.img` | 39 | `0.52` (settled) |
+| `p.Draft+p.Weight` | 40 | `0.58` (settled) |
 | `c.disableLiveReload+c.tlsAuto` | 39 | `0.54` (settled) |
-| `p.Draft+p.Weight` | 39 | `0.58` (settled) |
 | `r.cfgDir+r.cfgFile` | 39 | `0.54` (settled) |
-| `fmt.Fprint+fmt.Fprintf` | 38 | `0.45` (loose) |
+| `anim.GetFrames+h.img` | 38 | `0.52` (settled) |
+| `fim.IsDir+meta.Filename` | 38 | `0.53` (settled) |
 | `m.Owner+m.Version` | 38 | `0.47` (loose) |
-| `m.treeTaxonomyEntries+doctree.LockTypeNone` | 38 | `0.50` (loose) |
-| `parse.StringNode+parse.PipeNode` | 38 | `0.36` (loose) |
 | `r.Hugo+r.ConfigFromProvider` | 38 | `0.52` (settled) |
+| `Lastmod.After+collections.*Namespace.After` | 37 | `0.54` (settled) |
+| `c.getNestedKeyAndMap+c.root` | 37 | `0.42` (loose) |
 | `l.warnl+warnl.Logf` | 37 | `0.46` (loose) |
-| `pathInfo.Base+pi.Base` | 37 | `0.57` (settled) |
-| `c.getNestedKeyAndMap+c.root` | 36 | `0.41` (loose) |
+| `parse.StringNode+parse.PipeNode` | 37 | `0.35` (loose) |
+| `fmt.Fprint+fmt.Fprintf` | 36 | `0.44` (loose) |
 | `l.startLine+l.width` | 36 | `0.38` (loose) |
-| `pathInfo.Unnormalized+p.PathInfo` | 36 | `0.54` (settled) |
+| `pathInfo.Unnormalized+p.PathInfo` | 36 | `0.53` (settled) |
 | `po.f+pco.po` | 36 | `0.50` (loose) |
-| `BaseFs.PublishFs+bufferpool` | 35 | `0.54` (settled) |
-| `Lastmod.After+collections.*Namespace.After` | 35 | `0.53` (settled) |
-| `fim.IsDir+meta.Filename` | 35 | `0.53` (settled) |
-| `h.allSites+Conf.Watching` | 35 | `0.45` (loose) |
+| `s.inPath+treePages.LongestPrefix` | 36 | `0.46` (loose) |
 | `image.NewPaletted+src.Bounds` | 35 | `0.42` (loose) |
 | `m.f+f.FileInfo` | 35 | `0.55` (settled) |
+| `pathInfo.Base+pi.Base` | 35 | `0.56` (settled) |
 | `result.setVector+s.ForEachVector` | 35 | `0.51` (settled) |
 | `s.TemplateStore+context.Background` | 35 | `0.54` (settled) |
-| `s.inPath+treePages.LongestPrefix` | 35 | `0.46` (loose) |
-| `bytes.Index+afero.WriteFile` | 34 | `0.55` (settled) |
+| `ShouldListLocal.And+pagePredicates.KindPage` | 34 | `0.44` (loose) |
+| `iter.Next+reflect.New` | 34 | `0.42` (loose) |
+| `m.treeTaxonomyEntries+doctree.LockTypeNone` | 34 | `0.47` (loose) |
 | `parse.DotNode+parse.NilNode` | 34 | `0.35` (loose) |
 | `path.Split+path.Join` | 34 | `0.40` (loose) |
-| `ShouldListLocal.And+pagePredicates.KindPage` | 33 | `0.42` (loose) |
+| `BaseFs.PublishFs+bufferpool` | 33 | `0.52` (settled) |
+| `bytes.Index+afero.WriteFile` | 33 | `0.55` (settled) |
 | `cmd.PersistentFlags+cobra.FixedCompletions` | 33 | `0.50` (loose) |
-| `fi.fim+fim.IsDir` | 33 | `0.48` (loose) |
+| `fi.fim+fim.IsDir` | 33 | `0.49` (loose) |
+| `h.allSites+Conf.Watching` | 33 | `0.45` (loose) |
 | `hugoSites.GetOrCreate+hugolib.NewHugoSites+r.newDepsConfig` | 33 | `0.48` (loose) |
-| `iter.Next+reflect.New` | 33 | `0.42` (loose) |
-| `maps.Copy+maps` | 33 | `0.56` (settled) |
-| `meta.Name+Meta.InclusionFilter` | 33 | `0.47` (loose) |
 | `paths.PathEscape+path.Join` | 33 | `0.49` (loose) |
-| `sort.Slice+fmt.Errorf` | 33 | `0.45` (loose) |
 | `Meta.Rename+filepath.Split` | 32 | `0.44` (loose) |
-| `a.m+h.SourceSpec+a.h` | 32 | `0.41` (loose) |
+| `a.m+h.SourceSpec+a.h` | 32 | `0.42` (loose) |
 | `b.WriteString+b.String` | 32 | `0.37` (loose) |
 | `cmd.PersistentFlags+cmd.MarkFlagDirname` | 32 | `0.51` (settled) |
 | `hstrings.GetOrCompileRegexp+cast.ToIntE` | 32 | `0.41` (loose) |
+| `maps.Copy+maps` | 32 | `0.53` (settled) |
 | `p.PathInfo+pathInfo.Unnormalized` | 32 | `0.52` (settled) |
-| `siteVector.Language+s.siteVector` | 32 | `0.54` (settled) |
 | `template.errorf+html` | 32 | `0.45` (loose) |
 | `a.m+h.SourceSpec` | 31 | `0.41` (loose) |
 | `configs.IsMultihost+configs.Languages` | 31 | `0.55` (settled) |
 | `errState.setBuildErr+errState.wasErr` | 31 | `0.44` (loose) |
-| `identity.GenghisKhan+pageTrees.treePagesFromTemp…` | 31 | `0.44` (loose) |
+| `identity.GenghisKhan+pageTrees.treePagesFromTemp…` | 31 | `0.45` (loose) |
 | `p.PathInfo+pathInfo.Unnormalized+kinds.KindTaxonomy` | 31 | `0.58` (settled) |
 | `resources.InternalResourceT…+identity.FirstIdentity` | 31 | `0.50` (settled) |
-| `fsnotify.Chmod+fsnotify.Rename` | 30 | `0.48` (loose) |
-| `helpers.Exists+filepath.Join` | 30 | `0.48` (loose) |
+| `siteVector.Language+s.siteVector` | 31 | `0.53` (settled) |
+| `Buffer.Len+ctx.Buffer` | 30 | `0.35` (loose) |
 | `hooks.LinkRenderer+html.IsDangerousURL` | 30 | `0.57` (settled) |
 | `hpaths.AbsPathify+paths.AbsPathify` | 30 | `0.44` (loose) |
 | `image.Config+draw` | 30 | `0.50` (loose) |
-| `ti.Template+metrics` | 30 | `0.53` (settled) |
-| `Buffer.Len+ctx.Buffer` | 29 | `0.32` (loose) |
-| `ctx.pids+ctx.values` | 29 | `0.49` (loose) |
+| `meta.Name+Meta.InclusionFilter` | 30 | `0.46` (loose) |
+| `sort.Slice+fmt.Errorf` | 30 | `0.44` (loose) |
+| `treePages.LongestPrefix+s.home` | 30 | `0.56` (settled) |
+| `Source.MkdirAll+s.atomicSavedFiles` | 29 | `0.41` (loose) |
+| `ctx.pids+ctx.values` | 29 | `0.50` (loose) |
+| `helpers.Exists+filepath.Join` | 29 | `0.47` (loose) |
+| `overlayfs.OverlayFs+b.p+b.theBigFs` | 29 | `0.44` (loose) |
 | `p.Base+pt.p` | 29 | `0.49` (loose) |
-| `treePages.LongestPrefix+s.home` | 29 | `0.59` (settled) |
+| `ti.Template+metrics` | 29 | `0.51` (settled) |
 | `Matrix.IsZero+Sites.Matrix` | 28 | `0.52` (settled) |
-| `h.sitesVersionsRoles+doctree.NodeShiftTreeWalker` | 28 | `0.45` (loose) |
-| `overlayfs.OverlayFs+b.p+b.theBigFs` | 28 | `0.44` (loose) |
+| `l.content+bytes.HasPrefix` | 28 | `0.43` (loose) |
+| `paths.ToSlashTrimLeading+opts.TargetPath` | 28 | `0.47` (loose) |
 | `testing.Short+t.Skip` | 28 | `0.25` (loose) |
+| `time.RFC3339+p.File` | 28 | `0.53` (settled) |
 | `Conf.IsMultilingual+Conf.IsMultihost` | 27 | `0.55` (settled) |
-| `Source.MkdirAll+s.atomicSavedFiles` | 27 | `0.41` (loose) |
 | `bytes.Contains+text` | 27 | `0.45` (loose) |
-| `bytes.Equal+bytes` | 27 | `0.47` (loose) |
-| `files.ComponentFolderData+files.ComponentFolderAssets` | 27 | `0.46` (loose) |
-| `l.content+bytes.HasPrefix` | 27 | `0.44` (loose) |
-| `langs.Languages+l.Lang+fmt.Errorf` | 27 | `0.50` (settled) |
-| `paths.ToSlashTrimLeading+opts.TargetPath` | 27 | `0.47` (loose) |
+| `fsnotify.Chmod+fsnotify.Rename` | 27 | `0.47` (loose) |
 | `pi.itemsStep2+fmt.Errorf` | 27 | `0.38` (loose) |
-| `f.fs+f.name` | 26 | `0.48` (loose) |
+| `best.w+best.templ` | 26 | `0.47` (loose) |
+| `bytes.Equal+bytes` | 26 | `0.47` (loose) |
+| `f.fs+f.name` | 26 | `0.47` (loose) |
 | `filepath.Ext+strings.TrimPrefix` | 26 | `0.45` (loose) |
-| `os.ErrNotExist+overlayfs` | 26 | `0.45` (loose) |
+| `files.ComponentFolderData+files.ComponentFolderAssets` | 26 | `0.47` (loose) |
+| `h.sitesVersionsRoles+doctree.NodeShiftTreeWalker` | 26 | `0.44` (loose) |
+| `langs.Languages+l.Lang+fmt.Errorf` | 26 | `0.51` (settled) |
 | `sort.Strings+c.mu` | 26 | `0.37` (loose) |
 | `strconv.Atoi+strings.TrimSpace` | 26 | `0.44` (loose) |
 | `testing.Short+t.Skip+t.Skipf` | 26 | `0.52` (settled) |
-| `time.RFC3339+p.File` | 26 | `0.52` (settled) |
-| `Sites.Matrix+Matrix.IsZero` | 25 | `0.54` (settled) |
 | `b.SourceFilesystems+hugofs.NoOpFs` | 25 | `0.47` (loose) |
-| `best.w+best.templ` | 25 | `0.47` (loose) |
 | `c.partitions+lazycache` | 25 | `0.50` (settled) |
-| `d.Site+d.Conf` | 25 | `0.69` (settled) |
-| `fw.Close+helpers.OpenFilesForWriting+BaseFs.PublishFs` | 25 | `0.55` (settled) |
+| `d.Site+d.Conf` | 25 | `0.68` (settled) |
 | `hooks.LinkRenderer+lr.RenderLink` | 25 | `0.35` (loose) |
 | `l.closingState+l.currShortcodeName` | 25 | `0.39` (loose) |
-| `langs.Languages+l.Lang` | 25 | `0.57` (settled) |
 | `meta.PathInfo+pi.Base` | 25 | `0.49` (loose) |
-| `strings.EqualFold+strings.Contains` | 25 | `0.44` (loose) |
+| `Sites.Matrix+Matrix.IsZero` | 24 | `0.55` (settled) |
 | `cmd.RunE+cmd.Long` | 24 | `0.65` (settled) |
 | `fs.trackAndWrapFile+Fs.Open` | 24 | `0.60` (settled) |
+| `fw.Close+helpers.OpenFilesForWriting+BaseFs.PublishFs` | 24 | `0.54` (settled) |
 | `l.w+l.append` | 24 | `0.36` (loose) |
+| `langs.Languages+l.Lang` | 24 | `0.57` (settled) |
 | `lv.Index+lv.Kind` | 24 | `0.29` (loose) |
+| `os.ErrNotExist+overlayfs` | 24 | `0.45` (loose) |
+| `strings.EqualFold+strings.Contains` | 24 | `0.45` (loose) |
 | `Conf.ConfiguredDimensions+sitesmatrix.IntSetsConfig` | 23 | `0.46` (loose) |
-| `TemplateStore.TextParse+fmt.Errorf` | 23 | `0.46` (loose) |
 | `gohtml.EscapeString+h.cfg` | 23 | `0.47` (loose) |
 | `hashing.HashString+hashing` | 23 | `0.52` (settled) |
 | `hreflect.ToFloat64E+hreflect.ToStringE` | 23 | `0.40` (loose) |
 | `id.High+id.Low` | 23 | `0.45` (loose) |
 | `t.pipeline+t.peekNonSpace` | 23 | `0.41` (loose) |
+| `TemplateStore.TextParse+fmt.Errorf` | 22 | `0.47` (loose) |
 | `b.String+bp.GetBuffer` | 22 | `0.37` (loose) |
 | `cfg.taxonomyTermDisabled+viewName.plural+viewName.pluralTreeKey` | 22 | `0.48` (loose) |
 | `fe.position+errors.Unwrap` | 22 | `0.48` (loose) |
+| `h.Fs+Fs.Source` | 22 | `0.46` (loose) |
+| `l.cfg+cfg.Get` | 22 | `0.45` (loose) |
 | `main.buildFlags+main.flagEnv` | 22 | `0.49` (loose) |
+| `Internal.Watch+Base.Internal` | 21 | `0.55` (settled) |
 | `conf.Name+idx.index` | 21 | `0.45` (loose) |
 | `config.C+c.config` | 21 | `0.74` (settled) |
 | `gohtml.EscapeString+html.EscapeString` | 21 | `0.52` (settled) |
-| `h.Fs+Fs.Source` | 21 | `0.46` (loose) |
 | `helpers.WriteToDisk+filepath.Base` | 21 | `0.41` (loose) |
 | `init.taxonomies+menus.Value` | 21 | `0.46` (loose) |
-| `l.cfg+cfg.Get` | 21 | `0.44` (loose) |
 | `l.current+l.isInline` | 21 | `0.38` (loose) |
 | `p.posIdentifierBaseof+p.posNameHigh+p.posIdentifierLayout` | 21 | `0.45` (loose) |
 | `passthrough.KindPassthrough…+ast.WalkContinue` | 21 | `0.51` (settled) |
+| `r.Sorted+version` | 21 | `0.53` (settled) |
 | `s.sets+hashstructure` | 21 | `0.55` (settled) |
 | `helpers.FilePathSeparator+filepath.Join` | 20 | `0.52` (settled) |
 | `html.RenderAttributes+attributes.AttributesOwnerG…` | 20 | `0.39` (loose) |
@@ -383,16 +385,13 @@ The diagram draws the 3 largest concepts on each branch; **531 further concepts*
 | `p.buildState+p.p` | 20 | `0.44` (loose) |
 | `parse.ChainNode+parse.IdentifierNode` | 20 | `0.47` (loose) |
 | `resource.StaleVersion+p.c` | 20 | `0.40` (loose) |
-| `strings.SplitSeq+strings.TrimSpace` | 20 | `0.36` (loose) |
 | `t.rangeDepth+t.pipeline` | 20 | `0.43` (loose) |
 | `unicode.IsSpace+unicode` | 20 | `0.43` (loose) |
-| `Internal.Watch+Base.Internal` | 19 | `0.54` (settled) |
 | `l.w+l.content+l.start` | 19 | `0.32` (loose) |
 | `m.Owner+m.gomod` | 19 | `0.37` (loose) |
 | `overlayfs.OverlayFs+b.p` | 19 | `0.50` (loose) |
+| `p.Base+p.Path` | 19 | `0.44` (loose) |
 | `ps.File+ps.Path` | 19 | `0.60` (settled) |
-| `r.Sorted+version` | 19 | `0.52` (settled) |
-| `seqv.Index+seqv.Kind` | 19 | `0.28` (loose) |
 | `sh.Run+page_generate` | 19 | `0.47` (loose) |
 | `t.Tree+t.Name` | 19 | `0.52` (settled) |
 | `Data.Params+Params.Height` | 18 | `0.36` (loose) |
@@ -400,42 +399,42 @@ The diagram draws the 3 largest concepts on each branch; **531 further concepts*
 | `PartialDecoratorIDStack.Get+Context.PartialDecoratorIDS…` | 18 | `0.54` (settled) |
 | `attr.Value+attr.Name` | 18 | `0.41` (loose) |
 | `cast.ToFloat32+cast.ToInt` | 18 | `0.65` (settled) |
-| `iofs.DirEntry+meta.Open` | 18 | `0.46` (loose) |
+| `iofs.DirEntry+meta.Open` | 18 | `0.45` (loose) |
 | `o.h+create` | 18 | `0.67` (settled) |
-| `p.Base+p.Path` | 18 | `0.44` (loose) |
-| `p.IsBundle+files.ComponentFolderLayouts` | 18 | `0.43` (loose) |
+| `p.IsBundle+files.ComponentFolderLayouts` | 18 | `0.42` (loose) |
 | `reflect.Invalid+reflect.Uintptr` | 18 | `0.40` (loose) |
+| `seqv.Index+seqv.Kind` | 18 | `0.28` (loose) |
 | `templ.Name+goldmark_config` | 18 | `0.49` (loose) |
 | `Content.Markup+fmt.Errorf` | 17 | `0.58` (settled) |
 | `c.rootCmd+Root.Command` | 17 | `0.75` (settled) |
 | `cast.ToFloat64E+cast.ToIntE` | 17 | `0.66` (settled) |
 | `cfg.GetStringMap+cfg.IsSet` | 17 | `0.40` (loose) |
-| `glob.Glob+hglob.GetGlob` | 17 | `0.41` (loose) |
+| `glob.Glob+hglob.GetGlob` | 17 | `0.44` (loose) |
 | `hooks.LinkRenderer+lr.RenderLink+Buffer.Len` | 17 | `0.42` (loose) |
 | `l.currentRightShortcodeDelim+l.ignore` | 17 | `0.38` (loose) |
 | `p.trace+p.zero` | 17 | `0.33` (loose) |
+| `sort.Sort+reflect` | 17 | `0.39` (loose) |
+| `strings.SplitSeq+strings.TrimSpace` | 17 | `0.33` (loose) |
 | `time.Since+time.Second` | 17 | `0.26` (loose) |
 | `PathSpec.BaseFs+Content.Fs` | 16 | `0.43` (loose) |
+| `ShouldListLocal.And+pagePredicates.KindPage+pagePredicates.ShouldListLo…` | 16 | `0.39` (loose) |
 | `afero.Exists+module` | 16 | `0.45` (loose) |
 | `ast.WalkSkipChildren+w.Write` | 16 | `0.40` (loose) |
 | `d.warnl+imagemeta.EXIF` | 16 | `0.49` (loose) |
 | `draw.Over+image.NewRGBA` | 16 | `0.38` (loose) |
 | `fi.fim+fi.p` | 16 | `0.48` (loose) |
-| `fmt.Sprintf+hugo.deprecationLogLevelFro…` | 16 | `0.40` (loose) |
+| `fmt.Sprintf+hugo.deprecationLogLevelFro…` | 16 | `0.39` (loose) |
 | `images.hexStringToColorGo+gift` | 16 | `0.47` (loose) |
 | `m.keys+m.values` | 16 | `0.80` (unanimous) |
 | `r.shift+r.shifter` | 16 | `0.40` (loose) |
 | `sitesmatrix.IntSetsConfig+sitesmatrix.NewIntSetsBuild…` | 16 | `0.39` (loose) |
-| `sort.Sort+reflect` | 16 | `0.38` (loose) |
 | `t.peek+t.next` | 16 | `0.43` (loose) |
 | `t.translateFuncs+context.Context` | 16 | `0.47` (loose) |
 | `v.Major+v.Minor` | 16 | `0.73` (settled) |
-| `ShouldListLocal.And+pagePredicates.KindPage+pagePredicates.ShouldListLo…` | 15 | `0.38` (loose) |
 | `c.jsCtx+c.jsBraceDepth` | 15 | `0.39` (loose) |
-| `cfg.Fs+filepath.Join` | 15 | `0.43` (loose) |
 | `cmd.RunE+cmd.Long+cmd.Short` | 15 | `0.62` (settled) |
-| `hugio.CopyDir+hugofs.Os` | 15 | `0.46` (loose) |
 | `init.Value+lcp.init` | 15 | `0.87` (unanimous) |
+| `iofs.DirEntry+iofs.ReadDirFile` | 15 | `0.43` (loose) |
 | `iter.Next+parse.NumberNode` | 15 | `0.24` (loose) |
 | `logg.Field+logg.Fields` | 15 | `0.40` (loose) |
 | `meta.Filename+fim.Meta` | 15 | `0.30` (loose) |
@@ -446,12 +445,13 @@ The diagram draws the 3 largest concepts on each branch; **531 further concepts*
 | `WrapperEnd.Low+WrapperStart.High` | 14 | `0.42` (loose) |
 | `buf.WriteString+buf.Bytes` | 14 | `0.34` (loose) |
 | `c.ToTOML+security.Config.ToTOML` | 14 | `0.44` (loose) |
+| `cfg.Fs+filepath.Join` | 14 | `0.48` (loose) |
 | `cmp+quicktest` | 14 | `0.54` (settled) |
 | `fmt.Printf+runtime` | 14 | `0.44` (loose) |
 | `gift.OverOperator+image.NewRGBA` | 14 | `0.43` (loose) |
+| `hugio.CopyDir+hugofs.Os` | 14 | `0.46` (loose) |
 | `hugio.NewReadSeekerNoOpClos…+hugio.ReadSeekCloser` | 14 | `0.37` (loose) |
 | `hugoSites.GetOrCreate+hugolib.NewHugoSites` | 14 | `0.31` (loose) |
-| `iofs.DirEntry+iofs.ReadDirFile` | 14 | `0.46` (loose) |
 | `l.backup+l.next` | 14 | `0.31` (loose) |
 | `r.metaProvider+r.init` | 14 | `0.81` (unanimous) |
 | `s.lastBuildLog+s.Helper` | 14 | `0.48` (loose) |
@@ -467,8 +467,8 @@ The diagram draws the 3 largest concepts on each branch; **531 further concepts*
 | `exec.LookPath+bufio` | 13 | `0.32` (loose) |
 | `herrors.NewFileErrorFromName+meta.Filename` | 13 | `0.33` (loose) |
 | `idm.AddIdentity+identity.WalkIdentitiesShal…` | 13 | `0.34` (loose) |
-| `item.Kind+item.Len` | 13 | `0.25` (loose) |
 | `n.Args+t.ParseInfo` | 13 | `0.41` (loose) |
+| `p.component+files` | 13 | `0.42` (loose) |
 | `parser.InterfaceToConfig+metadecoders.TOML` | 13 | `0.35` (loose) |
 | `pos.ColumnNumber+fe.UpdatePosition` | 13 | `0.40` (loose) |
 | `ti.D+tpl.Template` | 13 | `0.40` (loose) |
@@ -477,13 +477,13 @@ The diagram draws the 3 largest concepts on each branch; **531 further concepts*
 | `fs.PublishDirStatic+fs.PublishDir` | 12 | `0.33` (loose) |
 | `h.img+h.Assert` | 12 | `0.31` (loose) |
 | `image.NewNRGBA+src.Bounds` | 12 | `0.26` (loose) |
+| `item.Kind+item.Len` | 12 | `0.24` (loose) |
 | `other.ForEachVector+s.HasVector` | 12 | `0.61` (settled) |
 | `p.Kind+p.Path` | 12 | `0.43` (loose) |
-| `p.component+files` | 12 | `0.41` (loose) |
 | `pageConfig.Dates+m.pageConfig` | 12 | `0.92` (unanimous) |
 | `spc.get+compare` | 12 | `0.63` (settled) |
 | `strconv.Itoa+strconv` | 12 | `0.36` (loose) |
-| `strings.CutPrefix+fmt.Errorf` | 12 | `0.42` (loose) |
+| `strings.CutPrefix+fmt.Errorf` | 12 | `0.39` (loose) |
 | `t.Skipf+runtime.GOARCH` | 12 | `0.55` (settled) |
 | `t.leftDelim+t.rightDelim` | 12 | `0.46` (loose) |
 | `t.treeSet+t.Mode` | 12 | `0.36` (loose) |
@@ -499,8 +499,7 @@ The diagram draws the 3 largest concepts on each branch; **531 further concepts*
 | `fmt.Sprint+template.indirectToStringer…` | 11 | `0.34` (loose) |
 | `fsnotify.Chmod+fsnotify.Write` | 11 | `0.43` (loose) |
 | `i.Type+util` | 11 | `0.73` (settled) |
-| `maps.Clone+maps` | 11 | `0.40` (loose) |
-| `p.Layout+p.Type` | 11 | `0.44` (loose) |
+| `ls.Sorted+predicate` | 11 | `0.53` (settled) |
 | `p.posIdentifierBaseof+p.posNameHigh` | 11 | `0.43` (loose) |
 | `q.Path+rungroup` | 11 | `0.49` (loose) |
 | `r.StdOut+hugolib` | 11 | `0.34` (loose) |
@@ -508,8 +507,8 @@ The diagram draws the 3 largest concepts on each branch; **531 further concepts*
 | `state.String+c.state` | 11 | `0.41` (loose) |
 | `strings.LastIndex+runtime` | 11 | `0.38` (loose) |
 | `strings.Repeat+fmt.Sprintf` | 11 | `0.37` (loose) |
+| `time.Duration+fmt.Errorf` | 11 | `0.38` (loose) |
 | `DependencyManagerScopedProv…+Context.DependencyManagerSc…` | 10 | `0.43` (loose) |
-| `Fi.Meta+htmltemplate` | 10 | `0.46` (loose) |
 | `allconfig.ConfigLanguage.De…+i18n` | 10 | `0.51` (settled) |
 | `bytes.TrimSpace+unicode` | 10 | `0.38` (loose) |
 | `cast.ToFloat32+images.newFilterOpts` | 10 | `0.94` (unanimous) |
@@ -519,18 +518,21 @@ The diagram draws the 3 largest concepts on each branch; **531 further concepts*
 | `identity.Anonymous+resources.ResourceSourceDes…` | 10 | `0.40` (loose) |
 | `l.currShortcodeName+l.elementStepNum` | 10 | `0.41` (loose) |
 | `l.sd+mime` | 10 | `0.79` (unanimous) |
+| `maps.Clone+maps` | 10 | `0.40` (loose) |
 | `media.Types+allconfig.ConfigLanguage.Ge…` | 10 | `0.42` (loose) |
 | `ns.castPrecisionNumber+ns.translator` | 10 | `0.38` (loose) |
+| `p.Layout+p.Type` | 10 | `0.41` (loose) |
 | `p.posIdentifierOutputFormat+p.posIdentifierLanguage` | 10 | `0.36` (loose) |
 | `parse.WithNode+parse.IfNode` | 10 | `0.35` (loose) |
 | `paths.FileAndExtNoDelimiter+pos.Filename` | 10 | `0.41` (loose) |
 | `paths.ToSlashPreserveLeading+hsync` | 10 | `0.43` (loose) |
 | `r.getImageOps+resources.*resourceAdapter.…` | 10 | `1.00` (unanimous) |
+| `sitesmatrix.VectorStore+files` | 10 | `0.37` (loose) |
+| `t.name+parse` | 10 | `0.34` (loose) |
 | `this._handshakeTimeout+this._disconnectionReason` | 10 | `0.40` (loose) |
-| `time.Duration+fmt.Errorf` | 10 | `0.38` (loose) |
 | `w.w2+w.w3` | 10 | `0.36` (loose) |
 | `ConfiguredDimensions.Config…+pp.ConfiguredDimensions` | 9 | `0.38` (loose) |
-| `b.cf+Log.Printf` | 9 | `0.29` (loose) |
+| `Fi.Meta+htmltemplate` | 9 | `0.44` (loose) |
 | `buff.Reset+buff.WriteRune` | 9 | `0.39` (loose) |
 | `c.commands+parser` | 9 | `0.91` (unanimous) |
 | `cfg.ConfiguredRoles+cfg.ConfiguredVersions` | 9 | `0.43` (loose) |
@@ -540,7 +542,6 @@ The diagram draws the 3 largest concepts on each branch; **531 further concepts*
 | `hstrings.UniqueStringsReuse+hstrings` | 9 | `0.32` (loose) |
 | `html.ElementNode+html.Node` | 9 | `0.30` (loose) |
 | `l.rightDelim+l.input` | 9 | `0.38` (loose) |
-| `ls.Sorted+predicate` | 9 | `0.50` (loose) |
 | `math.Floor+lazycache` | 9 | `0.43` (loose) |
 | `p.Draft+p.ExpiryDate` | 9 | `0.37` (loose) |
 | `parse.BreakNode+parse.ContinueNode` | 9 | `0.33` (loose) |
@@ -548,22 +549,21 @@ The diagram draws the 3 largest concepts on each branch; **531 further concepts*
 | `po.f+po.p` | 9 | `0.43` (loose) |
 | `qt.Contains+qt.Not` | 9 | `0.29` (loose) |
 | `s.vars+fmtsort` | 9 | `0.34` (loose) |
-| `sitesmatrix.VectorStore+files` | 9 | `0.35` (loose) |
 | `source.*File.p+glob` | 9 | `0.25` (loose) |
-| `t.name+parse` | 9 | `0.31` (loose) |
 | `t.translateFuncs+i18n` | 9 | `0.44` (loose) |
 | `types.IsNil+compare` | 9 | `0.40` (loose) |
 | `v.Role+v.Version` | 9 | `0.44` (loose) |
 | `Divider.IsZero+Divider.Low` | 8 | `0.48` (loose) |
 | `Source.MkdirAll+s.writeSource` | 8 | `0.58` (settled) |
+| `b.cf+Log.Printf` | 8 | `0.26` (loose) |
 | `fmt.Println+filepath.Join` | 8 | `0.29` (loose) |
-| `glob.Compile+glob` | 8 | `0.29` (loose) |
+| `glob.Compile+glob` | 8 | `0.30` (loose) |
 | `herrors.NewFileErrorFromFile+fe.Position` | 8 | `0.29` (loose) |
 | `hex.EncodeToString+cast.ToStringE` | 8 | `0.45` (loose) |
 | `htesting.SupportsAll+internal` | 8 | `0.30` (loose) |
 | `html.IsDangerousURL+html.RenderAttributes` | 8 | `0.27` (loose) |
 | `html.IsDangerousURL+util.URLEscape` | 8 | `0.18` (loose) |
-| `htmltemplate.Template+texttemplate.Template` | 8 | `0.33` (loose) |
+| `htmltemplate.Template+texttemplate.Template` | 8 | `0.32` (loose) |
 | `i.WithSpec+i.baseResource` | 8 | `0.38` (loose) |
 | `ids.vals+blackfriday` | 8 | `0.40` (loose) |
 | `main.testGoFlags+main.runCmd` | 8 | `0.50` (settled) |
@@ -620,10 +620,9 @@ The diagram draws the 3 largest concepts on each branch; **531 further concepts*
 | `i.opts+opts.Conf` | 6 | `0.61` (settled) |
 | `identity.IdentityProvider+reflect` | 6 | `0.30` (loose) |
 | `l.w+l.content` | 6 | `0.23` (loose) |
-| `m.names+hashstructure` | 6 | `0.79` (unanimous) |
+| `m.names+hashstructure` | 6 | `0.78` (unanimous) |
 | `metadecoders.FormatFromStri…+parser` | 6 | `0.40` (loose) |
 | `options.compression+options.hint` | 6 | `0.31` (loose) |
-| `os.ErrNotExist+fs` | 6 | `0.50` (loose) |
 | `p.identifierAsString+paths.*Path.identifierAsStr…` | 6 | `0.64` (settled) |
 | `pathInfo.IsBranchBundle+strings.HasPrefix` | 6 | `0.28` (loose) |
 | `r.r+pagesfromdata` | 6 | `0.36` (loose) |
@@ -642,22 +641,24 @@ The diagram draws the 3 largest concepts on each branch; **531 further concepts*
 | `deps.PathSpec+ns.deps` | 5 | `0.86` (unanimous) |
 | `docshelper.AddDocProviderFu…+docshelper.DocProvider` | 5 | `0.23` (loose) |
 | `fe.UpdatePosition+herrors.UnwrapFileError` | 5 | `0.31` (loose) |
+| `filepath.SkipDir+info.IsDir` | 5 | `0.21` (loose) |
 | `h.PathSpec+PathSpec.BaseFs+BaseFs.Content` | 5 | `0.30` (loose) |
-| `h.img+h.Assert+qt.IsTrue` | 5 | `0.55` (settled) |
 | `hr.templ+hr.templateHandler` | 5 | `0.89` (unanimous) |
 | `ic.Quality+c.Compression` | 5 | `0.38` (loose) |
 | `loggers.Log+htime` | 5 | `0.49` (loose) |
 | `lv.Index+lv.Kind+lv.Len~2` | 5 | `0.24` (loose) |
 | `memory+strconv` | 5 | `0.30` (loose) |
-| `n.compareGet+n.checkComparisonArgCount` | 5 | `0.71` (settled) |
+| `n.compareGet+n.checkComparisonArgCount` | 5 | `0.60` (settled) |
+| `os.ErrNotExist+fs` | 5 | `0.59` (settled) |
 | `p.PageNumber+page.*Pager.PageNumber` | 5 | `0.60` (settled) |
+| `p.Path+hugofs.FileMetaInfo+strings.HasPrefix` | 5 | `0.22` (loose) |
 | `p.els+urls` | 5 | `0.29` (loose) |
 | `p.pagers+math` | 5 | `0.35` (loose) |
 | `p.paginatedElements+math` | 5 | `0.32` (loose) |
 | `parser.InterfaceToConfig+bytes.Buffer` | 5 | `0.37` (loose) |
 | `parson.json_object_set_value+parson.json_value_free` | 5 | `1.00` (unanimous) |
 | `paths.NormalizePathStringBa…+files` | 5 | `0.33` (loose) |
-| `s.Fatalf+s.Helper` | 5 | `0.39` (loose) |
+| `s.Fatalf+s.Helper` | 5 | `0.34` (loose) |
 | `sb.WriteByte+sb.WriteString` | 5 | `0.67` (settled) |
 | `sid.dp+sid.eqer` | 5 | `0.36` (loose) |
 | `smartcrop+gift` | 5 | `0.41` (loose) |
@@ -678,15 +679,14 @@ The diagram draws the 3 largest concepts on each branch; **531 further concepts*
 | `doc+docshelper` | 4 | — |
 | `errorl.Logf+l.errorl` | 4 | — |
 | `fi.fim+fim.Meta` | 4 | — |
-| `filepath.SkipDir+info.IsDir` | 4 | — |
 | `fim.IsDir+fim.Meta` | 4 | — |
+| `h.img+h.Assert+qt.IsTrue` | 4 | — |
 | `hreflect.IsMap+css` | 4 | — |
 | `i.processActionSpec+resources.*imageResource.pr…` | 4 | — |
 | `l.emitItem+l.thisItem` | 4 | — |
 | `l.urlize+p.Slug` | 4 | — |
 | `p.GetLanguagePrefix+paths.*Paths.GetLanguagePre…` | 4 | — |
 | `p.Pairs+compare` | 4 | — |
-| `p.Path+hugofs.FileMetaInfo+strings.HasPrefix` | 4 | — |
 | `p.SitesComplements+p.SitesMatrix` | 4 | — |
 | `p.groupByDateField+time.Time` | 4 | — |
 | `p.trace+trace.Log` | 4 | — |
@@ -738,19 +738,20 @@ flowchart LR
     p7 ---|"8"| p8
     p6 ---|"7"| p8
     p9["navigation<br/>3 internal"]
-    p10["page<br/>343 internal"]
+    p10["page<br/>339 internal"]
     p9 ---|"7"| p10
     p11["css<br/>4 internal"]
     p12["js<br/>8 internal"]
     p11 ---|"6"| p12
     p13["tables<br/>2 internal"]
     p1 ---|"6"| p13
+    p14["strings<br/>32 internal"]
+    p15["urls<br/>12 internal"]
+    p14 ---|"6"| p15
     p0 ---|"5"| p13
-    p14["collections<br/>56 internal"]
-    p15["template<br/>191 internal"]
-    p14 ---|"5"| p15
-    p16["hugolib<br/>366 internal"]
-    p16 ---|"5"| p10
+    p16["collections<br/>56 internal"]
+    p17["template<br/>194 internal"]
+    p16 ---|"5"| p17
 ```
 
 _407 further package pairs are connected by duplication and are not drawn._
@@ -761,7 +762,7 @@ A package with at least five functions gets a habitat model: doppel learns what 
 
 ```mermaid
 flowchart TD
-    h0["page<br/>468 functions · norm 0.66<br/>130 misfits"]
+    h0["page<br/>468 functions · norm 0.66<br/>129 misfits"]
     h1["integrity<br/>7 functions · norm 0.68"]
     h2["versions<br/>12 functions · norm 0.69<br/>4 misfits"]
     h3["langs<br/>31 functions · norm 0.69<br/>10 misfits"]
@@ -769,31 +770,31 @@ flowchart TD
     h5["sitesmatrix<br/>107 functions · norm 0.70<br/>33 misfits"]
     h6["warpc<br/>54 functions · norm 0.70<br/>16 misfits"]
     h7["pagesfromdata<br/>20 functions · norm 0.70<br/>7 misfits"]
-    h8["allconfig<br/>93 functions · norm 0.71<br/>25 misfits"]
-    h9["roles<br/>12 functions · norm 0.71<br/>4 misfits"]
+    h8["roles<br/>12 functions · norm 0.71<br/>4 misfits"]
+    h9["allconfig<br/>93 functions · norm 0.71<br/>25 misfits"]
     h10["hugofs<br/>195 functions · norm 0.71<br/>54 misfits"]
-    h11["render<br/>23 functions · norm 0.72<br/>6 misfits"]
+    h11["identity<br/>55 functions · norm 0.71<br/>19 misfits"]
     classDef good fill:#d7ecd9,color:#1b3d20
     classDef warn fill:#fbeecb,color:#4a3a12
     classDef hot fill:#f7d6d6,color:#4a1c1c
     class h0,h1,h2,h3,h4,h5,h6,h7,h8,h9,h10,h11 warn
 ```
 
-_117 further packages are modeled and not drawn._ Most uniform is `dartsass` (norm `0.98`); most varied is `page` (norm `0.66`). 416 functions are alien to their package and to the subsystem around it. A further 62 fit poorly in their package but match the wider subsystem, so they are not reported.
+_117 further packages are modeled and not drawn._ Most uniform is `dartsass` (norm `0.98`); most varied is `page` (norm `0.66`). 416 functions are alien to their package and to the subsystem around it. A further 63 fit poorly in their package but match the wider subsystem, so they are not reported.
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **32240 candidate pairs** (shape 7042, concept 20716, call 8634), of which 19% arrived on call evidence alone and 56% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **32251 candidate pairs** (shape 7055, concept 20730, call 8634), of which 19% arrived on call evidence alone and 56% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
-The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **2218 of 31897** pairs the taxonomy and the vocabularies differ by at least 0.50: 149 where the vocabularies agree and the tree cannot see it, 2069 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
+The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **2250 of 31907** pairs the taxonomy and the vocabularies differ by at least 0.50: 161 where the vocabularies agree and the tree cannot see it, 2089 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
 
-Each function is also an arena where its candidate concepts compete for its evidence. 5544 functions reached an equilibrium: **3227** settled on a single concept, **2310** on a coalition, **0** hold concepts this corpus says do not go together.
+Each function is also an arena where its candidate concepts compete for its evidence. 5546 functions reached an equilibrium: **3227** settled on a single concept, **2312** on a coalition, **0** hold concepts this corpus says do not go together.
 
 ### Corpus metrics
 
-**Compression ratio:** `7.32`x — this corpus's canonical function bodies contain **361844 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **49431 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
+**Compression ratio:** `7.36`x — this corpus's canonical function bodies contain **362272 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **49224 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **5737 functions**, **5683** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.45` / `1.00` / `1.00`, and 80% of them (4552 of 5683) already clear this run's threshold of `0.34`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 54 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **5737 functions**, **5686** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.45` / `1.00` / `1.00`, and 80% of them (4548 of 5686) already clear this run's threshold of `0.34`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 51 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -805,18 +806,18 @@ The vocabulary above says what a concept *is*. This says what one looks like whe
 
 Only what is **distinctive**. A feature earns a row by being carried by this concept's members at least twice as often as by the corpus at large — nearly every Go function has a `return` and an `if`, so prevalence alone would describe the language rather than this codebase. Weights are how much a channel counts toward whether a member looks normal — calls 40, control flow 20, co-occurring tags 15, role 15, package 10.
 
-**`mnt.init+typ.In`** — 258 functions
+**`mnt.init+typ.In`** — 256 functions
 
 | Channel | Feature | | Members | vs corpus |
 |---|---|---|---|---|
-| calls ×40 | `fmt.Errorf` | `█████·····` | 137 of 258 | 8.8× |
-| flow ×20 | `range` | `███·······` | 88 of 258 | 2.2× |
+| calls ×40 | `fmt.Errorf` | `█████·····` | 135 of 256 | 8.8× |
+| flow ×20 | `range` | `███·······` | 86 of 256 | 2.1× |
 
 **`ResourceSpec.FileCaches+c.isExpired`** — 242 functions
 
 | Channel | Feature | | Members | vs corpus |
 |---|---|---|---|---|
-| flow ×20 | `funclit` | `███·······` | 71 of 242 | 2.6× |
+| flow ×20 | `funclit` | `███·······` | 72 of 242 | 2.6× |
 
 **`C.BaseURL+conf.C`** — 233 functions
 
@@ -826,25 +827,25 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 |  | `pageOutput.pco+ps.pageOutput` | `███·······` | 77 of 233 | 13× |
 | package ×10 | `page` | `█████·····` | 127 of 233 | 6.7× |
 
-**`c.hasBeenInitialized+call.done`** — 209 functions
+**`c.hasBeenInitialized+call.done`** — 210 functions
 
 | Channel | Feature | | Members | vs corpus |
 |---|---|---|---|---|
-| flow ×20 | `defer` | `█████·····` | 110 of 209 | 10× |
+| flow ×20 | `defer` | `█████·····` | 110 of 210 | 10× |
 
 **`Converters.GetHighlighter+c.applyTransformations`** — 207 functions
 
 Nothing distinctive: its members do what the rest of the corpus does. The tag groups them; a shared way of writing them does not.
 
-**`fn.IsValid+htmltemplate.Must`** — 205 functions
+**`fn.IsValid+htmltemplate.Must`** — 204 functions
 
 | Channel | Feature | | Members | vs corpus |
 |---|---|---|---|---|
-| calls ×40 | `reflect.ValueOf` | `███·······` | 61 of 205 | 21× |
-| flow ×20 | `switch` | `███·······` | 55 of 205 | 5.2× |
-| package ×10 | `template` | `███·······` | 60 of 205 | 6.1× |
+| calls ×40 | `reflect.ValueOf` | `███·······` | 61 of 204 | 21× |
+| flow ×20 | `switch` | `███·······` | 55 of 204 | 5.3× |
+| package ×10 | `template` | `███·······` | 60 of 204 | 6.1× |
 
-_495 further concepts are modeled and not described._
+_496 further concepts are modeled and not described._
 
 ### Which concepts share a function
 
@@ -874,11 +875,11 @@ Co-occurrence measured against chance across every function. Only relationships 
 
 - 20 of 21 `gohtml.EscapeString+html.EscapeString` functions also `gohtml.EscapeString+h.cfg` — 238× chance
 - 46 of 48 `s.CheckReady+i18n` functions also `conf.OutputFormats+init.taxonomies` — 75× chance
+- 27 of 29 `Source.MkdirAll+s.atomicSavedFiles` functions also `Source.MkdirAll+s.C` — 134× chance
 - 58 of 58 `s.s+s.Language` functions also `Config.Sorted+c.C+c.Languages` — 53× chance
-- 43 of 58 `b.Grow+b.WriteString` functions also `b.Grow+b.WriteString+utf8.DecodeRuneInString` — 72× chance
-- 27 of 32 `Meta.Rename+filepath.Split` functions also `Meta.InclusionFilter+Meta.Rename` — 121× chance
-- 25 of 27 `Source.MkdirAll+s.atomicSavedFiles` functions also `Source.MkdirAll+s.C` — 133× chance
-- _1040 more not listed_
+- 44 of 59 `b.Grow+b.WriteString` functions also `b.Grow+b.WriteString+utf8.DecodeRuneInString` — 70× chance
+- 27 of 32 `Meta.Rename+filepath.Split` functions also `Meta.InclusionFilter+Meta.Rename` — 118× chance
+- _1027 more not listed_
 
 **Together more than chance — tag~role**
 
@@ -888,7 +889,7 @@ Co-occurrence measured against chance across every function. Only relationships 
 - 4 of 8 `herrors.NewFileErrorFromFile+fe.Position` functions also `passthrough` — 11× chance
 - 5 of 13 `herrors.NewFileErrorFromName+meta.Filename` functions also `passthrough` — 8.3× chance
 - 10 of 16 `t.peek+t.next` functions also `utility` — 4.4× chance
-- _150 more not listed_
+- _151 more not listed_
 
 **Together more than chance — tag~call**
 
@@ -896,9 +897,9 @@ Co-occurrence measured against chance across every function. Only relationships 
 - 21 of 25 `d.Site+d.Conf` functions also `internal.*TemplateFuncsNamespace.AddMethodMapping` — 166× chance
 - 14 of 14 `Constructor.prototype+descriptor.configurable` functions also `./_redefine.defineProperty` — 337× chance
 - 16 of 17 `cast.ToFloat64E+cast.ToIntE` functions also `github.com/spf13/cast.ToFloat64E` — 245× chance
+- 19 of 24 `strings.EqualFold+strings.Contains` functions also `strings.EqualFold` — 182× chance
 - 20 of 32 `hstrings.GetOrCompileRegexp+cast.ToIntE` functions also `github.com/spf13/cast.ToFloat64E` — 163× chance
-- 19 of 25 `strings.EqualFold+strings.Contains` functions also `strings.EqualFold` — 174× chance
-- _1096 more not listed_
+- _1094 more not listed_
 
 **Apart more than chance — tag~tag**
 
@@ -908,7 +909,7 @@ Co-occurrence measured against chance across every function. Only relationships 
 - **no** `C.BaseURL+conf.C` function has `Converters.GetHighlighter+c.applyTransformations` — chance alone would give about 8 of 233
 - **no** `Config.Sorted+c.C` function has `c.hasBeenInitialized+call.done` — chance alone would give about 7 of 203
 - **no** `Config.Sorted+c.C` function has `Converters.GetHighlighter+c.applyTransformations` — chance alone would give about 7 of 203
-- _128 more not listed_
+- _123 more not listed_
 
 **Apart more than chance — tag~role**
 
@@ -918,7 +919,7 @@ Co-occurrence measured against chance across every function. Only relationships 
 - **no** `s.s+s.Language` function has `orchestrator` — chance alone would give about 9 of 58
 - **no** `s.s+s.Language` function has `utility` — chance alone would give about 8 of 58
 - **no** `c.contentRendered+c.mustContentPlain` function has `leaf` — chance alone would give about 8 of 12
-- _155 more not listed_
+- _162 more not listed_
 
 ### Functions drifting from their own concept
 
@@ -931,13 +932,13 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 | `chromalexers.Get` <br/>`markup/highlight/chromalexers/chromalexers.go:28` | `gohtml.EscapeString+h.cfg` | `0.10` | `0.63` | no near-duplicate |
 | `hqt.*stringChecker.Check` <br/>`htesting/hqt/checkers.go:113` | `cmp+quicktest` | `0.14` | `0.65` | no near-duplicate |
 | `create.*Client.getOrCreateFileResource` <br/>`resources/resource_factories/create/create.go:201` | `pathInfo.Unnormalized+kinds.KindTerm` | `0.09` | `0.59` | no near-duplicate |
+| `esbuild.*BatcherClient.New` <br/>`internal/js/esbuild/batch.go:203` | `depsFinder.Contains+identity.FinderConfig` | `0.09` | `0.58` | no near-duplicate |
 | `js.errors` <br/>`internal/warpc/js/renderkatex.bundle.js:2` | `lv.Index+lv.Kind+lv.Len~2` | `0.07` | `0.56` | no near-duplicate |
 | `doctree.*NodeShiftTreeWalker[T].Walk` <br/>`hugolib/doctree/nodeshifttree.go:526` | `doctree.LockTypeRead+m.treePages+doctree.NodeShiftTreeWalker` | `0.09` | `0.57` | no near-duplicate |
-| `esbuild.*BatcherClient.New` <br/>`internal/js/esbuild/batch.go:203` | `depsFinder.Contains+identity.FinderConfig` | `0.10` | `0.56` | no near-duplicate |
-| `identity.WalkIdentitiesDeep` <br/>`identity/identity.go:113` | `depsFinder.Contains+identity.FinderConfig` | `0.10` | `0.56` | no near-duplicate |
-| `tableofcontents.*tocBuilder.Build` <br/>`markup/tableofcontents/tableofcontents.go:192` | `Build.Render+pagemeta.Never` | `0.14` | `0.59` | no near-duplicate |
+| `sitesmatrix.VectorIteratorToStore` <br/>`hugolib/sitesmatrix/dimensions.go:241` | `Conf.NewIdentityManager+s.Conf` | `0.11` | `0.58` | no near-duplicate |
+| `identity.WalkIdentitiesDeep` <br/>`identity/identity.go:113` | `depsFinder.Contains+identity.FinderConfig` | `0.10` | `0.58` | no near-duplicate |
 
-_1128 more unusual realizations not listed._
+_1117 more unusual realizations not listed._
 
 A row marked _no near-duplicate_ appears in no reported pair: nothing else in this report explains it, which makes it drift rather than duplication.
 
@@ -960,7 +961,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.92`
 
-**Evidence:** `3141.03` (shape 3137.19, concept 3.85, call 0.00)
+**Evidence:** `3145.44` (shape 3141.59, concept 3.85, call 0.00)
 
 **Trophic:** `0.86`
 
@@ -984,7 +985,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #2 — Code-shape: `0.7660`
+## Match #2 — Code-shape: `0.7659`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1003,7 +1004,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.92` — most of the smaller body's shape is inside the larger
 
-**Evidence:** `2551.07` (shape 2496.61, concept 4.08, call 50.37)
+**Evidence:** `2525.60` (shape 2471.14, concept 4.09, call 50.37)
 
 **Trophic:** `0.91`
 
@@ -1012,6 +1013,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - `39.71` — `depth-3 CALL` ×6
 - `39.71` — `depth-2 CALL` ×6
 - `33.98` — `depth-1 CALL` ×6
+
+**Culture:** B realizes `mnt.init+typ.In` atypically (typicality 0.12, concept median 0.25, convention 0.61)
 
 **Concept views:** shape `1.00`, corpus `0.95`, feature `0.95`, a-in-b `0.95`, b-in-a `1.00`
 
@@ -1072,7 +1075,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #4 — Code-shape: `0.8293`
+## Match #4 — Code-shape: `0.8294`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1091,14 +1094,14 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.93`
 
-**Evidence:** `1750.62` (shape 1734.74, concept 2.36, call 13.53)
+**Evidence:** `1752.11` (shape 1736.23, concept 2.36, call 13.53)
 
 **Trophic:** `0.91`
 
 **Shared structure:**
 
 - `39.99` — `depth-1 EXPRSTMT` ×9
-- `30.05` — `depth-2 BLOCK` ×6
+- `30.55` — `depth-2 BLOCK` ×6
 - `24.59` — `depth-3 EXPRSTMT` ×4
 
 **Concept views:** shape `1.00`, corpus `0.95`, feature `0.95`, a-in-b `0.95`, b-in-a `1.00`
@@ -1251,7 +1254,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #8 — Code-shape: `0.9283`
+## Match #8 — Code-shape: `0.9282`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1290,7 +1293,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - overlapping call-graph neighborhoods (0.07): 3 shared
 - share patterns: [fn.IsValid+htmltemplate.Must]
 - same package
-- callees do related work (0.73): [seqv.Index+seqv.Kind, hreflect.ToFloat64E+hreflect.ToStringE, fn.IsValid+htmltemplate.Must]
+- callees do related work (0.71): [hreflect.ToFloat64E+hreflect.ToStringE, iter.Next+reflect.New, fn.IsValid+htmltemplate.Must]
 - same visibility
 - same receiver type: state
 - call into same packages: [template]
@@ -1382,9 +1385,9 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ## Families
 
-609 families, 2053 functions in a family, largest 49 members; 7137 edges scored here that retrieval never proposed
+515 families, 1894 functions in a family, largest 49 members; 6390 edges scored here that retrieval never proposed
 
-### Family 1 — 34 members, every pair `>= 0.34` code-shape, evidence `113869`  (317 edges scored here)
+### Family 1 — 34 members, every pair `>= 0.34` code-shape, evidence `114410`  (317 edges scored here)
 
 _Not drawn: 34 members is 561 connections. Every one of them holds — that is what makes this a family._
 
@@ -1397,13 +1400,13 @@ _Not drawn: 34 members is 561 connections. Every one of them holds — that is w
 | `tpl/compare/init.go:26` | `compare.init` | `()` | d.Site+d.Conf 0.46 |
 | `tpl/crypto/init.go:25` | `crypto.init` | `()` | d.Site+d.Conf 0.52, h.PathSpec+PathSpec.BaseFs 0.29 |
 | `tpl/css/css.go:229` | `css.init` | `()` | ResourceSpec.FileCaches+c.isExpired 0.48, Converters.GetHighlighter+c.applyTransformations 0.43 |
-| `tpl/debug/init.go:25` | `debug.init` | `()` | d.Site+d.Conf 0.53, h.PathSpec+PathSpec.BaseFs 0.31 |
+| `tpl/debug/init.go:25` | `debug.init` | `()` | d.Site+d.Conf 0.53, openapi3+resources 0.33, h.PathSpec+PathSpec.BaseFs 0.31 |
 | `tpl/diagrams/init.go:26` | `diagrams.init` | `()` | d.Site+d.Conf 0.57, s.TemplateStore+context.Background 0.45, openapi3+resources 0.41 |
-| `tpl/encoding/init.go:25` | `encoding.init` | `()` | d.Site+d.Conf 0.55, h.PathSpec+PathSpec.BaseFs 0.31 |
+| `tpl/encoding/init.go:25` | `encoding.init` | `()` | d.Site+d.Conf 0.55, openapi3+resources 0.33, h.PathSpec+PathSpec.BaseFs 0.31 |
 
 _24 more members not listed._
 
-### Family 2 — 40 members, every pair `>= 0.35` code-shape, evidence `14757`  (691 edges scored here)
+### Family 2 — 40 members, every pair `>= 0.35` code-shape, evidence `15002`  (690 edges scored here)
 
 _Not drawn: 40 members is 780 connections. Every one of them holds — that is what makes this a family._
 
@@ -1422,7 +1425,7 @@ _Not drawn: 40 members is 780 connections. Every one of them holds — that is w
 
 _30 more members not listed._
 
-### Family 3 — 37 members, every pair `>= 0.34` code-shape, evidence `14470`  (583 edges scored here)
+### Family 3 — 37 members, every pair `>= 0.34` code-shape, evidence `14706`  (582 edges scored here)
 
 _Not drawn: 37 members is 666 connections. Every one of them holds — that is what makes this a family._
 
@@ -1441,7 +1444,7 @@ _Not drawn: 37 members is 666 connections. Every one of them holds — that is w
 
 _27 more members not listed._
 
-### Family 4 — 33 members, every pair `>= 0.35` code-shape, evidence `14357`  (460 edges scored here)
+### Family 4 — 33 members, every pair `>= 0.35` code-shape, evidence `14607`  (459 edges scored here)
 
 _Not drawn: 33 members is 528 connections. Every one of them holds — that is what makes this a family._
 
@@ -1460,7 +1463,7 @@ _Not drawn: 33 members is 528 connections. Every one of them holds — that is w
 
 _23 more members not listed._
 
-### Family 5 — 36 members, every pair `>= 0.34` code-shape, evidence `14157`  (554 edges scored here)
+### Family 5 — 36 members, every pair `>= 0.34` code-shape, evidence `14419`  (553 edges scored here)
 
 _Not drawn: 36 members is 630 connections. Every one of them holds — that is what makes this a family._
 
@@ -1479,7 +1482,7 @@ _Not drawn: 36 members is 630 connections. Every one of them holds — that is w
 
 _26 more members not listed._
 
-_604 more families not listed._
+_510 more families not listed._
 
-_2 component(s) too large or too dense to enumerate (sizes 145, 611); their families are not reported._
+_3 component(s) too large or too dense to enumerate (sizes 139, 145, 642); their families are not reported._
 

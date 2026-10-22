@@ -132,10 +132,12 @@ internal/
   clique/       Deterministic maximal-clique enumeration and components, shared by family and lexicon
   parallel/     Blocks / BlocksWith: the one fan-out primitive — an atomic block counter with per-worker state
   concepter/    ConceptDoc; callgraph.go (BuildCallGraph); role.go (ClassifyRole, role constants);
-                calltokens.go (the resolved-call token view retriever, culture and lexicon share)
+                calltokens.go (the resolved-call token view retriever, culture and lexicon share);
+                locality.go (query's locality weight, shared with the plant harness)
   mapper/       Where enrichment actually happens: callers, role classification, aggregated concepts/packages
   retriever/    Multi-channel candidate retrieval: shape.go / concept.go / calls.go inverted indexes, retriever.go union + evidence
-                admit.go is the per-unit admission fan-out the three channels share; memo.go the sharded pair memo that let them run at all
+                admit.go is the per-unit admission fan-out the three channels share; memo.go the sharded pair memo that let them run at all;
+                probeorder.go the order query reports a probe's matches in (ProbeLess)
   culture/      Corpus-culture model: ecology.go (PMI), prototype.go (prototypes + typicality), habitat.go (fit), convention.go
   analyzer/     SimilarPair + Retrieval types; FindSimilar (library API); rank.go: SortForReport (the report's ranking) and SortByEvidence (the plain-Total library one); kind.go + stem.go (pair kinds), lenskind.go (the mirror, thin-wrapper and different-calls kinds), subsystem.go (the subsystem-copies kind); explain.go (rule-attributed pair sentences)
   comparator/   Weighted structural overlap scoring (12 signals → 0.0–1.0 composite); options.go is the
@@ -1961,7 +1963,7 @@ Two tiers, decided on **WL bag equality**. Equal bags means the canonical trees 
 sentence names the union of `CodeUnit.CanonRules` from both sides — "fired on either side" — in
 canon's declaration order, under reader-facing names (`alpha-rename`→rename,
 `unwrap-block`→block-unwrap, `negated-if`→negation-flip, `guard-return`→guard-form,
-`incdec`→increment-form, `commutative-sort`→commutative-reorder). That is how "a rule whose
+`tail-guard`→tail-guard-form, `incdec`→increment-form, `commutative-sort`→commutative-reorder). That is how "a rule whose
 reversal would lower the score" is implemented: **asserted, not measured** — literally reversing a
 rule would mean re-canonicalizing under a modified rule set and re-scoring, per rule, per pair.
 Two known overstatements, both documented at the function and neither able to move a number: bag
@@ -3939,6 +3941,22 @@ functions for exactly this reason, and the first version of them did not and fai
     cobra and gin it does the opposite — 7 pairs enter the top 20, 1 of them a false-positive
     class, against 6 of 7 leaving. chi and conc cannot judge outcomes: conc has no origin, chi
     k = 1 has 92 commits, and chi k = 2 falls below the event-cluster floor.
+  - **Plant-and-recover** (`TestPlant`, guard `DOPPEL_BENCH_PLANT=1`, `task plant`;
+    `plant_test.go`, `plant_ops_test.go`) copies seeded 20-60-node donors of cobra, chi, conc, gin
+    and this tree under go/ast operators whose effect is known by construction, in about 35
+    seconds. *Canon-covered* operators are hard-asserted: the WL bag must equal the donor's, and
+    the code-shape must equal the donor's self-score too, except for `guard-else`, whose nesting is
+    read from the body as written. *Equivalence* operators are reported only, and *drift* at 1, 2
+    and 4 edits. Plants are probed as `doppel query` probes, sharing `concepter.Locality` and
+    `retriever.ProbeLess` with it. They are also planted into the host, orphaned or with half the
+    donor's callers rewired, and ranked at analyze's calibrated defaults, recording the stage that
+    dropped each lost pair. Corpus growth is capped at 1% per run. **Seed 1:** all 232 canon plants
+    pass. Query recall@5 is 1.00 for canon and equivalence plants and 0.94 for drift. Only 68% of
+    exact copies reach the report's top 20, mostly lost to the calibrated struct-min. Measured
+    gaps: `rename-in-type` 0.89 (the signature reads parameter names inside function types),
+    `negated-if-paren` 0.85 (canon keeps the paren), `else-after-negated-guard` 0.75 (negated-if
+    swaps before guard-return lifts), `var-decl` 0.76; literal edits read 1.00. Plants measure
+    recall of known forks, not false-positive precision, which stays with the hand labels.
   - `TestSweep` (guard `DOPPEL_BENCH_SWEEP=1`) is the sensitivity sweep: each hand-set constant
     varied one at a time (±50% or the natural alternatives), only the stages it reaches re-run,
     and the labeled rankings reported with a verdict — `inert` (no label moved), `moves`,
@@ -4015,6 +4033,25 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   comparison has never been measured, and the numbers in *Frontends* are recall of *units*, not
   of pairs. Nothing here is unfixable in principle: a per-language canonicalizer is a frontend
   concern, and the seam for one already exists (`syntax.Func.Canon`).
+- **`tail-guard` reads position, so it can split two bodies it was meant to leave alone.** It
+  lifts `if c { B }` into `if !c { return }; B` (or `continue`) only when the if is the last
+  statement of a function with no results or of a loop body, so a body ending in that if and a
+  sibling with one more statement after it now canonicalize further apart than they were
+  written: hugo's `fatalErrorHandler.Stop` (lifted) against `FatalError` (the same if, then
+  `f.err = err`) went code-shape 0.70 → 0.52, moby's `restoreHostsPath` against
+  `restoreResolvConfPath` 0.77 → 0.61. Measured on the ladder when the rule landed (canon
+  `Version` 2), that cost is about as common as the convergence it buys: roughly 1% of scored
+  pairs moved by more than 0.005 on each large rung, rises and falls in near-equal number and
+  mass (moby 87 up / 95 down, prometheus 100 / 81, hugo 137 / 110), no pair entered or left any
+  rung's top ten, and the cobra scorecard moved about a rank per label (merge 4.8 → 5.3,
+  refactor 14.9 → 14.0, fp 52.5 → 50.5, all assertions green). The gain sits where one body is a
+  deliberate rewrite of the other — `influxdb.tagsFromMetric` (nested) against
+  `opentsdb.tagsFromMetric` (`continue` guard) 0.52 → 0.65, a planted early-return copy of
+  cobra's `processFlagForGroupAnnotation` 0.85 → 0.98 — which is what an agent rewriting code
+  produces and what one team's corpus rarely holds. The planted copy stops at 0.98 because the
+  flow and nesting histograms read the body as written (see *Key types*); its WL component reads
+  1.00. The rule also declines, deliberately, on a loop's trailing `if c { …; return x }`, whose
+  second spelling `if !c { continue }; …; return x` it does not reach — the rule's doc says why.
 - **Resolver imprecision without go/types.** Call-graph edges are resolved from the AST alone:
   a local variable shadowing an import name is mistaken for the package; an external import whose
   path base equals an internal package name can produce a false edge on a name coincidence; import

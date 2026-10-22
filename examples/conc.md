@@ -9,7 +9,7 @@ structured concurrency library; generics-heavy, one idea, written recently and a
 | Corpus | [conc](https://github.com/sourcegraph/conc) |
 | Pinned at | `v0.3.0` (`7b8c8f2875cb861bb61844c9bcaa1aed070adbd4`) |
 | Project since | 2023 |
-| doppel | `4aa3b83` |
+| doppel | `82e7616` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -22,12 +22,12 @@ The corpus-level models doppel builds before ranking anything, as printed to std
 ```
 Scanning . ...
 Learning concept vocabulary...
-Lexicon: 6 concepts (1 seeded, 5 emergent), 171/407 features above 29 df, 43 functions unlabeled
+Lexicon: 6 concepts (1 seeded, 5 emergent), 173/404 features above 29 df, 43 functions unlabeled
 Generating concept documents...
 Calibration: rate 0.01 declined (only 780 eligible shape null pairs (need 1000)); defaults kept
 Found 81 functions. Retrieving candidates...
 Retrieval: shape 26, concept 121, call 15 -> 155 unique pairs
-  concept-only 75.5%  call-only 7.1%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 354
+  concept-only 75.5%  call-only 7.1%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 359
 Running structural comparison on 155 pairs...
   Concept views: 0 of 155 compared pairs disagree with the taxonomy (0 vocabulary the tree misses, 0 kinship the vocabularies lack)
 Culture: 4 concepts modeled, 1 associations, 1 unusual realizations
@@ -186,9 +186,9 @@ _6 further pairs were held back so no single function fills the report._
 
 ### Corpus metrics
 
-**Compression ratio:** `3.64`x — this corpus's canonical function bodies contain **1694 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **466 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
+**Compression ratio:** `3.68`x — this corpus's canonical function bodies contain **1698 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **461 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **81 functions**, **59** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.42` / `1.00` / `1.00`, and 59% of them (35 of 59) already clear this run's threshold of `0.38`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 22 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **81 functions**, **59** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.42` / `1.00` / `1.00`, and 63% of them (37 of 59) already clear this run's threshold of `0.38`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 22 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -259,7 +259,7 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `1.00`
 
-**Evidence:** `82.70` (shape 82.70, concept 0.00, call 0.00)
+**Evidence:** `82.66` (shape 82.66, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -281,7 +281,7 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 ---
 
-## Match #2 — Code-shape: `0.6118`
+## Match #2 — Code-shape: `0.6097`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -292,17 +292,17 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Code similarity:** `wl 0.60  flow 1.00  nesting 1.00  sig 0.00  size 0.87`
 
-**Containment:** `0.81`
+**Containment:** `0.80`
 
-**Evidence:** `129.32` (shape 126.02, concept 0.00, call 3.30)
+**Evidence:** `127.02` (shape 123.72, concept 0.00, call 3.30)
 
 **Trophic:** `0.92`
 
 **Shared structure:**
 
-- `3.00` — `depth-3 BIN`
 - `3.00` — `depth-3 CALL`
 - `3.00` — `depth-3 IF`
+- `3.00` — `depth-3 CALL`
 
 **Habitat:** A fits poorly in `pool` (fit 0.18, package norm 0.73)
 
@@ -323,7 +323,7 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 ---
 
-## Match #3 — Code-shape: `0.8123`
+## Match #3 — Code-shape: `0.8122`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -338,7 +338,7 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `0.91`
 
-**Evidence:** `99.48` (shape 95.77, concept 0.00, call 3.70)
+**Evidence:** `99.43` (shape 95.73, concept 0.00, call 3.70)
 
 **Trophic:** `0.93`
 
@@ -379,7 +379,7 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `1.00`
 
-**Evidence:** `39.73` (shape 39.73, concept 0.00, call 0.00)
+**Evidence:** `39.69` (shape 39.69, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -416,7 +416,7 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `1.00`
 
-**Evidence:** `35.02` (shape 35.02, concept 0.00, call 0.00)
+**Evidence:** `34.98` (shape 34.98, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -451,7 +451,7 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `1.00`
 
-**Evidence:** `35.02` (shape 35.02, concept 0.00, call 0.00)
+**Evidence:** `34.98` (shape 34.98, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -488,7 +488,7 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `1.00`
 
-**Evidence:** `35.02` (shape 35.02, concept 0.00, call 0.00)
+**Evidence:** `34.98` (shape 34.98, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -523,7 +523,7 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `1.00`
 
-**Evidence:** `35.02` (shape 35.02, concept 0.00, call 0.00)
+**Evidence:** `34.98` (shape 34.98, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 
@@ -545,14 +545,14 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 ---
 
-## Match #9 — Code-shape: `0.4657`
+## Match #9 — Code-shape: `0.4653`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
 | **A** | `iter/map.go:27` | `iter.Mapper[T, R].Map` | `([]T, func(*T) R) ([]R)` | — |
 | **B** | `iter/map.go:48` | `iter.Mapper[T, R].MapErr` | `([]T, func(*T) (R, error)) ([]R, error)` | lock+unlock 0.53 |
 
-**Explain:** differs by two extra assign, two extra declaration, one extra if, and 8 more kinds
+**Explain:** differs by two extra assign, two extra declaration, one extra if, and 9 more kinds
 
 **Profile B:** `lock+unlock` 1.00 (dominance)
 
@@ -560,9 +560,9 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `0.73` — most of the smaller body's shape is inside the larger
 
-**Evidence:** `147.72` (shape 144.02, concept 0.00, call 3.70)
+**Evidence:** `147.68` (shape 143.98, concept 0.00, call 3.70)
 
-**Trophic:** `0.71`
+**Trophic:** `0.68`
 
 **Shared structure:**
 
@@ -585,12 +585,12 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 ---
 
-## Match #10 — Code-shape: `0.5045`
+## Match #10 — Code-shape: `0.5049`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
-| **A** | `pool/error_pool.go:28` | `pool.*ErrorPool.Go` | `(func() error)` | lock+unlock 0.48 |
-| **B** | `pool/result_pool.go:32` | `pool.*ResultPool[T].Go` | `(func() T)` | lock+unlock 0.44 |
+| **A** | `pool/error_pool.go:28` | `pool.*ErrorPool.Go` | `(func() error)` | lock+unlock 0.45 |
+| **B** | `pool/result_pool.go:32` | `pool.*ResultPool[T].Go` | `(func() T)` | lock+unlock 0.41 |
 
 **Explain:** differs by two extra call, one extra selector, one extra ident
 
@@ -602,7 +602,7 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `0.60`
 
-**Evidence:** `44.93` (shape 44.31, concept 0.61, call 0.00)
+**Evidence:** `44.88` (shape 44.31, concept 0.57, call 0.00)
 
 **Trophic:** `0.86`
 
@@ -626,7 +626,7 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 - share patterns: [lock+unlock]
 - both are leaf functions
 - same package
-- callees do related work (0.79): [lock+unlock]
+- callees do related work (0.81): [lock+unlock]
 - same visibility
 - both are methods, on *ErrorPool and *ResultPool[T]
 - call into same packages: [pool]

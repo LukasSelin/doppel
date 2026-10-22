@@ -207,7 +207,7 @@ func TestOriginalIsNeverMutated(t *testing.T) {
 
 // TestRuleCensus reports how often each rule fires on real code. It asserts
 // nothing about the individual counts, and the reason is the point of the
-// package: three of the six rules normalize spellings that idiomatic,
+// package: three of the seven rules normalize spellings that idiomatic,
 // vetted, gofmt'd Go does not contain. Nobody writes `i = i + 1`, a bare
 // block, or `if !ok { … } else { … }` in a linted repo — which is exactly
 // why a canonicalizer is worth having, since the clone written in the other

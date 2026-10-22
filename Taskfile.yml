@@ -103,6 +103,13 @@ tasks:
     cmds:
       - DOPPEL_BENCH_MEMSTATS={{.CORPUS}} go test ./cmd/ -run TestMemStatsNoiseFloor -v -timeout 30m
 
+  plant:
+    desc: "Plant-and-recover: copy real functions under known mutations into cobra, chi, conc, gin and this repo and measure whether doppel finds each donor — recall of known forks, not precision (SEED=<n> redraws the donors)"
+    vars:
+      SEED: '{{.SEED | default "1"}}'
+    cmds:
+      - DOPPEL_BENCH_PLANT=1 DOPPEL_BENCH_PLANT_SEED={{.SEED}} go test ./internal/bench/ -run 'TestPlant$' -v -timeout 30m
+
   ablate:
     desc: Zero each fingerprint blend component (WL/flow/depth/signature) in turn and score the labeled corpora — a measurement, not a gate
     cmds:
