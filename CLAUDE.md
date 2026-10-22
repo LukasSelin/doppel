@@ -3986,6 +3986,25 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   comparison has never been measured, and the numbers in *Frontends* are recall of *units*, not
   of pairs. Nothing here is unfixable in principle: a per-language canonicalizer is a frontend
   concern, and the seam for one already exists (`syntax.Func.Canon`).
+- **`tail-guard` reads position, so it can split two bodies it was meant to leave alone.** It
+  lifts `if c { B }` into `if !c { return }; B` (or `continue`) only when the if is the last
+  statement of a function with no results or of a loop body, so a body ending in that if and a
+  sibling with one more statement after it now canonicalize further apart than they were
+  written: hugo's `fatalErrorHandler.Stop` (lifted) against `FatalError` (the same if, then
+  `f.err = err`) went code-shape 0.70 → 0.52, moby's `restoreHostsPath` against
+  `restoreResolvConfPath` 0.77 → 0.61. Measured on the ladder when the rule landed (canon
+  `Version` 2), that cost is about as common as the convergence it buys: roughly 1% of scored
+  pairs moved by more than 0.005 on each large rung, rises and falls in near-equal number and
+  mass (moby 87 up / 95 down, prometheus 100 / 81, hugo 137 / 110), no pair entered or left any
+  rung's top ten, and the cobra scorecard moved about a rank per label (merge 4.8 → 5.3,
+  refactor 14.9 → 14.0, fp 52.5 → 50.5, all assertions green). The gain sits where one body is a
+  deliberate rewrite of the other — `influxdb.tagsFromMetric` (nested) against
+  `opentsdb.tagsFromMetric` (`continue` guard) 0.52 → 0.65, a planted early-return copy of
+  cobra's `processFlagForGroupAnnotation` 0.85 → 0.98 — which is what an agent rewriting code
+  produces and what one team's corpus rarely holds. The planted copy stops at 0.98 because the
+  flow and nesting histograms read the body as written (see *Key types*); its WL component reads
+  1.00. The rule also declines, deliberately, on a loop's trailing `if c { …; return x }`, whose
+  second spelling `if !c { continue }; …; return x` it does not reach — the rule's doc says why.
 - **Resolver imprecision without go/types.** Call-graph edges are resolved from the AST alone:
   a local variable shadowing an import name is mistaken for the package; an external import whose
   path base equals an internal package name can produce a false edge on a name coincidence; import
