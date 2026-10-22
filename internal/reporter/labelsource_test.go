@@ -114,7 +114,9 @@ func TestPrintLabelOccurrencesOutlineFallback(t *testing.T) {
 	if strings.Contains(s, "canonical form") {
 		t.Errorf("no renders, so no canonical-form caveat:\n%s", s)
 	}
-	for _, want := range []string{"hashed extent (2 levels", "      IF\n", "        BIN/>"} {
+	// The outline is of the canonical tree: canon's tail-guard rule has read
+	// the loop's trailing `if x > 0 { … }` as `if x <= 0 { continue }; …`.
+	for _, want := range []string{"hashed extent (2 levels", "      IF\n", "        BIN/<=", "BRANCH/continue"} {
 		if !strings.Contains(s, want) {
 			t.Errorf("missing %q in:\n%s", want, s)
 		}

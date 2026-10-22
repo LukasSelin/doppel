@@ -201,6 +201,188 @@ func TestRulesBeforeAfter(t *testing.T) {
 }`,
 		},
 		{
+			// The negation guard-return writes now flips a comparison
+			// instead of wrapping it, so the hand-written guard is met.
+			name: "guard-return: a leaving else flips a comparison rather than wrapping it",
+			rule: RuleGuardReturn,
+			before: `func f(p *T) int {
+	if p == nil {
+		work()
+	} else {
+		return 1
+	}
+	return 0
+}`,
+			after: `func f(p *T) int {
+	if p != nil {
+		return 1
+	}
+	work()
+	return 0
+}`,
+		},
+		{
+			// The measured case: cobra's processFlagForGroupAnnotation,
+			// trimmed, against the same body written with an early return.
+			// Before this rule the planted copy read code-shape 0.85.
+			name: "tail-guard: a trailing if in a function with no results becomes an early return",
+			rule: RuleTailGuard,
+			before: `func f(flags *FlagSet, pflag *Flag, annotation string, status map[string]map[string]bool) {
+	info, found := pflag.Annotations[annotation]
+	if found {
+		for _, group := range info {
+			if status[group] == nil {
+				names := strings.Split(group, " ")
+				if !hasAllFlags(flags, names...) {
+					continue
+				}
+				status[group] = make(map[string]bool, len(names))
+			}
+			status[group][pflag.Name] = pflag.Changed
+		}
+	}
+}`,
+			after: `func f(flags *FlagSet, pflag *Flag, annotation string, status map[string]map[string]bool) {
+	info, found := pflag.Annotations[annotation]
+	if !found {
+		return
+	}
+	for _, group := range info {
+		if status[group] == nil {
+			names := strings.Split(group, " ")
+			if !hasAllFlags(flags, names...) {
+				continue
+			}
+			status[group] = make(map[string]bool, len(names))
+		}
+		status[group][pflag.Name] = pflag.Changed
+	}
+}`,
+		},
+		{
+			name: "tail-guard: a trailing if in a range body becomes a continue",
+			rule: RuleTailGuard,
+			before: `func f(xs []item) {
+	for _, x := range xs {
+		prepare(x)
+		if x.ok {
+			use(x)
+			done(x)
+		}
+	}
+}`,
+			after: `func f(xs []item) {
+	for _, x := range xs {
+		prepare(x)
+		if !x.ok {
+			continue
+		}
+		use(x)
+		done(x)
+	}
+}`,
+		},
+		{
+			name: "tail-guard: a three-clause for body too, and a comparison flips",
+			rule: RuleTailGuard,
+			before: `func f(n int) {
+	for i := 0; i < n; i++ {
+		if i%2 == 0 {
+			use(i)
+		}
+	}
+}`,
+			after: `func f(n int) {
+	for i := 0; i < n; i++ {
+		if i%2 != 0 {
+			continue
+		}
+		use(i)
+	}
+}`,
+		},
+		{
+			name: "tail-guard: a negated condition loses its ! rather than gaining a second",
+			rule: RuleTailGuard,
+			before: `func f(found bool) {
+	if !found {
+		work()
+	}
+}`,
+			after: `func f(found bool) {
+	if found {
+		return
+	}
+	work()
+}`,
+		},
+		{
+			name: "tail-guard: a function literal with no results counts as a function body",
+			rule: RuleTailGuard,
+			before: `func f(xs []int) {
+	each(xs, func(x int) {
+		if x > 0 {
+			use(x)
+		}
+	})
+}`,
+			after: `func f(xs []int) {
+	each(xs, func(x int) {
+		if x <= 0 {
+			return
+		}
+		use(x)
+	})
+}`,
+		},
+		{
+			// The lifted body's own tail is next in line, in the same pass.
+			name: "tail-guard: nested trailing ifs flatten into a run of guards",
+			rule: RuleTailGuard,
+			before: `func f(a, b bool) {
+	if a {
+		prep()
+		if b {
+			work()
+		}
+	}
+}`,
+			after: `func f(a, b bool) {
+	if !a {
+		return
+	}
+	prep()
+	if !b {
+		return
+	}
+	work()
+}`,
+		},
+		{
+			// guard-return lifts the else out first, which leaves a trailing
+			// if for tail-guard in the same round.
+			name: "tail-guard: an else lifted out by guard-return is lifted again",
+			rule: RuleTailGuard,
+			before: `func f(err error, ok bool) {
+	if err != nil {
+		return
+	} else {
+		if ok {
+			work()
+		}
+	}
+}`,
+			after: `func f(err error, ok bool) {
+	if err != nil {
+		return
+	}
+	if !ok {
+		return
+	}
+	work()
+}`,
+		},
+		{
 			name: "incdec: assignment folds to ++",
 			rule: RuleIncDec,
 			before: `func f() int {
@@ -346,6 +528,100 @@ func TestRulesDeclineToFire(t *testing.T) {
 	} else {
 		return -v
 	}
+}`,
+		},
+		{
+			// Parses, and could never compile: a function with results must
+			// end in a terminating statement. A bare return written into it
+			// would be one the language rejects.
+			name: "tail-guard leaves a function with results alone",
+			rule: RuleTailGuard,
+			src: `func f(a bool) int {
+	if a {
+		work()
+	}
+}`,
+		},
+		{
+			name: "tail-guard leaves a trailing if with an init statement alone",
+			rule: RuleTailGuard,
+			src: `func f() {
+	if v := get(); v > 0 {
+		use(v)
+	}
+}`,
+		},
+		{
+			name: "tail-guard leaves a trailing else-if chain alone",
+			rule: RuleTailGuard,
+			src: `func f(a, b bool) {
+	if a {
+		x()
+	} else if b {
+		y()
+	}
+}`,
+		},
+		{
+			name: "tail-guard leaves a trailing if/else alone",
+			rule: RuleTailGuard,
+			src: `func f(a bool) {
+	if a {
+		x()
+	} else {
+		y()
+	}
+}`,
+		},
+		{
+			// Statements after the if run on both paths; lifting the body in
+			// front of them behind a return would skip them.
+			name: "tail-guard leaves an if that is not the last statement alone",
+			rule: RuleTailGuard,
+			src: `func f(a bool) {
+	if a {
+		x()
+	}
+	y()
+}`,
+		},
+		{
+			// Already the guard shape; firing would negate it into
+			// if err == nil { return }; return.
+			name: "tail-guard leaves a trailing if that already leaves alone",
+			rule: RuleTailGuard,
+			src: `func f(err error) {
+	work()
+	if err != nil {
+		return
+	}
+}`,
+		},
+		{
+			// An if body has no statement that leaves just it.
+			name: "tail-guard leaves the trailing if of an if body alone",
+			rule: RuleTailGuard,
+			src: `func f(a, b bool) int {
+	if a {
+		work()
+		if b {
+			more()
+		}
+	}
+	return 1
+}`,
+		},
+		{
+			name: "tail-guard leaves the trailing if of a case clause alone",
+			rule: RuleTailGuard,
+			src: `func f(n int, ok bool) int {
+	switch n {
+	case 1:
+		if ok {
+			work()
+		}
+	}
+	return 0
 }`,
 		},
 		{
@@ -650,7 +926,7 @@ func TestRuleIDsAreUniqueAndNamed(t *testing.T) {
 		}
 		seen[r.ID] = true
 	}
-	if len(seen) != 6 {
-		t.Errorf("expected 6 rules, got %d", len(seen))
+	if len(seen) != 7 {
+		t.Errorf("expected 7 rules, got %d", len(seen))
 	}
 }

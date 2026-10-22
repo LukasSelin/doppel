@@ -1939,7 +1939,7 @@ Two tiers, decided on **WL bag equality**. Equal bags means the canonical trees 
 sentence names the union of `CodeUnit.CanonRules` from both sides — "fired on either side" — in
 canon's declaration order, under reader-facing names (`alpha-rename`→rename,
 `unwrap-block`→block-unwrap, `negated-if`→negation-flip, `guard-return`→guard-form,
-`incdec`→increment-form, `commutative-sort`→commutative-reorder). That is how "a rule whose
+`tail-guard`→tail-guard-form, `incdec`→increment-form, `commutative-sort`→commutative-reorder). That is how "a rule whose
 reversal would lower the score" is implemented: **asserted, not measured** — literally reversing a
 rule would mean re-canonicalizing under a modified rule set and re-scoring, per rule, per pair.
 Two known overstatements, both documented at the function and neither able to move a number: bag
