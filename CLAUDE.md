@@ -367,8 +367,11 @@ stale session baseline (see *Rough edges*).
   question on every OS. **Whether the OSes agree with each other is a different question, and it
   has its own job.** Every leg writes `analyze . --format json` and the dashboard for the tree into
   `_xplat/` (underscore-prefixed, so the walk skips it) and uploads them; `cross-platform` then
-  requires the three to match byte for byte and prints each side's `params` when the snapshots
-  differ. Both runs use `go run -buildvcs=false`, so the recorded build identity is `(devel)` on
+  requires the snapshot to match byte for byte across the two amd64 legs (ubuntu, windows) and the
+  dashboard across all three, and prints each side's `params` on a failure. The macos leg is
+  arm64, where the snapshot's full-precision `score`, `overlap` and `containment` differ from amd64
+  in the last bit (see *Rough edges*), so its snapshot is compared with every number rounded to
+  nine decimals: that still sees a moved floor or a reordered pair, and not a last-bit difference. Both runs use `go run -buildvcs=false`, so the recorded build identity is `(devel)` on
   every leg rather than a VCS stamp one leg might read as dirty. The repeat-on-Linux steps could
   never have seen the calibration bug that motivated it: Windows read struct-min 0.41 on doppel's
   own tree on every run and Linux 0.42, and both legs were green. Go version comes from
@@ -4022,6 +4025,18 @@ functions for exactly this reason, and the first version of them did not and fai
 ## Rough edges
 
 Known traps, documented so they aren't rediscovered. None are fixed:
+
+- **arm64 and amd64 disagree in the last bit of a float.** On the same commit, macOS on arm64
+  writes a `--format json` whose full-precision `score`, `overlap` and `containment` differ from
+  amd64's in the last bit or so on about half of the top 20 (`0.9999999999999999` against `1`,
+  `0.7081531137590367` against `…68`). Ranking, the calibrated floors, the markdown report and the
+  dashboard (which rounds to four decimals) were identical when it was found. Two candidate causes,
+  not yet told apart: Go may fuse `a*b+c` into one FMA on arm64 and does not on amd64 (an explicit
+  `float64(a*b)` prevents it), and `math.Log`, under every IDF and IC, is assembly on amd64 and Go
+  on arm64. It is a determinism gap all the same. A pair or a threshold can sit exactly on a
+  rounding boundary, and a baseline written on one architecture compares against a run on the
+  other. The `cross-platform` CI job compares the arm64 snapshot to nine decimals for this reason
+  rather than byte for byte.
 
 - **Lexical fidelity is measured on Go and assumed elsewhere.** `TestLexicalFidelity` scores the
   lexical frontend against `go/ast` on Go corpora at 0.994–0.999 recall and 1.000 precision, but
