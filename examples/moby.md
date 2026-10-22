@@ -9,7 +9,7 @@ container engine; a decade of accretion across daemon, API, and plugin layers
 | Corpus | [moby](https://github.com/moby/moby) |
 | Pinned at | `v28.5.2` (`89c5e8fd66634b6128fc4c0e6f1236e2540e46e0`) |
 | Project since | 2013 |
-| doppel | `82e7616` |
+| doppel | `96e7797` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -24,7 +24,7 @@ Scanning . ...
 Learning concept vocabulary...
 Lexicon: 519 concepts (12 seeded, 507 emergent), 22456/57634 features above 2817 df, 729 functions unlabeled
 Generating concept documents...
-Calibration: rate 0.01 over 20000 null pairs -> threshold 0.35, struct-min 0.31, family-min 0.35
+Calibration: rate 0.01 over 20000 null pairs -> threshold 0.35, struct-min 0.30, family-min 0.35
 Found 7658 functions. Retrieving candidates...
 Retrieval: shape 10472, concept 23745, call 12470 -> 41383 unique pairs
   concept-only 50.7%  call-only 21.3%  suppressed-shape functions: 11  large identity buckets: 2  surviving labels: 34353
@@ -32,13 +32,13 @@ Retrieval: shape 10472, concept 23745, call 12470 -> 41383 unique pairs
   1809 cross build-target pairs dropped (no build compiles both files)
 Running structural comparison on 39549 pairs...
   Concept views: 2956 of 39549 compared pairs disagree with the taxonomy (429 vocabulary the tree misses, 2527 kinship the vocabularies lack)
-  17818 pairs remain after struct-min=0.31 filter
+  18805 pairs remain after struct-min=0.30 filter
 Culture: 488 concepts modeled, 3272 associations, 897 unusual realizations
 Habitats: 167 modeled, 69 misfits (95 excused by subsystem), 59 subsystems; most uniform checker (norm 0.97), most diverse suite (norm 0.58)
 Conventions: strongest nl.manager+nl.ns (0.98), loosest aSpace.allocated+netiputil.PrefixCompare (0.16)
 Ecosystems: 7320 profiled (4522 dominance, 2795 coalition, 0 conflict, 3 weak)
-Families: 820 over 789 components, 2149 functions in a family, 5533 edges completed
-  2 component(s) skipped as too large or too dense: sizes [146 1239]
+Families: 826 over 774 components, 2067 functions in a family, 6342 edges completed
+  1 component(s) skipped as too large or too dense: sizes [1576]
 ```
 
 # Code Similarity Report
@@ -914,16 +914,16 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 | Function | Concept | Typicality | Concept median | |
 |---|---|---:|---:|---|
-| `remote.*client.writeContent` <br/>`libcontainerd/remote/client.go:713` | `time.RFC3339+time.Now` | `0.10` | `0.73` | no near-duplicate |
 | `service.volumeToAPIType` <br/>`volume/service/convert.go:83` | `time.RFC3339+time.Now` | `0.14` | `0.73` | no near-duplicate |
 | `container.*View.transform` <br/>`container/view.go:297` | `IPAMConfig.IPv4Address+IPAMConfig.IPv6Address` | `0.18` | `0.77` | no near-duplicate |
 | `plugin.parseHeaders` <br/>`api/server/router/plugin/plugin_routes.go:20` | `registry.DecodeAuthConfig+registry.AuthHeader` | `0.09` | `0.65` | no near-duplicate |
 | `main.installConfigFlags` <br/>`cmd/dockerd/config_windows.go:9` | `BridgeConfig.Iface+conf.BridgeConfig` | `0.04` | `0.56` | no near-duplicate |
 | `httpstatus.FromError` <br/>`api/server/httpstatus/status.go:16` | `http.StatusConflict+http.StatusNotImplemented` | `0.04` | `0.55` | no near-duplicate |
-| `httputils.ParseForm` <br/>`api/server/httputils/httputils.go:100` | `registry.DecodeAuthConfig+registry.AuthHeader` | `0.14` | `0.65` | no near-duplicate |
 | `containerd.translateRegistryError` <br/>`daemon/containerd/registry_errors.go:16` | `http.StatusConflict+http.StatusNotImplemented` | `0.06` | `0.55` | no near-duplicate |
 | `environment.restoreDefaultBridge` <br/>`testutil/environment/protect_others.go:16` | `network.NetworkHost+network.NetworkNone` | `0.07` | `0.55` | no near-duplicate |
 | `plugins.IsNotFound` <br/>`pkg/plugins/errors.go:20` | `http.StatusConflict+http.StatusNotImplemented` | `0.09` | `0.55` | no near-duplicate |
+| `syslog.parseFacility` <br/>`daemon/logger/syslog/syslog.go:219` | `errors.Errorf+fluent` | `0.15` | `0.60` | no near-duplicate |
+| `request.JSON` <br/>`testutil/request/ops.go:61` | `types.MediaTypeMultiplexedS…+types.MediaTypeRawStream+httputils.DecodePlatform` | `0.03` | `0.47` | no near-duplicate |
 
 _887 more unusual realizations not listed._
 
@@ -1384,7 +1384,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ## Families
 
-820 families, 2149 functions in a family, largest 52 members; 5533 edges scored here that retrieval never proposed
+826 families, 2067 functions in a family, largest 58 members; 6342 edges scored here that retrieval never proposed
 
 ### Family 1 — 12 members, every pair `>= 0.35` code-shape, evidence `28838`  (15 edges scored here)
 
@@ -1510,7 +1510,7 @@ flowchart LR
 | `daemon/graphdriver/graphtest/graphtest_unix.go:174` | `graphtest.DriverTestDiffApply` | `(testing.TB, int, string, ...string)` | Store.validateName+bytes.TrimSpace 0.46 |
 | `daemon/graphdriver/graphtest/graphtest_unix.go:265` | `graphtest.DriverTestChanges` | `(testing.TB, string, ...string)` | Store.validateName+bytes.TrimSpace 0.48, Isolation.IsValid+PluginObj.PluginReference 0.44 |
 
-_815 more families not listed._
+_821 more families not listed._
 
-_2 component(s) too large or too dense to enumerate (sizes 146, 1239); their families are not reported._
+_1 component(s) too large or too dense to enumerate (sizes 1576); their families are not reported._
 
