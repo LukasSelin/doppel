@@ -203,7 +203,7 @@ func probeEdit(root string, base snapshot.Snapshot, file string, minShape float6
 			if m.Candidate.Breakdown.Score < minShape {
 				continue
 			}
-			o := otherIdx(m.Candidate, i)
+			o := retriever.OtherIdx(m.Candidate, i)
 			a, b := keys[i], keys[o]
 			if a > b {
 				a, b = b, a

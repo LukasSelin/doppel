@@ -132,10 +132,12 @@ internal/
   clique/       Deterministic maximal-clique enumeration and components, shared by family and lexicon
   parallel/     Blocks / BlocksWith: the one fan-out primitive — an atomic block counter with per-worker state
   concepter/    ConceptDoc; callgraph.go (BuildCallGraph); role.go (ClassifyRole, role constants);
-                calltokens.go (the resolved-call token view retriever, culture and lexicon share)
+                calltokens.go (the resolved-call token view retriever, culture and lexicon share);
+                locality.go (query's locality weight, shared with the plant harness)
   mapper/       Where enrichment actually happens: callers, role classification, aggregated concepts/packages
   retriever/    Multi-channel candidate retrieval: shape.go / concept.go / calls.go inverted indexes, retriever.go union + evidence
-                admit.go is the per-unit admission fan-out the three channels share; memo.go the sharded pair memo that let them run at all
+                admit.go is the per-unit admission fan-out the three channels share; memo.go the sharded pair memo that let them run at all;
+                probeorder.go the order query reports a probe's matches in (ProbeLess)
   culture/      Corpus-culture model: ecology.go (PMI), prototype.go (prototypes + typicality), habitat.go (fit), convention.go
   analyzer/     SimilarPair + Retrieval types; FindSimilar (library API); rank.go: SortForReport (the report's ranking) and SortByEvidence (the plain-Total library one); kind.go + stem.go (pair kinds), lenskind.go (the mirror, thin-wrapper and different-calls kinds), subsystem.go (the subsystem-copies kind); explain.go (rule-attributed pair sentences)
   comparator/   Weighted structural overlap scoring (12 signals → 0.0–1.0 composite); options.go is the
@@ -3910,6 +3912,22 @@ functions for exactly this reason, and the first version of them did not and fai
     cobra and gin it does the opposite — 7 pairs enter the top 20, 1 of them a false-positive
     class, against 6 of 7 leaving. chi and conc cannot judge outcomes: conc has no origin, chi
     k = 1 has 92 commits, and chi k = 2 falls below the event-cluster floor.
+  - **Plant-and-recover** (`TestPlant`, guard `DOPPEL_BENCH_PLANT=1`, `task plant`;
+    `plant_test.go`, `plant_ops_test.go`) copies seeded 20-60-node donors of cobra, chi, conc, gin
+    and this tree under go/ast operators whose effect is known by construction, in about 35
+    seconds. *Canon-covered* operators are hard-asserted: the WL bag must equal the donor's, and
+    the code-shape must equal the donor's self-score too, except for `guard-else`, whose nesting is
+    read from the body as written. *Equivalence* operators are reported only, and *drift* at 1, 2
+    and 4 edits. Plants are probed as `doppel query` probes, sharing `concepter.Locality` and
+    `retriever.ProbeLess` with it. They are also planted into the host, orphaned or with half the
+    donor's callers rewired, and ranked at analyze's calibrated defaults, recording the stage that
+    dropped each lost pair. Corpus growth is capped at 1% per run. **Seed 1:** all 232 canon plants
+    pass. Query recall@5 is 1.00 for canon and equivalence plants and 0.94 for drift. Only 68% of
+    exact copies reach the report's top 20, mostly lost to the calibrated struct-min. Measured
+    gaps: `rename-in-type` 0.89 (the signature reads parameter names inside function types),
+    `negated-if-paren` 0.85 (canon keeps the paren), `else-after-negated-guard` 0.75 (negated-if
+    swaps before guard-return lifts), `var-decl` 0.76; literal edits read 1.00. Plants measure
+    recall of known forks, not false-positive precision, which stays with the hand labels.
   - `TestSweep` (guard `DOPPEL_BENCH_SWEEP=1`) is the sensitivity sweep: each hand-set constant
     varied one at a time (±50% or the natural alternatives), only the stages it reaches re-run,
     and the labeled rankings reported with a verdict — `inert` (no label moved), `moves`,

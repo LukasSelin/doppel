@@ -202,9 +202,9 @@ func probeOptions(p Params) retriever.Options {
 func probeMatches(res Result, prober *retriever.Prober, probeIdx int, skip func(other int) bool) []reporter.QueryMatch {
 	cands, _ := prober.Probe(probeIdx)
 	matches := make([]reporter.QueryMatch, 0, len(cands))
-	ball := neighborhoodSet(res.Graph, res.Units[probeIdx])
+	ball := concepter.NeighborhoodSet(res.Graph, res.Units[probeIdx])
 	for _, c := range cands {
-		other := otherIdx(c, probeIdx)
+		other := retriever.OtherIdx(c, probeIdx)
 		if skip != nil && skip(other) {
 			continue
 		}
@@ -212,85 +212,20 @@ func probeMatches(res Result, prober *retriever.Prober, probeIdx int, skip func(
 			Unit:      res.Units[other],
 			Doc:       res.Docs[other],
 			Candidate: c,
-			Locality:  locality(ball, res.Graph, res.Units[other]),
+			Locality:  concepter.Locality(ball, res.Graph, res.Units[other]),
 		})
 	}
 	rankQueryMatches(matches, probeIdx)
 	return matches
 }
 
-// neighborhoodSet is the probe's depth-2 call-graph ball as a set.
-func neighborhoodSet(g *concepter.Graph, u parser.CodeUnit) map[string]bool {
-	ball := g.Neighborhood(concepter.QualifiedName(u))
-	if len(ball) == 0 {
-		return nil
-	}
-	set := make(map[string]bool, len(ball))
-	for _, n := range ball {
-		set[n] = true
-	}
-	return set
-}
-
-// locality measures how much of the probe's architectural neighborhood the
-// candidate inhabits: |ball(probe) ∩ (ball(c) ∪ {c})| / |ball(probe)|.
-//
-// The candidate's own identity joins its ball because a function the probe
-// directly calls is maximally near and must not score below its own
-// neighbors. An empty probe ball — a snippet that resolved no calls — makes
-// every locality 0: honestly neutral, and the report says so rather than
-// letting a column of zeros imply the corpus is far away.
-func locality(probeBall map[string]bool, g *concepter.Graph, c parser.CodeUnit) float64 {
-	if len(probeBall) == 0 {
-		return 0
-	}
-	qn := concepter.QualifiedName(c)
-	hits := 0
-	if probeBall[qn] {
-		hits++
-	}
-	for _, n := range g.Neighborhood(qn) {
-		if n != qn && probeBall[n] {
-			hits++
-		}
-	}
-	// hits can exceed the intersection only if qn were in its own ball, which
-	// Neighborhood excludes by construction.
-	if hits > len(probeBall) {
-		hits = len(probeBall)
-	}
-	return float64(hits) / float64(len(probeBall))
-}
-
-// rankQueryMatches orders matches by Total×(1+Locality) — evidence boosted by
-// architectural nearness, never punished by distance. The key ranks and is
-// never displayed: the report shows evidence and locality unblended, per the
-// house rule. Ties fall back to Total desc then corpus index asc, a total
-// order, so a fixed corpus and snippet always print the same report.
+// rankQueryMatches orders matches by retriever.ProbeLess: Total×(1+Locality),
+// evidence boosted by architectural nearness and never punished by distance.
+// The key ranks and is never displayed: the report shows evidence and locality
+// unblended, per the house rule.
 func rankQueryMatches(matches []reporter.QueryMatch, probeIdx int) {
 	sort.SliceStable(matches, func(i, j int) bool {
-		ki := matches[i].Candidate.Total * (1 + matches[i].Locality)
-		kj := matches[j].Candidate.Total * (1 + matches[j].Locality)
-		if ki != kj {
-			return ki > kj
-		}
-		if matches[i].Candidate.Total != matches[j].Candidate.Total {
-			return matches[i].Candidate.Total > matches[j].Candidate.Total
-		}
-		// An exact-clone family ties on evidence mass; code-shape separates
-		// the byte-identical twin from the merely similar sibling.
-		if matches[i].Candidate.Breakdown.Score != matches[j].Candidate.Breakdown.Score {
-			return matches[i].Candidate.Breakdown.Score > matches[j].Candidate.Breakdown.Score
-		}
-		oi, oj := otherIdx(matches[i].Candidate, probeIdx), otherIdx(matches[j].Candidate, probeIdx)
-		return oi < oj
+		return retriever.ProbeLess(matches[i].Candidate, matches[j].Candidate,
+			matches[i].Locality, matches[j].Locality, probeIdx)
 	})
-}
-
-// otherIdx is the side of a probe candidate that is not the probe.
-func otherIdx(c retriever.Candidate, probeIdx int) int {
-	if c.AIdx == probeIdx {
-		return c.BIdx
-	}
-	return c.AIdx
 }
