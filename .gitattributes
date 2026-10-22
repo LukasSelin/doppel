@@ -12,9 +12,12 @@ go.sum text eol=lf
 # Embedded assets: LF. broadsheet.css is //go:embed-ed into every HTML report,
 # so a CRLF checkout would make the same run emit different bytes on Windows
 # than on Linux — the byte-identical invariant is cross-platform or it is
-# nothing.
+# nothing. The dashboard's scripts are embedded the same way, and were missed
+# when they arrived: a Windows build with core.autocrlf rendered the dashboard
+# 3 307 bytes longer than a Linux build of the same commit, one CR per line.
 *.css text eol=lf
 *.html text eol=lf
+*.js text eol=lf
 
 # The plugin's mod (TypeScript): LF, like every other source here
 *.ts text eol=lf
