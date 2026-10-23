@@ -28,7 +28,7 @@ corpus is a decade of accretion". Both ends are visible below.
 <!-- BEGIN generated ladder -->
 | Corpus | Since | Pinned | Functions | Pairs compared | Kept | Code-shape floor | Concepts learned | Concepts modeled | Habitats |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| [moby](moby.md) | 2013 | `v28.5.2` | 7658 | 41383 | 18805 | 0.35 | 519 | 488 | 167 |
+| [moby](moby.md) | 2013 | `v28.5.2` | 7658 | 41385 | 18810 | 0.35 | 519 | 488 | 167 |
 | [prometheus](prometheus.md) | 2012 | `v3.14.0` | 5623 | 29068 | 13018 | 0.33 | 390 | 360 | 97 |
 | [hugo](hugo.md) | 2013 | `v0.165.0` | 5737 | 32251 | 13593 | 0.34 | 547 | 502 | 129 |
 | [gin](gin.md) | 2014 | `v1.12.0` | 497 | 2124 | 571 | 0.40 | 46 | 37 | 5 |

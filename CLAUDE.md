@@ -1218,8 +1218,9 @@ In the analysed populations it moves the type set of 5 functions on cobra, 19 on
 conc and gin, 125 on hugo, 38 on prometheus and 70 on moby. At the shipped defaults it only ever
 raises a score: chi 5 pairs (and its calibrated threshold 0.45 → 0.46), hugo 5, moby 96 (6
 merge-worthy flips), the rest none; no top-20 set changed, and chi's top ten swapped two
-neighbours. The cobra golden scorecard is unchanged
-(merge 4.8, refactor 14.9, fp 52.5). `Digest` hashes `Types`, hence snapshot Schema 13.
+neighbours. The cobra golden scorecard is byte-identical with and without it, measured both
+before and after the tail-guard canon rule landed. `Digest` hashes `Types`, hence snapshot
+Schema 13.
 
 `SizeRatio` is reported in the `Breakdown` but **not** scored — Jaccard already penalizes size
 mismatch through the union, so damping again would double-count it.
