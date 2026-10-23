@@ -9,7 +9,7 @@ container engine; a decade of accretion across daemon, API, and plugin layers
 | Corpus | [moby](https://github.com/moby/moby) |
 | Pinned at | `v28.5.2` (`89c5e8fd66634b6128fc4c0e6f1236e2540e46e0`) |
 | Project since | 2013 |
-| doppel | `96e7797` |
+| doppel | `2665529` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -26,18 +26,18 @@ Lexicon: 519 concepts (12 seeded, 507 emergent), 22456/57634 features above 2817
 Generating concept documents...
 Calibration: rate 0.01 over 20000 null pairs -> threshold 0.35, struct-min 0.30, family-min 0.35
 Found 7658 functions. Retrieving candidates...
-Retrieval: shape 10472, concept 23745, call 12470 -> 41383 unique pairs
+Retrieval: shape 10474, concept 23745, call 12470 -> 41385 unique pairs
   concept-only 50.7%  call-only 21.3%  suppressed-shape functions: 11  large identity buckets: 2  surviving labels: 34353
   25 cross test/prod pairs dropped
   1809 cross build-target pairs dropped (no build compiles both files)
-Running structural comparison on 39549 pairs...
-  Concept views: 2956 of 39549 compared pairs disagree with the taxonomy (429 vocabulary the tree misses, 2527 kinship the vocabularies lack)
-  18805 pairs remain after struct-min=0.30 filter
+Running structural comparison on 39551 pairs...
+  Concept views: 2956 of 39551 compared pairs disagree with the taxonomy (429 vocabulary the tree misses, 2527 kinship the vocabularies lack)
+  18810 pairs remain after struct-min=0.30 filter
 Culture: 488 concepts modeled, 3272 associations, 897 unusual realizations
 Habitats: 167 modeled, 69 misfits (95 excused by subsystem), 59 subsystems; most uniform checker (norm 0.97), most diverse suite (norm 0.58)
 Conventions: strongest nl.manager+nl.ns (0.98), loosest aSpace.allocated+netiputil.PrefixCompare (0.16)
 Ecosystems: 7320 profiled (4522 dominance, 2795 coalition, 0 conflict, 3 weak)
-Families: 826 over 774 components, 2067 functions in a family, 6342 edges completed
+Families: 815 over 774 components, 2067 functions in a family, 6394 edges completed
   1 component(s) skipped as too large or too dense: sizes [1576]
 ```
 
@@ -762,9 +762,9 @@ _155 further packages are modeled and not drawn._ Most uniform is `checker` (nor
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **41383 candidate pairs** (shape 10472, concept 23745, call 12470), of which 21% arrived on call evidence alone and 51% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **41385 candidate pairs** (shape 10474, concept 23745, call 12470), of which 21% arrived on call evidence alone and 51% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
-The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **2956 of 39549** pairs the taxonomy and the vocabularies differ by at least 0.50: 429 where the vocabularies agree and the tree cannot see it, 2527 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
+The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **2956 of 39551** pairs the taxonomy and the vocabularies differ by at least 0.50: 429 where the vocabularies agree and the tree cannot see it, 2527 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 7320 functions reached an equilibrium: **4522** settled on a single concept, **2795** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -772,7 +772,7 @@ Each function is also an arena where its candidate concepts compete for its evid
 
 **Compression ratio:** `8.67`x — this corpus's canonical function bodies contain **570994 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **65895 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **7658 functions**, **7467** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.45` / `1.00` / `1.00`, and 79% of them (5888 of 7467) already clear this run's threshold of `0.35`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 191 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **7658 functions**, **7467** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.45` / `1.00` / `1.00`, and 79% of them (5889 of 7467) already clear this run's threshold of `0.35`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 191 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -1384,7 +1384,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ## Families
 
-826 families, 2067 functions in a family, largest 58 members; 6342 edges scored here that retrieval never proposed
+815 families, 2067 functions in a family, largest 58 members; 6394 edges scored here that retrieval never proposed
 
 ### Family 1 — 12 members, every pair `>= 0.35` code-shape, evidence `28838`  (15 edges scored here)
 
@@ -1510,7 +1510,7 @@ flowchart LR
 | `daemon/graphdriver/graphtest/graphtest_unix.go:174` | `graphtest.DriverTestDiffApply` | `(testing.TB, int, string, ...string)` | Store.validateName+bytes.TrimSpace 0.46 |
 | `daemon/graphdriver/graphtest/graphtest_unix.go:265` | `graphtest.DriverTestChanges` | `(testing.TB, string, ...string)` | Store.validateName+bytes.TrimSpace 0.48, Isolation.IsValid+PluginObj.PluginReference 0.44 |
 
-_821 more families not listed._
+_810 more families not listed._
 
 _1 component(s) too large or too dense to enumerate (sizes 1576); their families are not reported._
 

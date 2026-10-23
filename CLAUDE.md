@@ -192,9 +192,10 @@ with it and `internal/bench` mirrored it by hand, which is how the harness could
 silently measured a different corpus than the tool), `parser.RelSlash` (the path rule
 `cmd` and `reporter` both described as "mirrors the snapshot's"; it moved down from `snapshot`
 when `calibrate`, which may not import `snapshot` and through it `analyzer`, needed it for
-its identity hash), `fingerprint.PrintType`
-(the type rendering `parser` needs for `Signature`, wrapped there only to keep its `"?"`
-fallback), `cmd.validateMode` (one check for `--tests` and `--generated`, parameterized
+its identity hash), `gofront.printType` (once `fingerprint.PrintType`: the one type rendering
+behind both `Signature` and `Fingerprint.Types`, which `parser` reads through
+`syntax.Param.Type` and wraps only to keep its `"?"` fallback), `cmd.validateMode` (one check
+for `--tests` and `--generated`, parameterized
 by flag name), `internal/clique` (the Bron–Kerbosch enumerator `family` needed for the pair
 graph and `lexicon` needs for the feature graph, with the same non-transitivity argument),
 `concepter.Graded` (the `[]parser.Concept` → `[]ontology.WeightedTerm` conversion both
@@ -850,9 +851,10 @@ profile ahead of parallelism in the optimisation order and found the `Explain` s
   which is all `culture`'s habitat model needs since it treats the key as opaque.
   Methods are named `"*Server.Start"` — the receiver keeps its
   star; `parser.MethodName` strips it back off. `Signature` is rendered text — `([]int) (int)`,
-  types in order, names dropped, one entry per declared name — and is what the `sig:` line and the
-  interface-implementation kind read; `Fingerprint.Types` (the sorted `in:`/`out:` type *set*) is
-  what the similarity score reads. (For a long time `Signature` was empty on every unit: the old
+  types in order, names dropped, one entry per declared name, and names inside a function type
+  dropped too (`func(f *flag.FlagSet) bool` reads `func(*flag.FlagSet) bool`) — and is what the
+  `sig:` line and the interface-implementation kind read; `Fingerprint.Types` (the sorted
+  `in:`/`out:` type *set*) is what the similarity score reads. (For a long time `Signature` was empty on every unit: the old
   extractor handed an `*ast.FieldList` to `go/printer`, which rejects it silently.)
 - **Concept** (`internal/parser/parser.go`) — `{ID string; Confidence float64}`, one graded
   membership; `CodeUnit.Concepts` holds them ascending by ID. It replaced a bare `Patterns
@@ -1217,6 +1219,27 @@ token bags, identical flow histograms, and score 1.0. Depth's 0.05 was carved en
 Flow (0.25 → 0.20) — nesting is flow-adjacent, so flow pays for it. Rendered as `nesting:` in the
 breakdown line. A nesting change is a body change: `snapshot.Digest` hashes Depth (snapshot
 Schema 4).
+
+**The signature component reads a type's identity, not its spelling.** It is a Jaccard over
+`Fingerprint.Types`, built from `syntax.Param.Type`, and `gofront.printType` renders that with the
+parameter and result names stripped from every function type inside it (`unnameFuncTypes`):
+`n func(f *flag.FlagSet, name string) flag.NormalizedName` contributes
+`in:func(*flag.FlagSet, string) flag.NormalizedName`, which is what Go's type identity says it is.
+Struct field names, interface method names and embedded types are part of a type and stay. The
+names used to stay too, so a rename-only copy of a function with a func-typed parameter read
+code-shape 0.85 — WL bags equal, signature sets disjoint — and the `sig:` line printed two
+spellings of one type. The plant-and-recover harness found it (`rename-in-type`, mean 0.89 → 1.00
+over 14 plants). The rewrite copies nodes and keeps their positions rather than going through
+`canon.Clone`, whose position-free tree go/printer lays out differently (`struct{}` becomes
+`struct { }`), so a type with no function inside it renders byte-identically — checked over every
+declared parameter and result in every `.go` file of the ladder, vendored and test files included.
+In the analysed populations it moves the type set of 5 functions on cobra, 19 on chi, 1 each on
+conc and gin, 125 on hugo, 38 on prometheus and 70 on moby. At the shipped defaults it only ever
+raises a score: chi 5 pairs (and its calibrated threshold 0.45 → 0.46), hugo 5, moby 96 (6
+merge-worthy flips), the rest none; no top-20 set changed, and chi's top ten swapped two
+neighbours. The cobra golden scorecard is byte-identical with and without it, measured both
+before and after the tail-guard canon rule landed. `Digest` hashes `Types`, hence snapshot
+Schema 13.
 
 `SizeRatio` is reported in the `Breakdown` but **not** scored — Jaccard already penalizes size
 mismatch through the union, so damping again would double-count it.
@@ -2859,6 +2882,13 @@ to rewrite on every turn:
   was already unique moved — measured: the other five rungs are byte-identical, and hugo and
   prometheus differ only in those keys. A schema-11 baseline holds the collapsed key, so against
   it every such function would read as added by a session that never touched it.
+
+  **`Schema` 13 is a meaning bump too**, and changes no field: it changes what a type *is*. The
+  Go frontend renders a function-typed parameter or result without the names inside it (see
+  *Fingerprint scoring*), so `Fingerprint.Types` moves for every function whose signature
+  carries a named function type — 70 of moby's 7 658, 125 of hugo's 5 737. `Digest` hashes
+  `Types`, so against a schema-12 baseline each would read as edited by a session that never
+  touched it, and `Pair.Score` moves for every pair one of them is in.
 
   `Schema` 5 (shape line) was the same kind of bump as 3, one step further: `Pair.Score` changed metric (token shingles → corpus-weighted WL
   Jaccard) *and* became corpus-relative, so a schema-4 baseline and a schema-5 run would disagree

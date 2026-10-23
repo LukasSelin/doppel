@@ -33,6 +33,51 @@ func TestSignatureRendersTypes(t *testing.T) {
 	}
 }
 
+// Names inside a function-typed parameter are not part of its type, so a copy
+// that renames them — or drops them, or renames the outer parameter too — is
+// the same signature and scores 1.00 on the signature component. They used to
+// be kept, and a rename-only copy of such a function read code-shape 0.85.
+func TestSignatureIgnoresNamesInFuncTypes(t *testing.T) {
+	src := []byte(`package p
+
+import "flag"
+
+type Command struct{}
+
+func (c *Command) A(n func(f *flag.FlagSet, name string) flag.NormalizedName) (done func() (ok bool)) {
+	return nil
+}
+
+func (c *Command) B(m func(g *flag.FlagSet, s string) flag.NormalizedName) (fin func() (b bool)) {
+	return nil
+}
+
+func (c *Command) C(func(*flag.FlagSet, string) flag.NormalizedName) func() bool {
+	return nil
+}
+`)
+	units, err := ParseSource("cmd.go", src)
+	if err != nil || len(units) != 3 {
+		t.Fatalf("parse: %v (%d units)", err, len(units))
+	}
+	const wantSig = "(func(*flag.FlagSet, string) flag.NormalizedName) (func() bool)"
+	wantTypes := []string{"in:func(*flag.FlagSet, string) flag.NormalizedName", "out:func() bool"}
+	for _, u := range units {
+		if u.Signature != wantSig {
+			t.Errorf("%s: Signature = %q, want %q", u.Name, u.Signature, wantSig)
+		}
+		if !reflect.DeepEqual(u.Fingerprint.Types, wantTypes) {
+			t.Errorf("%s: Fingerprint.Types = %v, want %v", u.Name, u.Fingerprint.Types, wantTypes)
+		}
+	}
+	for _, other := range units[1:] {
+		bd := fingerprint.Similarity(units[0].Fingerprint, other.Fingerprint, nil)
+		if bd.Signature != 1.0 || bd.Score != 1.0 {
+			t.Errorf("A vs %s = %+v, want signature and code-shape exactly 1.0", other.Name, bd)
+		}
+	}
+}
+
 // The signature string is presentation only. Fingerprint.Types — what the
 // similarity score actually reads — is computed from the AST independently
 // and must not move with it.
