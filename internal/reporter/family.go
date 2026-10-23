@@ -9,7 +9,6 @@ import (
 
 	"github.com/LukasSelin/doppel/internal/family"
 	"github.com/LukasSelin/doppel/internal/parser"
-	"github.com/LukasSelin/doppel/internal/snapshot"
 )
 
 // maxFamilyMembers bounds how many members a *bounded* family listing prints.
@@ -311,7 +310,7 @@ func PrintFamiliesJSON(w io.Writer, fams []family.Family, stats family.Stats, un
 			}
 			fj.Members = append(fj.Members, MemberJSON{
 				Key:  name,
-				File: snapshot.RelSlash(root, u.File),
+				File: parser.RelSlash(root, u.File),
 				Line: u.StartLine,
 			})
 		}

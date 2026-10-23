@@ -4,7 +4,7 @@
 // pair comparison, and the per-unit concept arenas — and the third copy could
 // not have been shared any other way: internal/culture cannot import cmd,
 // where the first two live. That is the situation the module's other
-// deliberately shared helpers (parser.ShouldSkipDir, snapshot.RelSlash,
+// deliberately shared helpers (parser.ShouldSkipDir, parser.RelSlash,
 // internal/clique) were extracted for, and doppel finds this kind of clone on
 // itself.
 //

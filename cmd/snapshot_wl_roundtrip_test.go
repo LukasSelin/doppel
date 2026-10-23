@@ -10,6 +10,7 @@ import (
 
 	"github.com/LukasSelin/doppel/internal/canon"
 	"github.com/LukasSelin/doppel/internal/fingerprint"
+	"github.com/LukasSelin/doppel/internal/parser"
 	"github.com/LukasSelin/doppel/internal/snapshot"
 )
 
@@ -131,7 +132,7 @@ func TestSnapshotWLBagRoundTrip(t *testing.T) {
 	// Correlate every live pair (which carries the exact fingerprint.Breakdown
 	// the pipeline computed) to its snapshot key, via file+line — a location
 	// is unique per function in a real repo, and both res.Units (via pr.A/B)
-	// and live.Units (via the same snapshot.RelSlash the pipeline used) agree
+	// and live.Units (via the same parser.RelSlash the pipeline used) agree
 	// on it.
 	locToKey := make(map[string]string, len(live.Units))
 	for _, u := range live.Units {
@@ -141,8 +142,8 @@ func TestSnapshotWLBagRoundTrip(t *testing.T) {
 	unresolved := 0
 	for _, pr := range res.Pairs {
 		ua, ub := res.Units[pr.AIdx], res.Units[pr.BIdx]
-		ka, oka := locToKey[snapshot.RelSlash(root, ua.File)+":"+strconv.Itoa(ua.StartLine)]
-		kb, okb := locToKey[snapshot.RelSlash(root, ub.File)+":"+strconv.Itoa(ub.StartLine)]
+		ka, oka := locToKey[parser.RelSlash(root, ua.File)+":"+strconv.Itoa(ua.StartLine)]
+		kb, okb := locToKey[parser.RelSlash(root, ub.File)+":"+strconv.Itoa(ub.StartLine)]
 		if !oka || !okb {
 			unresolved++
 			continue

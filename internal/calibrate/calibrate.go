@@ -46,11 +46,18 @@ type Options struct {
 	MinNodes     int     // code-shape null mirrors the shape channel's eligibility gate
 	MinNullPairs int     // below this many null pairs the calibration is declined
 	Weights      fingerprint.Weights
+
+	// Root is the analysis root the units' files were walked from. A unit's
+	// identity hashes its file relative to it, slash-separated, so the sample
+	// depends neither on the platform nor on how the root was spelled. Empty
+	// hashes the file as given, slash-separated.
+	Root string
 }
 
-// DefaultOptions returns the production sampling sizes for a given rate.
-func DefaultOptions(rate float64, minNodes int) Options {
-	return Options{Rate: rate, MaxPairs: 20000, MinNodes: minNodes, MinNullPairs: 1000}
+// DefaultOptions returns the production sampling sizes for a given rate,
+// shape gate and analysis root.
+func DefaultOptions(rate float64, minNodes int, root string) Options {
+	return Options{Rate: rate, MaxPairs: 20000, MinNodes: minNodes, MinNullPairs: 1000, Root: root}
 }
 
 // Result is one calibration. Threshold and StructMin are the values to use,
@@ -83,8 +90,9 @@ func Run(units []parser.CodeUnit, docs []concepter.ConceptDoc, comp *comparator.
 	if w == (fingerprint.Weights{}) {
 		w = fingerprint.DefaultWeights()
 	}
-	order := canonicalOrder(units)
-	ids := identities(units, order)
+	files := identityPaths(units, o.Root)
+	order := canonicalOrder(units, files)
+	ids := identities(units, order, files)
 
 	// Code-shape null: over units the shape channel would consider, so the
 	// threshold is calibrated at the gate's own operating point.
@@ -142,16 +150,31 @@ func declined(have, need int, which string) string {
 	return "only " + itoa(have) + " eligible " + which + " null pairs (need " + itoa(need) + ")"
 }
 
+// identityPaths is each unit's file as identities and canonicalOrder read it:
+// relative to the analysis root and slash-separated (parser.RelSlash).
+// CodeUnit.File is whatever the walk produced, which is backslash-separated on
+// Windows and absolute when the root was given as an absolute path. Hashing it
+// raw made one tree calibrate to different floors on two platforms, and under
+// two spellings of its root on one: gin read struct-min 0.49 on Linux and 0.47
+// on Windows at ".", and 0.49 again on Windows with the root spelled absolute.
+func identityPaths(units []parser.CodeUnit, root string) []string {
+	files := make([]string, len(units))
+	for i := range units {
+		files[i] = parser.RelSlash(root, units[i].File)
+	}
+	return files
+}
+
 // canonicalOrder sorts unit indices by (package.name, file, line) so the
-// sample never depends on walk order.
-func canonicalOrder(units []parser.CodeUnit) []int {
+// sample never depends on walk order. files is identityPaths.
+func canonicalOrder(units []parser.CodeUnit, files []string) []int {
 	order := make([]int, len(units))
 	for i := range order {
 		order[i] = i
 	}
 	key := func(i int) string {
 		u := units[i]
-		return u.Package + "." + u.Name + "\x00" + u.File + "\x00" + itoa(u.StartLine)
+		return u.Package + "." + u.Name + "\x00" + files[i] + "\x00" + itoa(u.StartLine)
 	}
 	sort.SliceStable(order, func(a, b int) bool { return key(order[a]) < key(order[b]) })
 	return order
@@ -162,7 +185,7 @@ func canonicalOrder(units []parser.CodeUnit) []int {
 // made every added function redraw the sample - and it survives for callers
 // of SamplePairs that bring their own units and want one fixed draw per tree.
 func Seed(units []parser.CodeUnit) uint64 {
-	order := canonicalOrder(units)
+	order := canonicalOrder(units, identityPaths(units, ""))
 	h := fnv.New64a()
 	for _, i := range order {
 		u := units[i]
@@ -179,18 +202,19 @@ const (
 	overlapSalt uint64 = 0x9e3779b97f4a7c15
 )
 
-// identities hashes each unit's identity: package, name and file, plus an
-// ordinal for the second and later declarations of one name in one file
-// (init, or functions in a bundled script) - the snapshot key's rule. Never
-// the line: a line number moves whenever code above it does, and a priority
-// keyed on it would reshuffle the sample on edits nobody made to the unit.
-// order is canonicalOrder, which is what makes the ordinal deterministic.
-func identities(units []parser.CodeUnit, order []int) []uint64 {
+// identities hashes each unit's identity: package, name and root-relative
+// slash path (files, from identityPaths), plus an ordinal for the second and
+// later declarations of one name in one file (init, or functions in a bundled
+// script) - the snapshot key's rule. Never the line: a line number moves
+// whenever code above it does, and a priority keyed on it would reshuffle the
+// sample on edits nobody made to the unit. order is canonicalOrder, which is
+// what makes the ordinal deterministic.
+func identities(units []parser.CodeUnit, order []int, files []string) []uint64 {
 	ids := make([]uint64, len(units))
 	seen := make(map[string]int, len(units))
 	for _, i := range order {
 		u := units[i]
-		key := u.Package + "." + u.Name + "\x00" + u.File
+		key := u.Package + "." + u.Name + "\x00" + files[i]
 		n := seen[key]
 		seen[key] = n + 1
 		if n > 0 {

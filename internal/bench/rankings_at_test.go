@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/LukasSelin/doppel/internal/parser"
-	"github.com/LukasSelin/doppel/internal/snapshot"
 )
 
 // TestRankingsAt ranks one tree — a corpus checked out at an earlier revision
@@ -162,7 +161,7 @@ func rankingsFileOf(br *baselineRun, corpus, root string, names []string, lists 
 			continue
 		}
 		f.Units = append(f.Units, rankedUnit{Key: br.keys[i], Package: u.Package, Name: u.Name,
-			File: snapshot.RelSlash(root, u.File), Line: u.StartLine})
+			File: parser.RelSlash(root, u.File), Line: u.StartLine})
 	}
 	return f
 }

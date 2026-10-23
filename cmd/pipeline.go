@@ -286,7 +286,7 @@ func index(root string, p Params, progress io.Writer, extra []parser.CodeUnit) (
 		// The root itself is exempt from the skip rules: `doppel analyze .`
 		// hands the walker a directory literally named ".", and a user who
 		// points doppel at _examples/ or .config/ has already made the call.
-		if d.IsDir() && path != root && exc.SkipDir(snapshot.RelSlash(root, path), d.Name()) {
+		if d.IsDir() && path != root && exc.SkipDir(parser.RelSlash(root, path), d.Name()) {
 			return filepath.SkipDir
 		}
 		if d.IsDir() {
@@ -486,7 +486,7 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 		// corpus-weighted code-shape metric scores the random pairs as scores
 		// the real ones, so the derived floor is a quantile of the very
 		// quantity it will be compared against.
-		r := calibrate.Run(units, docs, comp, res.WL, calibrate.DefaultOptions(p.Calibrate, p.MinNodes))
+		r := calibrate.Run(units, docs, comp, res.WL, calibrate.DefaultOptions(p.Calibrate, p.MinNodes, res.Root))
 		res.Calibration = &r
 		printCalibration(progress, r)
 		if r.Applied() {

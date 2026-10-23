@@ -22,7 +22,6 @@ import (
 	"github.com/LukasSelin/doppel/internal/gofront"
 	"github.com/LukasSelin/doppel/internal/parser"
 	"github.com/LukasSelin/doppel/internal/retriever"
-	"github.com/LukasSelin/doppel/internal/snapshot"
 )
 
 // TestPlant is plant-and-recover: it copies real functions of a real corpus,
@@ -234,7 +233,7 @@ func (h *plantHost) source(file string) []byte {
 // the host is checked out.
 func (h *plantHost) key(i int) string {
 	u := h.units[i]
-	return u.Package + "." + u.Name + " @ " + snapshot.RelSlash(h.root, u.File)
+	return u.Package + "." + u.Name + " @ " + parser.RelSlash(h.root, u.File)
 }
 
 func dirOf(file string) string { return filepath.Dir(file) }
@@ -735,7 +734,7 @@ func runReportBatch(t *testing.T, h *plantHost, batch []*plant, opt plantOptions
 	ropt.ChannelK = opt.ChannelK
 	ropt.MinNodes = opt.MinNodesRet
 	structMin := 0.0
-	cal := calibrate.Run(r.Units, r.Docs, r.Comp, r.WL, calibrate.DefaultOptions(opt.Calibrate, opt.MinNodesRet))
+	cal := calibrate.Run(r.Units, r.Docs, r.Comp, r.WL, calibrate.DefaultOptions(opt.Calibrate, opt.MinNodesRet, h.root))
 	if cal.Applied() {
 		ropt.Threshold = cal.Threshold
 		structMin = cal.StructMin
