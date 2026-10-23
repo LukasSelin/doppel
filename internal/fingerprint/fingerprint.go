@@ -244,7 +244,7 @@ func SimilarityWith(a, b Fingerprint, idf *LabelIDF, w Weights) Breakdown {
 		SizeRatio:   ratio(a.Nodes, b.Nodes),
 		Containment: contain,
 	}
-	bd.Score = w.WL*bd.WL + w.Flow*bd.Flow + w.Depth*bd.Depth + w.Signature*bd.Signature
+	bd.Score = float64(w.WL*bd.WL) + float64(w.Flow*bd.Flow) + float64(w.Depth*bd.Depth) + float64(w.Signature*bd.Signature)
 	if bd.Score > 1.0 {
 		bd.Score = 1.0
 	}
@@ -281,17 +281,17 @@ func wlOverlap(a, b []LabelCount, idf *LabelIDF) (jaccard, containment float64) 
 	for i < len(a) || j < len(b) {
 		switch {
 		case j == len(b) || (i < len(a) && a[i].Label < b[j].Label):
-			massA += WeightOf(idf, a[i].Label) * float64(a[i].Count)
+			massA += float64(WeightOf(idf, a[i].Label) * float64(a[i].Count))
 			i++
 		case i == len(a) || b[j].Label < a[i].Label:
-			massB += WeightOf(idf, b[j].Label) * float64(b[j].Count)
+			massB += float64(WeightOf(idf, b[j].Label) * float64(b[j].Count))
 			j++
 		default:
 			w := WeightOf(idf, a[i].Label)
 			ca, cb := a[i].Count, b[j].Count
-			massA += w * float64(ca)
-			massB += w * float64(cb)
-			shared += w * float64(min(ca, cb))
+			massA += float64(w * float64(ca))
+			massB += float64(w * float64(cb))
+			shared += float64(w * float64(min(ca, cb)))
 			i++
 			j++
 		}
@@ -564,9 +564,9 @@ func cosineInts(a, b []int) float64 {
 	var dot, normA, normB float64
 	for i := range a {
 		x, y := float64(a[i]), float64(b[i])
-		dot += x * y
-		normA += x * x
-		normB += y * y
+		dot += float64(x * y)
+		normA += float64(x * x)
+		normB += float64(y * y)
 	}
 	if normA == 0 && normB == 0 {
 		return 1

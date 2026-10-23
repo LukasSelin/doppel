@@ -1,6 +1,10 @@
 package culture
 
-import "math"
+import (
+	"math"
+
+	"github.com/LukasSelin/doppel/internal/detmath"
+)
 
 // ConventionStrength reports how strict the corpus's practice is for a
 // concept, in [0,1]: 1 − normalized Shannon entropy of the prototype's
@@ -22,7 +26,7 @@ func (m *Model) ConventionStrength(tag string) (float64, bool) {
 func conventionOf(p Prototype) float64 {
 	var total float64
 	for ch := range channelNames {
-		total += float64(channelWeightPct[ch]) * channelStrength(p.Channels[ch].Features)
+		total += float64(float64(channelWeightPct[ch]) * channelStrength(p.Channels[ch].Features))
 	}
 	return total / 100
 }
@@ -52,7 +56,7 @@ func channelStrength(features []Feature) float64 {
 	}
 	var disorder float64
 	for _, f := range features {
-		disorder += (f.P / sum) * bernoulliEntropy(f.P)
+		disorder += float64((f.P / sum) * bernoulliEntropy(f.P))
 	}
 	s := 1 - disorder/math.Ln2
 	if s < 0 {
@@ -68,5 +72,5 @@ func bernoulliEntropy(p float64) float64 {
 	if p <= 0 || p >= 1 {
 		return 0
 	}
-	return -p*math.Log(p) - (1-p)*math.Log(1-p)
+	return float64(-p*detmath.Log(p)) - float64((1-p)*detmath.Log(1-p))
 }

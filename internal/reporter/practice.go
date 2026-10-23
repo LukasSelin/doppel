@@ -100,7 +100,7 @@ func practiceConcepts(w io.Writer, ov *Overview) {
 // bar renders a proportion as blocks. A number tells you 4 of 6; the bar lets
 // you compare six rows without reading any of them.
 func bar(p float64) string {
-	n := int(p*float64(barWidth) + 0.5)
+	n := int(float64(p*float64(barWidth)) + 0.5)
 	if n > barWidth {
 		n = barWidth
 	}

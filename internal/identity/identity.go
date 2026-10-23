@@ -494,7 +494,7 @@ func topK(from, to [][]fingerprint.LabelCount, idf *fingerprint.LabelIDF, opt Op
 				if acc[p.unit] == 0 {
 					touched = append(touched, p.unit)
 				}
-				acc[p.unit] += w * float64(min(lc.Count, p.count))
+				acc[p.unit] += float64(w * float64(min(lc.Count, p.count)))
 			}
 		}
 		// Ascending index breaks mass ties, so the kept set depends on

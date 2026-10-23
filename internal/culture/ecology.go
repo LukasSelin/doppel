@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/LukasSelin/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/detmath"
 	"github.com/LukasSelin/doppel/internal/parser"
 )
 
@@ -102,7 +103,7 @@ func buildAssociations(units []parser.CodeUnit, docs []concepter.ConceptDoc,
 		expected := float64(ca) * float64(cb) / float64(n)
 		pmi := math.Inf(-1)
 		if cnt > 0 {
-			pmi = math.Log(float64(n) * float64(cnt) / (float64(ca) * float64(cb)))
+			pmi = detmath.Log(float64(n) * float64(cnt) / (float64(ca) * float64(cb)))
 		}
 		switch {
 		case cnt >= opt.MinPairSupport && pmi >= minAbsPMI:

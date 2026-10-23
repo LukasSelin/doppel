@@ -14,6 +14,7 @@ import (
 	"sort"
 
 	"github.com/LukasSelin/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/detmath"
 	"github.com/LukasSelin/doppel/internal/fingerprint"
 	"github.com/LukasSelin/doppel/internal/ontology"
 	"github.com/LukasSelin/doppel/internal/parallel"
@@ -147,7 +148,7 @@ func effectiveCap(absolute, n int, minIDF float64) (cap int, derived bool) {
 	if minIDF <= 0 {
 		return absolute, false
 	}
-	return int(math.Floor(float64(n) * math.Exp(-minIDF))), true
+	return int(math.Floor(float64(n) * detmath.Exp(-minIDF))), true
 }
 
 // pairKey orders a pair as (min, max) so both admission directions collide.

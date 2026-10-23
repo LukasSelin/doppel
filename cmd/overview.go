@@ -9,6 +9,7 @@ import (
 	"github.com/LukasSelin/doppel/internal/comparator"
 	"github.com/LukasSelin/doppel/internal/concepter"
 	"github.com/LukasSelin/doppel/internal/culture"
+	"github.com/LukasSelin/doppel/internal/detmath"
 	"github.com/LukasSelin/doppel/internal/lexicon"
 	"github.com/LukasSelin/doppel/internal/ontology"
 	"github.com/LukasSelin/doppel/internal/parser"
@@ -500,7 +501,7 @@ func practiceAssociations(ov *reporter.Overview, res Result) {
 			neg[row.Kind] = append(neg[row.Kind], row)
 			continue
 		}
-		row.Ratio = math.Exp(a.PMI)
+		row.Ratio = detmath.Exp(a.PMI)
 		if a.PMI > 0 {
 			pos[row.Kind] = append(pos[row.Kind], row)
 		} else {
@@ -577,7 +578,7 @@ func assocRank(a reporter.AssocRow) float64 {
 	if lift < 1 && lift > 0 {
 		lift = 1 / lift // a negative association is strong when the ratio is small
 	}
-	return math.Log(lift) * math.Log(1+float64(a.Count))
+	return detmath.Log(lift) * detmath.Log(1+float64(a.Count))
 }
 
 // maxMatrixConcepts bounds the concept grid. A grid is concepts², so the bound
@@ -647,7 +648,7 @@ func practiceMatrix(ov *reporter.Overview, res Result) {
 			state = "never"
 		case a.PMI < 0:
 			state = "−"
-		case math.Exp(a.PMI) >= 4:
+		case detmath.Exp(a.PMI) >= 4:
 			state = "++"
 		case a.PMI > 0:
 			state = "+"
@@ -700,10 +701,10 @@ func strongestConcepts(assocs []culture.Association, n, limit int) []string {
 func matrixCellWeight(a culture.Association, n int) float64 {
 	pmi := a.PMI
 	if math.IsInf(pmi, -1) {
-		pmi = -math.Log(float64(max(n, 2)))
+		pmi = -detmath.Log(float64(max(n, 2)))
 	}
 	evidence := math.Max(float64(a.Count), a.Expected)
-	return math.Abs(pmi) * math.Log(1+evidence)
+	return math.Abs(pmi) * detmath.Log(1+evidence)
 }
 
 // practiceDrift names the functions realizing a concept unlike their peers.
