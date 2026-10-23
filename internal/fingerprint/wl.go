@@ -1,10 +1,10 @@
 package fingerprint
 
 import (
-	"math"
 	"slices"
 	"strconv"
 
+	"github.com/LukasSelin/doppel/internal/detmath"
 	"github.com/LukasSelin/doppel/internal/syntax"
 )
 
@@ -742,7 +742,7 @@ func LabelWeights(bags [][]LabelCount) *LabelIDF {
 	// independently from its own key and value, so no ordering decides
 	// anything.
 	for label, df := range w.df {
-		w.w[label] = math.Log(float64(w.n) / float64(df))
+		w.w[label] = detmath.Log(float64(w.n) / float64(df))
 	}
 	return w
 }
@@ -789,7 +789,7 @@ func (w *LabelIDF) Weight(label uint64) float64 {
 	if weight, ok := w.w[label]; ok {
 		return weight
 	}
-	return math.Log(float64(w.n))
+	return detmath.Log(float64(w.n))
 }
 
 // Labels returns every label the corpus carries, ascending. It exists so a

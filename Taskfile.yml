@@ -45,6 +45,11 @@ tasks:
     cmds:
       - gofmt -w .
 
+  fma-check:
+    desc: Fail on any multiply-add the compiler fused in doppel's own code for arm64
+    cmds:
+      - bash scripts/fma-check.sh
+
   dashboard:
     desc: Build the HTML dashboard for this repo and open it
     vars:

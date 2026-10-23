@@ -4,6 +4,7 @@ import (
 	"math"
 	"sort"
 
+	"github.com/LukasSelin/doppel/internal/detmath"
 	"github.com/LukasSelin/doppel/internal/parallel"
 
 	"github.com/LukasSelin/doppel/internal/concepter"
@@ -104,7 +105,7 @@ func buildArenas(m *Model, units []parser.CodeUnit, docs []concepter.ConceptDoc,
 				// repulsion the corpus can express, so infinities cannot
 				// poison fitness arithmetic while the ordering
 				// never < rarely < uncorrelated survives.
-				pmi = -math.Log(float64(n))
+				pmi = -detmath.Log(float64(n))
 			}
 			inter[[2]string{a.A, a.B}] = pmi
 		}
@@ -175,7 +176,7 @@ func buildArenas(m *Model, units []parser.CodeUnit, docs []concepter.ConceptDoc,
 			for ci, c := range candidates {
 				var e float64
 				if hasTag[c] {
-					e += uf.conf[i][c] * math.Log(float64(n)/float64(tagDF[c]))
+					e += float64(uf.conf[i][c] * detmath.Log(float64(n)/float64(tagDF[c])))
 				}
 				for _, tok := range uf.tokens[i] {
 					for _, tp := range posCallTag[tok] {
@@ -265,7 +266,7 @@ func runReplicator(candidates []string, evidence []float64,
 			f := evidence[ci]
 			row := m[ci*k : ci*k+k]
 			for di := range candidates {
-				f += row[di] * x[di]
+				f += float64(row[di] * x[di])
 			}
 			fitness[ci] = f
 		}
@@ -277,7 +278,7 @@ func runReplicator(candidates []string, evidence []float64,
 		}
 		var z float64
 		for ci := range candidates {
-			next[ci] = x[ci] * math.Exp(arenaEta*(fitness[ci]-shift))
+			next[ci] = float64(x[ci] * detmath.Exp(arenaEta*(fitness[ci]-shift)))
 			z += next[ci]
 		}
 		for ci := range candidates {

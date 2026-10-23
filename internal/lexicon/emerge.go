@@ -1,10 +1,10 @@
 package lexicon
 
 import (
-	"math"
 	"sort"
 
 	"github.com/LukasSelin/doppel/internal/clique"
+	"github.com/LukasSelin/doppel/internal/detmath"
 	"github.com/LukasSelin/doppel/internal/parallel"
 )
 
@@ -193,7 +193,7 @@ func buildFeatureGraph(c *corpus, cand []string, index map[string]int, opt Optio
 			continue
 		}
 		dfA, dfB := c.df[cand[k.a]], c.df[cand[k.b]]
-		pmi := math.Log(n * float64(count) / (float64(dfA) * float64(dfB)))
+		pmi := detmath.Log(n * float64(count) / (float64(dfA) * float64(dfB)))
 		if pmi < opt.MinLift {
 			continue
 		}

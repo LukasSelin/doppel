@@ -1,6 +1,6 @@
 package ontology
 
-import "math"
+import "github.com/LukasSelin/doppel/internal/detmath"
 
 // IC holds the information content of every concept term, derived from how
 // often each tag occurs in the analysed corpus: IC(c) = ln(P(c)⁻¹), with P(c)
@@ -68,7 +68,7 @@ func NewCorpusICMass(o *Ontology, mass map[TermID]float64) *IC {
 
 	ic := &IC{
 		of:       make(map[TermID]float64, len(freq)),
-		unknown:  math.Log(rootFreq),
+		unknown:  detmath.Log(rootFreq),
 		rootFreq: rootFreq,
 	}
 	for _, term := range o.TermsOfKind(KindConcept) {
@@ -76,7 +76,7 @@ func NewCorpusICMass(o *Ontology, mass map[TermID]float64) *IC {
 		if f <= 0 {
 			continue
 		}
-		ic.of[term.ID] = math.Log(rootFreq / f)
+		ic.of[term.ID] = detmath.Log(rootFreq / f)
 	}
 	return ic
 }

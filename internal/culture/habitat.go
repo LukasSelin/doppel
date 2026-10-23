@@ -1,13 +1,13 @@
 package culture
 
 import (
-	"math"
 	"path"
 	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/LukasSelin/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/detmath"
 	"github.com/LukasSelin/doppel/internal/parser"
 )
 
@@ -182,10 +182,10 @@ func buildHabitatModel(key string, members []int, features func(i, ch int) []str
 			f := features(i, ch)
 			var e float64
 			if len(f) == 0 {
-				e = -math.Log(float64(emptyCnt) / float64(mm))
+				e = -detmath.Log(float64(emptyCnt) / float64(mm))
 			} else {
 				for _, x := range f { // sorted: fixed float order
-					e += -math.Log(float64(cnt[x]) / float64(mm))
+					e += -detmath.Log(float64(cnt[x]) / float64(mm))
 				}
 				e /= float64(len(f))
 			}
@@ -197,7 +197,7 @@ func buildHabitatModel(key string, members []int, features func(i, ch int) []str
 	for _, i := range members {
 		var total float64
 		for ch := range habitatChannelNames {
-			total += float64(habitatChannelWeightPct[ch]) * hm.chStrain[i][ch]
+			total += float64(float64(habitatChannelWeightPct[ch]) * hm.chStrain[i][ch])
 		}
 		total /= 100
 		hm.strain[i] = total
@@ -259,7 +259,7 @@ func fitOf(strain, temperature float64) float64 {
 	if temperature == 0 {
 		return 0.0
 	}
-	return math.Exp(-(strain - temperature) / temperature)
+	return detmath.Exp(-(strain - temperature) / temperature)
 }
 
 // misfitOf mirrors Atypical's median-relative rule (at factor 2.0 it is

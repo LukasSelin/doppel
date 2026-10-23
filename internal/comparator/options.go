@@ -64,10 +64,10 @@ func (b ViewBlend) Apply(v ConceptViews) float64 {
 		}
 		return m
 	}
-	sum := b.Shape*v.Shape + b.Corpus*v.Corpus
+	sum := float64(b.Shape*v.Shape) + float64(b.Corpus*v.Corpus)
 	norm := b.Shape + b.Corpus
 	if v.HasFeature {
-		sum += b.Feature * v.Feature
+		sum += float64(b.Feature * v.Feature)
 		norm += b.Feature
 	}
 	if norm <= 0 {

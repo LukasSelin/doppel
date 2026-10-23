@@ -1,9 +1,8 @@
 package retriever
 
 import (
-	"math"
-
 	"github.com/LukasSelin/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/detmath"
 	"github.com/LukasSelin/doppel/internal/parser"
 )
 
@@ -59,7 +58,7 @@ func buildCallIndex(units []parser.CodeUnit, g *concepter.Graph, opt Options) *c
 	}
 	for t, n := range df {
 		if n >= 2 && n <= x.cap {
-			x.idf[t] = math.Log(float64(len(units)) / float64(n))
+			x.idf[t] = detmath.Log(float64(len(units)) / float64(n))
 		}
 	}
 	// Informative call energy per unit, mirroring the shape index: the Dice

@@ -234,7 +234,7 @@ func bagRows(bag []fingerprint.LabelCount, idf *fingerprint.LabelIDF) []bagRow {
 			count:  int(lc.Count),
 			df:     idf.DF(lc.Label),
 			weight: w,
-			mass:   w * float64(lc.Count),
+			mass:   float64(w * float64(lc.Count)),
 		})
 	}
 	sortBagRows(rows)
@@ -307,7 +307,7 @@ func mergeBags(a, b []fingerprint.LabelCount, idf *fingerprint.LabelIDF) bagMerg
 	row := func(lc fingerprint.LabelCount, count int) bagRow {
 		w := fingerprint.WeightOf(idf, lc.Label)
 		return bagRow{label: lc.Label, h: lc.H, kind: lc.Kind, count: count,
-			df: idf.DF(lc.Label), weight: w, mass: w * float64(count)}
+			df: idf.DF(lc.Label), weight: w, mass: float64(w * float64(count))}
 	}
 	i, j := 0, 0
 	for i < len(a) || j < len(b) {
@@ -325,8 +325,8 @@ func mergeBags(a, b []fingerprint.LabelCount, idf *fingerprint.LabelIDF) bagMerg
 		default:
 			ca, cb := int(a[i].Count), int(b[j].Count)
 			w := fingerprint.WeightOf(idf, a[i].Label)
-			m.massA += w * float64(ca)
-			m.massB += w * float64(cb)
+			m.massA += float64(w * float64(ca))
+			m.massB += float64(w * float64(cb))
 			s := row(a[i], min(ca, cb))
 			m.shared += s.mass
 			m.sharedRows = append(m.sharedRows, mergeRow{bagRow: s, countA: ca, countB: cb})

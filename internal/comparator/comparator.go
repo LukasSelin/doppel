@@ -277,20 +277,22 @@ func (c *Comparator) Compare(a, b concepter.ConceptDoc) StructuralEvidence {
 	// One explicit ordered expression, deliberately. Summing over a map of
 	// weights would let iteration order change the low bits of a float sum,
 	// which is enough to move a pair across the merge threshold or the
-	// --struct-min cutoff and make the report vary between runs.
+	// --struct-min cutoff and make the report vary between runs. Each product
+	// is rounded on its own for the same reason one level down: arm64 would
+	// otherwise fuse it into the running sum (see internal/detmath).
 	ev.OverlapScore = 0 +
-		c.onto.Weight(ontology.RelCalls)*overlapRatio(a.Callees, b.Callees, ev.SharedCallees) +
-		c.onto.Weight(ontology.RelExhibits)*ev.Exhibits +
-		c.onto.Weight(ontology.RelCalledBy)*overlapRatio(a.Callers, b.Callers, ev.SharedCallers) +
-		c.onto.Weight(ontology.RelSharesNeighborhood)*ev.NeighborhoodOverlap +
-		c.onto.Weight(ontology.RelHasRole)*ev.RoleRelatedness +
-		c.onto.Weight(ontology.RelDeclaredIn)*boolFloat(ev.SamePackage) +
-		c.onto.Weight(ontology.RelCalledFromConcept)*ev.CallerConceptRelatedness +
-		c.onto.Weight(ontology.RelCallsIntoConcept)*ev.CalleeConceptRelatedness +
-		c.onto.Weight(ontology.RelHasVisibility)*boolFloat(ev.SameVisibility) +
-		c.onto.Weight(ontology.RelBoundTo)*ev.ReceiverRelatedness +
-		c.onto.Weight(ontology.RelCalledFromPackage)*overlapRatio(a.CallerPackages, b.CallerPackages, ev.SharedCallerPkgs) +
-		c.onto.Weight(ontology.RelCallsIntoPackage)*overlapRatio(a.CalleePackages, b.CalleePackages, ev.SharedCalleePkgs)
+		float64(c.onto.Weight(ontology.RelCalls)*overlapRatio(a.Callees, b.Callees, ev.SharedCallees)) +
+		float64(c.onto.Weight(ontology.RelExhibits)*ev.Exhibits) +
+		float64(c.onto.Weight(ontology.RelCalledBy)*overlapRatio(a.Callers, b.Callers, ev.SharedCallers)) +
+		float64(c.onto.Weight(ontology.RelSharesNeighborhood)*ev.NeighborhoodOverlap) +
+		float64(c.onto.Weight(ontology.RelHasRole)*ev.RoleRelatedness) +
+		float64(c.onto.Weight(ontology.RelDeclaredIn)*boolFloat(ev.SamePackage)) +
+		float64(c.onto.Weight(ontology.RelCalledFromConcept)*ev.CallerConceptRelatedness) +
+		float64(c.onto.Weight(ontology.RelCallsIntoConcept)*ev.CalleeConceptRelatedness) +
+		float64(c.onto.Weight(ontology.RelHasVisibility)*boolFloat(ev.SameVisibility)) +
+		float64(c.onto.Weight(ontology.RelBoundTo)*ev.ReceiverRelatedness) +
+		float64(c.onto.Weight(ontology.RelCalledFromPackage)*overlapRatio(a.CallerPackages, b.CallerPackages, ev.SharedCallerPkgs)) +
+		float64(c.onto.Weight(ontology.RelCallsIntoPackage)*overlapRatio(a.CalleePackages, b.CalleePackages, ev.SharedCalleePkgs))
 
 	if ev.OverlapScore > 1.0 {
 		ev.OverlapScore = 1.0

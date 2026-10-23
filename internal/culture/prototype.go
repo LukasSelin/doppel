@@ -142,7 +142,7 @@ func buildPrototypes(m *Model, units []parser.CodeUnit, docs []concepter.Concept
 		for _, i := range members {
 			var total float64
 			for ch := range channelNames {
-				total += float64(channelWeightPct[ch]) * cm.chTyp[i][ch]
+				total += float64(float64(channelWeightPct[ch]) * cm.chTyp[i][ch])
 			}
 			total /= 100
 			cm.typ[i] = total

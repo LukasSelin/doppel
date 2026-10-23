@@ -3,6 +3,8 @@ package lexicon
 import (
 	"math"
 	"sort"
+
+	"github.com/LukasSelin/doppel/internal/detmath"
 )
 
 // fit learns one concept's vocabulary from a founding member set, and is the
@@ -50,7 +52,7 @@ func fit(c *corpus, members []int, opt Options) ([]Feature, float64, float64) {
 		if count < opt.MinSupport {
 			continue
 		}
-		lift := math.Log((float64(count) / m) / (float64(c.df[f]) / n))
+		lift := detmath.Log((float64(count) / m) / (float64(c.df[f]) / n))
 		if lift < opt.MinLift {
 			continue
 		}

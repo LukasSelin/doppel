@@ -54,11 +54,20 @@ jobs:
             exit 1
           fi
 
+      # arm64 fuses x*y + z into one FMA where amd64 does not, so an unrounded
+      # product in a score is a last-bit difference between a Mac and Linux.
+      # The cross-platform job sees that only where this tree's numbers happen
+      # to hit it; this reads the arm64 build itself and names every fused site
+      # with its source line. A cross-compile, so one leg is enough.
+      - name: No fused multiply-add in doppel code
+        if: matrix.os == 'ubuntu-latest'
+        run: bash scripts/fma-check.sh
+
       - name: Test
         run: go test ./...
 
       # What the cross-platform job compares: the snapshot and the dashboard of
-      # this tree, from every leg (see that job for which comparisons are exact). -buildvcs=false makes the recorded build
+      # this tree, from every leg, byte for byte. -buildvcs=false makes the recorded build
       # identity (devel) everywhere, so no leg can differ by a VCS stamp it
       # alone reads as dirty. _xplat/ is skipped by the walk like any
       # underscore-prefixed directory, so the second run cannot read the first
@@ -158,15 +167,11 @@ jobs:
   # floors differed, identically on every run. This compares what each leg
   # wrote for the same commit.
   #
-  # Byte for byte wherever that holds: the snapshot across the two amd64 legs
-  # (ubuntu, windows), the dashboard across all three. The macos leg is arm64,
-  # and there the snapshot's full-precision score, overlap and containment
-  # differ from amd64 in the last bit or so (0.9999999999999999 against 1).
-  # Two candidate causes, not yet told apart: Go may fuse a*b+c into one FMA on
-  # arm64 and does not on amd64, and amd64's math.Log is assembly where arm64's
-  # is Go. The dashboard rounds those to four decimals and matches. So the arm64 snapshot is compared with every number rounded to
-  # nine decimals, which still sees a moved floor, a reordered pair or a
-  # changed key, and does not see a last-bit difference in arithmetic.
+  # Byte for byte, all three legs, both files. The macos leg is arm64, so this
+  # is also the architecture check: it read the snapshot's score, overlap and
+  # containment a bit apart from amd64's until the arm64 build stopped fusing
+  # multiply-adds and stopped using the standard library's Log and Exp, which
+  # differ between the two (see internal/detmath).
   cross-platform:
     needs: build
     runs-on: ubuntu-latest
@@ -180,18 +185,14 @@ jobs:
         run: |
           cd xplat
           status=0
-          for check in "snapshot.json windows-latest" "report.html windows-latest" "report.html macos-latest"; do
-            set -- $check
-            if ! cmp -s "xplat-ubuntu-latest/$1" "xplat-$2/$1"; then
-              echo "::error::$1 differs between ubuntu-latest and $2"
-              status=1
-            fi
+          for os in windows-latest macos-latest; do
+            for f in snapshot.json report.html; do
+              if ! cmp -s "xplat-ubuntu-latest/$f" "xplat-$os/$f"; then
+                echo "::error::$f differs between ubuntu-latest and $os"
+                status=1
+              fi
+            done
           done
-          round='walk(if type == "number" then (. * 1e9 | round) / 1e9 else . end)'
-          if ! cmp -s <(jq -c "$round" xplat-ubuntu-latest/snapshot.json) <(jq -c "$round" xplat-macos-latest/snapshot.json); then
-            echo "::error::snapshot.json differs between ubuntu-latest and macos-latest beyond 1e-9"
-            status=1
-          fi
           # The operating point is the first thing to read: a moved floor
           # changes every pair after it.
           if [ "$status" != 0 ]; then

@@ -32,6 +32,7 @@ import (
 	"sync"
 
 	"github.com/LukasSelin/doppel/internal/concepter"
+	"github.com/LukasSelin/doppel/internal/detmath"
 	"github.com/LukasSelin/doppel/internal/parallel"
 	"github.com/LukasSelin/doppel/internal/parser"
 )
@@ -413,7 +414,7 @@ func buildCorpus(units []parser.CodeUnit, g *concepter.Graph, opt Options) *corp
 
 	c.cap = c.n
 	if opt.MinIDF > 0 {
-		c.cap = int(math.Floor(float64(c.n) * math.Exp(-opt.MinIDF)))
+		c.cap = int(math.Floor(float64(c.n) * detmath.Exp(-opt.MinIDF)))
 	}
 	minDF := opt.MinDF
 	if minDF < 2 {
@@ -425,7 +426,7 @@ func buildCorpus(units []parser.CodeUnit, g *concepter.Graph, opt Options) *corp
 			continue
 		}
 		c.surviving = append(c.surviving, f)
-		c.idf[f] = math.Log(float64(c.n) / float64(d))
+		c.idf[f] = detmath.Log(float64(c.n) / float64(d))
 	}
 
 	// Every unit's own information, in the same currency a concept's evidence

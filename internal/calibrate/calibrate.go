@@ -374,7 +374,7 @@ func Quantile(sorted []float64, q float64) float64 {
 // roundUp rounds a threshold up to the next 0.01, so the printed value is
 // the used value and the admitted null fraction is at most the rate.
 func roundUp(v float64) float64 {
-	return math.Ceil(v*100-1e-9) / 100
+	return math.Ceil(float64(v*100)-1e-9) / 100
 }
 
 func itoa(n int) string { return strconv.Itoa(n) }

@@ -367,7 +367,7 @@ func (s *Scorer) weighAll(matched []Match, as []string, aw []float64, bs []strin
 		if wb := weightOf(bs, bw, m.B); wb < w {
 			w = wb
 		}
-		shared += w * contrib
+		shared += float64(w * contrib)
 	}
 	return shared
 }
@@ -377,7 +377,7 @@ func (s *Scorer) weighAll(matched []Match, as []string, aw []float64, bs []strin
 func (s *Scorer) weighedTotal(terms []string, w []float64) float64 {
 	var sum float64
 	for i, t := range terms { // sorted: the addition order is fixed
-		sum += w[i] * s.ic.Of(TermID(t))
+		sum += float64(w[i] * s.ic.Of(TermID(t)))
 	}
 	return sum
 }

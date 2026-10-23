@@ -3,9 +3,9 @@ package retriever
 import (
 	"encoding/binary"
 	"hash/fnv"
-	"math"
 	"sort"
 
+	"github.com/LukasSelin/doppel/internal/detmath"
 	"github.com/LukasSelin/doppel/internal/fingerprint"
 	"github.com/LukasSelin/doppel/internal/parser"
 )
@@ -143,7 +143,7 @@ func buildShapeIndex(units []parser.CodeUnit, opt Options) *shapeIndex {
 	}
 	for h, n := range df {
 		if n >= 2 && n <= x.cap {
-			x.idf[h] = math.Log(float64(nEligible) / float64(n))
+			x.idf[h] = detmath.Log(float64(nEligible) / float64(n))
 		}
 	}
 	// A unit's energy is its cap-surviving (informative) structure, so
@@ -154,7 +154,7 @@ func buildShapeIndex(units []parser.CodeUnit, opt Options) *shapeIndex {
 	for i := range units {
 		var e float64
 		for _, sl := range x.surviving[i] { // ascending label: fixed float order
-			e += x.idf[sl.label] * float64(sl.count)
+			e += float64(x.idf[sl.label] * float64(sl.count))
 		}
 		x.energy[i] = e
 	}
@@ -198,7 +198,7 @@ func (x *shapeIndex) admitFor(a int, sim *simCache, opt Options) []pairKey {
 		w := x.idf[sl.label]
 		for _, po := range x.postings[sl.label] {
 			if po.idx != a {
-				acc[po.idx] += w * float64(minCount(sl.count, po.count))
+				acc[po.idx] += float64(w * float64(minCount(sl.count, po.count)))
 			}
 		}
 	}
@@ -272,7 +272,7 @@ func (x *shapeIndex) pairEvidence(a, b, chainTopN int) (float64, float64, []Shar
 			j++
 		default:
 			n := minCount(sa[i].count, sb[j].count)
-			e := x.idf[sa[i].label] * float64(n)
+			e := float64(x.idf[sa[i].label] * float64(n))
 			mass += e
 			if e > 0 && chainTopN != 0 {
 				chains = insertChain(chains, SharedLabel{
