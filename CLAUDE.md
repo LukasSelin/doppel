@@ -41,7 +41,12 @@ it (backslashes on Windows, absolute under an absolute root) once made one commi
 different floors on Windows than on Linux, identically on every run. Anything that hashes, sorts
 or tie-breaks on a path reads it root-relative and slash-separated (`parser.RelSlash`), never
 `CodeUnit.File` raw. See
-*Calibration*, and the `cross-platform` CI job that now compares the three OSes.
+*Calibration*, and the `cross-platform` CI job that now compares the three OSes. It holds **across
+architectures** too, which is a property of arithmetic rather than of paths: arm64 fuses `x*y + z`
+into one FMA where amd64 does not, and the standard library's `math.Log` and `math.Exp` give
+different bits on the two. So a product that feeds a sum is written `float64(x*y)`, every log and
+exp goes through `internal/detmath`, and `task fma-check` fails on any fusion the arm64 compiler
+still finds — see *Floating point is the same on every architecture* under *Conventions*.
 
 ## Pipeline
 
@@ -137,6 +142,7 @@ internal/
   lexicon/      Learns the corpus's own concepts: features.go (evidence channels), expand.go (seeded PMI expansion), emerge.go (clique clustering), name.go
   clique/       Deterministic maximal-clique enumeration and components, shared by family and lexicon
   parallel/     Blocks / BlocksWith: the one fan-out primitive — an atomic block counter with per-worker state
+  detmath/      Log and Exp with one answer on every architecture, in place of math's; imports nothing from this module
   concepter/    ConceptDoc; callgraph.go (BuildCallGraph); role.go (ClassifyRole, role constants);
                 calltokens.go (the resolved-call token view retriever, culture and lexicon share);
                 locality.go (query's locality weight, shared with the plant harness)
@@ -199,6 +205,10 @@ live), and `internal/lexbridge` (`DerivedConcepts` and `Vocabulary`, the lexicon
 translation `cmd` and `internal/bench` each carried a copy of, under a comment saying the two
 "must move together" — doppel ranked them #4 and #7 on its own source, code-shape 1.00; a
 package because `internal/bench` cannot import `cmd`). Do not reintroduce a local copy of any of them.
+
+`internal/detmath` sits outside every rule below: it imports nothing from this module and stands in
+for `math.Log` and `math.Exp`, so any package may import it, and "imports nothing from this module"
+below means nothing *else* — `ontology`'s IC and `culture`'s PMI are logs like any other.
 
 Dependency directions that must hold: `analyzer` imports `comparator` (for the `Evidence` field), so
 `comparator` must never import `analyzer`. `parser` imports `fingerprint`, so `fingerprint` must
@@ -293,6 +303,7 @@ task build    # go build -o doppel .
 task test     # go test ./...
 task vet      # go vet ./...
 task fmt      # gofmt -w .
+task fma-check # disassemble an arm64 build; fail on any multiply-add fused in doppel's own code
 
 task dist          # goreleaser release --snapshot --clean  — the six release archives, unpublished
 task release-check # goreleaser check                       — validate .goreleaser.yaml
@@ -367,15 +378,23 @@ stale session baseline (see *Rough edges*).
   question on every OS. **Whether the OSes agree with each other is a different question, and it
   has its own job.** Every leg writes `analyze . --format json` and the dashboard for the tree into
   `_xplat/` (underscore-prefixed, so the walk skips it) and uploads them; `cross-platform` then
-  requires the snapshot to match byte for byte across the two amd64 legs (ubuntu, windows) and the
-  dashboard across all three, and prints each side's `params` on a failure. The macos leg is
-  arm64, where the snapshot's full-precision `score`, `overlap` and `containment` differ from amd64
-  in the last bit (see *Rough edges*), so its snapshot is compared with every number rounded to
-  nine decimals: that still sees a moved floor or a reordered pair, and not a last-bit difference. Both runs use `go run -buildvcs=false`, so the recorded build identity is `(devel)` on
-  every leg rather than a VCS stamp one leg might read as dirty. The repeat-on-Linux steps could
-  never have seen the calibration bug that motivated it: Windows read struct-min 0.41 on doppel's
-  own tree on every run and Linux 0.42, and both legs were green. Go version comes from
-  `go-version-file: go.mod` (currently `1.25.0`).
+  requires both files to match byte for byte across all three legs, and prints each side's
+  `params` on a failure. The macos leg is arm64, so the same comparison is the architecture check:
+  for one run it compared the arm64 snapshot to nine decimals, because its `score`, `overlap` and
+  `containment` read a bit apart from amd64's, and it went back to byte for byte once that was
+  fixed (see *Floating point is the same on every architecture*). Both runs use
+  `go run -buildvcs=false`, so the recorded build identity is `(devel)` on every leg rather than a
+  VCS stamp one leg might read as dirty. The repeat-on-Linux steps could never have seen the
+  calibration bug that motivated it: Windows read struct-min 0.41 on doppel's own tree on every
+  run and Linux 0.42, and both legs were green. Go version comes from `go-version-file: go.mod`
+  (currently `1.25.0`).
+- **CI runs `scripts/fma-check.sh`** on the Linux leg (`task fma-check` locally). It cross-compiles
+  for arm64, disassembles the binary, and fails on any FMADD/FMSUB-family instruction inside a
+  function of this module, printing the source line, with `internal/detmath`'s deliberate
+  `math.FMA` calls exempt. The cross-platform job sees a fused product only where this one tree's
+  numbers happen to round differently; this sees every site the compiler fused, on any corpus,
+  without arm64 hardware. It reads one compiler's output, so a newer Go that fuses more fails here
+  first — which is the intended way to learn about it.
 - **CI checks gofmt** on the Linux leg, so formatting drift no longer reaches `master` when the
   local hook is inactive (it only exists after `task setup`, which nothing enforces).
 - `.github/workflows/release.yml` fires on a `v*` tag push and runs GoReleaser (pinned `v2.17.1`)
@@ -3449,6 +3468,60 @@ functions for exactly this reason, and the first version of them did not and fai
   recall on pairs that differ only in a spelling canonicalization would have removed, never
   correctness: the failure direction is "less similar than they are". *Frontends* states the
   boundary exactly.
+- **Floating point is the same on every architecture, by construction.** Releases ship amd64 and
+  arm64, and a report must be byte-identical on both. A baseline written on an arm64 Mac gets
+  compared against a run on amd64 Linux, and any pair or floor can sit on a rounding boundary.
+  At `0ff7b04` the arm64 build differed from amd64 in every rung's `--format json` (the last bit
+  of a `score`, `overlap` or `containment`) and in four rungs' dashboards (chi, hugo, moby,
+  prometheus); stderr, and so the calibrated floors, agreed. Two causes, both real:
+
+  1. **The compiler fuses.** The Go spec lets `x*y + z` become one FMA instruction, "possibly
+     across statements", and the arm64 backend does so where amd64 (at the default `GOAMD64=v1`)
+     cannot. doppel had 45 such sites: the comparator's twelve-term overlap sum, code-shape's
+     four-term blend, the WL Jaccard's mass sums, the shape channel's evidence, the culture
+     weighted means, and calibrate's `roundUp`, which decides the floors. Building arm64 with
+     `-gcflags=github.com/LukasSelin/doppel/...=-d=fmahash=n` (fusion off in this module only)
+     made every rung's snapshot byte-identical to amd64's. On doppel's own tree,
+     `-gcflags=math=-d=fmahash=n` (fusion off in `math` only) did not.
+  2. **The standard library differs.** `math.Log` is assembly on amd64 and Go on arm64, compiled
+     with fusion, and 1.2% of all `n/df` with n ≤ 3000 came out a bit apart. `math.Exp` is
+     assembly on both, as two different algorithms, and amd64's own takes an FMA branch or a plain
+     one depending on the CPU. With fusion off in this module, the same four dashboards still
+     differed, in units' concept confidences. The lexicon builds those from logs, the dashboard
+     carries them at full precision, and the snapshot rounds them to two decimals. That half was
+     the standard library.
+
+  The fix has two rules. First, a product that feeds an addition or subtraction anywhere a
+  score, threshold or report value is computed is written `float64(x*y)`: the conversion rounds,
+  and the spec forbids fusing across it. Second, nothing calls `math.Log` or `math.Exp`;
+  `internal/detmath` has both.
+  - `detmath.Log` is math/log.go's algorithm with every product rounded. amd64's assembly computes
+    exactly that, instruction for instruction, so on amd64 nothing changed (`TestLogMatchesAmd64`,
+    4M inputs).
+  - `detmath.Exp` is amd64's FMA branch, with the fused steps written as `math.FMA`, which rounds
+    once by definition. On any amd64 with FMA nothing changed either (`TestExpMatchesAmd64`).
+  - `TestGolden` pins both functions' results on whatever architecture runs it, so CI's macOS leg
+    checks them across architectures directly.
+
+  Verified end to end, with arm64 under qemu-user: on all seven rungs and doppel's own tree,
+  `--format json`, the dashboard and stderr are byte-identical to the previous amd64 build, and the
+  arm64 build matches them byte for byte. Test code is not exempt when it compares across
+  architectures. The first draft of `detmath`'s own test drew its inputs as
+  `rng.Float64()*1460 - 750`, arm64 fused that, and the two architectures tested different inputs.
+
+  `scripts/fma-check.sh` (`task fma-check`, and CI's Linux leg) is the guard. It disassembles an
+  arm64 cross-compile and fails on any fused instruction in this module's functions outside
+  `detmath`. It sees every site the compiler fused, on any corpus, where the cross-platform job
+  sees only the sites whose rounding moved one of this tree's numbers. Four things stay outside
+  it:
+  - `math.Pow` still runs at a non-default `ShapePower` or `TrophicPower` and under
+    `BlendGeometric`. Those are bench seams; the defaults are `s*s` and `t*t`.
+  - Test files and `internal/bench` keep `math.Log`. They compare with tolerances or only measure.
+  - An amd64 CPU without FMA used to take `math.Exp`'s plain branch, and now gets the FMA branch's
+    answers like every other machine. That changes results on that hardware alone, and only where
+    an exp reaches: arena masses, habitat fit, the overview's lift ratios and the lexicon's df cap.
+  - A float-to-int conversion of NaN, an infinity or an out-of-range value is
+    architecture-specific in Go. Nothing here is known to do one, and nothing checks for it.
 - **No caches.** No run ever reads persisted state to avoid recomputation: `doppel hook stop`
   re-runs the whole pipeline from source every time, exactly as `analyze` does. The one persisted
   artifact is the **session baseline** written by `doppel hook session-start` — a measurement
@@ -4025,18 +4098,6 @@ functions for exactly this reason, and the first version of them did not and fai
 ## Rough edges
 
 Known traps, documented so they aren't rediscovered. None are fixed:
-
-- **arm64 and amd64 disagree in the last bit of a float.** On the same commit, macOS on arm64
-  writes a `--format json` whose full-precision `score`, `overlap` and `containment` differ from
-  amd64's in the last bit or so on about half of the top 20 (`0.9999999999999999` against `1`,
-  `0.7081531137590367` against `…68`). Ranking, the calibrated floors, the markdown report and the
-  dashboard (which rounds to four decimals) were identical when it was found. Two candidate causes,
-  not yet told apart: Go may fuse `a*b+c` into one FMA on arm64 and does not on amd64 (an explicit
-  `float64(a*b)` prevents it), and `math.Log`, under every IDF and IC, is assembly on amd64 and Go
-  on arm64. It is a determinism gap all the same. A pair or a threshold can sit exactly on a
-  rounding boundary, and a baseline written on one architecture compares against a run on the
-  other. The `cross-platform` CI job compares the arm64 snapshot to nine decimals for this reason
-  rather than byte for byte.
 
 - **Lexical fidelity is measured on Go and assumed elsewhere.** `TestLexicalFidelity` scores the
   lexical frontend against `go/ast` on Go corpora at 0.994–0.999 recall and 1.000 precision, but
