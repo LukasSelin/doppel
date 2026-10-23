@@ -3,7 +3,9 @@ package gofront
 import (
 	"go/ast"
 	goparser "go/parser"
+	"go/printer"
 	"go/token"
+	"strings"
 	"testing"
 
 	"github.com/LukasSelin/doppel/internal/syntax"
@@ -264,4 +266,57 @@ func TestSyntaxErrorIsSkipped(t *testing.T) {
 	if f != nil {
 		t.Errorf("want nil file, got %v", f)
 	}
+}
+
+// TestPrintTypeDropsNamesInFuncTypes pins what a rendered type is: Go's type
+// identity, which ignores the parameter and result names inside a function
+// type and keeps struct field and interface method names. A type with no
+// function inside it renders exactly as go/printer always rendered it.
+func TestPrintTypeDropsNamesInFuncTypes(t *testing.T) {
+	cases := []struct{ src, want string }{
+		{"func(f *flag.FlagSet, name string) flag.NormalizedName", "func(*flag.FlagSet, string) flag.NormalizedName"},
+		{"func(g *flag.FlagSet, s string) flag.NormalizedName", "func(*flag.FlagSet, string) flag.NormalizedName"},
+		{"func(*flag.FlagSet, string) flag.NormalizedName", "func(*flag.FlagSet, string) flag.NormalizedName"},
+		{"func(a, b int, _ string)", "func(int, int, string)"},
+		{"func() (n int, err error)", "func() (int, error)"},
+		{"func() (ok bool)", "func() bool"},
+		{"func(xs ...string)", "func(...string)"},
+		{"func(f func(x int) bool) []func(y string)", "func(func(int) bool) []func(string)"},
+		{"*func(a int)", "*func(int)"},
+		{"[]func(a int)", "[]func(int)"},
+		{"map[string]func(k string) (v int)", "map[string]func(string) int"},
+		{"chan<- func(e error)", "chan<- func(error)"},
+		{"List[func(a int)]", "List[func(int)]"},
+		{"Pair[func(a int), func(b int)]", "Pair[func(int), func(int)]"},
+		{"interface{ Visit(n Node) (w Visitor) }", "interface{ Visit(Node) Visitor }"},
+		{"struct{ fn func(a int) }", "struct{ fn func(int) }"},
+		{"struct{}", "struct{}"},
+		{"map[string]*Node", "map[string]*Node"},
+		{"interface{ Read(p []byte) (n int, err error); Close() error }", "interface { Read([]byte) (int, error) Close() error }"},
+	}
+	for _, tc := range cases {
+		expr, err := goparser.ParseExpr(tc.src)
+		if err != nil {
+			t.Fatalf("%s: %v", tc.src, err)
+		}
+		before := rawType(t, expr)
+		if got := printType(expr); got != tc.want {
+			t.Errorf("printType(%s) = %q, want %q", tc.src, got, tc.want)
+		}
+		// The rewrite copies: the declaration every other reader shares still
+		// has its names afterwards.
+		if after := rawType(t, expr); after != before {
+			t.Errorf("printType(%s) mutated its input: %q became %q", tc.src, before, after)
+		}
+	}
+}
+
+// rawType is go/printer on the expression as it stands, names and all.
+func rawType(t *testing.T, expr ast.Expr) string {
+	t.Helper()
+	var b strings.Builder
+	if err := printer.Fprint(&b, token.NewFileSet(), expr); err != nil {
+		t.Fatal(err)
+	}
+	return b.String()
 }

@@ -9,7 +9,7 @@ static site generator; a large monolith with heavy template and resource subsyst
 | Corpus | [hugo](https://github.com/gohugoio/hugo) |
 | Pinned at | `v0.165.0` (`76a5e1880ab46688155b02e99bab9be2a6134492`) |
 | Project since | 2013 |
-| doppel | `82e7616` |
+| doppel | `e172f63` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -26,11 +26,11 @@ Lexicon: 547 concepts (9 seeded, 538 emergent), 14869/41767 features above 2110 
 Generating concept documents...
 Calibration: rate 0.01 over 20000 null pairs -> threshold 0.34, struct-min 0.31, family-min 0.34
 Found 5737 functions. Retrieving candidates...
-Retrieval: shape 7053, concept 20730, call 8634 -> 32249 unique pairs
+Retrieval: shape 7055, concept 20730, call 8634 -> 32251 unique pairs
   concept-only 56.0%  call-only 18.8%  suppressed-shape functions: 19  large identity buckets: 0  surviving labels: 24438
   344 cross test/prod pairs dropped
-Running structural comparison on 31905 pairs...
-  Concept views: 2250 of 31905 compared pairs disagree with the taxonomy (161 vocabulary the tree misses, 2089 kinship the vocabularies lack)
+Running structural comparison on 31907 pairs...
+  Concept views: 2250 of 31907 compared pairs disagree with the taxonomy (161 vocabulary the tree misses, 2089 kinship the vocabularies lack)
   13593 pairs remain after struct-min=0.31 filter
 Culture: 502 concepts modeled, 2587 associations, 1127 unusual realizations
 Habitats: 129 modeled, 416 misfits (63 excused by subsystem), 33 subsystems; most uniform dartsass (norm 0.98), most diverse page (norm 0.66)
@@ -784,9 +784,9 @@ _117 further packages are modeled and not drawn._ Most uniform is `dartsass` (no
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **32249 candidate pairs** (shape 7053, concept 20730, call 8634), of which 19% arrived on call evidence alone and 56% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **32251 candidate pairs** (shape 7055, concept 20730, call 8634), of which 19% arrived on call evidence alone and 56% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
-The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **2250 of 31905** pairs the taxonomy and the vocabularies differ by at least 0.50: 161 where the vocabularies agree and the tree cannot see it, 2089 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
+The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **2250 of 31907** pairs the taxonomy and the vocabularies differ by at least 0.50: 161 where the vocabularies agree and the tree cannot see it, 2089 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 5546 functions reached an equilibrium: **3227** settled on a single concept, **2312** on a coalition, **0** hold concepts this corpus says do not go together.
 

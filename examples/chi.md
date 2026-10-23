@@ -9,7 +9,7 @@ HTTP router; a narrow core with a middleware package beside it
 | Corpus | [chi](https://github.com/go-chi/chi) |
 | Pinned at | `v5.3.2` (`38939062c5df4d3e8814aad1a488983112627ced`) |
 | Project since | 2015 |
-| doppel | `82e7616` |
+| doppel | `e172f63` |
 | Command | `doppel analyze . --tests exclude --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -24,10 +24,10 @@ Scanning . ...
 Learning concept vocabulary...
 Lexicon: 21 concepts (0 seeded, 21 emergent), 714/1941 features above 67 df, 35 functions unlabeled
 Generating concept documents...
-Calibration: rate 0.01 over 9045 shape / 16653 overlap null pairs -> threshold 0.45, struct-min 0.51, family-min 0.45
+Calibration: rate 0.01 over 9045 shape / 16653 overlap null pairs -> threshold 0.46, struct-min 0.51, family-min 0.46
 Found 183 functions. Retrieving candidates...
 Retrieval: shape 84, concept 529, call 357 -> 811 unique pairs
-  concept-only 48.3%  call-only 29.7%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1326
+  concept-only 48.2%  call-only 29.7%  suppressed-shape functions: 0  large identity buckets: 0  surviving labels: 1326
 Running structural comparison on 811 pairs...
   Concept views: 1 of 811 compared pairs disagree with the taxonomy (1 vocabulary the tree misses, 0 kinship the vocabularies lack)
   125 pairs remain after struct-min=0.51 filter
@@ -35,13 +35,13 @@ Culture: 20 concepts modeled, 69 associations, 7 unusual realizations
 Habitats: 2 modeled, 0 misfits; most uniform chi (norm 0.92), most diverse middleware (norm 0.90)
 Conventions: strongest mx.handle+chi.*Mux.handle (0.89), loosest mx.inline+mx.handler (0.23)
 Ecosystems: 162 profiled (120 dominance, 42 coalition, 0 conflict, 0 weak)
-Families: 6 over 15 components, 28 functions in a family, 9 edges completed
+Families: 6 over 16 components, 28 functions in a family, 9 edges completed
   3 pairs suppressed by max-per-func=2
 ```
 
 # Code Similarity Report
 
-**Functions analyzed:** 183 | **Threshold:** 0.45 | **Pairs found:** 10
+**Functions analyzed:** 183 | **Threshold:** 0.46 | **Pairs found:** 10
 
 ---
 
@@ -197,7 +197,7 @@ _3 further pairs were held back so no single function fills the report._
 
 **Compression ratio:** `5.35`x — this corpus's canonical function bodies contain **11169 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **2089 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **183 functions**, **172** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.41` / `0.90` / `1.00`, and 41% of them (71 of 172) already clear this run's threshold of `0.45`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 11 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **183 functions**, **172** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.41` / `0.90` / `1.00`, and 41% of them (70 of 172) already clear this run's threshold of `0.46`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 11 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -495,7 +495,49 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #4 — Code-shape: `0.6887`
+## Match #4 — Code-shape: `0.7082`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `middleware/content_encoding.go:10` | `middleware.AllowContentEncoding` | `(...string) (func(http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+strings.ToLower 0.54, http.StatusUnsupportedMedia…+Header.Get 0.53, http.StatusUnsupportedMedia…+w.WriteHeader 0.51 |
+| **B** | `middleware/content_type.go:20` | `middleware.AllowContentType` | `(...string) (func(http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+Header.Get 0.52, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.50, http.StatusUnsupportedMedia…+w.WriteHeader 0.49 |
+
+**Explain:** differs by two extra assign, one extra range, two extra call, and 6 more kinds
+
+**Profile A:** `http.StatusUnsupportedMedia…+Header.Get` 0.56, `http.StatusUnsupportedMedia…+strings.ToLower` 0.38, `http.StatusUnsupportedMedia…+w.WriteHeader` 0.06 (coalition)
+
+**Profile B:** `http.StatusUnsupportedMedia…+Header.Get` 0.98 (dominance)
+
+**Code similarity:** `wl 0.52  flow 0.98  nesting 0.98  sig 1.00  size 0.98`
+
+**Containment:** `0.70`
+
+**Evidence:** `368.00` (shape 356.43, concept 3.31, call 8.27)
+
+**Trophic:** `0.79`
+
+**Shared structure:**
+
+- `7.61` — `depth-3 STRUCTTYPE` ×2
+- `7.61` — `depth-2 STRUCTTYPE` ×2
+- `7.61` — `depth-1 STRUCTTYPE` ×2
+
+**Concept views:** shape `0.67`, corpus `0.64`, feature `0.67`, a-in-b `0.88`, b-in-a `0.73`
+
+**Shared vocabulary:** `id:media`, `id:unsupported`, `sel:http.StatusUnsupportedMediaType`
+
+**Structural overlap:** `0.59` (merge-worthy)
+
+- share 7 callees: [http.HandlerFunc, len, make, next.ServeHTTP, strings.ToLower, strings.TrimSpace, w.WriteHeader]
+- share patterns: [http.StatusUnsupportedMedia…+Header.Get, http.StatusUnsupportedMedia…+w.WriteHeader]
+- both are leaf functions
+- same package
+- same visibility
+- same receiver type: plain functions
+
+---
+
+## Match #5 — Code-shape: `0.6887`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -537,54 +579,12 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #5 — Code-shape: `0.6082`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `middleware/content_encoding.go:10` | `middleware.AllowContentEncoding` | `(...string) (func(next http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+strings.ToLower 0.54, http.StatusUnsupportedMedia…+Header.Get 0.53, http.StatusUnsupportedMedia…+w.WriteHeader 0.51 |
-| **B** | `middleware/content_type.go:20` | `middleware.AllowContentType` | `(...string) (func(http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+Header.Get 0.52, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.50, http.StatusUnsupportedMedia…+w.WriteHeader 0.49 |
-
-**Explain:** differs by two extra assign, one extra range, two extra call, and 6 more kinds
-
-**Profile A:** `http.StatusUnsupportedMedia…+Header.Get` 0.56, `http.StatusUnsupportedMedia…+strings.ToLower` 0.38, `http.StatusUnsupportedMedia…+w.WriteHeader` 0.06 (coalition)
-
-**Profile B:** `http.StatusUnsupportedMedia…+Header.Get` 0.98 (dominance)
-
-**Code similarity:** `wl 0.52  flow 0.98  nesting 0.98  sig 0.33  size 0.98`
-
-**Containment:** `0.70`
-
-**Evidence:** `368.00` (shape 356.43, concept 3.31, call 8.27)
-
-**Trophic:** `0.79`
-
-**Shared structure:**
-
-- `7.61` — `depth-3 STRUCTTYPE` ×2
-- `7.61` — `depth-2 STRUCTTYPE` ×2
-- `7.61` — `depth-1 STRUCTTYPE` ×2
-
-**Concept views:** shape `0.67`, corpus `0.64`, feature `0.67`, a-in-b `0.88`, b-in-a `0.73`
-
-**Shared vocabulary:** `id:media`, `id:unsupported`, `sel:http.StatusUnsupportedMediaType`
-
-**Structural overlap:** `0.59` (merge-worthy)
-
-- share 7 callees: [http.HandlerFunc, len, make, next.ServeHTTP, strings.ToLower, strings.TrimSpace, w.WriteHeader]
-- share patterns: [http.StatusUnsupportedMedia…+Header.Get, http.StatusUnsupportedMedia…+w.WriteHeader]
-- both are leaf functions
-- same package
-- same visibility
-- same receiver type: plain functions
-
----
-
 ## Match #6 — Code-shape: `0.6417`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
-| **A** | `middleware/route_headers.go:48` | `middleware.HeaderRouter.Route` | `(string, string, func(next http.Handler) http.Handler) (HeaderRouter)` | http.StatusUnsupportedMedia…+Header.Get 0.50, http.StatusUnsupportedMedia…+strings.ToLower 0.48 |
-| **B** | `middleware/route_headers.go:58` | `middleware.HeaderRouter.RouteAny` | `(string, []string, func(next http.Handler) http.Handler) (HeaderRouter)` | http.StatusUnsupportedMedia…+Header.Get 0.50, http.StatusUnsupportedMedia…+strings.ToLower 0.48 |
+| **A** | `middleware/route_headers.go:48` | `middleware.HeaderRouter.Route` | `(string, string, func(http.Handler) http.Handler) (HeaderRouter)` | http.StatusUnsupportedMedia…+Header.Get 0.50, http.StatusUnsupportedMedia…+strings.ToLower 0.48 |
+| **B** | `middleware/route_headers.go:58` | `middleware.HeaderRouter.RouteAny` | `(string, []string, func(http.Handler) http.Handler) (HeaderRouter)` | http.StatusUnsupportedMedia…+Header.Get 0.50, http.StatusUnsupportedMedia…+strings.ToLower 0.48 |
 
 **Explain:** differs by two extra assign, one extra range, one extra call, and 4 more kinds
 
@@ -856,7 +856,7 @@ flowchart LR
 | `middleware/wrap_writer.go:194` | `middleware.*httpFancyWriter.Flush` | `()` | b.ResponseWriter+b.discard 0.62 |
 | `middleware/wrap_writer.go:239` | `middleware.*http2FancyWriter.Flush` | `()` | b.ResponseWriter+b.discard 0.62 |
 
-### Family 3 — 3 members, every pair `>= 0.46` code-shape, evidence `290`
+### Family 3 — 3 members, every pair `>= 0.51` code-shape, evidence `290`
 
 ```mermaid
 flowchart LR
@@ -870,9 +870,9 @@ flowchart LR
 
 | Location | Function | Signature | Concepts |
 |---|---|---|---|
-| `middleware/middleware.go:6` | `middleware.New` | `(http.Handler) (func(next http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+chi.RouteContext 0.63, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.60, context.WithValue+r.WithContext 0.55 |
+| `middleware/middleware.go:6` | `middleware.New` | `(http.Handler) (func(http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+chi.RouteContext 0.63, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.60, context.WithValue+r.WithContext 0.55 |
 | `middleware/request_size.go:9` | `middleware.RequestSize` | `(int64) (func(http.Handler) http.Handler)` | http.StatusUnsupportedMedia…+chi.RouteContext 0.56, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.55, context.WithValue+r.WithContext 0.50 |
-| `middleware/value.go:9` | `middleware.WithValue` | `(interface{}, interface{}) (func(next http.Handler) http.Handler)` | context.WithValue+r.WithContext 0.63, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.63, http.StatusUnsupportedMedia…+chi.RouteContext 0.60 |
+| `middleware/value.go:9` | `middleware.WithValue` | `(interface{}, interface{}) (func(http.Handler) http.Handler)` | context.WithValue+r.WithContext 0.63, http.StatusUnsupportedMedia…+Header.Get+context.WithValue 0.63, http.StatusUnsupportedMedia…+chi.RouteContext 0.60 |
 
 ### Family 4 — 3 members, every pair `>= 0.48` code-shape, evidence `220`
 
