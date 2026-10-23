@@ -57,10 +57,32 @@ jobs:
       - name: Test
         run: go test ./...
 
+      # What the cross-platform job compares: the snapshot and the dashboard of
+      # this tree, from every leg (see that job for which comparisons are exact). -buildvcs=false makes the recorded build
+      # identity (devel) everywhere, so no leg can differ by a VCS stamp it
+      # alone reads as dirty. _xplat/ is skipped by the walk like any
+      # underscore-prefixed directory, so the second run cannot read the first
+      # one's output.
+      - name: Write cross-platform outputs
+        shell: bash
+        run: |
+          mkdir -p _xplat
+          go run -buildvcs=false . analyze . --format json > _xplat/snapshot.json
+          go run -buildvcs=false . analyze . -o _xplat/report.html > /dev/null
+
+      - name: Upload cross-platform outputs
+        uses: actions/upload-artifact@v5
+        with:
+          name: xplat-${{ matrix.os }}
+          path: _xplat/
+          retention-days: 7
+          if-no-files-found: error
+
       # The JSON snapshot is what the hooks diff, so a schema panic or a
       # nondeterministic field has to fail here rather than in a session.
-      # Determinism is platform-independent, and /tmp, printf and diff are
-      # Git Bash assumptions, so this and the hook check stay on Linux.
+      # Run-to-run determinism is one question on every OS, so one leg answers
+      # it; whether the OSes agree with each other is the cross-platform job's
+      # question, which two runs on one OS cannot see.
       - name: Snapshot is deterministic
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -127,3 +149,54 @@ jobs:
           # An empty artifact is worse than a failed job: it looks like the
           # report was captured.
           if-no-files-found: error
+
+  # The build job's determinism steps run one OS twice, and that cannot see
+  # output that is stable on each platform and different between them, which
+  # is the shape a cross-platform bug here takes. Calibration hashed the walk's
+  # own paths, backslash-separated on Windows, so one commit calibrated to
+  # different floors there than on Linux, and every report downstream of the
+  # floors differed, identically on every run. This compares what each leg
+  # wrote for the same commit.
+  #
+  # Byte for byte wherever that holds: the snapshot across the two amd64 legs
+  # (ubuntu, windows), the dashboard across all three. The macos leg is arm64,
+  # and there the snapshot's full-precision score, overlap and containment
+  # differ from amd64 in the last bit or so (0.9999999999999999 against 1).
+  # Two candidate causes, not yet told apart: Go may fuse a*b+c into one FMA on
+  # arm64 and does not on amd64, and amd64's math.Log is assembly where arm64's
+  # is Go. The dashboard rounds those to four decimals and matches. So the arm64 snapshot is compared with every number rounded to
+  # nine decimals, which still sees a moved floor, a reordered pair or a
+  # changed key, and does not see a last-bit difference in arithmetic.
+  cross-platform:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: xplat-*
+          path: xplat
+
+      - name: Every platform wrote the same report
+        run: |
+          cd xplat
+          status=0
+          for check in "snapshot.json windows-latest" "report.html windows-latest" "report.html macos-latest"; do
+            set -- $check
+            if ! cmp -s "xplat-ubuntu-latest/$1" "xplat-$2/$1"; then
+              echo "::error::$1 differs between ubuntu-latest and $2"
+              status=1
+            fi
+          done
+          round='walk(if type == "number" then (. * 1e9 | round) / 1e9 else . end)'
+          if ! cmp -s <(jq -c "$round" xplat-ubuntu-latest/snapshot.json) <(jq -c "$round" xplat-macos-latest/snapshot.json); then
+            echo "::error::snapshot.json differs between ubuntu-latest and macos-latest beyond 1e-9"
+            status=1
+          fi
+          # The operating point is the first thing to read: a moved floor
+          # changes every pair after it.
+          if [ "$status" != 0 ]; then
+            for os in ubuntu-latest windows-latest macos-latest; do
+              echo "$os params: $(jq -c .params "xplat-$os/snapshot.json")"
+            done
+          fi
+          exit $status

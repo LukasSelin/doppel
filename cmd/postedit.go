@@ -183,7 +183,7 @@ func probeEdit(root string, base snapshot.Snapshot, file string, minShape float6
 
 	var out []reporter.ProbeResult
 	for i, u := range res.Units {
-		if snapshot.RelSlash(root, u.File) != rel {
+		if parser.RelSlash(root, u.File) != rel {
 			continue
 		}
 		digest := snapshot.Digest(u.Fingerprint)
@@ -213,7 +213,7 @@ func probeEdit(root string, base snapshot.Snapshot, file string, minShape float6
 			}
 			probe.Matches = append(probe.Matches, reporter.ProbeMatch{
 				Key:         keys[o],
-				File:        snapshot.RelSlash(root, m.Unit.File),
+				File:        parser.RelSlash(root, m.Unit.File),
 				Line:        m.Unit.StartLine,
 				Score:       m.Candidate.Breakdown.Score,
 				Containment: m.Candidate.Breakdown.Containment,

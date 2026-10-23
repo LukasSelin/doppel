@@ -35,7 +35,13 @@ Ollama embeddings originally; that entire pass was removed. Anything suggesting 
 The corollary worth internalizing: **every score is deterministic**, so an unchanged tree must
 produce a byte-identical report. Treat a nondeterministic report as a bug (map iteration order is
 the usual culprit — see `sortedKeys` in `mapper`, the tie-breaks in `retriever` (`topK`, union key
-sort), and `analyzer.SortByEvidence`).
+sort), and `analyzer.SortByEvidence`). That holds **across platforms and across spellings of the
+root**, and two runs on one machine cannot check that half. A path hashed the way the walk spelled
+it (backslashes on Windows, absolute under an absolute root) once made one commit calibrate to
+different floors on Windows than on Linux, identically on every run. Anything that hashes, sorts
+or tie-breaks on a path reads it root-relative and slash-separated (`parser.RelSlash`), never
+`CodeUnit.File` raw. See
+*Calibration*, and the `cross-platform` CI job that now compares the three OSes.
 
 ## Pipeline
 
@@ -114,7 +120,7 @@ internal/
                 render.go re-derives one function's canonical tree with a go/printer render per node, for the --label view
   lexfront/     The language-agnostic frontend: spec.go is the per-language table, lexer.go tokenizes, segment.go finds functions, build.go builds the shallow tree
   parser/       frontend.go owns the Frontend interface, the extension registry, IsTestFile and SameBuildUnit; parser.go is the neutral syntax.File → CodeUnit projection;
-                exclude.go is the walk rule cmd and bench share — DefaultExcludes, ShouldSkipDir, and the per-run Excludes --exclude configures; signals.go extracts the tagger's evidence channels over the IR; go_parser.go and lex_parser.go are the two registry adapters
+                exclude.go is the walk rule cmd and bench share — DefaultExcludes, ShouldSkipDir, the per-run Excludes --exclude configures, and RelSlash, the root-relative slash path every surface and the calibration identity read; signals.go extracts the tagger's evidence channels over the IR; go_parser.go and lex_parser.go are the two registry adapters
   canon/        Canonical Go AST shapes with a per-function rule log: canon.go + rules.go (the rule
                 set and canon.Version), alpha.go (rename), clone.go, key.go. Go-only by nature;
                 imported by gofront (to run it) and by analyzer (to name its rules)
@@ -177,8 +183,10 @@ scripts/        timeline.sh: walks a git history and analyses each revision at o
 Eight helpers are deliberately shared rather than copied, because doppel found each
 of them as an exact clone of itself: `parser.ShouldSkipDir` (the walk rule — `cmd` walks
 with it and `internal/bench` mirrored it by hand, which is how the harness could have
-silently measured a different corpus than the tool), `snapshot.RelSlash` (the path rule
-`cmd` and `reporter` both described as "mirrors the snapshot's"), `fingerprint.PrintType`
+silently measured a different corpus than the tool), `parser.RelSlash` (the path rule
+`cmd` and `reporter` both described as "mirrors the snapshot's"; it moved down from `snapshot`
+when `calibrate`, which may not import `snapshot` and through it `analyzer`, needed it for
+its identity hash), `fingerprint.PrintType`
 (the type rendering `parser` needs for `Signature`, wrapped there only to keep its `"?"`
 fallback), `cmd.validateMode` (one check for `--tests` and `--generated`, parameterized
 by flag name), `internal/clique` (the Bron–Kerbosch enumerator `family` needed for the pair
@@ -354,9 +362,20 @@ stale session baseline (see *Rough edges*).
   the whole module. It is only active after `task setup` — `core.hooksPath` is documented nowhere else.
 - `.github/workflows/ci.yml` runs `go build/vet/test` on pushes and PRs to **`master`** (not `main`),
   across a three-OS matrix (`ubuntu`/`windows`/`macos`) because releases ship binaries for all three.
-  The determinism and hook-entry-point steps are guarded `if: matrix.os == 'ubuntu-latest'` — they
-  assume `/tmp`, `printf` and `diff`, and determinism is platform-independent, so proving it once
-  is enough. Go version comes from `go-version-file: go.mod` (currently `1.25.0`).
+  The run-to-run determinism and hook-entry-point steps are guarded `if: matrix.os == 'ubuntu-latest'`
+  — they assume `/tmp`, `printf` and `diff`, and whether two runs on one machine agree is the same
+  question on every OS. **Whether the OSes agree with each other is a different question, and it
+  has its own job.** Every leg writes `analyze . --format json` and the dashboard for the tree into
+  `_xplat/` (underscore-prefixed, so the walk skips it) and uploads them; `cross-platform` then
+  requires the snapshot to match byte for byte across the two amd64 legs (ubuntu, windows) and the
+  dashboard across all three, and prints each side's `params` on a failure. The macos leg is
+  arm64, where the snapshot's full-precision `score`, `overlap` and `containment` differ from amd64
+  in the last bit (see *Rough edges*), so its snapshot is compared with every number rounded to
+  nine decimals: that still sees a moved floor or a reordered pair, and not a last-bit difference. Both runs use `go run -buildvcs=false`, so the recorded build identity is `(devel)` on
+  every leg rather than a VCS stamp one leg might read as dirty. The repeat-on-Linux steps could
+  never have seen the calibration bug that motivated it: Windows read struct-min 0.41 on doppel's
+  own tree on every run and Linux 0.42, and both legs were green. Go version comes from
+  `go-version-file: go.mod` (currently `1.25.0`).
 - **CI checks gofmt** on the Linux leg, so formatting drift no longer reaches `master` when the
   local hook is inactive (it only exists after `task setup`, which nothing enforces).
 - `.github/workflows/release.yml` fires on a `v*` tag push and runs GoReleaser (pinned `v2.17.1`)
@@ -425,7 +444,12 @@ stale session baseline (see *Rough edges*).
   directories, so the output cannot join the corpus of the run that writes it. Provenance is
   stamped into the landing page only, never into the report — `ci.yml` diffs two `-o *.html` runs
   and a timestamp inside one would fail it.
-- `.gitattributes` forces LF for Go/shell/markdown/config so the bash hook works under Git Bash on Windows.
+- `.gitattributes` forces LF for Go/shell/markdown/config so the bash hook works under Git Bash on Windows,
+  and for every `//go:embed`-ed asset type (`*.css`, `*.html`, `*.js`) so a Windows checkout under
+  `core.autocrlf` cannot change a rendered page. `*.js` was missed when the dashboard's scripts
+  arrived, and a Windows build rendered gin's dashboard 3 307 bytes longer than a Linux build of
+  the same commit, one CR per script line. Adding an embedded asset of a new type means adding its
+  extension there; the `cross-platform` CI job is what notices when nobody did.
 
 ### Finding where a run's time goes
 
@@ -2619,12 +2643,33 @@ a calibration — and it is stated on stderr, not silent. Whether 16 is right fo
 small is a measurement question, not a merge question; the seam is here for it.
 
 Mechanics, all deterministic by construction: each unit gets an identity hash (`package.name`,
-file, and an ordinal for a repeated name in one file — never the line, which moves whenever code
-above it does); each unordered pair's priority is a splitmix of its two identities; the null is
+its file **relative to the analysis root and slash-separated** — `parser.RelSlash(root, File)`,
+the root arriving as `calibrate.Options.Root` — and an ordinal for a repeated name in one file;
+never the line, which moves whenever code above it does); each unordered pair's priority is a splitmix of its two identities; the null is
 the **bottom-k** sample — the 20 000 lowest-priority pairs (all of them when the population is
 smaller), rejecting pairs `SameBuildUnit` refuses, like the pipeline does; pairs are scored in
 ascending index order. Finding the bottom k scans every pair once against a cut near `k/total`,
 doubled until enough survive — O(m²) mixes, 0.2s on moby, across cores.
+
+**The identity hashed the walk's own path until it was found to be platform-dependent.**
+`CodeUnit.File` is whatever `filepath.WalkDir` produced: backslash-separated on Windows, and
+absolute when the root is given as an absolute path. Every identity moved with it, and with them
+the sample, the quantile and the floors. At one commit and one pinned corpus, moby calibrated to
+struct-min **0.30 on Linux and 0.31 on Windows**, gin to 0.49 and 0.47, doppel's own tree to 0.42
+and 0.41. On one Windows machine gin read 0.47 at `.`, 0.49 under an absolute root and 0.48 as
+`gin` from its parent. Every run was deterministic on its own platform, so CI's repeat-on-Linux
+check passed, and Windows-generated examples kept conflicting with the bot's regenerations without
+anything failing. Hashing `RelSlash` instead changes no string a Linux run at `.` hashed. Measured
+by cross-compiling: Linux `--format json` is byte-identical before and after on gin, moby and
+doppel's own tree. A Windows run now matches it byte for byte, all three root spellings agree,
+and a Windows `task examples-check` reproduces all seven committed Linux reports.
+`TestIdentityIgnoresPathSpelling` is the regression: its native-separator case can only fail on
+Windows, which is why `go test` runs on every leg, and its absolute-root case fails everywhere.
+`DefaultOptions` takes the root as an argument so no caller can leave it out. The bench passes its
+corpus root, so its identities are now the CLI's. Before, it hashed absolute cache paths, so its
+null sample depended on where the cache lived. On cobra the rounded floors happened to coincide
+(0.44/0.52 before and after), but a threshold a bench run recorded before this change is a
+property of the machine that took it.
 
 **Bottom-k replaced a seeded LCG because the LCG made the operating point chaotic.** Its seed was
 FNV-1a over *every* name and it drew positions in the canonical order, so adding any function — a
@@ -2636,7 +2681,9 @@ moved them on **0 of 12** and dropped **none**. A pair's priority is a function 
 alone, so an added function displaces the sample only where one of its own pairs outbids an
 incumbent — about 2/m of it (`TestSampleStableUnderInsertion`). The switch itself is a one-time
 redraw: moby 0.36/0.30 → 0.35/0.31, gin 0.41/0.49 → 0.40/0.47, cobra struct-min 0.53 → 0.52, the
-other four rungs unchanged; the cobra golden scorecard stays green. The **code-shape null** is drawn over `--min-nodes`-eligible units — the shape channel's own
+other four rungs unchanged; the cobra golden scorecard stays green. Those "after" values are
+exactly the Windows readings under the backslash identity described above, and the Linux-generated
+examples have read moby 0.35/0.30 and gin 0.40/0.49 since. That is what every platform reads now. The **code-shape null** is drawn over `--min-nodes`-eligible units — the shape channel's own
 gate — and scored with `fingerprint.SimilarityWith`; the **overlap null** is drawn over all units
 and scored with the run's own corpus-weighted comparator. Each threshold is the nearest-rank upper
 quantile at `1 − rate` (a score some null pair actually had, never an interpolation), **rounded up
@@ -3978,6 +4025,18 @@ functions for exactly this reason, and the first version of them did not and fai
 ## Rough edges
 
 Known traps, documented so they aren't rediscovered. None are fixed:
+
+- **arm64 and amd64 disagree in the last bit of a float.** On the same commit, macOS on arm64
+  writes a `--format json` whose full-precision `score`, `overlap` and `containment` differ from
+  amd64's in the last bit or so on about half of the top 20 (`0.9999999999999999` against `1`,
+  `0.7081531137590367` against `…68`). Ranking, the calibrated floors, the markdown report and the
+  dashboard (which rounds to four decimals) were identical when it was found. Two candidate causes,
+  not yet told apart: Go may fuse `a*b+c` into one FMA on arm64 and does not on amd64 (an explicit
+  `float64(a*b)` prevents it), and `math.Log`, under every IDF and IC, is assembly on amd64 and Go
+  on arm64. It is a determinism gap all the same. A pair or a threshold can sit exactly on a
+  rounding boundary, and a baseline written on one architecture compares against a run on the
+  other. The `cross-platform` CI job compares the arm64 snapshot to nine decimals for this reason
+  rather than byte for byte.
 
 - **Lexical fidelity is measured on Go and assumed elsewhere.** `TestLexicalFidelity` scores the
   lexical frontend against `go/ast` on Go corpora at 0.994–0.999 recall and 1.000 precision, but

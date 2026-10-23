@@ -2,6 +2,7 @@ package calibrate
 
 import (
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -121,14 +122,15 @@ func TestRunMirrorsEligibilityAndPopulation(t *testing.T) {
 	units, docs := fixture(60)
 	o := Options{Rate: 0.05, MaxPairs: 5000, MinNodes: 12, MinNullPairs: 10}
 	// Reach into the sampler with the same rules Run uses.
-	order := canonicalOrder(units)
+	files := identityPaths(units, o.Root)
+	order := canonicalOrder(units, files)
 	var shapeIdx []int
 	for _, i := range order {
 		if units[i].Fingerprint.Nodes >= o.MinNodes {
 			shapeIdx = append(shapeIdx, i)
 		}
 	}
-	for _, p := range samplePopulation(units, shapeIdx, o.MaxPairs, identities(units, order), shapeSalt) {
+	for _, p := range samplePopulation(units, shapeIdx, o.MaxPairs, identities(units, order, files), shapeSalt) {
 		for _, i := range p {
 			if units[i].Fingerprint.Nodes < o.MinNodes {
 				t.Fatalf("shape null sampled a unit below min-nodes: %d", i)
@@ -173,7 +175,7 @@ func TestRunDeterministic(t *testing.T) {
 
 func TestRunDeclinesSmallCorpora(t *testing.T) {
 	units, docs := fixture(20)
-	res := Run(units, docs, comp(), labelWeights(units), DefaultOptions(0.01, 12))
+	res := Run(units, docs, comp(), labelWeights(units), DefaultOptions(0.01, 12, ""))
 	if res.Applied() {
 		t.Fatalf("20-unit corpus calibrated: %+v", res)
 	}
@@ -197,9 +199,10 @@ func TestSampleStableUnderInsertion(t *testing.T) {
 		return us[p[0]].Name + "|" + us[p[1]].Name
 	}
 	draw := func(us []parser.CodeUnit) map[string]bool {
-		order := canonicalOrder(us)
+		files := identityPaths(us, "")
+		order := canonicalOrder(us, files)
 		got := map[string]bool{}
-		for _, p := range samplePopulation(us, order, k, identities(us, order), shapeSalt) {
+		for _, p := range samplePopulation(us, order, k, identities(us, order, files), shapeSalt) {
 			got[key(us, p)] = true
 		}
 		return got
@@ -219,5 +222,72 @@ func TestSampleStableUnderInsertion(t *testing.T) {
 	}
 	if len(after) != len(before) {
 		t.Errorf("sample size moved %d -> %d", len(before), len(after))
+	}
+}
+
+// TestIdentityIgnoresPathSpelling pins that the null sample, and so the
+// derived floors, belong to the tree and not to how its paths were spelled.
+// The walk hands calibration backslash paths on Windows and absolute ones when
+// the root is given absolute, and both used to reach the identity hash raw:
+// one pinned corpus calibrated to struct-min 0.30 on Linux and 0.31 on
+// Windows. filepath.FromSlash only produces backslashes on Windows, so the
+// native case can only fail there, which is why CI runs this test on every OS;
+// the absolute-root case fails on all of them.
+func TestIdentityIgnoresPathSpelling(t *testing.T) {
+	base, docs := fixture(240)
+	for i := range base {
+		// Spread the units over directories, so the file is part of what
+		// tells two identities apart rather than a prefix every unit shares.
+		name := "a.go"
+		if i%5 == 0 {
+			name = "a_test.go"
+		}
+		base[i].File = fmt.Sprintf("p/d%d/%s", i%6, name)
+		// And spread the overlap scores, so the top 1% of a sample depends on
+		// which pairs it drew: under the raw-path hash, Windows separators
+		// calibrated this fixture to struct-min 0.44 against the slash
+		// spelling's 0.46.
+		docs[i].Callees = []string{fmt.Sprintf("c%d", i%11), fmt.Sprintf("e%d", i%7), fmt.Sprintf("g%d", i%13)}
+		docs[i].Callers = []string{fmt.Sprintf("k%d", i%9)}
+	}
+	abs := t.TempDir()
+	respell := func(f func(string) string) []parser.CodeUnit {
+		us := append([]parser.CodeUnit(nil), base...)
+		for i := range us {
+			us[i].File = f(base[i].File)
+		}
+		return us
+	}
+	spellings := []struct {
+		name  string
+		root  string
+		units []parser.CodeUnit
+	}{
+		{"slash, root .", ".", base},
+		{"native separators, root .", ".", respell(filepath.FromSlash)},
+		{"absolute root", abs, respell(func(f string) string { return filepath.Join(abs, filepath.FromSlash(f)) })},
+	}
+	o := Options{Rate: 0.01, MaxPairs: 3000, MinNodes: 12, MinNullPairs: 100}
+	sample := func(us []parser.CodeUnit, root string) [][2]int {
+		files := identityPaths(us, root)
+		order := canonicalOrder(us, files)
+		return samplePopulation(us, order, o.MaxPairs, identities(us, order, files), overlapSalt)
+	}
+	run := func(us []parser.CodeUnit, root string) Result {
+		ro := o
+		ro.Root = root
+		return Run(us, docs, comp(), labelWeights(us), ro)
+	}
+	want, wantRun := sample(base, "."), run(base, ".")
+	if !wantRun.Applied() {
+		t.Fatalf("fixture declined: %s", wantRun.Declined)
+	}
+	for _, sp := range spellings[1:] {
+		if got := sample(sp.units, sp.root); !reflect.DeepEqual(got, want) {
+			t.Errorf("%s: the null sample differs from the slash spelling's", sp.name)
+		}
+		if got := run(sp.units, sp.root); got != wantRun {
+			t.Errorf("%s: calibrated %+v, the slash spelling %+v", sp.name, got, wantRun)
+		}
 	}
 }

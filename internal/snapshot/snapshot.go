@@ -34,7 +34,6 @@ import (
 	"encoding/hex"
 	"hash/fnv"
 	"math"
-	"path/filepath"
 	"sort"
 	"strconv"
 
@@ -471,7 +470,7 @@ func Build(units []parser.CodeUnit, docs []concepter.ConceptDoc, pairs []analyze
 			Key:      keys[i],
 			Package:  u.Package,
 			Name:     u.Name,
-			File:     RelSlash(root, u.File),
+			File:     parser.RelSlash(root, u.File),
 			Line:     u.StartLine,
 			Concepts: concepts(u.Concepts),
 			Digest:   Digest(u.Fingerprint),
@@ -565,21 +564,6 @@ func Digest(fp fingerprint.Fingerprint) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-// RelSlash is the snapshot's path rule, exported because it is the rule every
-// other surface mirrors: a path relative to the analysis root, slash-separated,
-// so a run rooted at an absolute cwd reads the same as one run at ".". cmd and
-// reporter call it rather than keeping their own copies.
-func RelSlash(root, path string) string {
-	if root == "" {
-		return filepath.ToSlash(path)
-	}
-	rel, err := filepath.Rel(root, path)
-	if err != nil {
-		return filepath.ToSlash(path)
-	}
-	return filepath.ToSlash(rel)
-}
-
 // labelDict collects the corpus-wide Weisfeiler-Lehman label dictionary:
 // every distinct label carried by any unit's bag, sorted ascending. It is
 // what makes Unit.WL affordable — see fingerprint's package doc — and it
@@ -630,7 +614,7 @@ func unitKeys(units []parser.CodeUnit, root string) []string {
 	for i, u := range units {
 		qn := concepter.QualifiedName(u)
 		if counts[qn] > 1 {
-			k := qn + "@" + RelSlash(root, u.File)
+			k := qn + "@" + parser.RelSlash(root, u.File)
 			seen[k]++
 			if n := seen[k]; n > 1 {
 				k += "#" + strconv.Itoa(n)

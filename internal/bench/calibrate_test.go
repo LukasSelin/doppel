@@ -31,7 +31,7 @@ func TestCalibrate(t *testing.T) {
 		saved := snapshotRetrieval(lc.run)
 		for _, rate := range []float64{0.005, 0.01, 0.02, 0.05} {
 			r := calibrate.Run(lc.run.Units, lc.run.Docs, lc.run.Comp, lc.run.WL,
-				calibrate.DefaultOptions(rate, retriever.DefaultOptions().MinNodes))
+				calibrate.DefaultOptions(rate, retriever.DefaultOptions().MinNodes, lc.run.Root))
 			if !r.Applied() {
 				t.Logf("[%s] rate %-5g declined: %s", lc.name, rate, r.Declined)
 				continue

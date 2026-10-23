@@ -13,7 +13,6 @@ import (
 	"github.com/LukasSelin/doppel/internal/ontology"
 	"github.com/LukasSelin/doppel/internal/parser"
 	"github.com/LukasSelin/doppel/internal/reporter"
-	"github.com/LukasSelin/doppel/internal/snapshot"
 )
 
 // buildOverview assembles what doppel understands about the corpus.
@@ -729,7 +728,7 @@ func practiceDrift(ov *reporter.Overview, res Result) {
 			med, _ := res.Culture.Median(tag)
 			rows = append(rows, reporter.DriftRow{
 				Name:       concepter.QualifiedName(u),
-				File:       snapshot.RelSlash(res.Root, u.File),
+				File:       parser.RelSlash(res.Root, u.File),
 				Line:       u.StartLine,
 				Tag:        tag,
 				Typicality: typ,
