@@ -109,6 +109,7 @@ cmd/            CLI commands (Cobra).
   timing.go     DOPPEL_TIMING=1: per-stage wall clock on the progress writer
   profile.go    --cpuprofile / --memprofile, hidden persistent flags on the root command
   query.go      doppel query: check a proposed function (a snippet on stdin) against the corpus, locality-weighted
+  moves.go      doppel moves: functions only another package uses, the helpers that move along, and what blocks the move
   config.go     .doppel.json loading (AnalysisConfig), flag precedence, hookParams
   hook.go       doppel hook session-start / user-prompt / pre-tool / post-edit / stop: the five Claude Code
                 hook entry points, plus `hook view` (the plugin mod's read of the Stop hook's report), and baseline file I/O
@@ -155,6 +156,9 @@ internal/
   comparator/   Weighted structural overlap scoring (12 signals → 0.0–1.0 composite); options.go is the
                 exhibits blend — how the concept views combine into that one slot
   family/       Near-duplicate families: components + edge completion + maximal cliques over the pair graph
+  moves/        doppel moves' analysis, Go-only and type-checked: load.go (go list -export + go/types),
+                graph.go (the reference graph between package-level symbols, CHA dispatch edges),
+                moves.go (candidates, the helper closure, blockers), files.go (test and build-excluded files, by name)
   snapshot/     One analysis run as comparable plain data: schema + Build, and Diff over two of them
   identity/     Matches two snapshots' functions to each other by WL bag and classifies each into one of eight classes; render.go is the text + JSON report
                 delta.go adds the pairs those changes created or dissolved; deltarender.go is the delta report's text + markdown form
@@ -235,6 +239,8 @@ pipeline types; `cmd` bridges a finished run into it, exactly as it does for `re
 `identity` imports `fingerprint` and `snapshot` only, and `reporter` imports `identity` — that edge
 is one-way and must stay so: `identity` models what happened between two runs, `reporter` renders
 it, and an import the other way would put a digest's byte budget inside the matcher.
+`moves` imports nothing from this module, and only `cmd` imports it; `cmd` hands it the walk rule
+(`parser.Excludes.SkipDir`) as a function value rather than `moves` importing `parser`.
 
 ## Two scores, deliberately unblended — and a third quantity that ranks
 
@@ -2396,7 +2402,7 @@ type from a map type should say so; one that cannot leaves them `KindOther` and 
 discrimination rather than correctness.
 
 - **`internal/gofront`** maps `*ast.FuncDecl` onto the IR and is the only package in the module
-  importing `go/*` outside `internal/canon`. It builds the tree **from `ast.Inspect`** rather
+  importing `go/*` outside `internal/canon` and `internal/moves` (see *Moves*). It builds the tree **from `ast.Inspect`** rather
   than reimplementing `ast.Walk`'s per-type field ordering, so order and node count are correct
   by construction and there is no ordering table to fall out of sync with the stdlib; roles are
   recovered separately by identity against the parent's named fields. `TestMapperPreservesNodeCount`
@@ -3219,6 +3225,84 @@ shell and behaves identically on Windows and Unix. The command is the literal `d
 default, so a `doppel_binary` option defaulting to `doppel` failed every hook on a fresh install.
 The mod runs the same literal name, so the two cannot run different binaries.
 
+## Moves — `doppel moves`
+
+`internal/moves` finds functions in the wrong package. Every static reference to such a function
+comes from one other package B, so it could move there, and its own package's exported surface would
+shrink. This is the "functions out of place" half of the goal, stated plainly. A function written
+beside the code that first needed it, whose every caller since sits elsewhere, broke no rule and is
+invisible in a diff. Only every reference in the corpus shows it. It was first built in huginn
+(LukasSelin/huginn#32) and ported here.
+
+**It reads Go through the type checker, deliberately.** The IR's call graph
+(`concepter.BuildCallGraph`) resolves by name and drops anything ambiguous. That is fine for a merge
+signal, where a missed edge costs a signal. Here a missed edge means suggesting a move out from under
+a caller nobody saw. So `Load` runs `go list -e -export -deps -json ./...` under the path. It
+type-checks every main-module package from source, in the order `-deps` lists them (dependencies
+first). Everything outside the main module is read from the export data the build cache already
+holds, through `go/importer`'s gc reader. It needs the toolchain on PATH and a module that builds.
+Type errors are warned and never fatal, as parse errors are elsewhere. A package with errors is still
+graphed from what the checker resolved.
+
+**The graph** has one `Sym` per package-level declaration: func, method, type, var and const, plus
+`init` and blank names, whose references still count. A `Use` is one referring *declaration*, not one
+site, so a share counts declarations. A struct-field use counts against the owning type. So does a
+field reached implicitly through embedding, found from the index path in `types.Info.Selections`. A
+method selected on an interface, or on a type parameter through its constraint, gets a **dynamic**
+edge. The edge goes to the method of that name on every non-generic graph type whose value or pointer
+satisfies the interface. That is class hierarchy analysis, restricted to the graph's types, without
+SSA. Dynamic edges never make a package a user, never block a move, and never keep a helper out of
+the closure. Generic types are skipped as dispatch candidates because `types.Implements` is
+unspecified on uninstantiated types.
+
+**A candidate** is a plain function whose static referrers sit at least `--share` (default 1) in one
+other package B, with B strictly ahead of the function's own package. Methods, `init`, `main` in
+package `main` and anything in a generated file are never candidates. The **closure** adds every
+unexported symbol of the function's package that only the group refers to, repeating until nothing
+more joins, and a type brings its methods. **Anchors** are own-package types in the signature that do
+not move. They separate constructors and entry points (`git.Open`, `web.New`, which were huginn's
+noise) from misplaced helpers. The command hides anchored moves unless `--anchored` is passed, and
+JSON carries every move with a status.
+
+**Blockers**, each reported as a sentence:
+
+- an unexported symbol, field or method the group shares with code that stays;
+- a name B already declares;
+- an import cycle;
+- the `internal/` rule, applied both to the group's dependencies against B and to staying referrers
+  against B;
+- a build-excluded file (`IgnoredGoFiles`) that names something that moves.
+
+Test files and build-excluded files are never type-checked, so `files.go` finds them by name, through
+each file's own import binding (aliases and dot imports included). That can only over-report.
+
+**The cycle check runs on the import graph as it would be after the move.** B gains an import of
+every package the group refers to. B loses its import of the function's package when nothing else
+there is left for it to use. Every package with a staying referrer gains an import of B. A gained
+edge whose target already reaches its source is a cycle. At share 1 it cannot fire. B uses the
+function, so it imports the function's package, which already imports every dependency, and nobody
+stays. That was huginn's finding, and it is why the check only earns its place at a relaxed share.
+There, a staying referrer in a package B already imports is exactly the cycle
+`TestFindRelaxedShareCycle` pins.
+
+**Determinism** goes through `Graph.Syms`, sorted by import path and then by position within one
+package. Positions are only ever compared within one package, so file sizes (CRLF on Windows) cannot
+reorder anything. Every reported path goes through `parser.RelSlash`.
+
+**Measured.** On doppel's own tree (29 packages, 1 125 functions) it reports 4 clean moves, 16
+blocked and 61 anchored. Among the clean ones, `clique.Components` is used only by `family`, and
+`ontology.RoleRelatedness` and `ReceiverRelatedness` only by the comparator. On huginn's PR branch it
+finds the same nine candidates as huginn's own `moves`, and all nine are anchored. The two huginn
+called clean, `journey.ParseStep` and `moves.Load`, each return their own package's type. Most of
+doppel's blocked moves are `reporter` renderers whose one caller is `cmd`. That is right about the
+references and wrong about the design, because the renderer layer is deliberate. doppel cannot read
+a declared layering, the same limit the `subsystem copies` kind carries.
+
+**What it cannot see.** References from outside the path analysed, and from other modules: an
+exported library function with one internal caller is reported though its real users may live
+elsewhere. References from files this build excludes become blockers, not referrers. Reflection,
+`//go:linkname` and code generators' templates are invisible.
+
 ## Identity matching — `doppel diff`
 
 `internal/identity` answers the question `snapshot.Diff` deliberately refuses to: given two
@@ -3498,6 +3582,10 @@ functions for exactly this reason, and the first version of them did not and fai
   recall on pairs that differ only in a spelling canonicalization would have removed, never
   correctness: the failure direction is "less similar than they are". *Frontends* states the
   boundary exactly.
+
+  **`internal/moves` is the second, and it sits outside the pipeline.** It answers a question
+  the IR cannot (which declarations refer to which, exactly), so it type-checks Go and nothing
+  else, and no stage of `analyze` reads it. See *Moves*.
 - **Floating point is the same on every architecture, by construction.** Releases ship amd64 and
   arm64, and a report must be byte-identical on both. A baseline written on an arm64 Mac gets
   compared against a run on amd64 Linux, and any pair or floor can sit on a rounding boundary.
@@ -3576,6 +3664,10 @@ functions for exactly this reason, and the first version of them did not and fai
   operating point is part of that question; the alternative is the mid-session incomparability
   described under the hook contract. It is the only such read, and widening it is a design change.
 - Cobra is the only direct **Go** dependency. Keep it that way unless there is a strong reason.
+  `internal/moves` is the test case. The version it was ported from used `golang.org/x/tools`
+  (`go/packages`, SSA, `callgraph/cha`). doppel's reads the same graph with the standard library
+  instead: `go list -export` for the loader, `go/importer`'s gc reader for dependencies, and a
+  class hierarchy analysis over `go/types`.
   Browser assets are a separate question and live vendored under
   `internal/dashboard/assets/vendor/` with their version, source and licence recorded — they never
   reach `go.mod`, and they are never hand-edited.
@@ -3632,7 +3724,7 @@ functions for exactly this reason, and the first version of them did not and fai
   time instead would be the worst of both. `_test.go` is a compiler-recognized suffix, not a
   naming heuristic.
 - Tested: `ontology`, `fingerprint`, `analyzer`, `comparator`, `tagger`, `parser`,
-  `concepter/role`, `retriever`, `culture`, `lexicon`, `reporter`, `snapshot`, `cmd` config
+  `concepter/role`, `retriever`, `culture`, `lexicon`, `reporter`, `snapshot`, `moves`, `cmd` config
   precedence and hook baseline handling. Untested and worth covering: `clique`, `clique` (covered
   only through `family`'s tests).
 - `lexicon`'s `TestNoSeeds` is the language-portability claim as a test: the learner must produce
