@@ -46,6 +46,22 @@ func (r MoveRow) Target() string {
 	return r.ToDir
 }
 
+// MovesJSON is `doppel moves --format json`. It carries every move found,
+// whatever --blocked and --anchored say: a machine consumer filtering on
+// status is trivial, recovering a move the text view dropped is not.
+type MovesJSON struct {
+	Share     float64   `json:"share"`
+	Packages  int       `json:"packages"`
+	Functions int       `json:"functions"`
+	Moves     []MoveRow `json:"moves"`
+}
+
+// PrintMovesJSON writes a moves analysis as JSON, through the one encoder
+// configuration every JSON write in the tool shares.
+func PrintMovesJSON(w io.Writer, m MovesJSON) error {
+	return encodeJSON(w, m)
+}
+
 // MoveSym is one helper that moves along with a function.
 type MoveSym struct {
 	Name string `json:"name"`

@@ -3317,7 +3317,7 @@ and anchored ones counted and left to `doppel moves --blocked --anchored`, whose
 and `dashboard.Payload.Moves` (`Schema` 4), which the Briefing renders as its own section and the
 function case file (`#fn/<id>`) as a chip and a note saying which package uses it and why it can or
 cannot move. `reporter.MoveRow` is the one plain row both `doppel moves --format json` and the report
-are built from (`cmd.moveRows`), so the command's JSON is byte-identical to what it was. Five rules
+are built from (`cmd.moveRows`), and `reporter.PrintMovesJSON` writes the command's JSON through `encodeJSON` like every other JSON write, so the command's output is byte-identical to what it was. Five rules
 hold it together:
 
 - **It runs in the `analyze` command function, never in `analyze()` or `finishAnalyze()`.** Hooks

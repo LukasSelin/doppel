@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"path"
@@ -216,22 +215,10 @@ func (r movesReport) print(w io.Writer) {
 	}
 }
 
-// movesJSON carries every move found, whatever --blocked and --anchored say:
-// a machine consumer filtering on status is trivial, recovering a move the
-// text view dropped is not.
-type movesJSON struct {
-	Share     float64            `json:"share"`
-	Packages  int                `json:"packages"`
-	Functions int                `json:"functions"`
-	Moves     []reporter.MoveRow `json:"moves"`
-}
-
 func (r movesReport) writeJSON(w io.Writer, found []moves.Move) error {
-	out := movesJSON{Share: movesShare, Packages: r.packages, Functions: r.functions, Moves: moveRows(r.root, r.g, found)}
-	enc := json.NewEncoder(w)
-	enc.SetEscapeHTML(false)
-	enc.SetIndent("", "  ")
-	return enc.Encode(out)
+	return reporter.PrintMovesJSON(w, reporter.MovesJSON{
+		Share: movesShare, Packages: r.packages, Functions: r.functions, Moves: moveRows(r.root, r.g, found),
+	})
 }
 
 // moveRows converts every move to plain data, paths relative to root and
