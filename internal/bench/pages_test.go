@@ -85,7 +85,9 @@ func TestGeneratePagesSite(t *testing.T) {
 			dst := filepath.Join(outDir, c.Name+".html")
 			// The .html extension is what selects the dashboard; the same
 			// command with a .md path writes the committed report.
-			cmd := exec.Command(bin, "analyze", ".", "--tests", "exclude",
+			// --moves=false for the reason generateReport gives: the
+			// page must describe the same run as the committed report.
+			cmd := exec.Command(bin, "analyze", ".", "--tests", "exclude", "--moves=false",
 				"--top", fmt.Sprint(exampleTop), "--output", dst)
 			cmd.Dir = dir
 			cmd.Stderr = os.Stderr

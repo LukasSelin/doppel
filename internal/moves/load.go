@@ -92,7 +92,18 @@ const listFields = "Dir,ImportPath,Name,Export,Standard,DepOnly,GoFiles,CgoFiles
 // everywhere else in doppel; a package with errors is still graphed from what
 // the checker did resolve.
 func Load(ctx context.Context, root string, skip func(rel, name string) bool, progress io.Writer) (*token.FileSet, []*Package, error) {
-	records, err := goList(ctx, root)
+	return LoadFor(ctx, root, nil, skip, progress)
+}
+
+// LoadFor is Load with env appended to the environment `go list` runs in.
+//
+// It is how a caller pins the build the graph describes. `go list` resolves
+// GOOS, GOARCH and cgo from the host, so a tree with build-constrained files
+// type-checks a different file set on each platform, and a report that must
+// read the same everywhere sets them (see cmd's movesEnv). Nil env is the
+// host's own build, which is what `doppel moves` reads.
+func LoadFor(ctx context.Context, root string, env []string, skip func(rel, name string) bool, progress io.Writer) (*token.FileSet, []*Package, error) {
+	records, err := goList(ctx, root, env)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -137,9 +148,12 @@ func Load(ctx context.Context, root string, skip func(rel, name string) bool, pr
 	return fset, pkgs, nil
 }
 
-func goList(ctx context.Context, root string) ([]listed, error) {
+func goList(ctx context.Context, root string, env []string) ([]listed, error) {
 	cmd := exec.CommandContext(ctx, "go", "list", "-e", "-export", "-deps", "-json="+listFields, "./...")
 	cmd.Dir = root
+	if env != nil {
+		cmd.Env = append(os.Environ(), env...)
+	}
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Run(); err != nil {

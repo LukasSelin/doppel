@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"path"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/LukasSelin/doppel/internal/moves"
 	"github.com/LukasSelin/doppel/internal/parser"
+	"github.com/LukasSelin/doppel/internal/reporter"
 	"github.com/spf13/cobra"
 )
 
@@ -161,13 +161,11 @@ func (r movesReport) where(s *moves.Sym) string {
 	return fmt.Sprintf("%s:%d", parser.RelSlash(r.root, pos.Filename), pos.Line)
 }
 
-// dir names a package by its directory under the root, which is shorter than
-// its import path and unambiguous where its name is not.
-func (r movesReport) dir(p *moves.Package) string { return parser.RelSlash(r.root, p.Dir) }
-
-// target is dir, with the package name when the directory does not say it.
+// target names a package by its directory under the root, which is shorter
+// than its import path and unambiguous where its name is not, with the package
+// name when the directory does not say it.
 func (r movesReport) target(p *moves.Package) string {
-	d := r.dir(p)
+	d := parser.RelSlash(r.root, p.Dir)
 	if path.Base(d) == p.Name {
 		return d
 	}
@@ -217,76 +215,50 @@ func (r movesReport) print(w io.Writer) {
 	}
 }
 
-// movesJSON carries every move found, whatever --blocked and --anchored say:
-// a machine consumer filtering on status is trivial, recovering a move the
-// text view dropped is not.
-type movesJSON struct {
-	Share     float64    `json:"share"`
-	Packages  int        `json:"packages"`
-	Functions int        `json:"functions"`
-	Moves     []moveJSON `json:"moves"`
-}
-
-type moveJSON struct {
-	Func      string        `json:"func"`
-	File      string        `json:"file"`
-	Line      int           `json:"line"`
-	Status    string        `json:"status"` // clean, blocked or anchored
-	To        string        `json:"to"`     // import path
-	ToDir     string        `json:"toDir"`
-	Share     float64       `json:"share"`
-	Users     []string      `json:"users"`
-	Staying   []string      `json:"staying,omitempty"`
-	With      []moveSymJSON `json:"with,omitempty"`
-	Anchors   []string      `json:"anchors,omitempty"`
-	Blocked   []string      `json:"blocked,omitempty"`
-	TestFiles []string      `json:"testFiles,omitempty"`
-}
-
-type moveSymJSON struct {
-	Name string `json:"name"`
-	File string `json:"file"`
-	Line int    `json:"line"`
-}
-
 func (r movesReport) writeJSON(w io.Writer, found []moves.Move) error {
-	out := movesJSON{Share: movesShare, Packages: r.packages, Functions: r.functions, Moves: []moveJSON{}}
+	return reporter.PrintMovesJSON(w, reporter.MovesJSON{
+		Share: movesShare, Packages: r.packages, Functions: r.functions, Moves: moveRows(r.root, r.g, found),
+	})
+}
+
+// moveRows converts every move to plain data, paths relative to root and
+// slash-separated. The JSON form of `doppel moves` and the analyze report's
+// section are both built from it, so the two cannot describe a move apart.
+func moveRows(root string, g *moves.Graph, found []moves.Move) []reporter.MoveRow {
+	out := []reporter.MoveRow{}
 	for _, m := range found {
-		pos := r.g.Pos(m.Func)
-		j := moveJSON{
+		pos := g.Pos(m.Func)
+		j := reporter.MoveRow{
 			Func:    m.Func.Qualified(),
-			File:    parser.RelSlash(r.root, pos.Filename),
+			File:    parser.RelSlash(root, pos.Filename),
 			Line:    pos.Line,
-			Status:  "clean",
+			Status:  reporter.MoveClean,
 			To:      m.To.Path,
-			ToDir:   r.dir(m.To),
+			ToDir:   parser.RelSlash(root, m.To.Dir),
 			Share:   m.Share,
 			Users:   qualifiedSyms(m.Users),
 			Blocked: m.Blocked,
 		}
 		switch {
 		case len(m.Anchors) > 0:
-			j.Status = "anchored"
+			j.Status = reporter.MoveAnchored
 		case len(m.Blocked) > 0:
-			j.Status = "blocked"
+			j.Status = reporter.MoveBlocked
 		}
 		if len(m.Staying) > 0 {
 			j.Staying = qualifiedSyms(m.Staying)
 		}
 		for _, x := range m.With {
-			p := r.g.Pos(x)
-			j.With = append(j.With, moveSymJSON{x.Name(), parser.RelSlash(r.root, p.Filename), p.Line})
+			p := g.Pos(x)
+			j.With = append(j.With, reporter.MoveSym{Name: x.Name(), File: parser.RelSlash(root, p.Filename), Line: p.Line})
 		}
 		for _, a := range m.Anchors {
 			j.Anchors = append(j.Anchors, a.Name())
 		}
 		for _, f := range m.TestFiles {
-			j.TestFiles = append(j.TestFiles, parser.RelSlash(r.root, f))
+			j.TestFiles = append(j.TestFiles, parser.RelSlash(root, f))
 		}
-		out.Moves = append(out.Moves, j)
+		out = append(out, j)
 	}
-	enc := json.NewEncoder(w)
-	enc.SetEscapeHTML(false)
-	enc.SetIndent("", "  ")
-	return enc.Encode(out)
+	return out
 }

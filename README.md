@@ -335,6 +335,28 @@ inside the path analysed: an exported function that another module calls is not 
 cannot see a declared layering, so a renderer that only the command layer calls will still be
 suggested for the command layer.
 
+**`doppel analyze` carries the same finding.** On a Go module, the text report ends with a one-line
+count, the Markdown report gains a *Functions out of place* section listing the clean moves (target,
+users, the helpers that move along) and counting the blocked and anchored ones, and the dashboard
+shows it in the Briefing and on each function's page. `--moves=false` turns it off and
+`--moves-share` is `--share` for it. Three things differ from the command, all so that a report stays
+a report:
+
+- **It never fails the run.** No `go` on `PATH`, no `go.mod`, a module that does not load: the
+  section is left out and one line on stderr says why. Packages with type errors are still read, and
+  the section says how many did not type-check cleanly, because a reference the checker could not
+  resolve is a user it cannot see.
+- **It is built for `linux/amd64` with cgo off, on every host**, so the same tree gives the same
+  section on Linux, Windows and macOS. A file only another platform compiles shows up as a blocker,
+  as it does in `doppel moves`, which reads your host's own build.
+- **It never touches the network.** `analyze` runs `go list` with `GOPROXY=off` and
+  `GOTOOLCHAIN=local`, so a module whose dependencies are not already in the module cache loads with
+  type errors (or not at all) rather than downloading them. Run `go mod download` first if that
+  matters.
+
+It only runs when something renders it: not for a bare `--format json`, whose snapshot does not
+carry it, nor under `--tests only`. Like families, it never reaches the hook baseline or a score.
+
 ### Comparing two runs
 
 `doppel diff` takes two snapshots written by `doppel analyze --format json` and matches their
@@ -456,6 +478,8 @@ refuses comparison.
 | `--format`          | `text`  | Stdout format: `text` or `json`. The JSON form is a deterministic snapshot of the whole run — every function, its concepts with confidence, its role, its Weisfeiler-Lehman label bag, and every reported pair with its containment, its rule-attributed explanation and its concept views (the concept signal read through the taxonomy, through this corpus's frequencies, and through the learned vocabularies alone, plus the direction of the last) |
 | `--families`        | `5`     | Near-duplicate families to show after the pair list (`0` removes the section) |
 | `--family-min`      | *(calibrated)* | Pin the code similarity every two members of a family must reach. Turns calibration off; falls back to `0.60` |
+| `--moves`           | `true`  | Add the *Functions out of place* section on a Go module (see [Functions in the wrong package](#functions-in-the-wrong-package)). Needs the `go` toolchain; skipped with a stderr line otherwise. Presentation only |
+| `--moves-share`     | `1`     | Fraction of a function's referring declarations that must sit in one other package for that section, as `doppel moves --share` |
 | `--map-metric`      | `merge-worthy` | What the Markdown report's package duplication map weighs an edge by: `merge-worthy` (only pairs doppel judges worth consolidating — the map's original question), `pairs` (every surviving candidate, the gate taken off), or `evidence` (summed corroborated evidence, so one strong finding outweighs several weak ones). Presentation only: no score, filter or baseline reads it, and the map names the metric it was drawn under |
 | `--decisions`       | *(off)* | Write every retrieved pair's fate to a JSON file: reported, capped by `--max-per-func`, ranked past `--top`, dropped under `--struct-min`, or dropped as two build units — with each gate of the merge verdict stated as passed or blocked, the pair kind, the scores and the explain sentence. Sides are named the way a labels file names them, so a record becomes a golden label by adding a class and a note. Changes nothing measured |
 | `--exclude`         | *(none, on top of the built-in blocklist)* | Directory patterns to skip. Doppel already skips the dependency and build-output directories of every ecosystem it reads — `node_modules`, `vendor`, `site-packages`, `Pods`, `Carthage`, `third_party`, `target`, `dist`, `build`, `out`, `obj`, `coverage` — because code your repo did not write is not a merge candidate, and counting it changes every corpus-relative number in the report. This adds to that list: a glob over a directory name, or over its path relative to the analysis root when it contains a `/`. A leading `!` takes one back, for a repo whose real source lives in a directory the defaults call build output (`--exclude '!dist'`) |

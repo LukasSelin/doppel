@@ -9,8 +9,8 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `82e7616` |
-| Command | `doppel analyze . --tests exclude --top 10` |
+| doppel | `103ec8f` |
+| Command | `doppel analyze . --tests exclude --moves=false --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
 Regenerate with `task examples`; CI regenerates on every push to master.

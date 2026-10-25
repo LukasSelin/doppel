@@ -9,8 +9,8 @@ CLI framework; one dominant type with a long method set, plus shell-completion g
 | Corpus | [cobra](https://github.com/spf13/cobra) |
 | Pinned at | `v1.10.2` (`88b30ab89da2d0d0abb153818746c5a2d30eccec`) |
 | Project since | 2015 |
-| doppel | `e172f63` |
-| Command | `doppel analyze . --tests exclude --top 10` |
+| doppel | `103ec8f` |
+| Command | `doppel analyze . --tests exclude --moves=false --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
 Regenerate with `task examples`; CI regenerates on every push to master.
