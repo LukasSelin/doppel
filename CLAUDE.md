@@ -110,6 +110,7 @@ cmd/            CLI commands (Cobra).
   profile.go    --cpuprofile / --memprofile, hidden persistent flags on the root command
   query.go      doppel query: check a proposed function (a snippet on stdin) against the corpus, locality-weighted
   moves.go      doppel moves: functions only another package uses, the helpers that move along, and what blocks the move
+  movestage.go  analyze's moves stage: the same analysis for the report, pinned to linux/amd64, offline, never fatal
   config.go     .doppel.json loading (AnalysisConfig), flag precedence, hookParams
   hook.go       doppel hook session-start / user-prompt / pre-tool / post-edit / stop: the five Claude Code
                 hook entry points, plus `hook view` (the plugin mod's read of the Stop hook's report), and baseline file I/O
@@ -2258,7 +2259,7 @@ never learns about `culture`, and `cmd` queries the model.
   merge-worthy pairs per function, habitat norm or misfits, with a selection rail and the
   **seams** (package pairs joined by crossing pairs) as a ranked list. *Briefing* is the
   shareable, printable reading of the run: a generated lede, the top findings, the code-shape ×
-  overlap heat map split into four findings, where it lives, families, drift and method. *Case
+  overlap heat map split into four findings, where it lives, families, drift, functions out of place (when the run measured them) and method. *Case
   file* is the drill-down all three link into: one pair (`#case/a-b`) with both bodies, the
   unblended score row and every piece of evidence, or one function (`#fn/id`) with its ranked
   neighbours. A **delta** screen was scoped and dropped here and then built as its own artifact —
@@ -2361,8 +2362,9 @@ never learns about `culture`, and `cmd` queries the model.
   way a disagreement runs, and blends nothing — `Overlap` is still one number, and the page does
   not recompute how its concept half was read. Payload `Schema` went 1 → 2 for it, and 2 → 3 for
   `UnusedSeeds`, `Facts.Unusual` and `Unit.Atypical`, which let the Briefing's drift section name
-  the functions that realize a concept unlike its other members instead of only counting them.
-- **The dashboard is not fed by `--format json`.** It has its own `dashboard.Payload` (`Schema` 3,
+  the functions that realize a concept unlike its other members instead of only counting them,
+  and 3 → 4 for `Payload.Moves` (see *Moves* → *In the analyze report*).
+- **The dashboard is not fed by `--format json`.** It has its own `dashboard.Payload` (`Schema` 4,
   independent of `snapshot.Schema`), marshalled by Go and inlined into the page at render time.
   That is worth knowing before assuming the snapshot and the page must agree: they share no type,
   and a field added to one reaches the other only if somebody adds it there too. It also means the
@@ -2575,6 +2577,8 @@ or the `languages` config key restores the old population exactly.
   "families": 5,
   "family-min": 0.60,
   "map-metric": "merge-worthy",
+  "moves": true,
+  "moves-share": 1,
   "hook-notify": "agent",
   "hook-probe": "off"
 }
@@ -2588,7 +2592,8 @@ top-K; `--debug` adds retrieval provenance lines to the report; `--max-per-func`
 final-report pairs any one function may appear in (0 disables); `--families` bounds the report's
 family section (0 removes it) and `--family-min` is the code-shape every two members of a family
 must reach; `--map-metric` (`merge-worthy` | `pairs` | `evidence`) picks what the markdown
-overview's package duplication map weighs an edge by — all three presentation, so none is in
+overview's package duplication map weighs an edge by, and `--moves` / `--moves-share` turn the
+functions-out-of-place section off or relax its share — all presentation, so none is in
 `Params` and none can invalidate a baseline; `--languages` picks which
 frontends are read (defaulting to all of them) and is corpus-defining, so it travels in `Params`
 and in `snapshot.Params` and a run reading Go alone is correctly incomparable to one reading Go
@@ -3302,6 +3307,52 @@ a declared layering, the same limit the `subsystem copies` kind carries.
 exported library function with one internal caller is reported though its real users may live
 elsewhere. References from files this build excludes become blockers, not referrers. Reflection,
 `//go:linkname` and code generators' templates are invisible.
+
+### In the analyze report
+
+`analyze` runs the same analysis as a stage of its own (`cmd/movestage.go`) and renders it in three
+places: a one-line count at the end of the text report, a *Functions out of place* section after
+the families in the markdown report (clean moves as a table of target, users and helpers; blocked
+and anchored ones counted and left to `doppel moves --blocked --anchored`, whose sentences say why),
+and `dashboard.Payload.Moves` (`Schema` 4), which the Briefing renders as its own section and the
+function case file (`#fn/<id>`) as a chip and a note saying which package uses it and why it can or
+cannot move. `reporter.MoveRow` is the one plain row both `doppel moves --format json` and the report
+are built from (`cmd.moveRows`), and `reporter.PrintMovesJSON` writes the command's JSON through `encodeJSON` like every other JSON write, so the command's output is byte-identical to what it was. Five rules
+hold it together:
+
+- **It runs in the `analyze` command function, never in `analyze()` or `finishAnalyze()`.** Hooks
+  call `analyze()` directly; a stage there would put a `go list -export` into every turn, change
+  nothing a baseline records yet cost every hook, and could write to stderr. It is not in the
+  snapshot either (no reader), and `--moves`/`--moves-share` are not in `Params`. The family stage's
+  reasoning, one stage later.
+- **It never fails a report.** No toolchain, no `go.mod` (moby has none at its root — it uses
+  `vendor.mod`), a load error, or no package in the graph: the section is omitted and one stderr line
+  starting `Moves: skipped (` says why. It runs only when the population holds a Go function, only
+  when a surface renders it (not a bare `--format json`), and not under `--tests only`. Packages
+  with type errors are still graphed, as in `doppel moves`, and `Moves.Unclean` counts them; every
+  surface states that count, because an unresolved reference is a user the section cannot see. On
+  gin 3 of 7 packages are unclean (missing `go.mongodb.org/...` in the local cache); on prometheus 90
+  of 113.
+- **It is built for `linux/amd64` with `CGO_ENABLED=0` on every host** (`movesEnv`). `go list`
+  resolves GOOS, GOARCH and cgo from the machine, so a tree with a `_windows.go` file or a cgo
+  package would otherwise type-check a different file set per platform, and the `cross-platform`
+  CI job byte-compares the dashboard. A file only another target compiles still surfaces as the
+  build-excluded-file blocker. `doppel moves` keeps the host's build, which is what someone running
+  it on their machine is asking about. `moves.LoadFor` is the seam; `Load` is `LoadFor` with no env.
+- **It is offline.** `GOPROXY=off` and `GOTOOLCHAIN=local`: `analyze` may not download a module or a
+  toolchain to describe a tree. A dependency missing from the cache becomes type errors (and
+  `Unclean`), never a fetch.
+- **It is off for the committed examples and the per-rung pages** (`--moves=false` in
+  `generateReport` and `TestGeneratePagesSite`), which is why each example's `Command` row says so.
+  With it on, a report would depend on which modules the machine's cache holds — the CI bot's and a
+  developer's differ, so the committed reports would flip between them. doppel's own `report.html`
+  keeps it: its only dependency is cobra, which every leg that built doppel already has.
+
+Joining a move to a dashboard unit is by root-relative file and bare name (`dashboardMoves`), which
+is unique because only plain functions move; both sides spell the path through `parser.RelSlash`,
+so the section is byte-identical under `.` and an absolute root. A move the walk did not read
+carries `Unit: -1` and is cited by `file:line`. On doppel's own tree the stage costs about a second
+on a warm build cache.
 
 ## Identity matching — `doppel diff`
 

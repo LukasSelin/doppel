@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/LukasSelin/doppel/internal/reporter"
 )
 
 func movesModule(t *testing.T) string {
@@ -101,7 +103,7 @@ func TestMovesCommandJSON(t *testing.T) {
 	if first != second {
 		t.Errorf("two runs differ:\n%s\n---\n%s", first, second)
 	}
-	var got movesJSON
+	var got reporter.MovesJSON
 	if err := json.Unmarshal([]byte(first), &got); err != nil {
 		t.Fatal(err)
 	}

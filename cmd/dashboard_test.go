@@ -64,7 +64,7 @@ func sampleResult() Result {
 }
 
 func TestBuildDashboardWiresTheCorpus(t *testing.T) {
-	p := buildDashboard(sampleResult(), nil, nil, familyStatsZero(), nil, 0)
+	p := buildDashboard(sampleResult(), nil, nil, familyStatsZero(), nil, 0, nil)
 
 	if p.Schema != dashboard.Schema {
 		t.Errorf("Schema = %d, want %d", p.Schema, dashboard.Schema)
@@ -104,7 +104,7 @@ func TestBuildDashboardWiresTheCorpus(t *testing.T) {
 }
 
 func TestBuildDashboardSortsPackagesAndConcepts(t *testing.T) {
-	p := buildDashboard(sampleResult(), nil, nil, familyStatsZero(), nil, 0)
+	p := buildDashboard(sampleResult(), nil, nil, familyStatsZero(), nil, 0, nil)
 
 	if len(p.Packages) != 2 || p.Packages[0].Name != "alpha" || p.Packages[1].Name != "beta" {
 		t.Errorf("packages not sorted by name: %+v", p.Packages)
@@ -144,7 +144,7 @@ func TestBuildDashboardSortsPackagesAndConcepts(t *testing.T) {
 // A unit's concepts reach the page strongest-first, not in the ascending-ID
 // order they are stored in: what carries the function should lead.
 func TestBuildDashboardRanksConcepts(t *testing.T) {
-	p := buildDashboard(sampleResult(), nil, nil, familyStatsZero(), nil, 0)
+	p := buildDashboard(sampleResult(), nil, nil, familyStatsZero(), nil, 0, nil)
 	var alpha *dashboard.Unit
 	for i := range p.Units {
 		if p.Units[i].Name == "Alpha" {
@@ -168,7 +168,7 @@ func TestBuildDashboardRanksConcepts(t *testing.T) {
 // Edges lead with the best-corroborated pair, so every per-unit neighbour list
 // in the page inherits that order without a second sort.
 func TestBuildDashboardRanksEdges(t *testing.T) {
-	p := buildDashboard(sampleResult(), nil, nil, familyStatsZero(), nil, 0)
+	p := buildDashboard(sampleResult(), nil, nil, familyStatsZero(), nil, 0, nil)
 
 	if len(p.Edges) != 2 {
 		t.Fatalf("Edges = %d, want 2", len(p.Edges))
@@ -203,7 +203,7 @@ func TestDashboardCarriesContainmentAndExplain(t *testing.T) {
 	res.Pairs[1].Explain = "identical after rename, commutative-reorder" // the top-ranked pair
 	res.ConsStats = fingerprint.ConsStats{TotalNodes: 60, UniqueSubtrees: 20}
 	res.NN = NNStats{Total: 3, Scored: 3, P50: 0.7, P90: 0.9}
-	p := buildDashboard(res, nil, nil, familyStatsZero(), nil, 0)
+	p := buildDashboard(res, nil, nil, familyStatsZero(), nil, 0, nil)
 
 	e := p.Edges[0]
 	if e.Explain != "identical after rename, commutative-reorder" {
@@ -226,7 +226,7 @@ func TestDashboardCarriesContainmentAndExplain(t *testing.T) {
 func TestBuildDashboardNormalisesEndpointOrder(t *testing.T) {
 	res := sampleResult()
 	res.Pairs[0].AIdx, res.Pairs[0].BIdx = 2, 1 // deliberately reversed
-	p := buildDashboard(res, nil, nil, familyStatsZero(), nil, 0)
+	p := buildDashboard(res, nil, nil, familyStatsZero(), nil, 0, nil)
 	for _, e := range p.Edges {
 		if e.A >= e.B {
 			t.Errorf("edge %d-%d is not in ascending endpoint order", e.A, e.B)
@@ -236,7 +236,7 @@ func TestBuildDashboardNormalisesEndpointOrder(t *testing.T) {
 
 func TestDashboardBodiesFollowRankAndReportTheBound(t *testing.T) {
 	res := sampleResult()
-	p := buildDashboard(res, nil, nil, familyStatsZero(), nil, 0)
+	p := buildDashboard(res, nil, nil, familyStatsZero(), nil, 0, nil)
 
 	if len(p.Bodies) != 3 || p.Facts.BodiesOmitted != 0 {
 		t.Fatalf("Bodies = %d, omitted = %d, want 3 and 0", len(p.Bodies), p.Facts.BodiesOmitted)
@@ -258,7 +258,7 @@ func TestDashboardBodiesBudgetDropsLowestRankedFirst(t *testing.T) {
 	for i := range res.Units {
 		res.Units[i].Body = big
 	}
-	p := buildDashboard(res, nil, nil, familyStatsZero(), nil, 0)
+	p := buildDashboard(res, nil, nil, familyStatsZero(), nil, 0, nil)
 
 	if len(p.Bodies) != 2 || p.Facts.BodiesOmitted != 1 {
 		t.Fatalf("Bodies = %d, omitted = %d, want 2 and 1", len(p.Bodies), p.Facts.BodiesOmitted)
@@ -276,7 +276,7 @@ func TestDashboardBodiesSkipUnpairedFunctions(t *testing.T) {
 	res := sampleResult()
 	res.Units = append(res.Units, unit("gamma", "Lonely", "gamma/g.go", 1, "func Lonely() {}"))
 	res.Docs = append(res.Docs, concepter.ConceptDoc{Role: "leaf"})
-	p := buildDashboard(res, nil, nil, familyStatsZero(), nil, 0)
+	p := buildDashboard(res, nil, nil, familyStatsZero(), nil, 0, nil)
 
 	for _, b := range p.Bodies {
 		if b.Unit == 3 {
@@ -291,7 +291,7 @@ func TestDashboardBodiesSkipUnpairedFunctions(t *testing.T) {
 func TestBuildDashboardSurvivesANilOverview(t *testing.T) {
 	// --output is what builds the Overview; a caller without one must still
 	// get a page rather than a panic.
-	p := buildDashboard(sampleResult(), nil, nil, familyStatsZero(), nil, 0)
+	p := buildDashboard(sampleResult(), nil, nil, familyStatsZero(), nil, 0, nil)
 	if p.Facts.Functions != 3 || p.Facts.Packages != 0 {
 		t.Errorf("facts without an overview: %+v", p.Facts)
 	}
@@ -301,7 +301,7 @@ func TestBuildDashboardSurvivesANilOverview(t *testing.T) {
 }
 
 func TestBuildDashboardRendersEndToEnd(t *testing.T) {
-	p := buildDashboard(sampleResult(), nil, nil, familyStatsZero(), nil, 0)
+	p := buildDashboard(sampleResult(), nil, nil, familyStatsZero(), nil, 0, nil)
 	var b strings.Builder
 	if err := dashboard.Print(&b, p); err != nil {
 		t.Fatalf("Print: %v", err)

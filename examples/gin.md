@@ -9,8 +9,8 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `96e7797` |
-| Command | `doppel analyze . --tests exclude --top 10` |
+| doppel | `103ec8f` |
+| Command | `doppel analyze . --tests exclude --moves=false --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
 Regenerate with `task examples`; CI regenerates on every push to master.
