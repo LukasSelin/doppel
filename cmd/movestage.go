@@ -73,6 +73,7 @@ func runMovesStage(ctx context.Context, root string, exc parser.Excludes, share 
 		fmt.Fprintf(stderr, "Moves: skipped (%v)\n", err)
 		return nil
 	}
+	abs = moves.ResolveRoot(abs) // moveRows relativizes go list's resolved dirs against it
 	var warnings bytes.Buffer
 	fset, pkgs, err := moves.LoadFor(ctx, abs, movesEnv, exc.SkipDir, &warnings)
 	if err != nil {
