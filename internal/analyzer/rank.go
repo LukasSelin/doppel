@@ -183,22 +183,88 @@ func SortForReportBy(pairs []SimilarPair, key func(SimilarPair) float64, topN, m
 		return pairs, 0
 	}
 
-	seen := make(map[int]int)
 	kept := make([]SimilarPair, 0, len(pairs))
 	suppressed := 0
-	for _, p := range pairs {
-		if topN > 0 && len(kept) == topN {
-			break
-		}
-		if seen[p.AIdx] >= maxPerFunc || seen[p.BIdx] >= maxPerFunc {
+	walkCap(pairs, topN, maxPerFunc, func(i int, pl Placement) bool {
+		switch pl.Fate {
+		case FateReported:
+			kept = append(kept, pairs[i])
+		case FateCapped:
 			suppressed++
-			continue
+		default:
+			return false
+		}
+		return true
+	})
+	return kept, suppressed
+}
+
+// Where the report's presentation cap left one compared pair.
+const (
+	FateReported = "reported"  // in the report, at Placement.Rank
+	FateCapped   = "capped"    // skipped by --max-per-func; Placement.CappedBy is the saturated side
+	FateBelowTop = "below-top" // ranked past --top
+)
+
+// Placement is one pair's outcome under SortForReport's cap walk.
+type Placement struct {
+	Fate     string
+	Rank     int // 1-based report position when Fate is FateReported, else 0
+	CappedBy int // unit index whose quota was full when Fate is FateCapped, else -1
+}
+
+// Place reports where SortForReport's cap walk leaves every pair of sorted,
+// which must already be in SortForReport's order (it sorts in place, so the
+// slice handed to it is). out[i] describes sorted[i]. It runs the same walk
+// SortForReportBy does, so the two cannot disagree about which pair a cap
+// suppressed.
+func Place(sorted []SimilarPair, topN, maxPerFunc int) []Placement {
+	out := make([]Placement, len(sorted))
+	for i := range out {
+		out[i] = Placement{Fate: FateBelowTop, CappedBy: -1}
+	}
+	walkCap(sorted, topN, maxPerFunc, func(i int, pl Placement) bool {
+		out[i] = pl
+		return pl.Fate != FateBelowTop
+	})
+	return out
+}
+
+// walkCap is the per-function diversity cap: in order, a pair is kept while
+// both endpoints have appeared in fewer than maxPerFunc kept pairs (0
+// disables the cap), until topN are kept (0 = unbounded). visit sees each pair
+// up to and including the first one past topN, and stops the walk by
+// returning false. When a pair is capped, CappedBy names its A side if A's
+// quota is full and B's otherwise — the side checked first.
+func walkCap(pairs []SimilarPair, topN, maxPerFunc int, visit func(int, Placement) bool) {
+	seen := make(map[int]int)
+	kept := 0
+	for i, p := range pairs {
+		if topN > 0 && kept == topN {
+			visit(i, Placement{Fate: FateBelowTop, CappedBy: -1})
+			return
+		}
+		if maxPerFunc > 0 {
+			if seen[p.AIdx] >= maxPerFunc {
+				if !visit(i, Placement{Fate: FateCapped, CappedBy: p.AIdx}) {
+					return
+				}
+				continue
+			}
+			if seen[p.BIdx] >= maxPerFunc {
+				if !visit(i, Placement{Fate: FateCapped, CappedBy: p.BIdx}) {
+					return
+				}
+				continue
+			}
 		}
 		seen[p.AIdx]++
 		seen[p.BIdx]++
-		kept = append(kept, p)
+		kept++
+		if !visit(i, Placement{Fate: FateReported, Rank: kept, CappedBy: -1}) {
+			return
+		}
 	}
-	return kept, suppressed
 }
 
 // bothTests reports whether both sides of a pair are test units.

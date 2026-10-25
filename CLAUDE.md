@@ -109,6 +109,7 @@ cmd/            CLI commands (Cobra).
   timing.go     DOPPEL_TIMING=1: per-stage wall clock on the progress writer
   profile.go    --cpuprofile / --memprofile, hidden persistent flags on the root command
   query.go      doppel query: check a proposed function (a snippet on stdin) against the corpus, locality-weighted
+  decisions.go  analyze --decisions: every retrieved pair's fate and merge-verdict gates, as JSON for labelling
   moves.go      doppel moves: functions only another package uses, the helpers that move along, and what blocks the move
   config.go     .doppel.json loading (AnalysisConfig), flag precedence, hookParams
   hook.go       doppel hook session-start / user-prompt / pre-tool / post-edit / stop: the five Claude Code
@@ -1997,6 +1998,41 @@ doppel cannot read**: `dashboard.WriteTimelineJSON` beside `reporter.encodeJSON`
 `dashboard` is forbidden to import anything in the module. Like every kind it annotates and never
 ranks.
 
+## The decisions log
+
+`doppel analyze --decisions <file.json>` (config key `decisions`) writes one record per pair
+retrieval proposed, saying what the pipeline did with it and why — the input a golden review
+needs, since the report answers "why is this here" only for the pairs it shows and never says
+why a pair is *not* there. It exists for labelling and changes nothing measured.
+
+Each record carries a **fate** — `reported` (with its rank), `capped` (with `cappedBy`, the
+function whose `--max-per-func` quota was full), `below-top`, `below-struct-min`,
+`cross-build-unit` (test against production, or two languages) or `cross-build-target` — and the
+merge verdict gate by gate, as `passed` and `blocked` sentences from `comparator.Verdict`: the
+overlap floor, the merge-signal count naming which of the five signals counted, and the
+code-shape floor. `blocked` is empty exactly when `mergeWorthy` is true. Beside them: the pair
+kind, code-shape, overlap, containment, trophic, retrieval mass, the rank key, the channels, the
+evidence reasons and the explain sentence. Sides are `a`/`aFile` and `b`/`bFile` — qualified
+name and root-relative slash path, exactly the labels format — so a record becomes a label by
+adding `class` and `note`. Compared pairs come in report order (`position`), then the struct-min
+drops by rank key, then the build-unit drops; every count is in `counts`.
+
+Three rules hold it to the rest of the tool:
+
+- **One walk, not a mirror of it.** `analyzer.Place` and `SortForReportBy` share `walkCap`, so
+  the log cannot disagree with the report about which pair a cap suppressed;
+  `TestPlaceAgreesWithSortForReport` pins it. `comparator.Verdict` and `countSignals` read one
+  signal table, `mergeSignals`, so the named signals are the counted ones.
+- **The dropped pairs cost nothing unless asked for.** `Params.KeepDropped` (set only by
+  `--decisions`) is what makes `finishAnalyze` keep them in `Result.Dropped`, and annotate the
+  struct-min drops with kind and explain like survivors. It is not in `snapshot.Params`, like
+  `Debug`. `TestDecisionsCoverEveryRetrievedPair` checks the run's pairs are unchanged with it on
+  and that the log holds every pair of the retrieval union exactly once.
+- **Not a hook surface.** Only `analyze` writes it. A hook run never sets `KeepDropped`.
+
+What it cannot record is a pair retrieval never proposed: the union is the log's whole
+population, and a missing pair still reads as the bench's `not_retrieved`.
+
 ## Pair explanations
 
 `analyzer.Explain` puts one sentence on **every** reported pair, saying what canonicalization did
@@ -2575,6 +2611,7 @@ or the `languages` config key restores the old population exactly.
   "families": 5,
   "family-min": 0.60,
   "map-metric": "merge-worthy",
+  "decisions": "doppel-decisions.json",
   "hook-notify": "agent",
   "hook-probe": "off"
 }

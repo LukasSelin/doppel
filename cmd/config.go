@@ -34,6 +34,7 @@ type AnalysisConfig struct {
 	Families   *int      `json:"families,omitempty"`
 	FamilyMin  *float64  `json:"family-min,omitempty"`
 	MapMetric  *string   `json:"map-metric,omitempty"`
+	Decisions  *string   `json:"decisions,omitempty"`
 	HookNotify *string   `json:"hook-notify,omitempty"`
 	HookProbe  *string   `json:"hook-probe,omitempty"`
 }
@@ -243,6 +244,9 @@ func applyConfig(cmd *cobra.Command, cfg *AnalysisConfig) {
 	}
 	if cfg.MapMetric != nil {
 		set("map-metric", *cfg.MapMetric)
+	}
+	if cfg.Decisions != nil {
+		set("decisions", *cfg.Decisions)
 	}
 }
 

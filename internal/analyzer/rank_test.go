@@ -284,3 +284,49 @@ func TestRankKeyMatchesSortForReport(t *testing.T) {
 		t.Error("nil Retrieval must key 0")
 	}
 }
+
+// Place must tell the same story SortForReport acted on: the same pairs
+// reported in the same order, one capped placement per suppressed pair, and
+// every capped pair naming a side whose quota was in fact already full.
+func TestPlaceAgreesWithSortForReport(t *testing.T) {
+	build := func() []SimilarPair {
+		return []SimilarPair{
+			corroborated(0, 1, 500, 1, 1),
+			corroborated(0, 2, 400, 1, 1),
+			corroborated(3, 0, 300, 1, 1), // 0 full as B
+			corroborated(0, 4, 200, 1, 1),
+			corroborated(5, 6, 100, 1, 1),
+			corroborated(5, 7, 90, 1, 1),
+			corroborated(8, 9, 80, 1, 1),
+		}
+	}
+	for _, tc := range []struct{ top, cap int }{{3, 2}, {0, 2}, {2, 0}, {0, 0}, {4, 1}} {
+		pairs := build()
+		kept, suppressed := SortForReport(pairs, nil, tc.top, tc.cap)
+		place := Place(pairs, tc.top, tc.cap)
+
+		var reported []SimilarPair
+		capped := 0
+		for i, pl := range place {
+			switch pl.Fate {
+			case FateReported:
+				if pl.Rank != len(reported)+1 {
+					t.Errorf("top %d cap %d: rank %d at reported #%d", tc.top, tc.cap, pl.Rank, len(reported)+1)
+				}
+				reported = append(reported, pairs[i])
+			case FateCapped:
+				capped++
+				if pl.CappedBy != pairs[i].AIdx && pl.CappedBy != pairs[i].BIdx {
+					t.Errorf("top %d cap %d: pair %d-%d capped by %d, not one of its sides",
+						tc.top, tc.cap, pairs[i].AIdx, pairs[i].BIdx, pl.CappedBy)
+				}
+			}
+		}
+		if !reflect.DeepEqual(reported, kept) {
+			t.Errorf("top %d cap %d: Place reports %v, SortForReport kept %v", tc.top, tc.cap, reported, kept)
+		}
+		if capped != suppressed {
+			t.Errorf("top %d cap %d: %d capped placements, %d suppressed", tc.top, tc.cap, capped, suppressed)
+		}
+	}
+}

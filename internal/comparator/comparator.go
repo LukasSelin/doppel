@@ -325,36 +325,73 @@ func boolFloat(v bool) float64 {
 	return 0.0
 }
 
-// countSignals counts how many distinct merge-supporting signals are present.
+// mergeSignals is the five merge-supporting signals countSignals counts, by
+// name. One table, so the count the gate reads and the names Verdict prints
+// for a decisions log cannot disagree about what a signal is.
 //
 // Five of the twelve scored signals can count. Visibility, receiver binding,
 // the two package-overlap signals and the two caller/callee concept signals
 // raise the score but never the count: they are context, and context alone is
 // not a reason to merge two functions.
+//
+// The concept signal is judged on the best single taxonomy-only pairing, not
+// on the aggregate ratio and not on the corpus-weighted matches — see the gate
+// note on Compare. Thresholding the ratio would be a regression rather than a
+// guard: three tags with one exact match average to 0.33, so a pair that
+// counts today would stop counting at an unchanged score. Any exact match
+// scores 1.0, so this is a strict generalization of "the two share a tag".
+var mergeSignals = [...]struct {
+	name string
+	has  func(*StructuralEvidence) bool
+}{
+	{"shared callees", func(ev *StructuralEvidence) bool { return len(ev.SharedCallees) > 0 }},
+	{"shared callers", func(ev *StructuralEvidence) bool { return len(ev.SharedCallers) > 0 }},
+	{"related concepts", func(ev *StructuralEvidence) bool { return ev.PatternSignalBest >= relatedEnough }},
+	{"same role", func(ev *StructuralEvidence) bool { return ev.SameRole }},
+	{"same package", func(ev *StructuralEvidence) bool { return ev.SamePackage }},
+}
+
+// countSignals counts how many distinct merge-supporting signals are present.
 func countSignals(ev StructuralEvidence) int {
 	n := 0
-	if len(ev.SharedCallees) > 0 {
-		n++
-	}
-	if len(ev.SharedCallers) > 0 {
-		n++
-	}
-	// Judged on the best single taxonomy-only pairing, not on the aggregate
-	// ratio and not on the corpus-weighted matches — see the gate note on
-	// Compare. Thresholding the ratio would be a regression rather than a
-	// guard: three tags with one exact match average to 0.33, so a pair that
-	// counts today would stop counting at an unchanged score. Any exact match
-	// scores 1.0, so this is a strict generalization of "the two share a tag".
-	if ev.PatternSignalBest >= relatedEnough {
-		n++
-	}
-	if ev.SameRole {
-		n++
-	}
-	if ev.SamePackage {
-		n++
+	for _, s := range mergeSignals {
+		if s.has(&ev) {
+			n++
+		}
 	}
 	return n
+}
+
+// Verdict states each gate of MergeWorthy as a sentence, split by whether the
+// pair cleared it: the overlap floor, the merge-signal count (naming the
+// signals that counted), and the code-shape floor. MergeWorthy is true exactly
+// when blocked is empty. It decides nothing — MergeWorthy is the verdict — and
+// exists so a reader can see which half of the gate a pair fell on.
+func Verdict(ev StructuralEvidence, shape float64) (passed, blocked []string) {
+	gate := func(ok bool, s string) {
+		if ok {
+			passed = append(passed, s)
+		} else {
+			blocked = append(blocked, s)
+		}
+	}
+	gate(ev.OverlapScore >= mergeThreshold,
+		fmt.Sprintf("overlap %.3f vs floor %.2f", ev.OverlapScore, mergeThreshold))
+	var names []string
+	for _, s := range mergeSignals {
+		if s.has(&ev) {
+			names = append(names, s.name)
+		}
+	}
+	counted := "none"
+	if len(names) > 0 {
+		counted = strings.Join(names, ", ")
+	}
+	gate(len(names) >= minMergeSignals,
+		fmt.Sprintf("%d of %d merge signals, need %d (%s)", len(names), len(mergeSignals), minMergeSignals, counted))
+	gate(shape >= MergeShapeFloor,
+		fmt.Sprintf("code-shape %.3f vs floor %.2f", shape, MergeShapeFloor))
+	return passed, blocked
 }
 
 func buildReasons(ev StructuralEvidence) []string {

@@ -80,6 +80,28 @@ type Params struct {
 	// all, and StructMin zero is recorded in the snapshot, so two runs still
 	// agree on what was measured exactly when they measured the same thing.
 	NoOverlapFilter bool
+	// KeepDropped keeps the pairs the pipeline drops — cross build-unit
+	// candidates and pairs under --struct-min — in Result.Dropped, for
+	// `analyze --decisions`. Presentation only, like Debug: it changes what
+	// the run hands back, never what it measured, so it is not in
+	// snapshot.Params. Off, a run allocates nothing for them.
+	KeepDropped bool
+}
+
+// Reasons a retrieved pair never reaches ranking, recorded in
+// DroppedPair.Reason.
+const (
+	dropCrossBuildUnit   = "cross-build-unit" // test against production, or two languages
+	dropCrossBuildTarget = "cross-build-target"
+	dropBelowStructMin   = "below-struct-min"
+)
+
+// DroppedPair is a retrieved candidate the pipeline removed before ranking,
+// and why. A struct-min drop was compared, so its Evidence, Kind and Explain
+// are set; a build-unit drop never was, and carries only its retrieval.
+type DroppedPair struct {
+	Pair   analyzer.SimilarPair
+	Reason string
 }
 
 // Result is one complete analysis, up to but not including the final ranking.
@@ -95,8 +117,11 @@ type Params struct {
 type Result struct {
 	Root   string
 	Params Params
-	Units  []parser.CodeUnit
-	Docs   []concepter.ConceptDoc
+	// Dropped is every candidate the pipeline removed before ranking, when
+	// Params.KeepDropped asked for them; nil otherwise.
+	Dropped []DroppedPair
+	Units   []parser.CodeUnit
+	Docs    []concepter.ConceptDoc
 	// LabelKinds names the h<=1 WL labels of every unit, for the explain
 	// sentence. It is built once by analyze, which then releases the canonical
 	// trees it was derived from — so a Result with this set has Units whose
@@ -527,29 +552,19 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 		// files no build compiles together (`_amd64.go` / `_arm64.go`),
 		// counted apart because that one fires on a default run.
 		if !parser.SameBuildUnit(units[c.AIdx], units[c.BIdx]) {
+			reason := dropCrossBuildTarget
 			if parser.CoBuildable(units[c.AIdx], units[c.BIdx]) {
 				crossDropped++
+				reason = dropCrossBuildUnit
 			} else {
 				targetDropped++
 			}
+			if p.KeepDropped {
+				res.Dropped = append(res.Dropped, DroppedPair{Pair: candidatePair(c), Reason: reason})
+			}
 			continue
 		}
-		pairs = append(pairs, analyzer.SimilarPair{
-			AIdx:      c.AIdx,
-			BIdx:      c.BIdx,
-			Score:     c.Breakdown.Score,
-			Breakdown: c.Breakdown,
-			Retrieval: &analyzer.Retrieval{
-				Shape:      c.Shape,
-				Concept:    c.Concept,
-				Call:       c.Call,
-				Total:      c.Total,
-				TrophicSim: c.TrophicSim,
-				CallSim:    c.CallSim,
-				Channels:   c.Channels,
-				Chains:     sharedChains(c.Chains),
-			},
-		})
+		pairs = append(pairs, candidatePair(c))
 	}
 	if crossDropped > 0 {
 		fmt.Fprintf(progress, "  %d cross test/prod pairs dropped\n", crossDropped)
@@ -580,6 +595,13 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 		}
 
 		if p.StructMin > 0 {
+			if p.KeepDropped {
+				for _, pr := range pairs {
+					if pr.Evidence == nil || pr.Evidence.OverlapScore < p.StructMin {
+						res.Dropped = append(res.Dropped, DroppedPair{Pair: pr, Reason: dropBelowStructMin})
+					}
+				}
+			}
 			pairs = filterByOverlap(pairs, p.StructMin)
 			fmt.Fprintf(progress, "  %d pairs remain after struct-min=%.2f filter\n", len(pairs), p.StructMin)
 		}
@@ -624,6 +646,19 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 
 	// Annotate surviving pairs with unusual concept realizations and habitat
 	// misfits — positional lookup, like Evidence attachment; never name-keyed.
+	// classify sets the two notes a pair's kind and explain sentence; it runs
+	// on every surviving pair and, under KeepDropped, on the struct-min drops
+	// too, so a decisions log can say what a dropped pair would have read as.
+	classify := func(pr *analyzer.SimilarPair) {
+		a, b := &units[pr.AIdx], &units[pr.BIdx]
+		pr.Kind = analyzer.ClassifyPairIn(*a, *b, pr.Score, forkFloor, analyzer.PairContext{
+			ResolvedA: docs[pr.AIdx].ResolvedCallees, ResolvedB: docs[pr.BIdx].ResolvedCallees,
+			VocabA: thinVocab[pr.AIdx], VocabB: thinVocab[pr.BIdx],
+			CallersA: docs[pr.AIdx].Callers, CallersB: docs[pr.BIdx].Callers,
+			CallerPkgsA: docs[pr.AIdx].CallerPackages, CallerPkgsB: docs[pr.BIdx].CallerPackages,
+		})
+		pr.Explain = analyzer.ExplainWith(*a, *b, labelKinds)
+	}
 	profiles := newProfileCache(cult, len(units))
 	for i := range pairs {
 		// Resolved once per pair: a SimilarPair names its units by index, and
@@ -632,21 +667,41 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 		pairs[i].Culture = cultureNotes(cult, pairs[i].AIdx, pairs[i].BIdx,
 			parser.ConceptIDs(a.Concepts), parser.ConceptIDs(b.Concepts))
 		pairs[i].Habitat = habitatNotes(cult, pairs[i].AIdx, pairs[i].BIdx, a.Package, b.Package)
-		pairs[i].Kind = analyzer.ClassifyPairIn(a, b, pairs[i].Score, forkFloor, analyzer.PairContext{
-			ResolvedA: docs[pairs[i].AIdx].ResolvedCallees, ResolvedB: docs[pairs[i].BIdx].ResolvedCallees,
-			VocabA: thinVocab[pairs[i].AIdx], VocabB: thinVocab[pairs[i].BIdx],
-			CallersA: docs[pairs[i].AIdx].Callers, CallersB: docs[pairs[i].BIdx].Callers,
-			CallerPkgsA: docs[pairs[i].AIdx].CallerPackages, CallerPkgsB: docs[pairs[i].BIdx].CallerPackages,
-		})
-		pairs[i].Explain = analyzer.ExplainWith(a, b, labelKinds)
+		classify(&pairs[i])
 		pairs[i].Profile = profiles.pair(pairs[i].AIdx, pairs[i].BIdx,
 			parser.ConceptIDs(a.Concepts), parser.ConceptIDs(b.Concepts))
+	}
+	for i := range res.Dropped {
+		if res.Dropped[i].Reason == dropBelowStructMin {
+			classify(&res.Dropped[i].Pair)
+		}
 	}
 	res.Pairs = pairs
 	timer.mark("pair annotation")
 	timer.total("report total")
 
 	return res, nil
+}
+
+// candidatePair materializes one retrieval candidate as a SimilarPair, with
+// no evidence attached yet.
+func candidatePair(c retriever.Candidate) analyzer.SimilarPair {
+	return analyzer.SimilarPair{
+		AIdx:      c.AIdx,
+		BIdx:      c.BIdx,
+		Score:     c.Breakdown.Score,
+		Breakdown: c.Breakdown,
+		Retrieval: &analyzer.Retrieval{
+			Shape:      c.Shape,
+			Concept:    c.Concept,
+			Call:       c.Call,
+			Total:      c.Total,
+			TrophicSim: c.TrophicSim,
+			CallSim:    c.CallSim,
+			Channels:   c.Channels,
+			Chains:     sharedChains(c.Chains),
+		},
+	}
 }
 
 // validateMode checks a population selector. --tests and --generated take the
