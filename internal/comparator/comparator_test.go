@@ -1,6 +1,7 @@
 package comparator
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/LukasSelin/doppel/internal/concepter"
@@ -191,5 +192,37 @@ func TestMergeWorthyFloorsOnShape(t *testing.T) {
 	// a different finding and not a merge candidate.
 	if MergeWorthy(StructuralEvidence{ContextMergeWorthy: false}, 1.0) {
 		t.Error("MergeWorthy true on shape alone, with no shared context")
+	}
+}
+
+// Verdict is a reading of MergeWorthy, never a second verdict: it blocks
+// nothing exactly when MergeWorthy is true, and names the gate that failed.
+func TestVerdictAgreesWithMergeWorthy(t *testing.T) {
+	two := StructuralEvidence{SharedCallees: []string{"x"}, SamePackage: true}
+	for _, tt := range []struct {
+		name    string
+		ov      float64
+		ev      StructuralEvidence
+		shape   float64
+		blocked string
+	}{
+		{"all gates clear", 0.5, two, 0.8, ""},
+		{"overlap below floor", 0.3, two, 0.8, "overlap"},
+		{"one signal", 0.5, StructuralEvidence{SamePackage: true}, 0.8, "merge signals"},
+		{"shape below floor", 0.5, two, 0.2, "code-shape"},
+	} {
+		ev := tt.ev
+		ev.OverlapScore = tt.ov
+		ev.ContextMergeWorthy = ev.OverlapScore >= mergeThreshold && countSignals(ev) >= minMergeSignals
+		passed, blocked := Verdict(ev, tt.shape)
+		if got := MergeWorthy(ev, tt.shape); got != (len(blocked) == 0) {
+			t.Errorf("%s: MergeWorthy %v but blocked %v", tt.name, got, blocked)
+		}
+		if len(passed)+len(blocked) != 3 {
+			t.Errorf("%s: %d gates stated, want 3", tt.name, len(passed)+len(blocked))
+		}
+		if tt.blocked != "" && (len(blocked) != 1 || !strings.Contains(blocked[0], tt.blocked)) {
+			t.Errorf("%s: blocked %v, want the %s gate", tt.name, blocked, tt.blocked)
+		}
 	}
 }

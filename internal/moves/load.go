@@ -103,6 +103,7 @@ func Load(ctx context.Context, root string, skip func(rel, name string) bool, pr
 // read the same everywhere sets them (see cmd's movesEnv). Nil env is the
 // host's own build, which is what `doppel moves` reads.
 func LoadFor(ctx context.Context, root string, env []string, skip func(rel, name string) bool, progress io.Writer) (*token.FileSet, []*Package, error) {
+	root = ResolveRoot(root)
 	records, err := goList(ctx, root, env)
 	if err != nil {
 		return nil, nil, err
@@ -170,6 +171,20 @@ func goList(ctx context.Context, root string, env []string) ([]listed, error) {
 		}
 		out = append(out, r)
 	}
+}
+
+// ResolveRoot is root with symlinks resolved, or root unchanged when that
+// fails. `go list` reports every package directory resolved, so a root reached
+// through a symlink — macOS's /var is /private/var, which is where every
+// temporary directory lives — would sit outside all of them: the relative path
+// would climb through "..", which the walk rule skips, and no package would be
+// in the graph. Callers that relativize a package's Dir against root resolve
+// it the same way.
+func ResolveRoot(root string) string {
+	if r, err := filepath.EvalSymlinks(root); err == nil {
+		return r
+	}
+	return root
 }
 
 // skipped applies the walk rule to every directory between root and dir, as

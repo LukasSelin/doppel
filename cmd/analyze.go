@@ -35,6 +35,7 @@ var (
 	familiesN     int
 	familyMin     float64
 	mapMetric     string
+	decisionsFile string
 	movesOn       bool
 	movesShareFlg float64
 
@@ -104,6 +105,7 @@ func init() {
 	analyzeCmd.Flags().StringVar(&outputFormat, "format", formatText, "Stdout format: text or json")
 	analyzeCmd.Flags().IntVar(&familiesN, "families", 5, "Near-duplicate families to show in the report (0 = no families section)")
 	analyzeCmd.Flags().StringVar(&mapMetric, "map-metric", string(reporter.DefaultMapMetric), "What the markdown report's package duplication map weighs an edge by: merge-worthy (doppel's own merge verdict), pairs (every surviving candidate), or evidence (summed corroborated evidence). Presentation only — no score, filter or baseline reads it.")
+	analyzeCmd.Flags().StringVar(&decisionsFile, "decisions", "", "Write every retrieved pair's fate to this JSON file — reported, capped by --max-per-func, past --top, under --struct-min, or across build units — with each merge-verdict gate stated as passed or blocked, and both sides named as a labels file names them. For building golden labels; changes nothing measured.")
 	analyzeCmd.Flags().Float64Var(&familyMin, "family-min", 0.60, "Pin the code-shape between every two members of a family (0.0–1.0), turning off --calibrate.")
 	analyzeCmd.Flags().BoolVar(&movesOn, "moves", true, "Add the functions-out-of-place section: functions only another package uses, found by type-checking the module (doppel moves). Needs the go toolchain and a Go module whose dependencies are in the module cache; skipped with a line on stderr otherwise. Presentation only — no score, filter or baseline reads it.")
 	analyzeCmd.Flags().Float64Var(&movesShareFlg, "moves-share", 1, "Fraction of a function's referring declarations that must sit in one other package for the out-of-place section (0–1]; doppel moves --share")
@@ -130,6 +132,9 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		Exclude:    excludeDirs,
 		Calibrate:  calibrateRate,
 		Debug:      debugFlag,
+		// Only the decisions log reads the dropped pairs, so only it pays to
+		// keep them.
+		KeepDropped: decisionsFile != "",
 	}
 
 	res, err := analyze(args[0], p, cmd.ErrOrStderr())
@@ -165,6 +170,12 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	pairs, suppressed := analyzer.SortForReport(res.Pairs, res.Units, topN, maxPerFunc)
 	if suppressed > 0 {
 		fmt.Fprintf(cmd.ErrOrStderr(), "  %d pairs suppressed by max-per-func=%d\n", suppressed, maxPerFunc)
+	}
+	if decisionsFile != "" {
+		// res.Pairs is in report order now: SortForReport sorted it in place.
+		if err := writeDecisions(decisionsFile, buildDecisions(&res, res.Pairs, topN, maxPerFunc), cmd.ErrOrStderr()); err != nil {
+			return err
+		}
 	}
 
 	// One Meta for both renderers. They used to build their own literals, which

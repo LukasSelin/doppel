@@ -34,3 +34,9 @@ func encodeJSON(w io.Writer, v any) error {
 	enc.SetIndent("", "  ")
 	return enc.Encode(v)
 }
+
+// WriteJSON writes any plain-data value under the one encoder configuration,
+// for a cmd-side payload (the decisions log) that has no renderer of its own.
+func WriteJSON(w io.Writer, v any) error {
+	return encodeJSON(w, v)
+}

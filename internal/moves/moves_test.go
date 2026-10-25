@@ -450,3 +450,33 @@ func TestInternalAllowed(t *testing.T) {
 		}
 	}
 }
+
+// A root reached through a symlink must graph the same packages as the real
+// directory. With an env, exec.Cmd does not set PWD for the child, so go list
+// takes its working directory from getcwd — resolved, on Unix — and an
+// unresolved root sat outside every package Dir: the walk rule skipped the
+// ".." that climbed out and every package dropped from the graph. macOS hit
+// it on every temporary directory (/var is /private/var). A non-nil env is
+// what analyze's moves stage passes; Windows does not resolve here, so this
+// can only fail on Unix.
+func TestLoadThroughSymlinkedRoot(t *testing.T) {
+	dir := writeModule(t, map[string]string{"a/a.go": "package a\n\nfunc F() int { return 1 }\n"})
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(dir, link); err != nil {
+		t.Skipf("cannot create a symlink here: %v", err)
+	}
+	walk := func(rel, name string) bool { return strings.HasPrefix(name, ".") }
+	_, pkgs, err := LoadFor(context.Background(), link, []string{}, walk, io.Discard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	in := 0
+	for _, p := range pkgs {
+		if p.InGraph {
+			in++
+		}
+	}
+	if in != 1 {
+		t.Errorf("%d packages in the graph through a symlinked root, want 1", in)
+	}
+}
