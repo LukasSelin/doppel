@@ -36,6 +36,7 @@ For a detailed breakdown of the pipeline internals, see [How Doppel Works](.gith
 | A copy that was forked and then diverged | the pair kind **`diverged copy`** |
 | A function that claims a concept but realizes it unlike any peer | a **culture note** — drift *within* a shared idea rather than duplication of it |
 | A function that no longer fits the package it lives in | a **habitat misfit**, excused when its wider subsystem still explains it |
+| A function only another package uses, left where it was first written | a **move** (`doppel moves`), with the helpers that would go along |
 
 The scope is worth stating as plainly as the target: **doppel measures the code against the corpus's
 own practice, not against a declared architecture.** It has no model of what you intended, so it
@@ -150,6 +151,9 @@ doppel query --near billing . < draft.go
 
 # Census: every group of 3+ mutually similar functions, not just pairs
 doppel families .
+
+# Functions that only one other package uses, and what would move with them
+doppel moves .
 
 # Show what the score reads for one function, or the label merge two of them score on
 doppel fingerprint . mapper.sortedKeys
@@ -288,6 +292,48 @@ A function can belong to more than one family; the counts report distinct functi
 whose every member pair satisfies one of the pair kinds says so on its line (`kind: interface
 implementations of Flush()`), and in the JSON as `kind`. `analyze` shows the most informative few
 inline; `doppel families` is the whole census, with `--format json` for a machine.
+
+### Functions in the wrong package
+
+`doppel moves` reports the functions whose every static reference comes from one other package.
+Moving one there shrinks the exported surface of the package it lives in, and it is the same kind of
+erosion as a duplicate: the function was written beside the code that first needed it, every caller
+since then sits somewhere else, and only the references across the whole corpus show it.
+
+```
+#2  clique.Components  internal/clique/clique.go:138
+    -> internal/family, used by family.*graph.components
+
+#4  ontology.RoleRelatedness  internal/ontology/roles.go:90
+    -> internal/comparator, used by comparator.*Comparator.Compare
+    named in internal/ontology/reason_test.go
+```
+
+Each move names its target, the declarations there that use the function, and the unexported helpers
+that only the moving group uses and so move with it. Helpers are added until no more qualify, and a
+type brings its methods. It also lists the test files that name anything that moves.
+
+A move is **blocked** when it would not compile as it stands. That happens when it shares an
+unexported symbol, field or method with code that stays, when the target already declares one of the
+names, when it would close an import cycle or break the `internal/` rule, or when a file this build
+does not compile (another GOOS, a build tag) names something that moves. A function whose signature
+names a type of its own package that stays is **anchored** to that type: a constructor or entry point
+such as `git.Open`, which belongs beside its type however few packages call it. Blocked and anchored
+moves are counted on stderr and listed only with `--blocked` and `--anchored`. `--format json`
+carries every move with its status.
+
+`--share 0.8` relaxes "only" to "mostly". Then the referrers that stay are listed, and each of them
+would have to import the target, which is where an import cycle can appear. At the default of 1 a
+cycle is impossible: the target already imports the function's package, and that package already
+imports everything the function needs.
+
+Methods are never candidates, and neither are `init`, `main` or generated code. Calls through an
+interface are resolved by class hierarchy analysis and never block a move. This command is Go-only
+and reads the code differently from the rest of doppel. It type-checks the module with `go/types`
+over `go list -export`, so it needs the go toolchain and a tree that builds. It sees only references
+inside the path analysed: an exported function that another module calls is not a move. It also
+cannot see a declared layering, so a renderer that only the command layer calls will still be
+suggested for the command layer.
 
 ### Comparing two runs
 
