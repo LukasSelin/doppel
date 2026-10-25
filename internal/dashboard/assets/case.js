@@ -687,6 +687,8 @@
     var chips = el("div", "ca-chips");
     if (u.test) chips.appendChild(D.chip("test", "outline"));
     if (u.misfit) chips.appendChild(D.chip("habitat misfit", "outline"));
+    var mv = D.moveOf(u.id);
+    if (mv) chips.appendChild(D.chip(mv.status === "clean" ? "could move" : "move " + mv.status, "outline"));
     kick.appendChild(chips);
     h.appendChild(kick);
 
@@ -698,6 +700,7 @@
     if (fit) meta.appendChild(el("span", "ca-meta" + (u.misfit ? " is-misfit" : ""), fit));
     if (u.package) meta.appendChild(D.link(D.atlasHref(u.package), "ca-meta", "package " + u.package + " in the atlas →"));
     h.appendChild(meta);
+    if (mv) h.appendChild(moveNote(mv));
 
     if (u.concepts && u.concepts.length) {
       var cs = el("div", "ca-fn-concepts");
@@ -706,6 +709,33 @@
       h.appendChild(cs);
     }
     return h;
+  }
+
+  /* What the moves stage found about this function: the one other package
+     that uses it, and whether moving it there would compile as it stands. */
+  function moveNote(m) {
+    var b = el("div", "ca-move");
+    var lead = m.status === "clean"
+      ? "Only " + m.to + " uses this function; it could move there as it stands"
+      : m.status === "anchored"
+        ? "Only " + m.to + " uses this function, but its signature names " + m.anchors.join(", ") +
+          ", which stays — it belongs beside that type"
+        : "Only " + m.to + " uses this function, but moving it there would not compile as it stands";
+    var p = el("p", "ca-note", lead + (m.with && m.with.length ? ", taking " + m.with.join(", ") : "") + ".");
+    b.appendChild(p);
+    var users = el("p", "ca-note muted", "Used by " + m.users.join(", ") +
+      (m.staying && m.staying.length ? "; also by " + m.staying.join(", ") + ", which would import it" : "") + ".");
+    b.appendChild(users);
+    if (D.moves.unclean > 0) {
+      b.appendChild(el("p", "ca-note muted", "Read from a partial graph: " + plural(D.moves.unclean, "package") +
+        " did not type-check cleanly, so a user the checker could not resolve would be missing here."));
+    }
+    if (m.blocked && m.blocked.length) {
+      var ul = el("ul", "ca-move-why");
+      m.blocked.forEach(function (why) { ul.appendChild(el("li", null, why)); });
+      b.appendChild(ul);
+    }
+    return b;
   }
 
   function fnRow(ei, id, n) {

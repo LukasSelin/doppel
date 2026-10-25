@@ -9,8 +9,8 @@ static site generator; a large monolith with heavy template and resource subsyst
 | Corpus | [hugo](https://github.com/gohugoio/hugo) |
 | Pinned at | `v0.165.0` (`76a5e1880ab46688155b02e99bab9be2a6134492`) |
 | Project since | 2013 |
-| doppel | `e172f63` |
-| Command | `doppel analyze . --tests exclude --top 10` |
+| doppel | `103ec8f` |
+| Command | `doppel analyze . --tests exclude --moves=false --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
 Regenerate with `task examples`; CI regenerates on every push to master.

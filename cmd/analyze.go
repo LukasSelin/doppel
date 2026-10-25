@@ -35,6 +35,8 @@ var (
 	familiesN     int
 	familyMin     float64
 	mapMetric     string
+	movesOn       bool
+	movesShareFlg float64
 
 	outputFormat string
 )
@@ -73,6 +75,9 @@ var analyzeCmd = &cobra.Command{
 		if _, err := reporter.ParseMapMetric(mapMetric); err != nil {
 			return err
 		}
+		if movesShareFlg <= 0 || movesShareFlg > 1 {
+			return fmt.Errorf("invalid --moves-share %v: want a fraction in (0, 1]", movesShareFlg)
+		}
 		if err := validateMode("tests", testsMode); err != nil {
 			return err
 		}
@@ -100,6 +105,8 @@ func init() {
 	analyzeCmd.Flags().IntVar(&familiesN, "families", 5, "Near-duplicate families to show in the report (0 = no families section)")
 	analyzeCmd.Flags().StringVar(&mapMetric, "map-metric", string(reporter.DefaultMapMetric), "What the markdown report's package duplication map weighs an edge by: merge-worthy (doppel's own merge verdict), pairs (every surviving candidate), or evidence (summed corroborated evidence). Presentation only — no score, filter or baseline reads it.")
 	analyzeCmd.Flags().Float64Var(&familyMin, "family-min", 0.60, "Pin the code-shape between every two members of a family (0.0–1.0), turning off --calibrate.")
+	analyzeCmd.Flags().BoolVar(&movesOn, "moves", true, "Add the functions-out-of-place section: functions only another package uses, found by type-checking the module (doppel moves). Needs the go toolchain and a Go module whose dependencies are in the module cache; skipped with a line on stderr otherwise. Presentation only — no score, filter or baseline reads it.")
+	analyzeCmd.Flags().Float64Var(&movesShareFlg, "moves-share", 1, "Fraction of a function's referring declarations that must sit in one other package for the out-of-place section (0–1]; doppel moves --share")
 	// Hidden, not removed: retrieval budgets and the report's diversity cap
 	// are implementation detail an end user has no basis to set. Every flag
 	// still parses and every config key still applies — only --help shrinks.
@@ -142,6 +149,16 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	// res.Pairs in place, so the census cannot depend on ranking order.
 	fams, famStats := buildFamilies(res, cmd.ErrOrStderr())
 
+	// Moves read the tree through the type checker, not through the corpus
+	// model, so they run here rather than in analyze(): hooks call analyze()
+	// directly and must stay silent and unchanged. The walk rule is the run's
+	// own, so the two read the same population.
+	var mv *reporter.Moves
+	if movesShouldRun(p, res.Units, movesOn, outputFormat, outputFile) {
+		exc, _ := parser.NewExcludes(p.Exclude) // validated by analyze()
+		mv = runMovesStage(cmd.Context(), args[0], exc, movesShareFlg, cmd.ErrOrStderr())
+	}
+
 	// Final ranking: corroborated evidence — retrieval mass discounted by
 	// architectural corroboration and structural similarity — with a
 	// per-function diversity cap. The displayed scores stay unblended.
@@ -172,6 +189,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	} else {
 		reporter.Print(cmd.OutOrStdout(), pairs, res.Units, meta)
 		reporter.PrintFamilies(cmd.OutOrStdout(), fams, famStats, res.Units, familiesN)
+		reporter.PrintMoves(cmd.OutOrStdout(), mv)
 	}
 
 	if outputFile != "" {
@@ -184,7 +202,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		// value: --format selects what goes to stdout, and a page of markup on
 		// stdout helps nobody — the file is the only place it makes sense.
 		if isHTMLPath(outputFile) {
-			payload := buildDashboard(res, meta.Overview, fams, famStats, pairs, suppressed)
+			payload := buildDashboard(res, meta.Overview, fams, famStats, pairs, suppressed, mv)
 			if err := dashboard.Print(f, payload); err != nil {
 				return fmt.Errorf("write dashboard: %w", err)
 			}
@@ -199,6 +217,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		} else {
 			reporter.PrintMarkdown(f, pairs, res.Units, meta)
 			reporter.PrintMarkdownFamilies(f, fams, famStats, res.Units, familiesN)
+			reporter.PrintMarkdownMoves(f, mv)
 			fmt.Fprintf(cmd.ErrOrStderr(), "Markdown report written to %s\n", outputFile)
 		}
 	}

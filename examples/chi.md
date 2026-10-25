@@ -9,8 +9,8 @@ HTTP router; a narrow core with a middleware package beside it
 | Corpus | [chi](https://github.com/go-chi/chi) |
 | Pinned at | `v5.3.2` (`38939062c5df4d3e8814aad1a488983112627ced`) |
 | Project since | 2015 |
-| doppel | `e172f63` |
-| Command | `doppel analyze . --tests exclude --top 10` |
+| doppel | `103ec8f` |
+| Command | `doppel analyze . --tests exclude --moves=false --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
 Regenerate with `task examples`; CI regenerates on every push to master.

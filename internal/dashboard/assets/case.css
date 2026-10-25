@@ -179,6 +179,9 @@
 .ca-fnrow-n { font-size: 15px; text-align: right; padding-right: var(--space-1); }
 .ca-more-btn { align-self: flex-start; }
 .ca-fn-title { margin: 0; font-size: 24px; font-weight: 500; overflow-wrap: anywhere; font-family: var(--font-mono); }
+.ca-move { display: flex; flex-direction: column; gap: 2px; overflow-wrap: anywhere; }
+.ca-move .ca-note { margin: 0; }
+.ca-move-why { margin: 0; padding-left: var(--space-4); font-size: 13px; color: var(--ink-soft); }
 .ca-fn-meta { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); align-items: baseline; }
 
 .ca-families { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
