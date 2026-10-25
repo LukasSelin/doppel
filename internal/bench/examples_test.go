@@ -199,7 +199,12 @@ func generateReport(t *testing.T, bin, doppelRev string, c Corpus) ([]byte, ladd
 		t.Fatal(err)
 	}
 	md := filepath.Join(t.TempDir(), "report.md")
-	args := []string{"analyze", ".", "--tests", "exclude",
+	// --moves=false: the moves section type-checks the corpus, which needs
+	// its dependencies in the local module cache (analyze never downloads).
+	// The CI bot and a developer's machine hold different caches, so with it
+	// on a committed report would flip between the two. The examples are
+	// about what the pipeline reads, which is the tree alone.
+	args := []string{"analyze", ".", "--tests", "exclude", "--moves=false",
 		"--top", fmt.Sprint(exampleTop), "--output", md}
 	cmd := exec.Command(bin, args...)
 	cmd.Dir = dir

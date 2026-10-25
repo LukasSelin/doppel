@@ -50,7 +50,7 @@ func round4(v float64) float64 { return math.Round(v*1e4) / 1e4 }
 // Edge.Rank — analyzer.RankKey is this repo's single definition of corroborated
 // evidence, and a second one in JavaScript would drift from it silently.
 func buildDashboard(res Result, ov *reporter.Overview, fams []family.Family,
-	famStats family.Stats, reported []analyzer.SimilarPair, suppressed int) dashboard.Payload {
+	famStats family.Stats, reported []analyzer.SimilarPair, suppressed int, mv *reporter.Moves) dashboard.Payload {
 
 	p := dashboard.Payload{
 		Schema: dashboard.Schema,
@@ -77,7 +77,45 @@ func buildDashboard(res Result, ov *reporter.Overview, fams []family.Family,
 	p.Facts.BodiesOmitted = bodiesDropped
 	p.Facts.DetailOmitted = detailDropped
 	p.UnusedSeeds = res.UnusedSeeds
+	p.Moves = dashboardMoves(res, mv)
 	return p
+}
+
+// dashboardMoves carries the moves stage onto the page, linking each move to
+// its unit by root-relative file and name. Both sides spell a path through
+// parser.RelSlash, so the join holds whatever the root was called; a plain
+// function's name is unique in its file, and only plain functions move.
+func dashboardMoves(res Result, mv *reporter.Moves) *dashboard.Moves {
+	if mv == nil {
+		return nil
+	}
+	ids := make(map[string]int, len(res.Units))
+	for i, u := range res.Units {
+		if u.ReceiverType == "" {
+			ids[parser.RelSlash(res.Root, u.File)+"|"+u.Name] = i
+		}
+	}
+	out := &dashboard.Moves{
+		Target: mv.Target, Share: mv.Share,
+		Packages: mv.Packages, Functions: mv.Functions, Unclean: mv.Unclean,
+		List: []dashboard.Move{},
+	}
+	out.Clean, out.Blocked, out.Anchored = mv.Counts()
+	for _, r := range mv.Rows {
+		id, ok := ids[r.File+"|"+r.Func[strings.LastIndexByte(r.Func, '.')+1:]]
+		if !ok {
+			id = -1
+		}
+		m := dashboard.Move{
+			Unit: id, Func: r.Func, File: r.File, Line: r.Line, Status: r.Status,
+			To: r.Target(), Users: r.Users, Staying: r.Staying, Anchors: r.Anchors, Blocked: r.Blocked,
+		}
+		for _, x := range r.With {
+			m.With = append(m.With, x.Name)
+		}
+		out.List = append(out.List, m)
+	}
+	return out
 }
 
 // boundEdgeDetail keeps the per-pair prose — the shared-structure chains and

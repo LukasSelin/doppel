@@ -22,10 +22,11 @@
     { id: "where", label: "Where it lives" },
     { id: "families", label: "Families" },
     { id: "drift", label: "Drift from practice" },
+    { id: "moves", label: "Functions out of place" },
     { id: "method", label: "How this was measured" }
-  ];
+  ].filter(function (sec) { return sec.id !== "moves" || D.moves; });
 
-  var ACT_N = 6, LOOK_N = 5, PKG_N = 8, SEAM_N = 5, FAM_N = 6, FAM_MEMBERS = 6, DRIFT_N = 12, DRIFT_STEP = 25;
+  var ACT_N = 6, MOVE_N = 12, LOOK_N = 5, PKG_N = 8, SEAM_N = 5, FAM_N = 6, FAM_MEMBERS = 6, DRIFT_N = 12, DRIFT_STEP = 25;
 
   /* ── Small builders ─────────────────────────────────────────────────── */
 
@@ -555,10 +556,55 @@
     return s;
   }
 
+  /* ── Moves ──────────────────────────────────────────────────────────── */
+
+  /* Functions whose every static reference comes from one other package.
+     Only the clean moves are listed; blocked and anchored ones are counted
+     and opened per function, where the case file says why. */
+  function buildMoves() {
+    var M = D.moves;
+    var s = section("moves", 6, "Functions out of place");
+    var p = prose();
+    var lead = M.clean
+      ? plural(M.clean, "function") + (M.clean === 1 ? " is" : " are") +
+        " used only from one other package and could move there as " + (M.clean === 1 ? "it stands" : "they stand") +
+        ", with the unexported helpers only " + (M.clean === 1 ? "it uses" : "they use") + "."
+      : "No function used only from one other package could move there as it stands.";
+    var rest = [];
+    if (M.blocked) rest.push(comma(M.blocked) + (M.blocked === 1 ? " is" : " are") + " blocked — the move would not compile as it stands");
+    if (M.anchored) rest.push(comma(M.anchored) + (M.anchored === 1 ? " is anchored to a type of its" : " are anchored to a type of their") + " own package that stays");
+    p.textContent = lead;
+    if (rest.length) append(p, " Of the others, " + rest.join(", and ") + "; ", mono("doppel moves --blocked --anchored"), " lists them.");
+    s.appendChild(p);
+    if (M.unclean > 0) {
+      s.appendChild(el("p", "br-prose br-small", comma(M.unclean) + " of the " + plural(M.packages, "package") +
+        " did not type-check cleanly — a dependency missing from the module cache, or code that does not build for " +
+        M.target + " — so a move here can have a user the checker did not see."));
+    }
+    var clean = M.list.filter(function (m) { return m.status === "clean"; });
+    if (!clean.length) return s;
+    var ol = el("ol", "br-moves");
+    clean.slice(0, MOVE_N).forEach(function (m) {
+      var li = el("li", "br-move");
+      var head = el("span", "br-move-head");
+      append(head, m.unit >= 0 ? fnLink(m.unit, m.func) : mono(m.func), el("span", "muted", " → "), mono(m.to));
+      li.appendChild(head);
+      var det = el("span", "br-move-detail muted");
+      det.textContent = "used by " + m.users.join(", ") + (m.with && m.with.length ? "; takes " + m.with.join(", ") : "");
+      li.appendChild(det);
+      ol.appendChild(li);
+    });
+    s.appendChild(ol);
+    if (clean.length > MOVE_N) {
+      s.appendChild(el("p", "br-prose br-small", plural(clean.length - MOVE_N, "more clean move") + " not shown."));
+    }
+    return s;
+  }
+
   /* ── Method ─────────────────────────────────────────────────────────── */
 
   function buildMethod() {
-    var s = section("method", 6, "How this was measured");
+    var s = section("method", D.moves ? 7 : 6, "How this was measured");
     s.classList.add("br-method");
     var grid = el("div", "br-method-grid");
     function item(text) { grid.appendChild(el("p", "br-method-item", text)); }
@@ -576,6 +622,11 @@
     if (F.nnScored > 0) {
       item("Median nearest-neighbour code-shape " + fixed(F.nnP50) + " (p90 " + fixed(F.nnP90) + ") over the " +
         plural(F.nnScored, "function") + " retrieval paired with anyone; functions it never paired are not counted.");
+    }
+    if (D.moves) {
+      item("Functions out of place from a type-checked load of the module, built for " + D.moves.target + ", over " +
+        plural(D.moves.packages, "package") + " and " + plural(D.moves.functions, "function") +
+        (D.moves.share < 1 ? ", at a referrer share of " + fixed(D.moves.share) : "") + ".");
     }
     item("Tests " + popWord(F.testsMode) + "; generated files " + popWord(F.generated) +
       ". No network, no model — the same tree renders this page byte for byte.");
@@ -650,7 +701,7 @@
     var buttons = Object.create(null);
     var shell = el("div", "br-shell");
     var article = el("article", "br-article");
-    append(article, buildLede(), buildAct(), buildScores(), buildWhere(), buildFamilies(), buildDrift(), buildMethod());
+    append(article, buildLede(), buildAct(), buildScores(), buildWhere(), buildFamilies(), buildDrift(), D.moves ? buildMoves() : null, buildMethod());
     append(shell, buildToc(buttons), article);
     D.clear(host).appendChild(shell);
     built = { buttons: buttons, strip: shell.querySelector(".br-toc-list") };

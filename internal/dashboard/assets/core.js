@@ -32,6 +32,11 @@ var DOPPEL = (function () {
   var families = DATA.families || [];
   var concepts = DATA.concepts || [];
   var unusedSeeds = DATA.unusedSeeds || [];
+  /* Null when the run skipped the moves stage (not a Go module, no
+     toolchain, a failed load): "not measured", never "none found". */
+  var moves = DATA.moves || null;
+  var moveByUnit = Object.create(null);
+  if (moves) moves.list.forEach(function (m) { if (m.unit >= 0) moveByUnit[m.unit] = m; });
 
   var bodyByUnit = Object.create(null);
   (DATA.bodies || []).forEach(function (b) { bodyByUnit[b.unit] = b.text; });
@@ -69,6 +74,7 @@ var DOPPEL = (function () {
   }
   function neighbours(id) { return edgesByUnit[id] || []; }
   function familiesOf(id) { return familiesByUnit[id] || []; }
+  function moveOf(id) { return moveByUnit[id] || null; }
 
   /* Entry points no Go code can call: init, and main in package main. A pair
      of them cannot be merged by reusing one — the language forbids naming
@@ -331,9 +337,9 @@ var DOPPEL = (function () {
   }
 
   function start() {
-    if (DATA.schema !== 3) {
+    if (DATA.schema !== 4) {
       document.querySelector(".screens").textContent =
-        "This page's scripts expect payload schema 3 and received " + DATA.schema + ". Re-run doppel with a matching build.";
+        "This page's scripts expect payload schema 4 and received " + DATA.schema + ". Re-run doppel with a matching build.";
       return;
     }
     renderOperatingPoint();
@@ -345,14 +351,14 @@ var DOPPEL = (function () {
 
   return {
     data: DATA, units: units, edges: edges, facts: facts, packages: packages,
-    families: families, concepts: concepts, unusedSeeds: unusedSeeds,
+    families: families, concepts: concepts, unusedSeeds: unusedSeeds, moves: moves,
 
     fixed: fixed, comma: comma, pct: pct, plural: plural, cmp: cmp,
     $: $, el: el, svg: svg, clear: clear, append: append, link: link,
     chip: chip, bar: bar, stat: stat, scoreKey: scoreKey,
 
     unit: unit, qualified: qualified, where: where, body: body,
-    edgeIndex: edgeIndex, neighbours: neighbours, familiesOf: familiesOf,
+    edgeIndex: edgeIndex, neighbours: neighbours, familiesOf: familiesOf, moveOf: moveOf,
     isEntryPoint: isEntryPoint, isEntryPair: isEntryPair,
     KINDS: KINDS, kindOf: kindOf, isHeadline: isHeadline,
     headline: headline, mergeCount: mergeCount, packageStats: packageStats, seams: seams,

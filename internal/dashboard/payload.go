@@ -13,7 +13,7 @@ package dashboard
 // It exists for the page, not for comparability: a stale asset bundle reading a
 // newer payload should say so rather than render half a screen. Nothing diffs
 // two payloads, and nothing should — that is snapshot.Schema's job.
-const Schema = 3
+const Schema = 4
 
 // Payload is one analysis run, as the page receives it.
 //
@@ -41,6 +41,46 @@ type Payload struct {
 	// UnusedSeeds are the seed practices this corpus grew no concept for —
 	// the one absence a learned vocabulary can state. Sorted.
 	UnusedSeeds []string `json:"unusedSeeds,omitempty"`
+
+	// Moves are the functions only another package uses, from a type-checked
+	// load of the module. Absent when the run skipped that stage — not a Go
+	// module, no toolchain, a load that failed, or --moves=false — which the
+	// page reads as "not measured", never as "none found".
+	Moves *Moves `json:"moves,omitempty"`
+}
+
+// Moves is the functions-out-of-place finding: every function whose static
+// referrers sit (at Share or more) in one other package. Clean, Blocked and
+// Anchored split List by status, so the page states counts it does not
+// recompute.
+type Moves struct {
+	Target    string  `json:"target"` // the GOOS/GOARCH the module was type-checked for
+	Share     float64 `json:"share"`
+	Packages  int     `json:"packages"`
+	Functions int     `json:"functions"`
+	Unclean   int     `json:"unclean"` // packages that did not type-check cleanly; see reporter.Moves
+	Clean     int     `json:"clean"`
+	Blocked   int     `json:"blocked"`
+	Anchored  int     `json:"anchored"`
+	List      []Move  `json:"list"` // in declaration order
+}
+
+// Move is one function that could move. Unit is its ID in Units, or -1 when
+// the run's population does not hold it (the type checker and the walk can
+// disagree about a file, a generated one above all); the page then cites File
+// and Line instead of linking.
+type Move struct {
+	Unit    int      `json:"unit"`
+	Func    string   `json:"func"`
+	File    string   `json:"file"`
+	Line    int      `json:"line"`
+	Status  string   `json:"status"` // clean, blocked or anchored
+	To      string   `json:"to"`     // the target's directory under the root
+	Users   []string `json:"users"`
+	Staying []string `json:"staying,omitempty"`
+	With    []string `json:"with,omitempty"`
+	Anchors []string `json:"anchors,omitempty"`
+	Blocked []string `json:"blocked,omitempty"`
 }
 
 // ConceptRow is one learned concept, with the two counts the legend needs.
