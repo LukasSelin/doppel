@@ -136,8 +136,8 @@ func impactBody(d snapshot.Delta, deltaPath string) string {
 	sortForReading(added)
 	sortForReading(removed)
 	for _, p := range head(added, maxImpactListed) {
-		b.WriteString(fmt.Sprintf("  NEW  %s <-> %s  shape %.2f  overlap %.2f%s\n",
-			p.A, p.B, p.Score, p.Overlap, mergeTag(p.MergeWorthy)))
+		b.WriteString(fmt.Sprintf("  NEW  %s <-> %s  shape %.2f  overlap %.2f%s%s\n",
+			p.A, p.B, p.Score, p.Overlap, mergeTag(p.MergeWorthy), kindTag(p.Kind)))
 	}
 	for _, p := range head(removed, maxImpactListed) {
 		b.WriteString(fmt.Sprintf("  GONE %s <-> %s  shape %.2f\n", p.A, p.B, p.Score))
@@ -237,6 +237,17 @@ func mergeTag(worthy bool) string {
 		return "  (merge-worthy)"
 	}
 	return ""
+}
+
+// kindTag names a pair's kind on its line, or "" for a pair with none. The
+// digests carry it because a reader who sees "thin wrappers" beside a pair at
+// shape 1.00 knows the consolidation already happened; without it the same
+// line reads as an open duplicate.
+func kindTag(kind string) string {
+	if kind == "" {
+		return ""
+	}
+	return "  [" + kind + "]"
 }
 
 // attributionTag marks the changes no edit in this session explains, so a
@@ -391,16 +402,19 @@ func Notable(d snapshot.Delta) []Finding {
 	added, _ := d.AttributablePairs()
 	sortForReading(added)
 	for _, p := range added {
-		if !p.MergeWorthy || p.Score < notableShapeFloor {
+		if !p.MergeWorthy || p.Score < notableShapeFloor || analyzer.NotAMerge(p.Kind) {
 			continue
 		}
 		out = append(out, Finding{
 			Key:  NewPairKey(p.A, p.B),
-			Line: fmt.Sprintf("%s <-> %s  shape %.2f  overlap %.2f", p.A, p.B, p.Score, p.Overlap),
+			Line: fmt.Sprintf("%s <-> %s  shape %.2f  overlap %.2f%s", p.A, p.B, p.Score, p.Overlap, kindTag(p.Kind)),
 		})
 	}
 
 	for _, dr := range d.Drift {
+		if analyzer.NotAMerge(dr.Kind) {
+			continue
+		}
 		switch {
 		case dr.CrossedGate() && dr.Attributable && crossingShape(dr) >= notableShapeFloor:
 			verb := "became merge-worthy"

@@ -1901,8 +1901,16 @@ hook rewrites that file every turn. `analyze --format json` remains the snapshot
 
 `internal/analyzer/kind.go` labels what a pair *is* when a naming rule can say so, because two
 classes of finding crowded every wide corpus without the report being able to explain them. A
-kind annotates: it never filters, never enters ranking, and is not in the snapshot (hook digests
-never see it) — the same contract as culture, habitat and profile notes. No kind, no line.
+kind annotates: it never filters and never enters ranking — the same contract as culture,
+habitat and profile notes. No kind, no line. **One exception, and only in what an agent is told:**
+the kind name rides in `snapshot.Pair.Kind` (schema 14), the hook digests print it on each pair
+line, and the three agent-facing digests — the Stop hook's `Notable`, the pre-tool advisory and
+the user-prompt scope — leave out a pair whose kind `analyzer.NotAMerge` (mirror operations, thin
+wrappers, different calls: the dashboard's default-hidden set). The field report on a month of
+sessions found agents sent back to pairs whose consolidation had already happened —
+`deltaPathFor`/`reviewPathFor`, folded onto `swapSuffix`, still listed at code-shape 1.00 — and
+"different purpose" was the commonest reason agents gave for declining a note. The user's own
+digest keeps every pair, kind attached, because it costs no turn.
 
 - **`interface implementations`** — both sides are methods with the same bare method name
   (`parser.MethodName`), the same `Signature` text, on different types (receiver names differ, or
@@ -2938,6 +2946,10 @@ to rewrite on every turn:
   `Types`, so against a schema-12 baseline each would read as edited by a session that never
   touched it, and `Pair.Score` moves for every pair one of them is in.
 
+  **`Schema` 14 adds `Pair.Kind`** (and `Drift.Kind`, the head run's), the pair kind name. It
+  annotates like `Explain` and is never diffed, but the agent-facing hook digests read it (see
+  *Pair kinds*), and a schema-13 baseline would have them read every pair as a candidate merge.
+
   `Schema` 5 (shape line) was the same kind of bump as 3, one step further: `Pair.Score` changed metric (token shingles → corpus-weighted WL
   Jaccard) *and* became corpus-relative, so a schema-4 baseline and a schema-5 run would disagree
   about pairs nobody edited. It also added `Containment`, which earns its bytes the way rule four
@@ -3008,7 +3020,10 @@ reason rather than returning a partial delta.
 - All four subcommands read the hook payload on stdin and write a hook response on stdout. **None ever
   exits non-zero or writes to stderr** — every failure path ends at `emitNothing`. A SessionStart
   hook's stderr surfaces to the user as a broken-tool notice, and blocking a session over a
-  measurement would be indefensible.
+  measurement would be indefensible. **An unknown subcommand is silent too**: `hookCmd` has a
+  `RunE` that emits nothing and accepts unknown flags, because without one cobra answers
+  `doppel hook <name-this-build-lacks>` with usage text on stdout, which the harness hands the
+  model. A binary older than the plugin did exactly that 414 times in 40 sessions.
 - **Every hook subcommand measures at one operating point, derived once.** `hookParams` sets
   `Calibrate` to the same 0.01 default and `NoOverlapFilter: true`; `session-start` derives the
   thresholds and they land in the baseline's `snapshot.Params`, and `stop` / `user-prompt` supply
@@ -3171,7 +3186,8 @@ reason rather than returning a partial delta.
      0.40, and over a weekend of real sessions (61 sessions, 66 agent notes) the pairs it let
      through had a median shape of 0.49, which agents rejected almost without exception ("both
      open a handle", "both print a table"); the two notes an agent acted on read 0.56 and above.
-     The user digest keeps the gate alone, because it does not cost a turn.
+     The user digest keeps the gate alone, because it does not cost a turn. A pair whose kind
+     says it is not a merge (`analyzer.NotAMerge`) is left out as well — see *Pair kinds*.
   3. **The `Reported` ledger** in the baseline wrapper. A delta is cumulative against the
      session-start origin, so an unremembered finding is re-reported — and re-continues the turn —
      every turn thereafter. The ledger rides in the baseline file rather than a second one, and

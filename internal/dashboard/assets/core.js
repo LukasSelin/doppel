@@ -87,7 +87,8 @@ var DOPPEL = (function () {
      pair is something other than a merge — one idea run in two directions, a
      consolidation already done, or a shared shape whose work is elsewhere. A
      kind annotates and never ranks, so hiding is a reader's filter, not a
-     verdict: the triage screen lets it be undone. */
+     verdict: the triage screen lets it be undone. analyzer.NotAMerge is the
+     same hidden set on the Go side, and the two must move together. */
   var KINDS = [
     { id: "", label: "no kind — candidate merge", hidden: false },
     { id: "diverged copy", label: "diverged copy", hidden: false },

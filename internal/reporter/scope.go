@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/LukasSelin/doppel/internal/analyzer"
 	"github.com/LukasSelin/doppel/internal/snapshot"
 )
 
@@ -46,7 +47,7 @@ func ScopeDigest(s snapshot.Snapshot, pkgs []ScopedPackage) string {
 		var within []snapshot.Pair
 		cross := 0
 		for _, p := range s.Pairs {
-			if !p.MergeWorthy {
+			if !p.MergeWorthy || analyzer.NotAMerge(p.Kind) {
 				continue
 			}
 			ain, bin := pkgOf[p.A] == sp.Package, pkgOf[p.B] == sp.Package
@@ -73,7 +74,7 @@ func ScopeDigest(s snapshot.Snapshot, pkgs []ScopedPackage) string {
 					fmt.Fprintf(&b, "    (%d more not listed)\n", len(within)-shown)
 					break
 				}
-				fmt.Fprintf(&b, "    %s <-> %s  shape %.2f  overlap %.2f\n", p.A, p.B, p.Score, p.Overlap)
+				fmt.Fprintf(&b, "    %s <-> %s  shape %.2f  overlap %.2f%s\n", p.A, p.B, p.Score, p.Overlap, kindTag(p.Kind))
 				shown++
 			}
 		}
@@ -108,11 +109,11 @@ func AdviceDigest(s snapshot.Snapshot, relFile string) string {
 
 	var lines []string
 	for _, p := range s.Pairs {
-		if !p.MergeWorthy {
+		if !p.MergeWorthy || analyzer.NotAMerge(p.Kind) {
 			continue
 		}
 		if inFile[p.A] || inFile[p.B] {
-			lines = append(lines, fmt.Sprintf("  %s <-> %s  shape %.2f  overlap %.2f", p.A, p.B, p.Score, p.Overlap))
+			lines = append(lines, fmt.Sprintf("  %s <-> %s  shape %.2f  overlap %.2f%s", p.A, p.B, p.Score, p.Overlap, kindTag(p.Kind)))
 		}
 	}
 	if len(lines) == 0 {

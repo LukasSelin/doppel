@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/LukasSelin/doppel/internal/analyzer"
 	"github.com/LukasSelin/doppel/internal/snapshot"
 )
 
@@ -325,5 +326,27 @@ func TestNotableRequiresTheShapeFloor(t *testing.T) {
 	want := []string{"new:a.Twin|b.Twin", "gate:c.Up|d.Up", "gate:e.Lost|f.Lost"}
 	if strings.Join(keys, " ") != strings.Join(want, " ") {
 		t.Errorf("notable keys = %v, want %v", keys, want)
+	}
+}
+
+// The note continues a finished turn, so a pair whose kind says it is not a
+// merge never earns one: the mirror pair and the wrappers already delegating
+// to one helper are both left out, whether they appeared or crossed the gate.
+func TestNotableLeavesOutNonMergeKinds(t *testing.T) {
+	wrap := pc("a.Delta", "a.Review", 1.00, 0.82, true, true)
+	wrap.Kind = analyzer.KindThinWrappers
+	fork := pc("a.Eval", "a.EvalOld", 0.90, 0.70, true, true)
+	fork.Kind = analyzer.KindFork
+	d := snapshot.Delta{Comparable: true, PairsAdded: []snapshot.PairChange{wrap, fork},
+		Drift: []snapshot.Drift{{
+			A: "a.Get", B: "a.Delete", ScoreBefore: 0.9, ScoreAfter: 0.9,
+			MergeWorthyAfter: true, Attributable: true, Kind: analyzer.KindMirror,
+		}}}
+	got := Notable(d)
+	if len(got) != 1 || !strings.Contains(got[0].Line, "a.EvalOld") {
+		t.Fatalf("want only the fork, got %+v", got)
+	}
+	if !strings.Contains(got[0].Line, "[diverged copy]") {
+		t.Errorf("line does not name the kind: %q", got[0].Line)
 	}
 }

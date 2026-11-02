@@ -80,7 +80,8 @@ type Drift struct {
 	OverlapAfter      float64 `json:"overlapAfter"`
 	MergeWorthyBefore bool    `json:"mergeWorthyBefore"`
 	MergeWorthyAfter  bool    `json:"mergeWorthyAfter"`
-	Attributable      bool    `json:"attributable"` // at least one side's body changed
+	Attributable      bool    `json:"attributable"`   // at least one side's body changed
+	Kind              string  `json:"kind,omitempty"` // the head run's pair kind; annotation, never compared
 }
 
 // CrossedGate reports whether this pair changed merge-worthiness. It is the
@@ -186,6 +187,7 @@ func Diff(base, head Snapshot) Delta {
 				MergeWorthyBefore: prev.MergeWorthy,
 				MergeWorthyAfter:  p.MergeWorthy,
 				Attributable:      touched[p.A] || touched[p.B],
+				Kind:              p.Kind,
 			})
 		}
 	}
