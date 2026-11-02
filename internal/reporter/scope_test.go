@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/LukasSelin/doppel/internal/analyzer"
 	"github.com/LukasSelin/doppel/internal/snapshot"
 )
 
@@ -81,5 +82,20 @@ func TestAdviceDigestSilentWhenNothingToSay(t *testing.T) {
 	}
 	if got := AdviceDigest(s, "internal/unknown/x.go"); got != "" {
 		t.Errorf("unknown file produced output:\n%s", got)
+	}
+}
+
+// A pair whose kind says it is not a merge — here two wrappers already
+// delegating to one helper — is left out of the advisory, and a kind that is
+// still a merge is named on the line.
+func TestAdviceDigestLeavesOutNonMergeKinds(t *testing.T) {
+	s := scopeFixture()
+	s.Pairs[0].Kind = analyzer.KindThinWrappers
+	if got := AdviceDigest(s, "internal/billing/service.go"); got != "" {
+		t.Errorf("thin-wrapper pair reached the advisory:\n%s", got)
+	}
+	s.Pairs[0].Kind = analyzer.KindFork
+	if got := AdviceDigest(s, "internal/billing/service.go"); !strings.Contains(got, "[diverged copy]") {
+		t.Errorf("advisory does not name the pair's kind:\n%s", got)
 	}
 }

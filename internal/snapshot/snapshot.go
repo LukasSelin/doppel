@@ -189,7 +189,13 @@ import (
 // schema-12 baseline each such function would read as edited by a session
 // that never touched it, and Pair.Score moves for every pair one of them is
 // in. Both are the movement a version exists to refuse.
-const Schema = 13
+//
+// 14 adds Pair.Kind, the pair kind name (analyzer.KindThinWrappers and its
+// siblings). It annotates like Explain and is never diffed, but the hook
+// digests read it: an agent-facing note leaves out a pair whose kind says it
+// is not a merge. A schema-13 baseline carries no kinds, so its digests would
+// silently read every pair as a candidate merge.
+const Schema = 14
 
 // Snapshot is one full analysis run.
 //
@@ -415,10 +421,11 @@ type Pair struct {
 	A           string  `json:"a"`
 	B           string  `json:"b"`
 	Score       float64 `json:"score"`
-	Containment float64 `json:"containment"` // reported, never scored or diffed
-	Overlap     float64 `json:"overlap"`     // corpus-relative
-	MergeWorthy bool    `json:"mergeWorthy"` // half corpus-relative
-	Explain     string  `json:"explain"`     // annotation; never diffed
+	Containment float64 `json:"containment"`    // reported, never scored or diffed
+	Overlap     float64 `json:"overlap"`        // corpus-relative
+	MergeWorthy bool    `json:"mergeWorthy"`    // half corpus-relative
+	Explain     string  `json:"explain"`        // annotation; never diffed
+	Kind        string  `json:"kind,omitempty"` // analyzer kind name, "" for none; annotation, never diffed
 
 	// The concept views (schema 10): the concept signal read three ways, plus
 	// its direction. Annotations in the sense Containment and Explain are —
@@ -497,6 +504,9 @@ func Build(units []parser.CodeUnit, docs []concepter.ConceptDoc, pairs []analyze
 		}
 		rec := Pair{A: a, B: b, Score: pr.Score, Containment: pr.Breakdown.Containment, Explain: pr.Explain,
 			ViewFeature: -1, ViewAInB: -1, ViewBInA: -1}
+		if pr.Kind != nil {
+			rec.Kind = pr.Kind.Kind
+		}
 		if pr.Evidence != nil {
 			rec.Overlap = pr.Evidence.OverlapScore
 			rec.MergeWorthy = pr.MergeWorthy()

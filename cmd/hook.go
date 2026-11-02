@@ -86,6 +86,15 @@ var hookCmd = &cobra.Command{
 	Short: "Claude Code hook entry points",
 	Long: "Subcommands intended to be run by Claude Code hooks. Each reads the hook\n" +
 		"payload as JSON on stdin and writes a hook response as JSON on stdout.",
+	// A subcommand this build does not know — a plugin newer than the binary
+	// on PATH — must answer like every other hook failure: nothing on stdout,
+	// nothing on stderr, exit 0. Without a Run, cobra answers an unknown
+	// subcommand with the help text on stdout, which the harness hands the
+	// model as hook context; that happened 414 times in 40 sessions before
+	// this was closed. --help still prints the usage.
+	Args:               cobra.ArbitraryArgs,
+	FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
+	RunE:               func(*cobra.Command, []string) error { return emitNothing() },
 }
 
 var hookSessionStartCmd = &cobra.Command{

@@ -31,6 +31,16 @@ const (
 	KindDifferentCalls = "different calls"
 )
 
+// NotAMerge reports whether kind is one of the three above: a kind that says
+// the pair is something other than a merge. The dashboard's headline view
+// hides the same three (core.js KINDS), and the agent-facing hook digests
+// leave them out, because a note naming a pair whose consolidation already
+// happened sends the agent back to work that is done. Everywhere else a kind
+// still only annotates.
+func NotAMerge(kind string) bool {
+	return kind == KindMirror || kind == KindThinWrappers || kind == KindDifferentCalls
+}
+
 // The thresholds the measurement set. ThinNodes bounds "small" on the
 // larger side; ThinVocabCeiling is the vocab-lens Jaccard below which the two
 // bodies name different things (merges read 1.00 there, wrappers about half);

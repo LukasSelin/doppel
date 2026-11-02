@@ -197,6 +197,30 @@ func TestHookCommandsFailSilently(t *testing.T) {
 	}
 }
 
+// A plugin newer than the binary on PATH names a hook this build lacks. That
+// must read as silence, not as the usage text the harness would hand the model.
+func TestUnknownHookSubcommandIsSilent(t *testing.T) {
+	for _, args := range [][]string{
+		{"hook", "no-such-hook"},
+		{"hook", "no-such-hook", "--root", "."},
+		{"hook", "no-such-hook", "--no-such-flag"},
+		{"hook"},
+	} {
+		var out, errOut bytes.Buffer
+		root := rootCmd
+		root.SetIn(strings.NewReader(`{}`))
+		root.SetOut(&out)
+		root.SetErr(&errOut)
+		root.SetArgs(args)
+		if err := root.Execute(); err != nil {
+			t.Fatalf("%v: returned an error: %v", args, err)
+		}
+		if out.Len() != 0 || errOut.Len() != 0 {
+			t.Errorf("%v: wrote stdout %q, stderr %q", args, short(out.String()), short(errOut.String()))
+		}
+	}
+}
+
 func short(s string) string {
 	if len(s) > 40 {
 		return s[:40] + "..."
