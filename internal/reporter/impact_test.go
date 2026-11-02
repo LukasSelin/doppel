@@ -178,6 +178,60 @@ func TestConceptDigestNamesPresentConceptsAndUnusedSeeds(t *testing.T) {
 	}
 }
 
+// A real corpus learns hundreds of concepts. Uncapped, their one line ran past
+// digestMaxChars, so truncate kept only the header and dropped everything
+// after it — the query sentence included.
+func TestConceptDigestSurvivesALargeVocabulary(t *testing.T) {
+	concepts := make([]snapshot.TagCount, 520)
+	for i := range concepts {
+		concepts[i] = snapshot.TagCount{Tag: fmt.Sprintf("pkg%03d.SomeFunction+pkg%03d.Other", i, i), Count: 600 - i}
+	}
+	s := snapshot.Snapshot{
+		Functions: 7170,
+		Params:    snapshot.Params{Threshold: 0.37},
+		Concepts:  concepts,
+		Roles:     []snapshot.RoleCount{{Role: "leaf", Count: 7170}},
+	}
+	got := ConceptDigest(s, "big")
+
+	if len(got) > digestMaxChars+len("\n  (truncated)\n") {
+		t.Errorf("digest is %d chars, over the cap", len(got))
+	}
+	for _, want := range []string{
+		"pkg000.SomeFunction+pkg000.Other 600",
+		"more.\n",
+		"Structural roles: leaf 7170",
+		"Near-duplicate pairs reported",
+		"doppel query --near",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("digest missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "pkg519.") {
+		t.Error("least-populated concept listed; the cap should have counted it instead")
+	}
+}
+
+func TestConceptDigestKeepsQueryHintPastTruncation(t *testing.T) {
+	// One unused-seed line too long to fit: the body truncates, the hint stays.
+	seeds := make([]string, 2000)
+	for i := range seeds {
+		seeds[i] = fmt.Sprintf("seed_%d", i)
+	}
+	got := ConceptDigest(snapshot.Snapshot{Functions: 1, UnusedSeeds: seeds}, "r")
+
+	if !strings.Contains(got, "(truncated)") {
+		t.Fatalf("expected a truncated body:\n%.300s", got)
+	}
+	if !strings.HasSuffix(got, queryHint) {
+		t.Errorf("query hint not last:\n%s", got[len(got)-300:])
+	}
+	if len(got) > digestMaxChars+len("\n  (truncated)\n") {
+		t.Errorf("digest is %d chars, over the cap", len(got))
+	}
+}
+
 func TestTruncateKeepsWholeLines(t *testing.T) {
 	long := strings.Repeat("some line of digest text\n", 1000)
 	got := truncate(long)
