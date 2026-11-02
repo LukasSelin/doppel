@@ -14,6 +14,10 @@ import (
 // screenful stops being read anyway. These bound the two digests well under it.
 const (
 	digestMaxChars = 8000
+	// The concept inventory gets about half the session-start digest, leaving
+	// room for the lines after it.
+	maxConceptListChars = 4000
+	queryHint           = "A proposed function can be checked against this corpus before writing it: doppel query --near <package> <root> reads a Go snippet on stdin and reports its nearest existing relatives.\n"
 	// The impact digest is read at the end of every turn, so it is held
 	// tighter than the one-off session-start inventory: a new function pairs
 	// with every look-alike it has, and ten near-identical lines about one
@@ -67,11 +71,7 @@ func ConceptDigest(s snapshot.Snapshot, root string) string {
 	b.WriteString(".\n")
 
 	if len(s.Concepts) > 0 {
-		present := make([]string, 0, len(s.Concepts))
-		for _, c := range byCountDesc(s.Concepts) {
-			present = append(present, fmt.Sprintf("%s %d", c.Tag, c.Count))
-		}
-		fmt.Fprintf(&b, "Concepts learned from this corpus, with member counts: %s.\n", strings.Join(present, ", "))
+		fmt.Fprintf(&b, "Concepts learned from this corpus, with member counts: %s.\n", conceptInventory(s.Concepts))
 	}
 	if len(s.UnusedSeeds) > 0 {
 		fmt.Fprintf(&b, "Kinds of work this corpus shows no practice for: %s.\n",
@@ -98,10 +98,10 @@ func ConceptDigest(s snapshot.Snapshot, root string) string {
 
 	// Declarative, like every line above: the command exists whether or not
 	// anyone runs it. Without this sentence the query feature is invisible to
-	// the one reader positioned to use it before writing code.
-	b.WriteString("A proposed function can be checked against this corpus before writing it: doppel query --near <package> <root> reads a Go snippet on stdin and reports its nearest existing relatives.\n")
-
-	return truncate(b.String())
+	// the one reader positioned to use it before writing code — so it is
+	// appended after truncation, which on a large corpus would otherwise cut it
+	// first, being last.
+	return truncateTo(b.String(), digestMaxChars-len(queryHint)) + queryHint
 }
 
 // ImpactDigest renders what a session changed, or the empty string when it
@@ -330,16 +330,39 @@ func byCountDesc(tags []snapshot.TagCount) []snapshot.TagCount {
 	return out
 }
 
-// absentConcepts lists the vocabulary's concrete concepts that nothing in the
-// corpus carries — the direct answer to "is there already something doing this
-// here?" when the answer is no.
+// conceptInventory joins concepts, most-populated first, until the next one would
+// pass maxConceptListChars, and counts the rest. Learned vocabularies run to
+// hundreds of concepts on a real corpus; uncapped, the list is one line longer
+// than the whole digest, and truncate drops it along with every line after it.
+func conceptInventory(tags []snapshot.TagCount) string {
+	var b strings.Builder
+	ordered := byCountDesc(tags)
+	for i, c := range ordered {
+		item := fmt.Sprintf("%s %d", c.Tag, c.Count)
+		if i > 0 && b.Len()+len(", ")+len(item) > maxConceptListChars {
+			fmt.Fprintf(&b, ", and %d more", len(ordered)-i)
+			break
+		}
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(item)
+	}
+	return b.String()
+}
+
+// truncate cuts s at the last whole line that fits digestMaxChars.
 func truncate(s string) string {
-	if len(s) <= digestMaxChars {
+	return truncateTo(s, digestMaxChars)
+}
+
+func truncateTo(s string, limit int) string {
+	if len(s) <= limit {
 		return s
 	}
-	cut := strings.LastIndex(s[:digestMaxChars], "\n")
+	cut := strings.LastIndex(s[:limit], "\n")
 	if cut <= 0 {
-		cut = digestMaxChars
+		cut = limit
 	}
 	return s[:cut] + "\n  (truncated)\n"
 }
