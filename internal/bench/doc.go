@@ -15,9 +15,19 @@
 //	     "aFile": "pkg/a.go", "bFile": "pkg/b.go",  // optional; required when a == b
 //	     "class": "merge" | "refactor" | "false_positive" | "coupled",
 //	     "kind": "mirror" | "entrypoint" | ...,   // optional, false_positive only; see FPKinds
+//	     "weight": 3,                              // optional; share of its class's mean rank, see below
+//	     "target": "one generic over both types",  // optional; what acting on the pair makes
+//	     "blocker": "layering" | "no-home" | ...,  // optional, merge/refactor only; see labels.Blockers
+//	     "decision": {"outcome": "merged" | "left" | "deferred", "by": "user" | "agent",
+//	                  "date": "2026-11-04", "commit": "<sha>", "reason": "one line"},  // optional
+//	     "earlier": [ ...decisions this one replaced... ],                            // optional
 //	     "note": "short rationale"}
 //	  ]
 //	}
+//
+// The schema and its validation live in internal/labels; `doppel verdict`
+// writes the same format to .doppel/verdicts.json, so a repository's recorded
+// decisions are a labels file as they stand.
 //
 // Pair identity is the unordered qualified-name pair, names rendered exactly
 // as the reporter shows them (Package + "." + Name, receiver stars kept). A
@@ -37,6 +47,17 @@
 // in step and makes no claim about merging them, so it has a mean rank and no
 // assertion. A partial review is fine — only labeled pairs are scored, so a
 // pair whose verdict is genuinely contested is better left out than guessed.
+//
+// A weight says how much one verdict counts toward its class's mean rank. It
+// is for evidence a reading of two bodies cannot give: a merge a session
+// carried out and landed is a revealed verdict and can count more than one
+// nobody acted on, and a merge somebody looked at and declined can count less.
+// An explicit weight wins; otherwise a decision implies one on a merge or
+// refactor label (labels.MergedWeight for merged, labels.LeftWeight for left),
+// and everything else weighs 1. The weight bends the class and kind means
+// only; presence, merge recall and the three assertions count every label
+// once, so no weight can hide a violation. A file with neither weights nor
+// decisions scores exactly as before.
 //
 // Two tests call it:
 //

@@ -439,8 +439,10 @@ func TestKindLenses(t *testing.T) {
 	t.Log("ranking with a flagged pair's retrieval mass discounted, pooled over corpora")
 	t.Logf("  %-38s %5s %6s %6s %6s %6s %5s %5s", "flag", "disc", "merge", "refac", "fp", "fp@20", "viol", "m@50")
 	discount := func(fl *kindFlag, d float64) {
-		var mSum, rSum, fSum float64
-		var mN, rN, fN, fp20, viol, m50 int
+		// Pooled by label weight, which is the label count when no file
+		// carries weights.
+		var mSum, rSum, fSum, mN, rN, fN float64
+		var fp20, viol, m50 int
 		for _, kr := range runs {
 			orig := kr.run.Pairs
 			pairs := make([]analyzer.SimilarPair, len(orig))
@@ -457,12 +459,12 @@ func TestKindLenses(t *testing.T) {
 			kr.run.Pairs = pairs
 			sc := Score(kr.run, kr.spec.lf)
 			kr.run.Pairs = orig
-			mSum += sc.MeanRank["merge"] * float64(sc.Present["merge"])
-			mN += sc.Present["merge"]
-			rSum += sc.MeanRank["refactor"] * float64(sc.Present["refactor"])
-			rN += sc.Present["refactor"]
-			fSum += sc.MeanRank["false_positive"] * float64(sc.Present["false_positive"])
-			fN += sc.Present["false_positive"]
+			mSum += sc.MeanRank["merge"] * sc.Weight["merge"]
+			mN += sc.Weight["merge"]
+			rSum += sc.MeanRank["refactor"] * sc.Weight["refactor"]
+			rN += sc.Weight["refactor"]
+			fSum += sc.MeanRank["false_positive"] * sc.Weight["false_positive"]
+			fN += sc.Weight["false_positive"]
 			fp20 += len(sc.FPInTop20)
 			viol += len(sc.FPInTop20) + len(sc.FPAboveMerge) + len(sc.MergeMissing)
 			m50 += sc.MergeInTop50
@@ -472,7 +474,7 @@ func TestKindLenses(t *testing.T) {
 			name, ds = fl.name, fmt.Sprintf("%.2f", d)
 		}
 		t.Logf("  %-38s %5s %6.1f %6.1f %6.1f %6d %5d %5d", name, ds,
-			mSum/float64(max(mN, 1)), rSum/float64(max(rN, 1)), fSum/float64(max(fN, 1)), fp20, viol, m50)
+			mSum/max(mN, 1), rSum/max(rN, 1), fSum/max(fN, 1), fp20, viol, m50)
 	}
 	discount(nil, 1)
 	for _, fl := range kindFlags() {

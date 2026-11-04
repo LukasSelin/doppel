@@ -128,3 +128,55 @@ func TestCoupledIsScoredNotAsserted(t *testing.T) {
 		t.Errorf("coupled leaked into the asserted accounting: %+v", sc)
 	}
 }
+
+// TestWeightBendsMeansOnly pins what Label.Weight may touch: the class and
+// kind mean ranks, and nothing a hard assertion or a recall count reads.
+func TestWeightBendsMeansOnly(t *testing.T) {
+	units := []parser.CodeUnit{
+		{Package: "alpha", Name: "A", File: "alpha/a.go"},
+		{Package: "alpha", Name: "B", File: "alpha/a.go"},
+		{Package: "alpha", Name: "C", File: "alpha/a.go"},
+	}
+	pair := func(a, b int, total float64) analyzer.SimilarPair {
+		return analyzer.SimilarPair{AIdx: a, BIdx: b, Score: 1, Retrieval: &analyzer.Retrieval{Total: total, TrophicSim: 1}}
+	}
+	run := &Run{Units: units, Pairs: []analyzer.SimilarPair{pair(0, 1, 30), pair(0, 2, 20), pair(1, 2, 10)}}
+
+	parse := func(labels string) LabelsFile {
+		t.Helper()
+		lf, err := ParseLabels([]byte(`{"corpus":"x","reviewed":"2026-01-01","labels":[` + labels + `]}`))
+		if err != nil {
+			t.Fatalf("labels rejected: %v", err)
+		}
+		return lf
+	}
+	plain := Score(run, parse(`
+		{"a":"alpha.A","b":"alpha.B","class":"merge","note":"rank 1"},
+		{"a":"alpha.A","b":"alpha.C","class":"merge","note":"rank 2"},
+		{"a":"alpha.B","b":"alpha.C","class":"false_positive","kind":"mirror","note":"rank 3"}`))
+	weighted := Score(run, parse(`
+		{"a":"alpha.A","b":"alpha.B","class":"merge","note":"rank 1","weight":3},
+		{"a":"alpha.A","b":"alpha.C","class":"merge","note":"rank 2"},
+		{"a":"alpha.B","b":"alpha.C","class":"false_positive","kind":"mirror","note":"rank 3","weight":0.5}`))
+
+	if plain.MeanRank["merge"] != 1.5 || plain.Weight["merge"] != 2 {
+		t.Errorf("unweighted merge mean %.3f over weight %.1f, want 1.5 over 2", plain.MeanRank["merge"], plain.Weight["merge"])
+	}
+	if weighted.MeanRank["merge"] != 1.25 || weighted.Weight["merge"] != 4 {
+		t.Errorf("weighted merge mean %.3f over weight %.1f, want 1.25 over 4", weighted.MeanRank["merge"], weighted.Weight["merge"])
+	}
+	if weighted.MeanRank["false_positive"] != 3 || weighted.KindMeanRank["mirror"] != 3 {
+		t.Errorf("a lone weighted label must keep its own rank as the mean: class %.3f, kind %.3f",
+			weighted.MeanRank["false_positive"], weighted.KindMeanRank["mirror"])
+	}
+	if weighted.Present["merge"] != plain.Present["merge"] || weighted.MergePresent != plain.MergePresent ||
+		weighted.MergeInTop50 != plain.MergeInTop50 || len(weighted.FPAboveMerge) != len(plain.FPAboveMerge) ||
+		len(weighted.FPInTop20) != len(plain.FPInTop20) {
+		t.Errorf("weight leaked into counts or assertions: plain %+v, weighted %+v", plain, weighted)
+	}
+
+	if _, err := ParseLabels([]byte(`{"corpus":"x","reviewed":"2026-01-01","labels":[
+		{"a":"alpha.A","b":"alpha.B","class":"merge","note":"n","weight":-1}]}`)); err == nil {
+		t.Error("negative weight accepted")
+	}
+}

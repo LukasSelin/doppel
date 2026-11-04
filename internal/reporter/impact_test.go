@@ -203,6 +203,7 @@ func TestConceptDigestSurvivesALargeVocabulary(t *testing.T) {
 		"Structural roles: leaf 7170",
 		"Near-duplicate pairs reported",
 		"doppel query --near",
+		"doppel verdict merged|left|deferred",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("digest missing %q:\n%s", want, got)
@@ -224,8 +225,8 @@ func TestConceptDigestKeepsQueryHintPastTruncation(t *testing.T) {
 	if !strings.Contains(got, "(truncated)") {
 		t.Fatalf("expected a truncated body:\n%.300s", got)
 	}
-	if !strings.HasSuffix(got, queryHint) {
-		t.Errorf("query hint not last:\n%s", got[len(got)-300:])
+	if !strings.HasSuffix(got, toolHints) {
+		t.Errorf("tool hints not last:\n%s", got[len(got)-400:])
 	}
 	if len(got) > digestMaxChars+len("\n  (truncated)\n") {
 		t.Errorf("digest is %d chars, over the cap", len(got))

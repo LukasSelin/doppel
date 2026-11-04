@@ -1,6 +1,7 @@
 package bench
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -153,21 +154,47 @@ func kindPrefix(l Label) string {
 	return "[" + l.Kind + "] "
 }
 
+// weightPrefix renders a label's decision and effective weight when it has
+// either, so a labels file with neither logs exactly as it always did.
+func weightPrefix(l Label) string {
+	var s string
+	if d := l.Decision; d != nil {
+		s = fmt.Sprintf("[%s by %s %s] ", d.Outcome, d.By, d.Date)
+	}
+	if w := l.EffectiveWeight(); w != 1 {
+		s += fmt.Sprintf("[w %g] ", w)
+	}
+	return s
+}
+
+// labelNote is the label's note, or its decision's reason when the label was
+// recorded by `doppel verdict` and carries no separate note.
+func labelNote(l Label) string {
+	if l.Note == "" && l.Decision != nil {
+		return l.Decision.Reason
+	}
+	return l.Note
+}
+
 // logScorecard prints one Scorecard the way scoreLabels always has.
 func logScorecard(t *testing.T, sc Scorecard) {
 	t.Helper()
 	t.Logf("ranked %d pairs (%d suppressed by max-per-func=2)", sc.Ranked, sc.Suppressed)
 	for _, r := range sc.Results {
 		if r.Rank > 0 {
-			t.Logf("%-14s rank %-6d key %8.1f  %s  — %s%s",
-				r.Label.Class, r.Rank, r.Key, r.Label.Pair(), kindPrefix(r.Label), r.Label.Note)
+			t.Logf("%-14s rank %-6d key %8.1f  %s  — %s%s%s",
+				r.Label.Class, r.Rank, r.Key, r.Label.Pair(), weightPrefix(r.Label), kindPrefix(r.Label), labelNote(r.Label))
 		} else {
-			t.Logf("%-14s %-11s          %s  — %s%s",
-				r.Label.Class, r.Absent, r.Label.Pair(), kindPrefix(r.Label), r.Label.Note)
+			t.Logf("%-14s %-11s          %s  — %s%s%s",
+				r.Label.Class, r.Absent, r.Label.Pair(), weightPrefix(r.Label), kindPrefix(r.Label), labelNote(r.Label))
 		}
 	}
 	for _, class := range Classes {
 		if sc.Present[class] == 0 {
+			continue
+		}
+		if w := sc.Weight[class]; w != float64(sc.Present[class]) {
+			t.Logf("mean rank %s: %.1f over %d present (weighted, total weight %.1f)", class, sc.MeanRank[class], sc.Present[class], w)
 			continue
 		}
 		t.Logf("mean rank %s: %.1f over %d present", class, sc.MeanRank[class], sc.Present[class])

@@ -18,6 +18,9 @@ const (
 	// room for the lines after it.
 	maxConceptListChars = 4000
 	queryHint           = "A proposed function can be checked against this corpus before writing it: doppel query --near <package> <root> reads a Go snippet on stdin and reports its nearest existing relatives.\n"
+	verdictHint         = "What was done with a reported pair can be recorded with its reason: doppel verdict merged|left|deferred <a> <b> --reason \"...\" saves it to .doppel/verdicts.json, the labels format the benchmark scores.\n"
+	// toolHints close the session-start digest and survive its truncation.
+	toolHints = verdictHint + queryHint
 	// The impact digest is read at the end of every turn, so it is held
 	// tighter than the one-off session-start inventory: a new function pairs
 	// with every look-alike it has, and ten near-identical lines about one
@@ -96,12 +99,13 @@ func ConceptDigest(s snapshot.Snapshot, root string) string {
 	fmt.Fprintf(&b, "Near-duplicate pairs reported at threshold %.2f: %d, of which %d are merge-worthy.\n",
 		s.Params.Threshold, len(s.Pairs), s.MergeWorthy())
 
-	// Declarative, like every line above: the command exists whether or not
-	// anyone runs it. Without this sentence the query feature is invisible to
-	// the one reader positioned to use it before writing code — so it is
-	// appended after truncation, which on a large corpus would otherwise cut it
-	// first, being last.
-	return truncateTo(b.String(), digestMaxChars-len(queryHint)) + queryHint
+	// Declarative, like every line above: the commands exist whether or not
+	// anyone runs them. Without these sentences the query and verdict features
+	// are invisible to the one reader positioned to use them — before writing
+	// code, and when deciding about a pair a hook names — so they are appended
+	// after truncation, which on a large corpus would otherwise cut them first,
+	// being last.
+	return truncateTo(b.String(), digestMaxChars-len(toolHints)) + toolHints
 }
 
 // ImpactDigest renders what a session changed, or the empty string when it

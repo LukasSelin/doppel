@@ -149,6 +149,9 @@ doppel ontology --defs
 # Before writing a function, ask whether the repo already has one like it
 doppel query --near billing . < draft.go
 
+# Record what you did with a pair, and why, in .doppel/verdicts.json
+doppel verdict merged billing.parseAmount invoice.parseAmount --reason "one parser in money"
+
 # Census: every group of 3+ mutually similar functions, not just pairs
 doppel families .
 
@@ -187,6 +190,30 @@ from elsewhere. `--near` names the package the function will live in: a bare sni
 it, and its bare-name calls resolve to that package's functions, which is what locality is built
 from. Include the snippet's imports — calls into imported packages only count as evidence when the
 import that binds them is present.
+
+### Recording decisions
+
+A report names a pair; somebody then merges it, leaves it, or puts it off, usually for a reason
+that fits in one line. `doppel verdict` saves that decision where it can be used again:
+
+```bash
+doppel verdict merged billing.parseAmount invoice.parseAmount --reason "one parser in money"
+doppel verdict left codec.Encode codec.Decode --kind mirror --reason "inverse operations"
+doppel verdict left api.writeJSON report.writeJSON --blocker layering --reason "report may not import api"
+doppel verdict deferred store.Get store.GetRange --reason "after the cache rewrite"
+```
+
+Each call adds or updates one entry in `.doppel/verdicts.json`, with the outcome, who decided
+(`--by`, default `agent`), the date, the commit the tree sat on, and the reason. A pair left alone
+needs a category: `--kind` when it is not a real duplicate (`mirror`, `entrypoint`, `skeleton`, …),
+`--blocker` when it is one that stays (`no-home`, `layering`, `design`, `too-small`, …). Recording a
+pair again keeps the earlier decision. Sides are names as the report prints them, and a hook note's
+`name@file` keys work as they are.
+
+The file is in the labels format doppel's benchmark scores, so the decisions a team makes become
+ground truth for measuring the ranking, with a merge somebody carried out counting more than a pair
+somebody looked at and left. Nothing in `analyze` or the hooks reads it: a recorded verdict never
+hides or reranks a pair.
 
 ### Checking a score by hand
 

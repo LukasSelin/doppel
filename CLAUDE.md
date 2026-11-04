@@ -109,6 +109,7 @@ cmd/            CLI commands (Cobra).
   timing.go     DOPPEL_TIMING=1: per-stage wall clock on the progress writer
   profile.go    --cpuprofile / --memprofile, hidden persistent flags on the root command
   query.go      doppel query: check a proposed function (a snippet on stdin) against the corpus, locality-weighted
+  verdict.go    doppel verdict: record what was done with a pair, and why, as a label in .doppel/verdicts.json
   decisions.go  analyze --decisions: every retrieved pair's fate and merge-verdict gates, as JSON for labelling
   moves.go      doppel moves: functions only another package uses, the helpers that move along, and what blocks the move
   movestage.go  analyze's moves stage: the same analysis for the report, pinned to linux/amd64, offline, never fatal
@@ -179,6 +180,7 @@ internal/
                 audit.go + assets/(audit.html, audit.js, audit.css) is the two-run review page
                 (doppel diff -o *.html). render.go inlines each into its shell; all share vendor/
                 and app.css, and all three load ui.js (the payload-free helpers) ahead of their own script
+  labels/       The labels-file schema: verdicts, decisions, blockers, Parse and its validation; read by bench, written by doppel verdict
   bench/        Measurement harness: golden-ranking scorer, the pinned public corpus ladder, per-stage benchmarks, example generator
 examples/       Committed real reports for each corpus rung, plus labels/ (committed golden reviews) — see examples/README.md
 scripts/        timeline.sh: walks a git history and analyses each revision at one pinned operating point.
@@ -189,7 +191,7 @@ scripts/        timeline.sh: walks a git history and analyses each revision at o
                 -s size adds the size-aware rank variants (TestSizeRankingsAt) and judges under -sweep-scope commit.
                 history-labels.sh + historylabel/ (its own Go module): derives golden labels from what maintainers did to each pair in git history.
                 The only code in the repo that reads git history, and deliberately outside the doppel module
-                (cmd/hookgit.go reads HEAD for the Stop hook's baseline, and nothing else — see the hook contract)
+                (cmd/hookgit.go reads HEAD for the Stop hook's baseline and for a recorded verdict's commit, and nothing else — see the hook contract)
 ```
 
 Eight helpers are deliberately shared rather than copied, because doppel found each
@@ -241,6 +243,8 @@ pipeline types; `cmd` bridges a finished run into it, exactly as it does for `re
 `identity` imports `fingerprint` and `snapshot` only, and `reporter` imports `identity` — that edge
 is one-way and must stay so: `identity` models what happened between two runs, `reporter` renders
 it, and an import the other way would put a digest's byte budget inside the matcher.
+`labels` imports nothing from this module; `internal/bench` reads it and `cmd` (doppel verdict) writes
+through it, so the vocabulary a verdict is recorded in is the one a scorecard validates.
 `moves` imports nothing from this module, and only `cmd` imports it; `cmd` hands it the walk rule
 (`parser.Excludes.SkipDir`) as a function value rather than `moves` importing `parser`.
 
@@ -366,6 +370,23 @@ that already exists, says so in the tool result. Treat that note exactly like a 
 extend what it names, or say in one line why the new function is deliberately separate. It fires
 *after* the code is written, so the manual query on a draft is still the step that saves the
 rewrite; the hook catches the drafts nobody queried.
+
+**Record the decision.** When you act on a pair a doppel note or report names — merge it, or leave
+it for a reason — save that as a verdict, before committing so the recorded commit still holds
+both functions:
+
+```bash
+doppel verdict merged cmd.displayRoot cmd.workdirName --reason "workdirName did displayRoot's job"
+doppel verdict left cmd.init@cmd/diff.go cmd.init@cmd/moves.go --kind entrypoint --reason "each command registers its own flags"
+doppel verdict left dashboard.WriteTimelineJSON reporter.encodeJSON --blocker layering --reason "dashboard may not import reporter"
+```
+
+Sides are names as the note prints them, `@file` included. `left` takes `--kind` when the pair
+is not a real duplicate and `--blocker` when it is one that stays. The file is
+`.doppel/verdicts.json`, in the labels format the benchmark scores, with a merge weighing 3 and a
+merge left alone 0.5 (`labels.MergedWeight`, `labels.LeftWeight`). A pair recorded again keeps its
+earlier decision under `earlier`. A pair merged in a session leaves no other trace a later
+measurement can find, which is why this is worth the one line.
 
 The project enables the **doppel Claude Code plugin** in `.claude/settings.json` (marketplace
 `LukasSelin/doppel`, plugin `doppel@doppel`). Its five hooks put the corpus in front of the
@@ -3216,6 +3237,8 @@ reason rather than returning a partial delta.
      read-only sessions on another repository that saw edits at an unmoved HEAD — not yet explained.
 
      This is the module's one use of git, and it reads one fact: which commit the tree sits on.
+     `doppel verdict` reads the same fact to record which tree a decision was made on, and
+     nothing reads it back into a score.
      It is not history as evidence — no score, ranking or annotation reads it — but a validity
      check on the measurement origin, the way `Params` equality is. Widening it to anything that
      feeds a score is a design change.
@@ -3594,7 +3617,7 @@ nothing. Argument order **is** series order, which needs no timestamp inside a `
 none, by the schema's third rule) and no sorting the tool could not justify. `scripts/timeline.sh`
 walks `git rev-list`, materializes each revision in a detached worktree, analyses it, and calls the
 command; `task timeline` wraps it. That script and `scripts/historylabel` are the only things in the
-repo that read git history (the Stop hook reads HEAD and nothing more; see the hook contract).
+repo that read git history (the Stop hook and `doppel verdict` read HEAD and nothing more; see the hook contract).
 
 ### One operating point for the whole series
 
@@ -3760,6 +3783,13 @@ functions for exactly this reason, and the first version of them did not and fai
   is a reader of reports, like any script piping `--format json` somewhere. It runs no pipeline
   stage at all.
 
+  **`.doppel/verdicts.json` is not state either: it is input, like a labels file.** `doppel
+  verdict` writes it when somebody decides what to do with a pair, and the benchmark reads it
+  as ground truth. Nothing in `analyze` or the hooks reads it — no pair is hidden, reranked or
+  skipped because a verdict exists. Letting a hook skip decided pairs, or a report annotate them,
+  would be the first pipeline read of a persisted input since `.doppel.json`, and is a design
+  change of its own.
+
   **One documented exception, `pinThresholds` in `cmd/hook.go`:** a hook run reads the baseline's
   recorded `Threshold` and `Calibrate` and skips the calibration derivation. It is a supplied
   *parameter*, not a cached *result* — the thresholds arrive exactly as `--threshold` would supply
@@ -3841,7 +3871,18 @@ functions for exactly this reason, and the first version of them did not and fai
     labeled pair gets a rank or an absence reason, three assertions are hard (merges retrieved,
     no false positive above the worst merge, no false positive in the top 20), the rest is a
     logged scorecard. A **partial** review is fine — only labeled pairs are scored, so a
-    genuinely contested pair is better left unlabeled than guessed.
+    genuinely contested pair is better left unlabeled than guessed. The schema lives in
+    `internal/labels`. Beyond the verdict, a label may record a `decision` (outcome `merged`,
+    `left` or `deferred`; who; date; the commit the tree sat on; a reason), a `blocker` (why a real
+    duplicate stays, the counterpart of `kind`), a `target` (what the merge makes) and the
+    decisions it replaced (`earlier`); `doppel verdict` writes all of them. A label's weight is
+    its explicit `weight`, else 3 for a merge or refactor somebody carried out and 0.5 for one
+    somebody left, else 1: a revealed verdict counts more than a reading of two bodies. The
+    weight bends the class and kind means only; presence, merge recall and the three
+    assertions count every label once, and a file with neither weights nor decisions scores
+    byte-identically. A label describes the tree it was written on: a pair merged since then
+    survives as two wrappers the ranking rightly buries, and scoring the old label against the
+    new tree reads that as a badly ranked merge, so score a labels file against its own commit.
   - `TestGoldenRanking` scores a **private** review: both inputs come from outside the repo
     (`DOPPEL_BENCH_CORPUS` + `DOPPEL_BENCH_LABELS`) and **no name, path, or labeled pair from
     that corpus may ever be committed**. Run:
