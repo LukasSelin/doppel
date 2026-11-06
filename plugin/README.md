@@ -84,6 +84,11 @@ function it intends to write into `doppel query --near <package> <root>` and get
 functions most related to it, nearest-by-call-graph first — answering "does something like this
 already exist, and where" before the code is written rather than measuring the duplication after.
 
+It names `doppel verdict` as well, the tool for the other end of a note: when the agent merges a
+pair a hook named, or leaves it for a reason, `doppel verdict merged|left|deferred <a> <b> --reason
+"..."` saves the decision to `.doppel/verdicts.json` in the labels format doppel's benchmark scores.
+No hook reads that file; it is a record of decisions, not a filter.
+
 It also records a **baseline** — the measurement origin the Stop hook compares against. The baseline
 is written once per session; SessionStart also fires on resume and after compaction, and re-recording
 then would quietly move the origin so the impact report described the last few minutes instead of the

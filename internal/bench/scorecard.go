@@ -34,9 +34,12 @@ type Scorecard struct {
 
 	Results []LabelResult // one per label, in labels-file order
 
-	// Per-class aggregates over present (ranked) pairs.
+	// Per-class aggregates over present (ranked) pairs. MeanRank is weighted
+	// by Label.Weight and Weight is the weight it was divided by; with no
+	// weights in the file Weight equals Present and MeanRank is the plain mean.
 	MeanRank map[string]float64
 	Present  map[string]int
+	Weight   map[string]float64
 
 	// Per-kind aggregates over present false positives that carry a Kind.
 	KindMeanRank map[string]float64
@@ -97,11 +100,16 @@ func ScoreBy(run *Run, lf LabelsFile, key func(analyzer.SimilarPair) float64) Sc
 		Suppressed:   suppressed,
 		MeanRank:     map[string]float64{},
 		Present:      map[string]int{},
+		Weight:       map[string]float64{},
 		KindMeanRank: map[string]float64{},
 		KindPresent:  map[string]int{},
 	}
-	classSum := map[string]int{}
-	kindSum := map[string]int{}
+	// Weighted sums. Ranks are integers and an absent weight is 1, so with
+	// no weights these sums are exact and the means are bit-identical to the
+	// unweighted ones.
+	classSum := map[string]float64{}
+	kindSum := map[string]float64{}
+	kindWeight := map[string]float64{}
 
 	var worstMerge int
 	for _, l := range lf.Labels {
@@ -111,11 +119,14 @@ func ScoreBy(run *Run, lf LabelsFile, key func(analyzer.SimilarPair) float64) Sc
 			rank := sp.rank
 			r.Rank = rank
 			r.Key = sp.rankKey
+			w := l.EffectiveWeight()
 			sc.Present[l.Class]++
-			classSum[l.Class] += rank
+			sc.Weight[l.Class] += w
+			classSum[l.Class] += float64(rank) * w
 			if l.Kind != "" {
 				sc.KindPresent[l.Kind]++
-				kindSum[l.Kind] += rank
+				kindWeight[l.Kind] += w
+				kindSum[l.Kind] += float64(rank) * w
 			}
 			if l.Class == "merge" && rank > worstMerge {
 				worstMerge = rank
@@ -144,11 +155,11 @@ func ScoreBy(run *Run, lf LabelsFile, key func(analyzer.SimilarPair) float64) Sc
 			}
 		}
 	}
-	for class, n := range sc.Present {
-		sc.MeanRank[class] = float64(classSum[class]) / float64(n)
+	for class, w := range sc.Weight {
+		sc.MeanRank[class] = classSum[class] / w
 	}
-	for kind, n := range sc.KindPresent {
-		sc.KindMeanRank[kind] = float64(kindSum[kind]) / float64(n)
+	for kind, w := range kindWeight {
+		sc.KindMeanRank[kind] = kindSum[kind] / w
 	}
 
 	// The FP-above-merge check needs the worst merge rank, so it runs after

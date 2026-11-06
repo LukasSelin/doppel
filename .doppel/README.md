@@ -19,3 +19,13 @@ false-positive fix is measured against.
 A side may pin its file with `aFile`/`bFile` (slash-separated, relative to the repository
 root); a pair whose two sides share a qualified name — two `main.main`s, two `init`s, a
 helper duplicated across two scripts — must pin both.
+
+`verdicts.json`, when present, is written by `doppel verdict` each time somebody decides what to do
+with a pair: merged, left (with a `kind` or `blocker` saying why) or deferred, with who, when, the
+commit the tree sat on, and the reason. It is a labels file too, so it scores the same way:
+
+    DOPPEL_BENCH_CORPUS=<path to this repo> DOPPEL_BENCH_LABELS=<path to this repo>/.doppel/verdicts.json \
+      go test ./internal/bench/ -run TestGoldenRanking -v -count=1
+
+A merged pair weighs 3 in its class's mean rank and a merge left alone 0.5. Each decision names its
+own commit, and a pair merged since then survives only as wrappers, so score it against that commit.
