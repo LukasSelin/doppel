@@ -112,100 +112,64 @@ func TestDeltaSectionIsBounded(t *testing.T) {
 	}
 }
 
-// Every finding the note can print needs a key, or it is restated on every
-// later turn. The prefixes must not collide with the notable ones.
-func TestDeltaFindingsKeys(t *testing.T) {
-	got := DeltaFindings(sampleDelta())
-	want := map[string]bool{
-		"class:renamed:svc.Total|svc.Sum": false,
-		"class:new:|svc.Trim":             false,
-		"created:svc.Clip|svc.Trim":       false,
-		"dissolved:svc.Clip|svc.Total":    false,
-	}
-	for _, f := range got {
-		if _, ok := want[f.Key]; !ok {
-			t.Errorf("unexpected finding key %q", f.Key)
-			continue
-		}
-		want[f.Key] = true
-	}
-	for k, seen := range want {
-		if !seen {
-			t.Errorf("missing finding key %q", k)
-		}
-	}
-	// No unchanged function is a finding.
-	for _, f := range got {
-		if strings.Contains(f.Key, "unchanged") {
-			t.Errorf("unchanged must not be a finding: %q", f.Key)
-		}
-	}
-	// The prefixes the notable list already uses must stay distinct.
-	for _, f := range got {
-		for _, taken := range []string{"new:", "gate:", "drift:"} {
-			if strings.HasPrefix(f.Key, taken) {
-				t.Errorf("finding key %q collides with the notable prefix %q", f.Key, taken)
-			}
-		}
-	}
-}
-
 // The line the bar is drawn at: the identity classification never buys a model
 // turn on its own. Notable alone decides whether the note is sent.
 func TestAgentDeltaDigestNeedsANotableFinding(t *testing.T) {
-	d := sampleDelta()
-	fresh := DeltaFindings(d)
-	if len(fresh) == 0 {
-		t.Fatal("fixture produced no identity findings")
-	}
-	note, shown := AgentDeltaDigest(d, fresh, nil)
+	note, shown := AgentDeltaDigest(sampleDelta(), nil)
 	if note != "" || shown != nil {
 		t.Errorf("a rename with no notable finding must not continue the turn: %q", note)
 	}
 }
 
-func TestAgentDeltaDigestLeadsWithTheDeltaAndLedgersBothHalves(t *testing.T) {
-	d := sampleDelta()
-	fresh := DeltaFindings(d)
-	notable := []Finding{{Key: "new:svc.Clip|svc.Trim", Line: "svc.Clip <-> svc.Trim  shape 1.00  overlap 0.52"}}
+// The note says which side of each pair the session wrote, in place, instead
+// of leading with the delta report: that preamble was most of the text Stop
+// notes cost an agent, and none of what it listed was acted on.
+func TestAgentDeltaDigestLabelsEachSide(t *testing.T) {
+	notable := []Finding{{
+		Key:  "new:svc.Clip|svc.Trim",
+		Line: "svc.Clip <-> svc.Trim  shape 1.00  overlap 0.52",
+		A:    "svc.Clip", B: "svc.Trim",
+	}}
+	note, shown := AgentDeltaDigest(sampleDelta(), notable)
 
-	note, shown := AgentDeltaDigest(d, fresh, notable)
-	if !strings.HasPrefix(note, "doppel matched this session's functions against the session baseline: renamed 1, new 1;") {
-		t.Fatalf("the delta report must lead the note:\n%s", note)
+	if !strings.Contains(note, "  svc.Clip [unchanged] <-> svc.Trim [new]  shape 1.00  overlap 0.52\n") {
+		t.Errorf("the pair line must label both sides:\n%s", note)
 	}
-	if !strings.Contains(note, "doppel measured this session's effect") {
-		t.Errorf("the notable half must still be there:\n%s", note)
+	if strings.Contains(note, "doppel matched this session's functions") || strings.Contains(note, "renamed 1") {
+		t.Errorf("the delta report must not reach the agent note:\n%s", note)
 	}
-	if !strings.Contains(note, "This is a measurement, not a request.") {
-		t.Errorf("the closing bound must survive composition:\n%s", note)
+	if !strings.HasPrefix(note, "doppel measured this session's effect") {
+		t.Errorf("the note must open with the findings:\n%s", note)
 	}
 
-	// The ledger gets what was rendered from both halves, and nothing else:
-	// retiring a finding nobody was shown suppresses it for the session.
-	if len(shown) != maxAgentDelta+len(notable) {
-		t.Fatalf("shown = %d findings, want %d rendered", len(shown), maxAgentDelta+len(notable))
-	}
-	for _, f := range shown {
-		if !strings.Contains(note, strings.SplitN(f.Line, "\n", 2)[0]) {
-			t.Errorf("ledgered a finding that was not rendered: %q", f.Line)
-		}
-	}
-	if !strings.Contains(note, "(1 further delta findings not listed)") {
-		t.Errorf("the delta half must say what it omitted:\n%s", note)
+	// The ledger keeps the findings as Notable made them: keys are what
+	// suppress a repeat, and a relabelled line must not become a new finding.
+	if len(shown) != 1 || shown[0].Key != notable[0].Key || shown[0].Line != notable[0].Line {
+		t.Errorf("shown = %+v, want the notable finding unchanged", shown)
 	}
 }
 
-// With no fresh identity finding the note is exactly the old one: the delta
-// half is additive, never a rewrite of what was already being said.
-func TestAgentDeltaDigestWithoutFreshIdentityFindings(t *testing.T) {
-	notable := []Finding{{Key: "new:a|b", Line: "a <-> b  shape 1.00  overlap 0.52"}}
-	note, shown := AgentDeltaDigest(sampleDelta(), nil, notable)
-	want, wantShown := AgentDigest(notable)
-	if note != want {
-		t.Errorf("note = %q, want the plain agent digest %q", note, want)
+// A finding about something other than one pair, or one whose sides the delta
+// cannot place, is said exactly as Notable wrote it.
+func TestAgentDeltaDigestLeavesOtherLinesAlone(t *testing.T) {
+	notable := []Finding{
+		{Key: "new:a|b", Line: "a <-> b  shape 1.00  overlap 0.52"},
+		{Key: "drift:x|y", Line: "x <-> y  shape 0.40 -> 0.70", A: "y", B: "x"},
 	}
-	if len(shown) != len(wantShown) {
-		t.Errorf("shown = %d, want %d", len(shown), len(wantShown))
+	note, _ := AgentDeltaDigest(sampleDelta(), notable)
+	for _, want := range []string{"  a <-> b  shape 1.00", "  x <-> y  shape 0.40 -> 0.70"} {
+		if !strings.Contains(note, want) {
+			t.Errorf("note lost %q:\n%s", want, note)
+		}
+	}
+
+	incomparable := sampleDelta()
+	incomparable.Comparable = false
+	labelled := []Finding{{Key: "new:svc.Clip|svc.Trim", Line: "svc.Clip <-> svc.Trim  shape 1.00", A: "svc.Clip", B: "svc.Trim"}}
+	got, _ := AgentDeltaDigest(incomparable, labelled)
+	want, _ := AgentDigest(labelled)
+	if got != want {
+		t.Errorf("an incomparable delta must leave the plain note:\n%q\nwant\n%q", got, want)
 	}
 }
 

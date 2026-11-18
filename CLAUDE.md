@@ -3203,27 +3203,29 @@ reason rather than returning a partial delta.
   a continuum that cannot separate a pair three signals past the gate from one barely over it. The
   flag stays on the rendered line. This is presentation only — `snapshot.Diff`'s own total order
   (attributable, merge-worthy, score) is untouched, and nothing here feeds a score.
-- **Both `stop` digests lead with the delta report** — the identity classification since the
-  baseline, then the pairs those changes created or dissolved, each line carrying its stored
-  `explain:` sentence. See *The delta report* below for the model; what belongs here is where the
+- **The user's `stop` digest leads with the delta report** — the identity classification since
+  the baseline, then the pairs those changes created or dissolved, each line carrying its stored
+  `explain:` sentence. See *The delta report* below for the model. **The agent note does not carry
+  it**; it carries the classification as a label on each pair side instead
+  (`svc.Clip [unchanged] <-> svc.Trim [new]`, `AgentDeltaDigest`). What belongs here is where the
   line was drawn:
 
   **The classification never buys a model turn.** `reporter.Notable` alone decides whether
-  `additionalContext` is emitted, and its bar is untouched. A rename with no pair consequence is a
-  fact about code the model just wrote and the user digest already carries; paying a turn to
-  restate it would make the feature hostile. What the classification buys, *once a notable finding
-  has already justified the note*, is the attribution the note is read through. So identity changes
-  what the note says and never whether it is sent — `AgentDeltaDigest` returns "" for an empty
-  `notable` list however much the delta found.
+  `additionalContext` is emitted. A rename with no pair consequence is a fact about code the model
+  just wrote and the user digest already carries; paying a turn to restate it would make the
+  feature hostile. What the classification buys, *once a notable finding has already justified the
+  note*, is attribution: which side of each pair the session wrote. `AgentDeltaDigest` returns ""
+  for an empty `notable` list however much the delta found.
 
-  **The `Reported` ledger covers it, by the existing mechanism.** `reporter.DeltaFindings` turns
-  the report into `Finding`s keyed `class:<class>:<old>|<new>`, `created:<a>|<b>` and
-  `dissolved:<a>|<b>` — prefixes deliberately distinct from `new:`, `gate:` and `drift:`, so two
-  kinds of finding cannot collide on one key. They go through the same `unreported` filter and the
-  same `withReported` write, and `AgentDeltaDigest` returns the findings from *both* halves that it
-  actually rendered, because ledgering what was only counted retires findings nobody was shown. The
-  user digest is deliberately not ledgered: it lets the turn end, and it is a cumulative statement
-  of where the session stands rather than a feed.
+  **It used to lead the agent note too, and was measured out of it.** Over a month of transcripts
+  (Oct 9 – Nov 18, 2026, 250 Stop notes) the scoreboard and the first few classified functions and
+  created pairs were 55% of the text Stop notes put in front of an agent, and no agent acted on
+  anything that section listed. The label says the one thing it was there for in a word, at the
+  place it is read, and it names the shape most of the merges agents made had: a new function
+  beside an unchanged one. The section's own ledger keys (`class:`, `created:`, `dissolved:`) went
+  with it, so the `Reported` ledger holds only the notable findings' keys. The user digest is
+  deliberately not ledgered: it lets the turn end, and it is a cumulative statement of where the
+  session stands rather than a feed.
 
   **`identityDelta` in `cmd/hook.go` recovers.** An error (a corrupt WL codec) and a panic both
   degrade to no delta section, never to a non-zero exit or a byte on stderr. The identity pass can
@@ -3250,18 +3252,27 @@ reason rather than returning a partial delta.
      before any analysis when it is true. Without it the turn never ends until Claude Code
      overrides it with a warning (`CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`). It also spares a second full
      pipeline run per reported turn.
-  2. **`reporter.Notable`, a much higher bar than the user digest's.** Only new merge-worthy
-     attributable pairs, and gate crossings with an edited side. Attribution gates the crossings
-     as hard as the pairs, and measurement proved it must: merge-worthiness is corpus-weighted, so
-     adding two functions anywhere nudges untouched pairs across the 0.4 boundary. **Every kind
-     must also reach code-shape `analyzer.ForkShapeFloor` (0.60)** — the post-edit floor — judged
-     after the change for a pair that appeared or became merge-worthy, before it for one that
-     stopped being, and on the higher side for a drift. The merge-worthy gate's own shape floor is
-     0.40, and over a weekend of real sessions (61 sessions, 66 agent notes) the pairs it let
-     through had a median shape of 0.49, which agents rejected almost without exception ("both
-     open a handle", "both print a table"); the two notes an agent acted on read 0.56 and above.
-     The user digest keeps the gate alone, because it does not cost a turn. A pair whose kind
-     says it is not a merge (`analyzer.NotAMerge`) is left out as well — see *Pair kinds*.
+  2. **`reporter.Notable`, a much higher bar than the user digest's.** Two kinds only: a new
+     merge-worthy attributable pair at code-shape `analyzer.ForkShapeFloor` (0.60) or above, and an
+     existing pair with an edited side whose code-shape **rose across** that floor by at least
+     `notableDrift` (0.05) — an edit that turned two functions into copies. Attribution gates both,
+     and measurement proved it must: merge-worthiness is corpus-weighted, so adding two functions
+     anywhere nudges untouched pairs across the 0.4 boundary. The floor is the post-edit floor,
+     not the merge-worthy gate's 0.40: over a weekend of real sessions (61 sessions, 66 agent
+     notes) the pairs that gate let through had a median shape of 0.49, which agents rejected
+     almost without exception ("both open a handle", "both print a table"); the two notes an agent
+     acted on read 0.56 and above. The user digest keeps the gate alone, because it does not cost a
+     turn. A pair whose kind says it is not a merge (`analyzer.NotAMerge`) is left out as well —
+     see *Pair kinds*.
+
+     **Movement in any other direction was measured out.** Four more line types used to qualify:
+     a shape that fell, a pair that stopped being merge-worthy, a pair that crossed the gate on
+     context alone, and a shape that rose while already above the floor. Over a month of
+     transcripts (Oct 9 – Nov 18, 2026) they were 102 of 802 Stop lines and bought one deferred
+     merge between them, and 42 of 250 notes held nothing else, each one a continued turn. The
+     rising-across-the-floor lines, 20 of them, carried a merge and a deferral, which is why
+     that kind alone was kept. A pair getting less alike is good news the user digest still
+     carries.
   3. **The `Reported` ledger** in the baseline wrapper. A delta is cumulative against the
      session-start origin, so an unremembered finding is re-reported — and re-continues the turn —
      every turn thereafter. The ledger rides in the baseline file rather than a second one, and
@@ -3270,8 +3281,7 @@ reason rather than returning a partial delta.
      ledger. It used to return only what it printed, so that nothing merely counted was retired
      unseen; measured, that was a drip-feed — a 28-finding backlog came out three per turn
      (28 → 25 → 23 → 20 …), each three continuing the turn again. Nothing is lost to the user,
-     whose digest and impact file still carry the whole delta. The delta-report half of the note
-     (`maxAgentDelta`) still ledgers only what it printed: it never justifies a note on its own.
+     whose digest and impact file still carry the whole delta.
   4. **The baseline follows the branch** (`followHead`, `cmd/hookgit.go`). Agents move the branch
      under a session — a rebase onto main, a merge of origin/main, a fast-forward, a branch
      switch — and every function that arrives that way reads as the session's work. The
@@ -3589,7 +3599,8 @@ key sets and no re-scoring. `identity.Delta` is the pair of halves, and it is wh
 hard convention — so a plain run's markdown and HTML *cannot* carry this section, and do not.
 Four homes, in the order they matter:
 
-1. **The Stop hook digests.** Both of them lead with it; see the hook contract above.
+1. **The Stop hook's user digest**, which leads with it. The agent note carries only its
+   classification, as a label on each pair side; see the hook contract above.
 2. **`doppel diff`'s text form**, where the classification is already the whole output and the pair
    sections follow it under one `Delta since the baseline` title.
 3. **`doppel diff -o <file.md>`**, a markdown form whose first section is the report because
