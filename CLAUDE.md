@@ -2655,6 +2655,21 @@ local trees. `GoSpec` sets none of the new fields. `TestRustLifetimesAreNames`,
 `TestRustGenericFunctions`, `TestAngleEnd`, `TestRustMultilineAndRawStrings` and
 `TestTypeScriptGenericFunctions` pin the fixes.
 
+**What the census found next was `KeywordRequired` stopping halfway.** Two guards exist to keep a
+call from reading as a declaration: a name in `stmtKeywords` is never one, and `bodyStart` looks
+for the body only on the header's line and the next. Where the keyword is required, it has
+already settled that, and both guards then only cost real functions. `new`, `from`, `select`,
+`delete`, `with` and `end` are all statement words, and `fn new(` is Rust's commonest constructor:
+620 of horizon's 947 remaining misses, and 514 of veloren's 814 together with `from`. A `where`
+clause or a return type wrapped onto more lines lost about 50 more in horizon and about 150 in
+veloren. Under `KeywordRequired` the segmenter checks the keyword first, skips both guards, and
+reads the header to its `{` or `;` however many lines it takes. Every found unit stays the same.
+The census then reads recall 1.000 on living-weather, horizon, horizon_mods, veloren,
+living-herds and living-wildlife. That figure is agreement with a regex ground truth that blanks
+literals by the same lifetime and string rules the lexer now follows. It is not an independent
+parse. Other languages are byte-identical, because `KeywordRequired` is set only for Rust.
+`TestRustKeywordSettlesTheDeclaration` pins it.
+
 **Cross-language pairs never exist.** `parser.SameBuildUnit` is one predicate over two rules:
 test and production code are different build units, and so are two languages one step further
 out. It replaced the `_test.go` suffix check that had been copy-pasted into `cmd/analyze.go`,
@@ -4466,17 +4481,17 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   goes for any construct whose body opens more than one line after the header. Both fail toward
   a *missing* unit rather than a wrong one, which is why precision stays at 1.000 while recall
   is what moves.
-- **Rust still loses `fn new(` and headers that run past one line.** The lifetime, string and
-  generic defects are fixed (see *Frontends*), and most of what a Rust tree still loses has two
-  causes. A name in `stmtKeywords` is never a declaration, and `new`, `from`, `select`,
-  `delete`, `with`, `end` and `is` are all in it. `fn new(` is Rust's commonest constructor:
-  620 of horizon's 947 remaining misses, and 514 of veloren's 814 with `from`. Separately,
-  `bodyStart` looks for the body only on the header's own line and the next one, so a `where`
-  clause or a return type that wraps onto more lines loses the `fn`: about 50 in horizon and
-  about 150 in veloren. Both guards exist to stop a call reading as a declaration, which
-  `KeywordRequired` already rules out. Rarer: Rust's nested block comments `/* /* */ */` close at
-  the first `*/`, a `fn $name(` inside `macro_rules!` becomes a unit named `$name`, and a
-  const-generic default in braces ends `angleEnd`. All of these fail toward a missing unit.
+- **What the Rust lexer still gets wrong is rare, and one edge applies to every language.** The
+  lifetime, string, generic, `fn new(` and wrapped-header defects are fixed (see *Frontends*).
+  Still open: Rust's nested block comments `/* /* */ */` close at the first `*/`. A
+  `fn $name(` inside `macro_rules!` becomes a unit named `$name`. A const-generic default in
+  braces ends `angleEnd`, so that `fn` is lost. Swift and C# write `f<T>(` and have
+  `AngleTypeParams` off until a tree of either is measured. Kotlin writes `fun <T> f(`, which no
+  rule reaches. The edge in every language is in `dropNested`: a nested function whose
+  declaration is the first token of its parent's body has `declTok == bodyStart`, the test is a
+  strict `>`, and the nested function is emitted beside its parent. That is 64 units on horizon
+  and 19 on veloren. Changing it moves every language's output, so it waits for its own
+  measurement.
 - **A non-Go label bag is real evidence, and it is coarser in two independent ways.** The bag,
   the code-shape score, containment, the compression ratio and the explanation layer all work on
   any frontend's tree. But no `lexfront` language has a canonicalizer, so two bodies differing

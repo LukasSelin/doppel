@@ -106,6 +106,14 @@ func segment(toks []token, sp Spec) []span {
 		if kw[toks[i].text] {
 			continue
 		}
+		// The grammar says where a declaration is, so nothing is guessed:
+		// "if let Some(x) = f() {" has the shape of a declaration and no "fn"
+		// before its name. Checked first, so a type-parameter list is only
+		// ever looked for after the keyword.
+		declared := sp.KeywordRequired
+		if declared && (i == 0 || toks[i-1].kind != tokIdent || !intro[toks[i-1].text]) {
+			continue
+		}
 		// The name is the identifier immediately before a "(", allowing a
 		// type-parameter list in between: "func sortedKeys[K comparable](m M)",
 		// and where the language writes one in angle brackets, "fn f<T>(x: T)".
@@ -125,24 +133,19 @@ func segment(toks []token, sp Spec) []span {
 		// A call, not a declaration: "foo(" preceded by "." or "=" or an
 		// opening bracket is an expression. A declaration is preceded by a
 		// keyword, a type, a modifier, or a line start.
-		if stmtKeywords[toks[i].text] {
-			continue
-		}
-		if sp.KeywordRequired {
-			// The grammar says where a declaration is, so nothing is guessed:
-			// "if let Some(x) = f() {" has the shape of a declaration and no
-			// "fn" before its name.
-			if i == 0 || toks[i-1].kind != tokIdent || !intro[toks[i-1].text] {
-				continue
-			}
-		} else if !declContext(toks, i, kw) {
+		//
+		// Where the keyword is required it has already settled this, and the
+		// statement-word check would only cost real names: "fn new(" is the
+		// commonest constructor in Rust, and new, from, select, delete, with
+		// and end are all statement vocabulary somewhere else.
+		if !declared && (stmtKeywords[toks[i].text] || !declContext(toks, i, kw)) {
 			continue
 		}
 		close := matchBracket(toks, paren)
 		if close < 0 {
 			continue
 		}
-		body, open := bodyStart(toks, close+1, toks[close].line)
+		body, open := bodyStart(toks, close+1, toks[close].line, declared)
 		if body < 0 {
 			continue
 		}
@@ -375,14 +378,18 @@ func receiverOf(toks []token, start, name int) string {
 // walked forward from `print("x")` until it met the colon of a completely
 // unrelated `if` two lines later, and declared a function called print.
 // Allman brace style is why the bound is one line rather than zero.
-func bodyStart(toks []token, i, headLine int) (int, bool) {
+//
+// A declared header — one a required keyword introduced — is not bounded:
+// nothing here can be a call, and the header runs to its "{" or ";" however
+// many lines a where-clause or a wrapped return type takes.
+func bodyStart(toks []token, i, headLine int, declared bool) (int, bool) {
 	depth := 0
 	for ; i < len(toks); i++ {
 		t := toks[i]
-		if t.kind == tokEOF || t.line > headLine+1 {
+		if t.kind == tokEOF || (!declared && t.line > headLine+1) {
 			return -1, false
 		}
-		if t.line > headLine && depth == 0 {
+		if !declared && t.line > headLine && depth == 0 {
 			// Only a brace may open a body on the following line.
 			if t.kind == tokOpen && t.text == "{" {
 				return i + 1, true

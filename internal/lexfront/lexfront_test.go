@@ -394,6 +394,54 @@ line { not a body";
 	}
 }
 
+// TestRustKeywordSettlesTheDeclaration pins what Spec.KeywordRequired buys
+// beyond refusing patterns: once "fn" stands before the name, the two guards
+// that keep a call from reading as a declaration have nothing left to guard.
+// A statement word is a fine name there — "fn new(" is Rust's commonest
+// constructor — and a header may run to its "{" across a where-clause or a
+// wrapped return type rather than stopping after one line.
+func TestRustKeywordSettlesTheDeclaration(t *testing.T) {
+	const src = `
+impl Thing {
+    pub fn new(x: u8) -> Self {
+        Self { x }
+    }
+
+    fn from(v: u8) -> Self {
+        Self::new(v)
+    }
+
+    fn select<R: Rng>(&self, r: &mut R) -> u8 {
+        r.pick()
+    }
+
+    fn sample<T>(x: T) -> T
+    where
+        T: Clone,
+    {
+        x.clone()
+    }
+
+    fn pair(
+        &mut self,
+    ) -> (
+        u8,
+        u8,
+    ) {
+        (1, 2)
+    }
+
+    fn declared(&self) -> u8;
+}
+`
+	f, _ := Parse(specFor(t, "rust"), "thing.rs", []byte(src))
+	got := names(f)
+	want := []string{"new", "from", "select", "sample", "pair"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("units = %v, want %v", got, want)
+	}
+}
+
 // TestTypeScriptGenericFunctions: TypeScript writes its type parameters where
 // Rust does, and lost the same declarations.
 func TestTypeScriptGenericFunctions(t *testing.T) {
