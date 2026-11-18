@@ -2593,6 +2593,27 @@ from `print("x")` to an unrelated `if` two lines later; and anonymous literals e
 called `func` (11% of this repo). A lexical frontend fails quietly by construction — there is no
 parse to fail — so the measurement *is* the correctness argument.
 
+**A sixth was caught by agents rather than the harness: Rust pattern bindings read as functions.**
+`if let Some(x) = f() {` has the declaration shape (a name, a parenthesised group, a body) and the
+type-led rule accepted any identifier before the name, so `let` admitted it; let-else, match arms
+after a block arm, `x @ (…) => {`, `let (a, b) = match … {` (a unit called `let`) and
+`dyn Fn(…) -> T| {` did the same. The units paired with each other at code-shape 1.00 and filled
+hook notes in Rust repositories, and agents dismissed every one. `Spec.KeywordRequired` is the fix:
+a language whose every declaration has its keyword immediately before the name (Rust's `fn`)
+accepts that shape and no other, because there the grammar says where a declaration is and the
+keyword-less shapes only ever match something else. It is per-language rather than implied by
+`FuncKeywords` because TypeScript and Swift declare a keyword *and* have methods without one
+(`static isInPast(`, `init(`; 33 of 85 functions in one TypeScript repository).
+Adding `let` to `stmtKeywords` was the smaller candidate, and it would have left the match arms,
+`@` bindings and `dyn Fn`. Measured: living-weather 1 031 → 982 units, horizon
+52 502 → 49 365, horizon_mods 349 → 320. Every unit lost is one of three things: a pattern; an
+enum tuple variant after a lifetime (`Res(&'static str),`); or text inside a multi-line string,
+mostly GLSL/WGSL shader source. Every `fn` unit is unchanged in digest, file, line and WL bag. One
+`fn` nested in a lost span became visible.
+`TestRustPatternsAreNotFunctions` pins it, and it needs a lifetime in the enclosing signature
+to reproduce: patterns inside a function that *is* found are nested and dropped, so these
+escaped only from functions the lifetime defect under *Rough edges* had already lost.
+
 **Cross-language pairs never exist.** `parser.SameBuildUnit` is one predicate over two rules:
 test and production code are different build units, and so are two languages one step further
 out. It replaced the `_test.go` suffix check that had been copy-pasted into `cmd/analyze.go`,
@@ -4404,6 +4425,13 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   goes for any construct whose body opens more than one line after the header. Both fail toward
   a *missing* unit rather than a wrong one, which is why precision stays at 1.000 while recall
   is what moves.
+- **Rust lifetimes lex as strings, and generic functions are not found.** `'` is a string quote
+  in every C-family spec, so `Game<'_>` swallows the rest of its line as a literal and the
+  `fn` it sits in is lost. The segmenter takes the name immediately before `(`, allowing only
+  `[…]` between them, so `fn f<T>(` is missed too. Roughly measured on two Rust repositories,
+  10–18% of `fn` declarations are not found, most of them with a lifetime in the header.
+  Multi-line string literals end at the first newline, so their contents lex as code. All of
+  these fail toward a missing unit.
 - **A non-Go label bag is real evidence, and it is coarser in two independent ways.** The bag,
   the code-shape score, containment, the compression ratio and the explanation layer all work on
   any frontend's tree. But no `lexfront` language has a canonicalizer, so two bodies differing

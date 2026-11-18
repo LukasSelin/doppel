@@ -67,16 +67,25 @@ func isContainer(toks []token, name int, container map[string]bool) bool {
 // it is kept narrow and stated plainly: a name, a balanced parenthesised
 // list, then a body introduced by "{" or by ":" at end of line. That covers
 // keyword-led declarations (def/fn/func/function), type-led ones (Java, C++,
-// C#), methods inside classes, and assigned function expressions.
+// C#), methods inside classes, and assigned function expressions. A language
+// whose Spec sets KeywordRequired gets the keyword-led shape and nothing else.
 //
 // It will miss things, and the misses are the honest cost of having no
 // grammar — internal/bench measures the miss rate against go/ast on Go
 // corpora rather than leaving it to be discovered in the field.
 func segment(toks []token, sp Spec) []span {
 	kw := map[string]bool{}
+	// intro is the keyword proper of each entry, its last word: "pub fn" is a
+	// modifier then the keyword "fn". Spec.KeywordRequired accepts a name only
+	// after one.
+	intro := map[string]bool{}
 	for _, k := range sp.FuncKeywords {
-		for _, part := range strings.Fields(k) {
+		parts := strings.Fields(k)
+		for _, part := range parts {
 			kw[part] = true
+		}
+		if len(parts) > 0 {
+			intro[parts[len(parts)-1]] = true
 		}
 	}
 	container := map[string]bool{}
@@ -114,7 +123,14 @@ func segment(toks []token, sp Spec) []span {
 		if stmtKeywords[toks[i].text] {
 			continue
 		}
-		if !declContext(toks, i, kw) {
+		if sp.KeywordRequired {
+			// The grammar says where a declaration is, so nothing is guessed:
+			// "if let Some(x) = f() {" has the shape of a declaration and no
+			// "fn" before its name.
+			if i == 0 || toks[i-1].kind != tokIdent || !intro[toks[i-1].text] {
+				continue
+			}
+		} else if !declContext(toks, i, kw) {
 			continue
 		}
 		close := matchBracket(toks, paren)

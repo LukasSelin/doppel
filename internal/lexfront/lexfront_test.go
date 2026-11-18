@@ -131,6 +131,109 @@ function plain(a: number): number { return a * 2; }
 	}
 }
 
+// TestRustPatternsAreNotFunctions pins the defect that filled doppel's hook
+// notes in Rust repositories with pairs of functions called Some. A pattern
+// binding has the shape of a declaration — a name, a parenthesised group, a
+// body — so "if let Some(x) = f() {" read as a function Some with parameter
+// x, and so did let-else, a match arm after a block arm, a binding
+// "n @ (0 | 1) => {", "let (a, b) = match … {" (a function called let), and
+// the closure type in "|p: &dyn Fn(&str) -> bool| {". On a 1 031-function
+// tree 49 units were these, paired with each other at code-shape 1.00.
+//
+// Patterns inside an ordinary fn do not reproduce it on their own: the fn is
+// found and dropNested discards everything inside it. In the field the fn was
+// lost first, because "Game<'_>" lexes the lifetime as a string running to
+// end of line, and its patterns surfaced as top-level units. So the fixture
+// carries that signature, and the test also reads segment directly, before
+// nesting can hide anything.
+func TestRustPatternsAreNotFunctions(t *testing.T) {
+	const src = `
+pub fn tick(game: &mut Game<'_>, at: [i32; 3]) {
+    if let Some(sensor) = sensors::sensor(&game.id) {
+        sense(game, at, sensor);
+    }
+    while let Some(next) = queue.pop() {
+        run(next);
+    }
+    let Some(told) = told(game) else {
+        return;
+    };
+    let Ok(count) = u8::try_from(len(at)) else {
+        return;
+    };
+    match reading(game) {
+        Ok(value) => {
+            show(value);
+        }
+        Err(error) => {
+            warn(error);
+        }
+    }
+    match level(at) {
+        _ => {}
+        quiet @ (0 | 1) => {
+            hush(quiet);
+        }
+    }
+    let (a, b) = match pair(at) {
+        x => x,
+    };
+    let part = |block, property: &dyn Fn(&str) -> Option<bool>| {
+        part(block, property)
+    };
+}
+
+pub fn helper(x: i32) -> i32 {
+    x + 1
+}
+`
+	sp := specFor(t, "rust")
+	bogus := map[string]bool{"Some": true, "Ok": true, "Err": true, "None": true,
+		"Fn": true, "let": true, "@": true}
+
+	toks := lex([]byte(src), sp)
+	for _, s := range segment(toks, sp) {
+		if bogus[s.name] || toks[s.nameTok-1].text != "fn" {
+			t.Errorf("segment found %q at line %d without fn before it",
+				s.name, toks[s.nameTok].line)
+		}
+	}
+
+	f, _ := Parse(sp, "blocks.rs", []byte(src))
+	got := names(f)
+	for _, n := range got {
+		if bogus[n] {
+			t.Errorf("pattern binding became a unit %q; got %v", n, got)
+		}
+	}
+	if !has(got, "helper") {
+		t.Errorf("missing helper; got %v", got)
+	}
+}
+
+// TestTypeScriptKeywordlessMethods pins the reason Spec.KeywordRequired is
+// per-language rather than implied by FuncKeywords: TypeScript declares
+// "function", and a class method needs no keyword at all.
+func TestTypeScriptKeywordlessMethods(t *testing.T) {
+	const src = `
+export class DateHelper {
+  static isInPast(date: DateTime) {
+    return date < now();
+  }
+  toISO(): string {
+    return format(this.date);
+  }
+}
+`
+	f, _ := Parse(specFor(t, "typescript"), "DateHelper.ts", []byte(src))
+	got := names(f)
+	for _, want := range []string{"isInPast", "toISO"} {
+		if !has(got, want) {
+			t.Errorf("missing %q; got %v", want, got)
+		}
+	}
+}
+
 // TestGoLexicalMatchesShape uses the fidelity control spec on Go, which is
 // the language where the expected answer is unambiguous.
 func TestGoLexicalMatchesShape(t *testing.T) {
