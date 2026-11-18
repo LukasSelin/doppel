@@ -208,7 +208,8 @@ Each call adds or updates one entry in `.doppel/verdicts.json`, with the outcome
 needs a category: `--kind` when it is not a real duplicate (`mirror`, `entrypoint`, `skeleton`, …),
 `--blocker` when it is one that stays (`no-home`, `layering`, `design`, `too-small`, …). Recording a
 pair again keeps the earlier decision. Sides are names as the report prints them, and a hook note's
-`name@file` keys work as they are.
+`name@file` keys work as they are. Every git worktree of a repository shares one file, the one in
+its main checkout, so a verdict recorded in a linked worktree outlives it; `--file` names another.
 
 The file is in the labels format doppel's benchmark scores, so the decisions a team makes become
 ground truth for measuring the ranking, with a merge somebody carried out counting more than a pair

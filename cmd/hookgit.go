@@ -3,19 +3,25 @@ package cmd
 import (
 	"context"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
 
-// The hook's one use of git, and the reason it is allowed one.
+// doppel's one use of git, and the reason it is allowed one.
 //
 // doppel reads no history: authorship, age and churn are invisible to every
-// score, by construction. This file does not change that. It reads one fact —
-// which commit the analysed tree sits on — to decide whether the session
-// baseline still describes the tree the session started from.
+// score, by construction. This file does not change that. It reads where a
+// tree is, never what happened to it: which commit the analysed tree sits on
+// (gitHead), and which checkout is its repository's main one
+// (gitMainWorktree). The first decides whether the session baseline still
+// describes the tree the session started from, and records which tree a
+// verdict was decided on; the second is where `doppel verdict` keeps the one
+// verdicts file every worktree of a repository shares. Nothing here feeds a
+// score.
 //
-// That question exists because the Stop hook measures cumulatively against a
+// The first exists because the Stop hook measures cumulatively against a
 // baseline recorded at session start, and agents routinely move the branch
 // under it: a rebase onto main, a merge of origin/main, a fast-forward, a
 // branch switch. Every function that arrives that way reads as this session's
@@ -53,6 +59,38 @@ func gitHead(root string) string {
 		return ""
 	}
 	return h
+}
+
+// gitMainWorktree is the main working tree of the repository root belongs to,
+// and root's place inside its own working tree: slash-separated, with a
+// trailing slash, "" at the top. ok is false outside a repository, for a bare
+// repository (whose worktrees share no main working tree), and on any git
+// failure.
+//
+// `git worktree list` names every checkout that shares one repository, the
+// main one first, whichever of them asks. It is a fact about where the
+// checkouts are, read the way gitHead reads which commit one sits on.
+func gitMainWorktree(root string) (main, prefix string, ok bool) {
+	list, ok := gitOutput(root, "worktree", "list", "--porcelain")
+	if !ok {
+		return "", "", false
+	}
+	first, _, _ := strings.Cut(list, "\n\n")
+	for _, line := range strings.Split(first, "\n") {
+		if line == "bare" {
+			return "", "", false
+		}
+		if p, found := strings.CutPrefix(line, "worktree "); found {
+			main = p
+		}
+	}
+	if main == "" {
+		return "", "", false
+	}
+	if prefix, ok = gitOutput(root, "rev-parse", "--show-prefix"); !ok {
+		return "", "", false
+	}
+	return filepath.FromSlash(main), prefix, true
 }
 
 // baseMoved reports whether HEAD's move from `from` to `to` brought in work
