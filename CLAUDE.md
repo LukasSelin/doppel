@@ -318,6 +318,7 @@ task test     # go test ./...
 task vet      # go vet ./...
 task fmt      # gofmt -w .
 task fma-check # disassemble an arm64 build; fail on any multiply-add fused in doppel's own code
+task plugin-check # fail if plugin/ changed since origin/master and plugin.json's version did not go up
 
 task dist          # goreleaser release --snapshot --clean  — the six release archives, unpublished
 task release-check # goreleaser check                       — validate .goreleaser.yaml
@@ -438,6 +439,15 @@ stale session baseline (see *Rough edges*).
   first — which is the intended way to learn about it.
 - **CI checks gofmt** on the Linux leg, so formatting drift no longer reaches `master` when the
   local hook is inactive (it only exists after `task setup`, which nothing enforces).
+- **A pull request that changes `plugin/` must raise the plugin's version.** The `plugin-version`
+  job runs `scripts/plugin-version-check.sh` against the base branch (`task plugin-check` against
+  `origin/master` locally, uncommitted changes included). Claude Code updates an installed plugin
+  only when `version` in `plugin/.claude-plugin/plugin.json` goes up and caches each install
+  under that number, so a change left at the old version never reaches anyone who has the
+  plugin, auto-update or not. Every file under `plugin/` counts, README and tests too, because
+  the whole directory is what an install copies; `.claude-plugin/marketplace.json` does not,
+  because a marketplace is refreshed directly. It cannot see the `doppel` binary: the hooks run
+  whatever is on `PATH`, so a new binary still needs `go install`.
 - `.github/workflows/release.yml` fires on a `v*` tag push and runs GoReleaser (pinned `v2.17.1`)
   over `.goreleaser.yaml`. It **re-declares** vet/test/determinism in a `verify` job rather than
   reusing `ci.yml`: a tag push matches neither of `ci.yml`'s triggers, so `needs:` cannot reach it

@@ -201,3 +201,19 @@ jobs:
             done
           fi
           exit $status
+
+  # Claude Code updates an installed plugin only when the version in
+  # plugin/.claude-plugin/plugin.json goes up, so a change under plugin/ that
+  # leaves it alone never reaches anyone who already has the plugin. A
+  # question about a pull request against its base, so it runs on pull
+  # requests only, and once: the answer does not vary by platform.
+  plugin-version:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: A plugin change raises the plugin version
+        run: bash scripts/plugin-version-check.sh "origin/${{ github.base_ref }}"

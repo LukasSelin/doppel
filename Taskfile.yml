@@ -50,6 +50,11 @@ tasks:
     cmds:
       - bash scripts/fma-check.sh
 
+  plugin-check:
+    desc: Fail if plugin/ changed since origin/master without raising the plugin's version
+    cmds:
+      - bash scripts/plugin-version-check.sh
+
   dashboard:
     desc: Build the HTML dashboard for this repo and open it
     vars:
