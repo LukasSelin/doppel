@@ -377,6 +377,11 @@ func truncateTo(s string, limit int) string {
 type Finding struct {
 	Key  string
 	Line string
+	// A and B are the pair's two sides as Line spells them, for a finding
+	// about one pair; empty otherwise. They let the agent note label each
+	// side with what happened to it this session without re-rendering the
+	// line.
+	A, B string
 }
 
 // NewPairKey is the ledger key Notable gives a new pair, sides in snapshot
@@ -397,16 +402,24 @@ func NewPairKey(a, b string) string {
 // qualify, and nothing else does:
 //
 //   - a new near-duplicate that is both attributable to an edit this session
-//     and merge-worthy — code that was just written and already has a twin;
-//   - a pair with an edited side that crossed the merge-worthy gate, or,
-//     failing that, moved by notableDrift.
+//     and merge-worthy, at code-shape notableShapeFloor or above — code that
+//     was just written and already has a twin;
+//   - an existing pair with an edited side whose code-shape rose across
+//     notableShapeFloor, by at least notableDrift — an edit that turned two
+//     functions into copies of each other.
 //
-// Every kind must also reach notableShapeFloor on code-shape: a crossing is
-// judged on the side where the pair was merge-worthy, a drift on whichever
-// side is higher. The user digest keeps the merge-worthy gate alone; it does
-// not cost a turn.
+// Pairs moving the other way used to qualify too — a shape that fell, a pair
+// that stopped being merge-worthy — and so did a pair that crossed the
+// merge-worthy gate on context alone, or rose while already above the floor.
+// Over a month of transcripts those four line types were 102 of 802 lines,
+// and they bought one deferred merge between them. 42 of 250 notes held
+// nothing else, each one a continued turn. A pair getting less alike is good
+// news the user digest still carries; it is not a decision to put to the
+// agent.
 //
-// Attribution gates the crossings as hard as it gates the new pairs, and
+// The user digest keeps the merge-worthy gate alone; it does not cost a turn.
+//
+// Attribution gates the rising pairs as hard as it gates the new ones, and
 // measurement proved it has to. Merge-worthiness is corpus-weighted: adding two
 // functions anywhere shifts the information content of every tag and nudges
 // pairs nobody touched across the 0.4 boundary. Reporting those would blame a
@@ -417,9 +430,8 @@ func NewPairKey(a, b string) string {
 // gate, the retrieval re-ranking line — is excluded on purpose. A count that
 // moved is not a finding, and a look-alike below the gate is not a decision.
 //
-// Results are ordered gate-crossings-last-in, findings-first: new duplication
-// leads, because it is the only category describing something that did not
-// exist before this session.
+// New pairs lead, because they are the only category describing something
+// that did not exist before this session.
 func Notable(d snapshot.Delta) []Finding {
 	if !d.Comparable {
 		return nil
@@ -435,43 +447,27 @@ func Notable(d snapshot.Delta) []Finding {
 		out = append(out, Finding{
 			Key:  NewPairKey(p.A, p.B),
 			Line: fmt.Sprintf("%s <-> %s  shape %.2f  overlap %.2f%s", p.A, p.B, p.Score, p.Overlap, kindTag(p.Kind)),
+			A:    p.A,
+			B:    p.B,
 		})
 	}
 
 	for _, dr := range d.Drift {
-		if analyzer.NotAMerge(dr.Kind) {
+		if analyzer.NotAMerge(dr.Kind) || !dr.Attributable {
 			continue
 		}
-		switch {
-		case dr.CrossedGate() && dr.Attributable && crossingShape(dr) >= notableShapeFloor:
-			verb := "became merge-worthy"
-			if !dr.MergeWorthyAfter {
-				verb = "is no longer merge-worthy"
-			}
-			out = append(out, Finding{
-				Key: "gate:" + dr.A + "|" + dr.B,
-				Line: fmt.Sprintf("%s <-> %s  %s (overlap %.3f -> %.3f)",
-					dr.A, dr.B, verb, dr.OverlapBefore, dr.OverlapAfter),
-			})
-		case dr.Attributable && dr.ScoreMoved() >= notableDrift &&
-			max(dr.ScoreBefore, dr.ScoreAfter) >= notableShapeFloor:
+		rose := dr.ScoreAfter - dr.ScoreBefore
+		if dr.ScoreBefore < notableShapeFloor && dr.ScoreAfter >= notableShapeFloor && rose >= notableDrift {
 			out = append(out, Finding{
 				Key: "drift:" + dr.A + "|" + dr.B,
 				Line: fmt.Sprintf("%s <-> %s  shape %.2f -> %.2f",
 					dr.A, dr.B, dr.ScoreBefore, dr.ScoreAfter),
+				A: dr.A,
+				B: dr.B,
 			})
 		}
 	}
 	return out
-}
-
-// crossingShape is the code-shape a gate crossing is judged at: the side on
-// which the pair was merge-worthy.
-func crossingShape(dr snapshot.Drift) float64 {
-	if dr.MergeWorthyAfter {
-		return dr.ScoreAfter
-	}
-	return dr.ScoreBefore
 }
 
 // AgentDigest renders findings as a note for the model, or "" for none, and

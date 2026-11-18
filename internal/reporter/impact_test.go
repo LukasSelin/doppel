@@ -276,35 +276,63 @@ func TestNotableAdmitsOnlyMergeWorthyAttributablePairs(t *testing.T) {
 	}
 }
 
-// A gate crossing is reportable even with no score movement — that is the whole
-// reason Drift admission was widened.
-func TestNotableReportsGateCrossings(t *testing.T) {
+// An edit that turned two existing functions into copies of each other is the
+// one kind of movement worth a turn: code-shape rising across the floor.
+func TestNotableReportsShapeRisingAcrossTheFloor(t *testing.T) {
 	d := snapshot.Delta{Comparable: true, Drift: []snapshot.Drift{{
 		A: "a.One", B: "b.Two",
-		ScoreBefore: 0.8, ScoreAfter: 0.8,
-		OverlapBefore: 0.31, OverlapAfter: 0.44,
-		MergeWorthyBefore: false, MergeWorthyAfter: true,
+		ScoreBefore: 0.21, ScoreAfter: 0.63,
 		Attributable: true,
 	}}}
 	got := Notable(d)
 	if len(got) != 1 {
-		t.Fatalf("want 1 finding, got %d", len(got))
+		t.Fatalf("want 1 finding, got %d: %+v", len(got), got)
 	}
-	if !strings.Contains(got[0].Line, "became merge-worthy") {
-		t.Errorf("line does not name the crossing: %q", got[0].Line)
+	if got[0].Line != "a.One <-> b.Two  shape 0.21 -> 0.63" || got[0].Key != "drift:a.One|b.Two" {
+		t.Errorf("finding = %+v, want the drift line under a drift: key", got[0])
 	}
-	if got[0].Key != "gate:a.One|b.Two" {
-		t.Errorf("key = %q, want a gate: key", got[0].Key)
+	if got[0].A != "a.One" || got[0].B != "b.Two" {
+		t.Errorf("sides = %q, %q, want the pair's two sides", got[0].A, got[0].B)
 	}
 }
 
-// Drift that neither crosses the gate nor moves visibly is not worth a turn.
-func TestNotableIgnoresSmallDrift(t *testing.T) {
+// Movement that does not make two functions copies is not worth a turn: a
+// shape that rose while already past the floor, or rose across it by less than
+// notableDrift, or a pair that crossed the merge-worthy gate on context alone.
+// Over a month of transcripts those lines bought one deferral in 43.
+func TestNotableIgnoresMovementThatMakesNoCopy(t *testing.T) {
+	d := snapshot.Delta{Comparable: true, Drift: []snapshot.Drift{
+		{A: "a.Above", B: "b.Above", ScoreBefore: 0.70, ScoreAfter: 0.90,
+			MergeWorthyBefore: true, MergeWorthyAfter: true, Attributable: true},
+		{A: "a.Nudge", B: "b.Nudge", ScoreBefore: 0.58, ScoreAfter: 0.61, Attributable: true},
+		{A: "a.Gate", B: "b.Gate", ScoreBefore: 0.80, ScoreAfter: 0.80,
+			OverlapBefore: 0.31, OverlapAfter: 0.44, MergeWorthyAfter: true, Attributable: true},
+	}}
+	if got := Notable(d); len(got) != 0 {
+		t.Fatalf("want no findings, got %+v", got)
+	}
+}
+
+// A pair getting less alike is good news for the user digest, not a decision
+// for the agent: falling shape and a lost merge-worthy verdict were 59 lines
+// in a month of Stop notes, and none of them was acted on.
+func TestNotableLeavesOutPairsGettingLessAlike(t *testing.T) {
+	d := snapshot.Delta{Comparable: true, Drift: []snapshot.Drift{
+		{A: "a.Fell", B: "b.Fell", ScoreBefore: 0.92, ScoreAfter: 0.70,
+			MergeWorthyBefore: true, MergeWorthyAfter: true, Attributable: true},
+		{A: "a.Lost", B: "b.Lost", ScoreBefore: 0.65, ScoreAfter: 0.30,
+			MergeWorthyBefore: true, Attributable: true},
+	}}
+	if got := Notable(d); len(got) != 0 {
+		t.Fatalf("want no findings, got %+v", got)
+	}
+}
+
+// A rise nobody's edit caused is the corpus re-weighting itself, and it is not
+// this session's to explain.
+func TestNotableIgnoresUnattributableRise(t *testing.T) {
 	d := snapshot.Delta{Comparable: true, Drift: []snapshot.Drift{{
-		A: "a.One", B: "b.Two",
-		ScoreBefore: 0.80, ScoreAfter: 0.81, // below notableDrift
-		MergeWorthyBefore: true, MergeWorthyAfter: true,
-		Attributable: true,
+		A: "a.One", B: "b.Two", ScoreBefore: 0.30, ScoreAfter: 0.75,
 	}}}
 	if got := Notable(d); len(got) != 0 {
 		t.Fatalf("want no findings, got %+v", got)
@@ -356,7 +384,7 @@ func TestAgentDigestStatesFactsAndCapsTheList(t *testing.T) {
 
 // A merge-worthy pair below the shape floor is a verdict over shared context,
 // not a look-alike body, and it does not buy a model turn. The floor applies to
-// all three kinds, each judged on the side where the pair was a look-alike.
+// both kinds: a new pair must reach it, and a rising one must end above it.
 func TestNotableRequiresTheShapeFloor(t *testing.T) {
 	d := snapshot.Delta{Comparable: true,
 		PairsAdded: []snapshot.PairChange{
@@ -364,21 +392,17 @@ func TestNotableRequiresTheShapeFloor(t *testing.T) {
 			pc("a.Shallow", "b.Shallow", 0.49, 0.70, true, true),
 		},
 		Drift: []snapshot.Drift{
-			{A: "c.Up", B: "d.Up", ScoreBefore: 0.70, ScoreAfter: 0.70,
+			{A: "c.Up", B: "d.Up", ScoreBefore: 0.40, ScoreAfter: notableShapeFloor,
 				MergeWorthyAfter: true, Attributable: true},
-			{A: "c.Low", B: "d.Low", ScoreBefore: 0.45, ScoreAfter: 0.45,
+			{A: "c.Low", B: "d.Low", ScoreBefore: 0.30, ScoreAfter: 0.55,
 				MergeWorthyAfter: true, Attributable: true},
-			{A: "e.Lost", B: "f.Lost", ScoreBefore: 0.65, ScoreAfter: 0.30,
-				MergeWorthyBefore: true, Attributable: true},
-			{A: "g.Drift", B: "h.Drift", ScoreBefore: 0.27, ScoreAfter: 0.22,
-				MergeWorthyBefore: true, MergeWorthyAfter: true, Attributable: true},
 		},
 	}
 	var keys []string
 	for _, f := range Notable(d) {
 		keys = append(keys, f.Key)
 	}
-	want := []string{"new:a.Twin|b.Twin", "gate:c.Up|d.Up", "gate:e.Lost|f.Lost"}
+	want := []string{"new:a.Twin|b.Twin", "drift:c.Up|d.Up"}
 	if strings.Join(keys, " ") != strings.Join(want, " ") {
 		t.Errorf("notable keys = %v, want %v", keys, want)
 	}

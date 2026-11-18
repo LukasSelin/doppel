@@ -25,9 +25,6 @@ const (
 	// is.
 	maxDeltaChanges = 6
 	maxDeltaPairs   = 3
-	// The agent note costs part of a model turn per line, so it gets the same
-	// three-finding budget the notable list has.
-	maxAgentDelta = 3
 )
 
 // DeltaSection renders the delta report — what happened to each function since
@@ -147,105 +144,71 @@ func SessionDigest(id identity.Delta, d snapshot.Delta, deltaPath string) string
 	return truncate(DeltaSection(id, maxDeltaChanges, maxDeltaPairs) + impact)
 }
 
-// DeltaFindings turns the delta report into ledgerable findings, so the agent
-// note can say a thing once per session rather than on every turn that has
-// anything to say at all.
+// AgentDeltaDigest renders the note that continues the turn: the notable
+// findings, each pair side labelled with what happened to it since the
+// session baseline.
 //
-// A delta is cumulative against the session-start origin, exactly like the
-// notable findings the ledger already holds: without this, one rename would be
-// restated in every later agent note for the rest of the session. Keys follow
-// the existing shape — a prefix naming what kind of finding it is, then the
-// identities joined by a pipe — and the prefixes are distinct from `new:`,
-// `gate:` and `drift:` so two kinds of finding can never collide on one key.
+// `notable` alone decides whether there is a note — it is the caller's
+// already-filtered Notable list, and an empty one renders nothing. The identity
+// delta changes only how the note reads.
 //
-// Unchanged functions are not findings and produce no keys.
-func DeltaFindings(d identity.Delta) []Finding {
+// The note used to lead with the delta report itself — the classification
+// scoreboard and the first few classified functions and created pairs, the
+// section the user digest still leads with. Over a month of transcripts that
+// preamble was 55% of the text Stop notes put in front of an agent, and no
+// agent acted on anything it listed. What it was there for is attribution:
+// telling a reader which side of a pair the session wrote. A label on each
+// side says that in a word, at the place it is read — `svc.Clip [new] <->
+// svc.Trim [unchanged]` is a new function beside an existing one, the shape
+// most of the merges agents made had.
+//
+// The second return is what the caller must ledger: every notable finding, as
+// AgentDigest retires them.
+func AgentDeltaDigest(d identity.Delta, notable []Finding) (string, []Finding) {
+	if len(notable) == 0 {
+		return "", nil
+	}
 	if !d.Comparable {
-		return nil
+		return AgentDigest(notable)
 	}
-	var out []Finding
+	classes := sideClasses(d)
+	labelled := make([]Finding, len(notable))
+	for i, f := range notable {
+		labelled[i] = withSides(f, classes)
+	}
+	note, _ := AgentDigest(labelled)
+	return note, notable
+}
+
+// sideClasses maps each function's key in the session's current tree to what
+// happened to it since the baseline. A key absent from the map was matched
+// unchanged: identity reports every function in exactly one change.
+func sideClasses(d identity.Delta) map[string]identity.Class {
+	out := make(map[string]identity.Class)
 	for _, c := range classifiedChanges(d) {
-		out = append(out, Finding{
-			Key:  "class:" + string(c.Class) + ":" + changeKey(c),
-			Line: strings.Join(identity.Lines(c), "\n  "),
-		})
-	}
-	for _, p := range d.Created {
-		out = append(out, pairFinding("created", p))
-	}
-	for _, p := range d.Dissolved {
-		out = append(out, pairFinding("dissolved", p))
+		for _, m := range c.New {
+			out[m.Key] = c.Class
+		}
 	}
 	return out
 }
 
-func pairFinding(kind string, p identity.PairChange) Finding {
-	lines := identity.PairLines(p)
-	if kind == "created" {
-		lines[0] = "NEW  " + lines[0]
-	} else {
-		lines[0] = "GONE " + lines[0]
+// withSides labels the two sides of a pair finding with their classes. A
+// finding that is not about one pair, or whose line does not open with its
+// sides, is returned as it was.
+func withSides(f Finding, classes map[string]identity.Class) Finding {
+	pair := f.A + " <-> " + f.B
+	if f.A == "" || f.B == "" || !strings.HasPrefix(f.Line, pair) {
+		return f
 	}
-	return Finding{
-		Key:  kind + ":" + p.A + "|" + p.B,
-		Line: strings.Join(lines, "\n  "),
-	}
+	f.Line = sideLabel(f.A, classes) + " <-> " + sideLabel(f.B, classes) + f.Line[len(pair):]
+	return f
 }
 
-// changeKey names a finding by the identities it is about, old side then new.
-// A split or a merge is keyed on its pivot and its first participant, which is
-// enough to be stable across turns: the pivot cannot participate in a second
-// finding, because absorption reports every function exactly once.
-func changeKey(c identity.Change) string {
-	var oldKey, newKey string
-	if len(c.Old) > 0 {
-		oldKey = c.Old[0].Key
+func sideLabel(key string, classes map[string]identity.Class) string {
+	c, ok := classes[key]
+	if !ok {
+		c = identity.Unchanged
 	}
-	if len(c.New) > 0 {
-		newKey = c.New[0].Key
-	}
-	return oldKey + "|" + newKey
-}
-
-// AgentDeltaDigest renders the note that continues the turn: the delta report
-// first, then the notable findings.
-//
-// The two arguments are not symmetric, and the asymmetry is the whole design.
-// `notable` is what justifies interrupting — it is the caller's already-filtered
-// Notable list, and an empty one means this function is never called. `fresh` is
-// the delta report's own unreported findings, which change *what* the note says
-// and never *whether* it is sent. A rename with no pair consequence is a fact
-// the user digest carries and the model already knows: it does not buy a model
-// turn.
-//
-// The second return is what the caller must ledger — the findings actually
-// rendered, from both halves. Recording more would retire findings nobody was
-// ever shown; recording less would repeat them.
-func AgentDeltaDigest(d identity.Delta, fresh, notable []Finding) (string, []Finding) {
-	if len(notable) == 0 {
-		return "", nil
-	}
-
-	var b strings.Builder
-	var shown []Finding
-
-	if len(fresh) > 0 && d.Comparable {
-		fmt.Fprintf(&b, "doppel matched this session's functions against the session baseline: %s.\n",
-			deltaScoreboard(d))
-		shown = head(fresh, maxAgentDelta)
-		for _, f := range shown {
-			fmt.Fprintf(&b, "  %s\n", f.Line)
-		}
-		if more := len(fresh) - len(shown); more > 0 {
-			// "delta findings" rather than "changes": most of a rename's tail
-			// is its own pairs re-keyed, and calling those changes would read
-			// as 237 things to look at.
-			fmt.Fprintf(&b, "  (%d further delta findings not listed)\n", more)
-		}
-	}
-
-	note, notableShown := AgentDigest(notable)
-	b.WriteString(note)
-	shown = append(shown, notableShown...)
-	return truncate(b.String()), shown
+	return key + " [" + string(c) + "]"
 }

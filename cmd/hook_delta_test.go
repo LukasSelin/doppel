@@ -124,29 +124,32 @@ func TestStopHookDeltaReportGate(t *testing.T) {
 	}
 
 	// The agent note is sent (a new merge-worthy attributable pair is a
-	// notable finding) and the delta report leads it too.
+	// notable finding). It does not carry the delta report — that is the
+	// user's — but it labels each side with what the delta found: the copy is
+	// new, the original unchanged.
 	note := resp.HookSpecificOutput.AdditionalContext
 	if note == "" {
 		t.Fatalf("no agent note for a new merge-worthy pair; response was %+v", resp)
 	}
-	if !strings.HasPrefix(note, "doppel matched this session's functions against the session baseline:") {
-		t.Errorf("the delta report must lead the agent note:\n%s", note)
+	if strings.Contains(note, "doppel matched this session's functions") || strings.Contains(note, "renamed 1") {
+		t.Errorf("the delta report must stay out of the agent note:\n%s", note)
 	}
-	if !strings.Contains(note, "explain: identical after rename") {
-		t.Errorf("the agent note must carry the created pair's explanation:\n%s", note)
+	if !strings.Contains(note, "svc.Clip [unchanged] <-> svc.Trim [new]") {
+		t.Errorf("the agent note must label each side of the pair:\n%s", note)
 	}
 	if !strings.Contains(note, "This is a measurement, not a request.") {
 		t.Errorf("the agent note must keep its closing bound:\n%s", note)
 	}
 }
 
-// The delta is cumulative against the session-start origin, so the identity
-// findings need the same ledger the notable ones have: without it a rename is
-// restated in every later agent note for the rest of the session.
+// The delta is cumulative against the session-start origin, so a finding the
+// agent note said must be ledgered, or it is restated in every later note for
+// the rest of the session. The ledger holds the notable finding's own key: the
+// side labels change how the line reads, not what it is.
 //
 // The user digest is deliberately not ledgered — it lets the turn end, and it
 // is a cumulative statement of where the session stands.
-func TestStopHookLedgersIdentityFindings(t *testing.T) {
+func TestStopHookLedgersTheNotableFindings(t *testing.T) {
 	dir := t.TempDir()
 	writeCorpus(t, dir, "svc/svc.go", gateSrcBefore)
 
@@ -170,17 +173,8 @@ func TestStopHookLedgersIdentityFindings(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read baseline: %v", err)
 	}
-	var sawClass, sawCreated bool
-	for _, k := range base.Reported {
-		if strings.HasPrefix(k, "class:") {
-			sawClass = true
-		}
-		if strings.HasPrefix(k, "created:") {
-			sawCreated = true
-		}
-	}
-	if !sawClass || !sawCreated {
-		t.Errorf("identity findings were not ledgered: %v", base.Reported)
+	if len(base.Reported) != 1 || base.Reported[0] != "new:svc.Clip|svc.Trim" {
+		t.Errorf("Reported = %v, want only the note's one finding, new:svc.Clip|svc.Trim", base.Reported)
 	}
 
 	// The second turn measures the same cumulative delta. The user digest is

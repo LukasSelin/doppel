@@ -359,15 +359,10 @@ func runHookStop(cmd *cobra.Command, args []string) error {
 		// rename with no pair consequence is a fact about code the model just
 		// wrote, and paying a model turn to restate it would make the feature
 		// hostile. What the classification does buy, once a notable finding
-		// has already justified the note, is the attribution the note is read
-		// through.
+		// has already justified the note, is a label on each pair side saying
+		// what happened to it this session.
 		if fresh := unreported(reporter.Notable(delta), base.Reported); len(fresh) > 0 {
-			freshID := unreported(reporter.DeltaFindings(ident), base.Reported)
-			// Only the findings the digest actually printed go in the ledger.
-			// The rest were counted, not said, and retiring them here would
-			// suppress them for the whole session without anyone having seen
-			// them; they lead the next turn's list instead.
-			if note, shown := reporter.AgentDeltaDigest(ident, freshID, fresh); note != "" {
+			if note, shown := reporter.AgentDeltaDigest(ident, fresh); note != "" {
 				// Record before emitting. If the write fails we would rather
 				// stay silent than repeat this finding on every future turn,
 				// each time continuing the turn to do it.

@@ -185,17 +185,22 @@ interrupting for:
 
 ```
 doppel measured this session's effect on the repository's duplication surface and found 1 new near-duplicate finding:
-  billing.ValidateReceiverRef <-> billing.ValidateSenderRef  shape 1.00  overlap 0.71
+  billing.ValidateReceiverRef [new] <-> billing.ValidateSenderRef [unchanged]  shape 1.00  overlap 0.71
 This is a measurement, not a request. No change is required.
 ```
+
+Each side is labelled with what happened to it this session — `new`, `edited`, `renamed`,
+`moved`, or `unchanged` — so a function just written beside one that already existed reads as
+exactly that.
 
 **This costs one extra turn.** A Stop hook cannot put text in the model's context without the
 conversation continuing — that is how the harness works, not a choice doppel makes. So the bar for
 saying anything to the agent is deliberately high: a *new* near-duplicate that is merge-worthy and
-traceable to a function edited this session, or a pair that crossed the merge-worthy line because
-you edited one of its sides. Count movements, look-alikes below the line, and pairs that shifted
-because the corpus shifted never reach it. Each finding is reported **once** per session, so a
-duplicate you leave in place does not interrupt you again on every later turn.
+traceable to a function edited this session, or an existing pair whose code-shape your edit raised
+past the near-duplicate line. Pairs getting *less* alike, count movements, look-alikes below the
+line, and pairs that shifted because the corpus shifted never reach it. Each finding is reported
+**once** per session, so a duplicate you leave in place does not interrupt you again on every later
+turn.
 
 Set `hook-notify` in `.doppel.json` to change this:
 
