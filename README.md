@@ -586,8 +586,8 @@ Five hooks, placed by when a fact can still change what gets written:
 
 - **SessionStart** — the corpus inventory: the concepts doppel learned from this repo and how many
   functions carry each, the kinds of work it found no practice for, the role distribution.
-- **UserPromptSubmit** — the duplication facts for the packages your message mentions, and nothing
-  else. Silent when it recognises none.
+- **UserPromptSubmit** — one line per package your message names by path: how many merge-worthy
+  pairs live there. Silent when it names none, and it runs no analysis then.
 - **PreToolUse** on `Edit`/`Write` — immediately before a file changes, the merge-worthy twins of
   the functions in it. Advisory only; it never blocks an edit.
 - **PostToolUse** on `Edit`/`Write`/`MultiEdit` — right after the edit lands, every function it

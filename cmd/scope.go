@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"path"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -14,87 +15,116 @@ import (
 // must not become the corpus dump it exists to replace.
 const scopeMaxPackages = 3
 
-// scopedPackages resolves a prompt's package mentions against a snapshot.
+// harnessEnvelopes match the tags Claude Code wraps around text the user did
+// not type: a background task finishing, a subagent's or another session's
+// message, a system reminder. UserPromptSubmit fires on those deliveries just
+// as it does on the user's own words. They made up 17% of this hook's firings
+// over a month of sessions, and none of those firings led anywhere: the text
+// inside names packages because the reported work lives there, not because
+// anyone is about to start on them. An envelope with no closing tag runs to
+// the end of the prompt, since everything after its opening tag is still the
+// harness talking.
+var harnessEnvelopes = func() []*regexp.Regexp {
+	var out []*regexp.Regexp
+	for _, tag := range []string{"task-notification", "system-reminder", "agent-message", "cross-session-message"} {
+		out = append(out, regexp.MustCompile(`(?s)<`+tag+`\b[^>]*>(?:.*?</`+tag+`>|.*$)`))
+	}
+	return out
+}()
+
+// typedText is the part of a prompt the user typed: the prompt with every
+// harness envelope cut out.
+func typedText(prompt string) string {
+	for _, re := range harnessEnvelopes {
+		prompt = re.ReplaceAllString(prompt, " ")
+	}
+	return prompt
+}
+
+// mention is one path-shaped token of a prompt: as written, for the digest's
+// header, and slash-normalized, for matching.
+type mention struct {
+	raw  string
+	norm string
+}
+
+// pathMentions returns the path-shaped tokens of the part of a prompt the
+// user typed, in order: a token containing '/' or '\', with an optional @
+// and surrounding punctuation stripped, that is not a URL.
 //
-// Two mention forms match, both requiring the corpus to confirm them:
-//
-//   - a token containing '/' whose slash-normalized form is a path prefix of
-//     some unit's file directory — "svc/internal/billing" style, matching
-//     however deep the mention reaches;
-//   - a bare token exactly equal to a package name in the corpus.
-//
-// Everything else in the prompt is prose. First-mention order is kept, capped
-// at scopeMaxPackages, one entry per package even when mentioned twice.
+// A bare word is never a mention, though it was until the hook was measured.
+// Package names are ordinary words: across a month of sessions this hook fired
+// 88 times on "git" and 62 on "main", alongside "verify", "web", "agent" and
+// "email", and none of its notes led to a merge. A path is what someone types
+// when they mean a place in the tree.
+func pathMentions(prompt string) []mention {
+	var out []mention
+	for _, raw := range strings.Fields(typedText(prompt)) {
+		tok := trimMention(raw)
+		if !strings.ContainsAny(tok, "/\\") || strings.Contains(tok, "://") {
+			continue
+		}
+		norm := strings.Trim(path.Clean(strings.ReplaceAll(tok, "\\", "/")), "/")
+		if norm == "" || norm == "." {
+			continue
+		}
+		out = append(out, mention{raw: tok, norm: norm})
+	}
+	return out
+}
+
+// scopedPackages resolves a prompt's path mentions against a snapshot: a
+// mention scopes every package whose directory it names, from the repo root or
+// from deeper up the tree, or whose directory holds the file it names. The
+// corpus confirms each one, so a path that names nothing analyzed is prose.
+// First-mention order is kept, capped at scopeMaxPackages, one entry per
+// package even when mentioned twice.
 func scopedPackages(prompt string, s snapshot.Snapshot) []reporter.ScopedPackage {
-	if prompt == "" || len(s.Units) == 0 {
+	mentions := pathMentions(prompt)
+	if len(mentions) == 0 || len(s.Units) == 0 {
 		return nil
 	}
 
-	// Directory → package, and the plain package-name set, both from the
-	// snapshot so the matcher confirms mentions against what was analyzed
-	// rather than against the filesystem.
+	// Directory → package, from the snapshot, so the matcher confirms
+	// mentions against what was analyzed rather than against the filesystem.
 	dirPkg := make(map[string]string)
-	pkgs := make(map[string]bool)
 	for _, u := range s.Units {
-		if u.Package == "" {
-			continue
+		if u.Package != "" {
+			dirPkg[path.Dir(u.File)] = u.Package
 		}
-		pkgs[u.Package] = true
-		dirPkg[path.Dir(u.File)] = u.Package
 	}
 
 	seen := make(map[string]bool)
 	var out []reporter.ScopedPackage
-	add := func(pkg, mention string) {
-		if pkg == "" || seen[pkg] || len(out) >= scopeMaxPackages {
-			return
+	for _, m := range mentions {
+		// Matches are collected and sorted before adding — dirPkg is a map,
+		// and map order deciding which package wins the cap would make the
+		// digest differ between runs of the same prompt.
+		var hits []string
+		for dir, pkg := range dirPkg {
+			// Four alignments: the mention names the directory exactly,
+			// names it from deeper up the tree (suffix), names a parent
+			// of it (prefix), or names a file inside it.
+			if dir == m.norm || strings.HasSuffix(dir, "/"+m.norm) ||
+				strings.HasPrefix(dir, m.norm+"/") || strings.HasPrefix(m.norm, dir+"/") {
+				hits = append(hits, pkg)
+			}
 		}
-		seen[pkg] = true
-		out = append(out, reporter.ScopedPackage{Package: pkg, Mention: mention})
-	}
-
-	for _, raw := range strings.Fields(prompt) {
-		tok := trimMention(raw)
-		if tok == "" {
-			continue
-		}
-		if strings.ContainsAny(tok, "/\\") {
-			norm := strings.Trim(path.Clean(strings.ReplaceAll(tok, "\\", "/")), "/")
-			if norm == "" || norm == "." {
+		sort.Strings(hits)
+		for _, pkg := range hits {
+			if seen[pkg] || len(out) >= scopeMaxPackages {
 				continue
 			}
-			// The mention may name the directory from the repo root or from
-			// deeper up the tree than the analysis root; match any unit
-			// directory the mention is a suffix-aligned prefix of. Matches
-			// are collected and sorted before adding — dirPkg is a map, and
-			// map order deciding which package wins the cap would make the
-			// digest differ between runs of the same prompt.
-			var hits []string
-			for dir, pkg := range dirPkg {
-				// Four alignments: the mention names the directory exactly,
-				// names it from deeper up the tree (suffix), names a parent
-				// of it (prefix), or names a file inside it.
-				if dir == norm || strings.HasSuffix(dir, "/"+norm) ||
-					strings.HasPrefix(dir, norm+"/") || strings.HasPrefix(norm, dir+"/") {
-					hits = append(hits, pkg)
-				}
-			}
-			sort.Strings(hits)
-			for _, pkg := range hits {
-				add(pkg, tok)
-			}
-			continue
-		}
-		if pkgs[tok] {
-			add(tok, tok)
+			seen[pkg] = true
+			out = append(out, reporter.ScopedPackage{Package: pkg, Mention: m.raw})
 		}
 	}
 	return out
 }
 
-// trimMention strips the decoration a prompt wraps around a path or name:
-// a leading @ (file mentions), and trailing punctuation from prose
-// ("internal/culture," or "billing?").
+// trimMention strips the decoration a prompt wraps around a path: a leading
+// @ (file mentions), and surrounding quotes, brackets and trailing prose
+// punctuation ("internal/culture," or "(svc/billing)").
 func trimMention(tok string) string {
 	tok = strings.TrimPrefix(tok, "@")
 	tok = strings.Trim(tok, "\"'`([{")

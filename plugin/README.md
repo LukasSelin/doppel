@@ -11,8 +11,8 @@ Five hooks around a Go repo, ordered by when they fire:
 
 - **At session start**, an inventory of the concepts the codebase contains — the session-stable
   framing: which tags exist here, which are absent, the role distribution.
-- **At each prompt**, the duplication facts scoped to the packages the prompt mentions — the
-  moment the target is first known and no edit exists yet.
+- **At each prompt that names a path**, one line per package it names: how many merge-worthy
+  pairs live there — the moment the target is first known and no edit exists yet.
 - **Right before each Edit or Write**, an advisory naming the merge-worthy twins of the file
   about to change — the last responsible moment.
 - **Right after each Edit, Write or MultiEdit** (opt-in), the near duplicates of any function the
@@ -100,18 +100,17 @@ session.
 
 ### UserPromptSubmit
 
-Extracts package mentions from your message — `@internal/billing` style paths and bare
-package names, confirmed against the corpus — and emits only that package's facts:
+Reads the paths in your message — `internal/billing`, `@internal/billing/service.go`, a
+backslash path — confirmed against the corpus, and emits one line per package:
 
 ```
-doppel: internal/billing (41 functions)
-  merge-worthy pairs within this package:
-    Service.notifyClaimOpened <-> Service.notifyClaimClosed  shape 1.00  overlap 0.86
-  3 merge-worthy pairs connect this package to others.
+doppel: internal/billing (41 functions): 2 merge-worthy pairs within the package and 3 connecting it to others.
 ```
 
-Silent when the prompt mentions nothing the corpus knows, which is most prompts. This runs a full
-analysis once per prompt — same cost as the Stop hook.
+A bare word is never a mention, because package names are ordinary words (`git`, `main`). Text
+the harness delivers rather than you typing it — a background task finishing, another session's
+message, a system reminder — is skipped too. A message with no path in it costs nothing: the hook
+ends before any analysis. One with a path runs a full analysis, the same cost as the Stop hook.
 
 ### PreToolUse (Edit|Write)
 
@@ -292,8 +291,9 @@ baseline incomparable and silences the Stop hook for a turn that nothing was wro
 
 ## Cost
 
-SessionStart, UserPromptSubmit and Stop each run a full analysis of the repository; PostToolUse, when
-enabled, runs the cheaper corpus-building half of one per edit. Candidate retrieval is sub-quadratic — inverted
+SessionStart and Stop each run a full analysis of the repository, and UserPromptSubmit runs one
+when your message names a path; PostToolUse, when enabled, runs the cheaper corpus-building half
+of one per edit. Candidate retrieval is sub-quadratic — inverted
 indexes with a bounded top-K per function, not an all-pairs scan — and nothing blocks. On a few
 hundred functions this is well under a second; a few thousand still lands in a couple of seconds.
 The Stop hook runs on every turn, so on a very large repository it is the first thing to feel.
