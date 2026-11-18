@@ -28,9 +28,20 @@ var (
 	verdictFile    string
 )
 
-// verdictPath is where a repository's recorded verdicts live, under its root.
-// The walk skips dot-directories, so nothing here can join a corpus.
+// verdictPath is where a repository's recorded verdicts live, under its root
+// in the repository's main checkout (see verdictHome). The walk skips
+// dot-directories, so nothing here can join a corpus.
 const verdictPath = ".doppel/verdicts.json"
+
+// Lock timing. The critical section is a read, a merge and a rename of one
+// small file, so a live writer holds the lock for milliseconds: waiting
+// seconds is generous, and a lock older than verdictLockStale was left by a
+// process that died holding it.
+const (
+	verdictLockWait  = 10 * time.Second
+	verdictLockStale = time.Minute
+	verdictLockPoll  = 20 * time.Millisecond
+)
 
 var verdictCmd = &cobra.Command{
 	Use:   "verdict <merged|left|deferred> <a> <b>",
@@ -63,7 +74,13 @@ that stays (no-home, layering, design, too-small, ...).
 The decision records today's date and the commit the tree sits on; for a merge,
 record it before committing, so the commit is the last one that still has both
 functions. Recording a pair again keeps the earlier decision under "earlier".
-Nothing in analyze or the hooks reads this file.`,
+Nothing in analyze or the hooks reads this file.
+
+Every worktree of a repository shares one file: .doppel/verdicts.json in the
+repository's main checkout, at --root's place in it, so a decision made in a
+linked worktree outlives the worktree. It stays uncommitted there until
+somebody commits it. Outside a git repository the file is under --root, and
+--file names any other.`,
 	Args: cobra.ExactArgs(3),
 	// An error here is about a value (an unknown kind, a missing reason), and
 	// the caller is usually an agent: the message says what to fix, and the
@@ -82,7 +99,7 @@ func init() {
 	f.StringVar(&verdictBy, "by", "agent", "Who decided: "+strings.Join(labels.Deciders, " or "))
 	f.StringVar(&verdictCommit, "commit", "", "The commit the decision is about (default: HEAD of --root)")
 	f.StringVar(&verdictRoot, "root", ".", "Repository root the names and files are relative to")
-	f.StringVar(&verdictFile, "file", "", "Verdicts file (default: <root>/"+verdictPath+")")
+	f.StringVar(&verdictFile, "file", "", "Verdicts file (default: "+verdictPath+" in the main checkout of --root's repository, or under --root outside one)")
 	_ = verdictCmd.MarkFlagRequired("reason")
 	rootCmd.AddCommand(verdictCmd)
 }
@@ -124,19 +141,13 @@ func runVerdict(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	path := verdictFile
+	path, home := verdictFile, verdictRoot
 	if path == "" {
-		path = filepath.Join(verdictRoot, filepath.FromSlash(verdictPath))
+		home = verdictHome(verdictRoot)
+		path = filepath.Join(home, filepath.FromSlash(verdictPath))
 	}
-	f, err := readVerdicts(path, verdictRoot)
+	prev, err := recordVerdict(path, home, l)
 	if err != nil {
-		return err
-	}
-	prev := upsertVerdict(&f, l)
-	if l.Decision.Date > f.Reviewed {
-		f.Reviewed = l.Decision.Date
-	}
-	if err := writeVerdicts(path, f); err != nil {
 		return err
 	}
 
@@ -182,6 +193,107 @@ func verdictClassFor(outcome, class, kind, blocker string) (string, error) {
 	}
 	return "", fmt.Errorf("a pair left alone needs a reason a scorecard can group by: --kind %s for a pair that is not a real duplicate, or --blocker %s for one that is",
 		strings.Join(labels.FPKinds, "|"), strings.Join(labels.Blockers, "|"))
+}
+
+// verdictHome is the directory whose .doppel/verdicts.json `doppel verdict`
+// writes by default: root's place in its repository's main checkout, or root
+// itself outside a repository.
+//
+// Why the main checkout. Agents work in linked worktrees, one per session
+// (.claude/worktrees/<name>/ in this repository), removed when the session is
+// done. A file under each worktree's own root would scatter one repository's
+// decisions across as many files as there were sessions; each would reach
+// the default branch only if its session happened to commit it, and would be
+// deleted with the worktree otherwise. One file per repository is what the
+// golden benchmark scores and what .doppel/README.md describes, and the main
+// checkout is the one directory every worktree of a repository can name.
+//
+// The alternative was to keep per-worktree files and stage each into its
+// session's commit. It loses on three counts: it writes to git, where doppel
+// only reads which tree it sits on; a session that commits nothing still
+// loses its decisions; and branches that each append to the end of one JSON
+// array conflict on every merge of two of them. What this choice costs is
+// that the file sits uncommitted in the main checkout until somebody commits
+// it there, on whatever branch that checkout is on.
+//
+// root keeps its place: a corpus rooted at a subdirectory names files
+// relative to it, so its verdicts go to the same subdirectory of the main
+// checkout. A bare repository has no main checkout and a deleted one cannot
+// hold a file; both, and any git failure, keep the file under root, where it
+// always was. In the main checkout itself that is the same file as before.
+func verdictHome(root string) string {
+	main, prefix, ok := gitMainWorktree(root)
+	if !ok {
+		return root
+	}
+	if fi, err := os.Stat(main); err != nil || !fi.IsDir() {
+		return root
+	}
+	return filepath.Join(main, filepath.FromSlash(prefix))
+}
+
+// recordVerdict puts l into the verdicts file at path, holding the file's
+// lock from the read to the write, so a label another process wrote a moment
+// earlier is part of what this one writes. home names a file that does not
+// exist yet (see readVerdicts). It returns the decision l replaced, if any.
+func recordVerdict(path, home string, l labels.Label) (*labels.Decision, error) {
+	unlock, err := lockVerdicts(path)
+	if err != nil {
+		return nil, err
+	}
+	defer unlock()
+	f, err := readVerdicts(path, home)
+	if err != nil {
+		return nil, err
+	}
+	prev := upsertVerdict(&f, l)
+	if l.Decision.Date > f.Reviewed {
+		f.Reviewed = l.Decision.Date
+	}
+	return prev, writeVerdicts(path, f)
+}
+
+// lockVerdicts takes path's lock, a sibling file only one process can create,
+// and returns the function that releases it.
+//
+// Writing atomically is not enough once the file is shared. Two sessions
+// recording a verdict at once would each read the file, each add their own
+// label and each rename a whole file into place, and the second rename would
+// drop the first session's label. One session does this too: agents often
+// record several verdicts as parallel tool calls. A stale lock is broken
+// rather than waited on forever; that is the one way two writers can still
+// overlap, and it needs a writer to have died inside a critical section that
+// lasts milliseconds.
+func lockVerdicts(path string) (unlock func(), err error) {
+	lock := path + ".lock"
+	if err := os.MkdirAll(filepath.Dir(lock), 0o755); err != nil {
+		return nil, err
+	}
+	deadline := time.Now().Add(verdictLockWait)
+	for {
+		f, err := os.OpenFile(lock, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+		if err == nil {
+			f.Close()
+			return func() { _ = os.Remove(lock) }, nil
+		}
+		// Windows answers access denied, not exists, while another
+		// process's removal of the lock is still pending.
+		if !errors.Is(err, fs.ErrExist) && !errors.Is(err, fs.ErrPermission) {
+			return nil, err
+		}
+		fi, serr := os.Stat(lock)
+		if errors.Is(err, fs.ErrPermission) && errors.Is(serr, fs.ErrNotExist) {
+			return nil, err // a directory this process may not write in, not a held lock
+		}
+		if serr == nil && time.Since(fi.ModTime()) > verdictLockStale && os.Remove(lock) == nil {
+			continue
+		}
+		if time.Now().After(deadline) {
+			return nil, fmt.Errorf("%s is still held after %s: another doppel verdict is writing, or one died holding it; remove it if none is running",
+				filepath.ToSlash(lock), verdictLockWait)
+		}
+		time.Sleep(verdictLockPoll)
+	}
 }
 
 // readVerdicts loads the verdicts file, or starts one named after the root.

@@ -2,10 +2,14 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/LukasSelin/doppel/internal/labels"
 )
@@ -136,5 +140,153 @@ func TestRunVerdictWritesALabelsFile(t *testing.T) {
 	}
 	if data, _ := os.ReadFile(path); string(data) != "{not json" {
 		t.Errorf("a broken verdicts file was modified: %q", data)
+	}
+}
+
+// TestVerdictsAreSharedAcrossWorktrees pins where the default file lives: a
+// verdict recorded in a linked worktree lands in the main checkout's
+// .doppel/verdicts.json, the same file the main checkout writes, at the same
+// subdirectory when --root is one, and --file still names any other.
+func TestVerdictsAreSharedAcrossWorktrees(t *testing.T) {
+	r := newGitRepo(t)
+	r.commit("a")
+	wt := filepath.Join(t.TempDir(), "session")
+	r.run(nil, "worktree", "add", "-q", "--detach", wt)
+
+	sameDir := func(what, got, want string) {
+		t.Helper()
+		gi, err := os.Stat(got)
+		if err != nil {
+			t.Fatalf("%s: %v", what, err)
+		}
+		wi, err := os.Stat(want)
+		if err != nil {
+			t.Fatalf("%s: %v", what, err)
+		}
+		if !os.SameFile(gi, wi) {
+			t.Errorf("%s: home %s, want %s", what, got, want)
+		}
+	}
+	sameDir("linked worktree", verdictHome(wt), r.dir)
+	sameDir("main checkout", verdictHome(r.dir), r.dir)
+
+	sub := filepath.Join(wt, "corpus", "inner")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := verdictHome(sub), filepath.Join(verdictHome(wt), "corpus", "inner"); got != want {
+		t.Errorf("subdirectory root: home %s, want %s", got, want)
+	}
+	outside := t.TempDir()
+	if got := verdictHome(outside); got != outside {
+		t.Errorf("outside a repository: home %s, want the root itself", got)
+	}
+
+	set := func(root, file string) {
+		verdictReason, verdictKind, verdictBlocker = "one helper now", "", ""
+		verdictClass, verdictTarget, verdictBy, verdictCommit, verdictRoot, verdictFile = "", "", "agent", "", root, file
+	}
+	t.Cleanup(func() { set(".", ""); verdictReason = "" })
+	verdictCmd.SetOut(io.Discard)
+	t.Cleanup(func() { verdictCmd.SetOut(nil) })
+
+	set(wt, "")
+	if err := runVerdict(verdictCmd, []string{"merged", "a.X", "a.Y"}); err != nil {
+		t.Fatal(err)
+	}
+	set(r.dir, "")
+	if err := runVerdict(verdictCmd, []string{"merged", "b.X", "b.Y"}); err != nil {
+		t.Fatal(err)
+	}
+	other := filepath.Join(t.TempDir(), "elsewhere.json")
+	set(wt, other)
+	if err := runVerdict(verdictCmd, []string{"merged", "c.X", "c.Y"}); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := os.Stat(filepath.Join(wt, filepath.FromSlash(verdictPath))); err == nil {
+		t.Error("the linked worktree got a verdicts file of its own")
+	}
+	data, err := os.ReadFile(filepath.Join(r.dir, filepath.FromSlash(verdictPath)))
+	if err != nil {
+		t.Fatalf("the main checkout has no verdicts file: %v", err)
+	}
+	f, err := labels.Parse(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(f.Labels) != 2 || f.Labels[0].A != "a.X" || f.Labels[1].A != "b.X" {
+		t.Errorf("want the worktree's and the main checkout's verdicts in one file, got %+v", f.Labels)
+	}
+	if f.Corpus != filepath.Base(r.dir) {
+		t.Errorf("corpus named %q, want the main checkout's %q", f.Corpus, filepath.Base(r.dir))
+	}
+	if f.Labels[0].Decision.Commit != gitHead(wt) {
+		t.Errorf("decision commit %q, want the worktree's HEAD %q", f.Labels[0].Decision.Commit, gitHead(wt))
+	}
+	if data, err := os.ReadFile(other); err != nil || !strings.Contains(string(data), "c.X") {
+		t.Errorf("--file was not honoured: %v %s", err, data)
+	}
+}
+
+// TestConcurrentVerdictsKeepEveryLabel records many verdicts into one file at
+// once and checks none is lost: each writer re-reads under the lock, so the
+// last rename carries every earlier label.
+func TestConcurrentVerdictsKeepEveryLabel(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, filepath.FromSlash(verdictPath))
+	const n = 16
+	errs := make([]error, n)
+	var wg sync.WaitGroup
+	for i := range n {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			l := labels.Label{A: fmt.Sprintf("p.A%d", i), B: fmt.Sprintf("p.B%d", i), Class: "merge",
+				Decision: &labels.Decision{Outcome: "deferred", By: "agent", Date: "2026-11-18", Reason: "later"}}
+			_, errs[i] = recordVerdict(path, dir, l)
+		}()
+	}
+	wg.Wait()
+	for i, err := range errs {
+		if err != nil {
+			t.Fatalf("writer %d: %v", i, err)
+		}
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := labels.Parse(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(f.Labels) != n {
+		t.Errorf("%d concurrent verdicts left %d labels", n, len(f.Labels))
+	}
+	if _, err := os.Stat(path + ".lock"); err == nil {
+		t.Error("the lock was left behind")
+	}
+}
+
+// TestLockVerdictsBreaksAStaleLock pins that a lock left by a writer that
+// died is taken over rather than blocking every later verdict.
+func TestLockVerdictsBreaksAStaleLock(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "verdicts.json")
+	if err := os.WriteFile(path+".lock", nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	old := time.Now().Add(-2 * verdictLockStale)
+	if err := os.Chtimes(path+".lock", old, old); err != nil {
+		t.Fatal(err)
+	}
+	start := time.Now()
+	unlock, err := lockVerdicts(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unlock()
+	if d := time.Since(start); d > verdictLockWait/2 {
+		t.Errorf("a stale lock was waited on for %s", d)
 	}
 }

@@ -109,7 +109,7 @@ cmd/            CLI commands (Cobra).
   timing.go     DOPPEL_TIMING=1: per-stage wall clock on the progress writer
   profile.go    --cpuprofile / --memprofile, hidden persistent flags on the root command
   query.go      doppel query: check a proposed function (a snippet on stdin) against the corpus, locality-weighted
-  verdict.go    doppel verdict: record what was done with a pair, and why, as a label in .doppel/verdicts.json
+  verdict.go    doppel verdict: record what was done with a pair, and why, as a label in the main checkout's .doppel/verdicts.json
   decisions.go  analyze --decisions: every retrieved pair's fate and merge-verdict gates, as JSON for labelling
   moves.go      doppel moves: functions only another package uses, the helpers that move along, and what blocks the move
   movestage.go  analyze's moves stage: the same analysis for the report, pinned to linux/amd64, offline, never fatal
@@ -191,7 +191,8 @@ scripts/        timeline.sh: walks a git history and analyses each revision at o
                 -s size adds the size-aware rank variants (TestSizeRankingsAt) and judges under -sweep-scope commit.
                 history-labels.sh + historylabel/ (its own Go module): derives golden labels from what maintainers did to each pair in git history.
                 The only code in the repo that reads git history, and deliberately outside the doppel module
-                (cmd/hookgit.go reads HEAD for the Stop hook's baseline and for a recorded verdict's commit, and nothing else — see the hook contract)
+                (cmd/hookgit.go reads HEAD for the Stop hook's baseline and for a recorded verdict's commit, and the main checkout's location
+                for the shared verdicts file, and nothing else — see the hook contract)
 ```
 
 Eight helpers are deliberately shared rather than copied, because doppel found each
@@ -383,10 +384,20 @@ doppel verdict left dashboard.WriteTimelineJSON reporter.encodeJSON --blocker la
 
 Sides are names as the note prints them, `@file` included. `left` takes `--kind` when the pair
 is not a real duplicate and `--blocker` when it is one that stays. The file is
-`.doppel/verdicts.json`, in the labels format the benchmark scores, with a merge weighing 3 and a
+`.doppel/verdicts.json` in the labels format the benchmark scores, with a merge weighing 3 and a
 merge left alone 0.5 (`labels.MergedWeight`, `labels.LeftWeight`). A pair recorded again keeps its
 earlier decision under `earlier`. A pair merged in a session leaves no other trace a later
 measurement can find, which is why this is worth the one line.
+
+**The file lives in the repository's main checkout, whichever worktree records the verdict.**
+Sessions here each run in their own worktree under `.claude/worktrees/`, so a per-worktree file
+would scatter one repository's decisions across every session, reach `master` only if that session
+committed it, and vanish with the worktree otherwise. `cmd.verdictHome` finds the main checkout with
+`git worktree list` (where the checkouts are, not what happened in them — the same kind of read as
+HEAD) and keeps `--root`'s place in it. The file stays uncommitted there until somebody commits it
+from the main checkout. Outside a git repository it is under `--root`, and `--file` names any
+other. Writers hold `verdicts.json.lock` from the read to the atomic write, so verdicts recorded as
+parallel tool calls, or by two sessions at once, never drop each other's entries.
 
 The project enables the **doppel Claude Code plugin** in `.claude/settings.json` (marketplace
 `LukasSelin/doppel`, plugin `doppel@doppel`). Its five hooks put the corpus in front of the
@@ -3238,7 +3249,9 @@ reason rather than returning a partial delta.
 
      This is the module's one use of git, and it reads one fact: which commit the tree sits on.
      `doppel verdict` reads the same fact to record which tree a decision was made on, and
-     nothing reads it back into a score.
+     nothing reads it back into a score. It reads one more fact about where trees are, never
+     what happened in them: which checkout is the repository's main one (`git worktree list`),
+     which is where the verdicts file every worktree shares lives.
      It is not history as evidence — no score, ranking or annotation reads it — but a validity
      check on the measurement origin, the way `Params` equality is. Widening it to anything that
      feeds a score is a design change.
@@ -3617,7 +3630,8 @@ nothing. Argument order **is** series order, which needs no timestamp inside a `
 none, by the schema's third rule) and no sorting the tool could not justify. `scripts/timeline.sh`
 walks `git rev-list`, materializes each revision in a detached worktree, analyses it, and calls the
 command; `task timeline` wraps it. That script and `scripts/historylabel` are the only things in the
-repo that read git history (the Stop hook and `doppel verdict` read HEAD and nothing more; see the hook contract).
+repo that read git history (the Stop hook reads HEAD, and `doppel verdict` HEAD and where the main
+checkout is, and nothing more; see the hook contract).
 
 ### One operating point for the whole series
 
@@ -3784,7 +3798,8 @@ functions for exactly this reason, and the first version of them did not and fai
   stage at all.
 
   **`.doppel/verdicts.json` is not state either: it is input, like a labels file.** `doppel
-  verdict` writes it when somebody decides what to do with a pair, and the benchmark reads it
+  verdict` writes it (one file per repository, in the main checkout, shared by every worktree)
+  when somebody decides what to do with a pair, and the benchmark reads it
   as ground truth. Nothing in `analyze` or the hooks reads it — no pair is hidden, reranked or
   skipped because a verdict exists. Letting a hook skip decided pairs, or a report annotate them,
   would be the first pipeline read of a persisted input since `.doppel.json`, and is a design

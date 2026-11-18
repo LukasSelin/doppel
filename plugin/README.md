@@ -87,7 +87,11 @@ already exist, and where" before the code is written rather than measuring the d
 It names `doppel verdict` as well, the tool for the other end of a note: when the agent merges a
 pair a hook named, or leaves it for a reason, `doppel verdict merged|left|deferred <a> <b> --reason
 "..."` saves the decision to `.doppel/verdicts.json` in the labels format doppel's benchmark scores.
-No hook reads that file; it is a record of decisions, not a filter.
+No hook reads that file; it is a record of decisions, not a filter. There is one file per
+repository, in its main checkout: a session working in a linked worktree (as Claude Code sessions
+often do, under `.claude/worktrees/`) writes to the main checkout's file, so its decisions outlive
+the worktree. The file stays uncommitted there until somebody commits it. Outside a git repository
+it is under `--root`, and `--file` names any other.
 
 It also records a **baseline** — the measurement origin the Stop hook compares against. The baseline
 is written once per session; SessionStart also fires on resume and after compaction, and re-recording

@@ -29,3 +29,11 @@ commit the tree sat on, and the reason. It is a labels file too, so it scores th
 
 A merged pair weighs 3 in its class's mean rank and a merge left alone 0.5. Each decision names its
 own commit, and a pair merged since then survives only as wrappers, so score it against that commit.
+
+There is one `verdicts.json` per repository, and it is this directory's in the **main checkout**,
+whichever worktree records the verdict. Agent sessions each work in a linked worktree
+(`.claude/worktrees/<name>/`), and a file per worktree would be lost with the worktree unless its
+session committed it. So a verdict recorded anywhere lands here, uncommitted until somebody commits
+it from the main checkout. Outside a git repository the file is under `--root`; `--file` names any
+other. Writers take `verdicts.json.lock` beside it while they read and rewrite the file, so verdicts
+recorded at the same moment do not drop each other.
