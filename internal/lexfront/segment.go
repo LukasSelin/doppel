@@ -107,10 +107,15 @@ func segment(toks []token, sp Spec) []span {
 			continue
 		}
 		// The name is the identifier immediately before a "(", allowing a
-		// type-parameter list in between: "func sortedKeys[K comparable](m M)".
+		// type-parameter list in between: "func sortedKeys[K comparable](m M)",
+		// and where the language writes one in angle brackets, "fn f<T>(x: T)".
 		paren := i + 1
 		if paren < len(toks) && toks[paren].kind == tokOpen && toks[paren].text == "[" {
 			if c := matchBracket(toks, paren); c >= 0 {
+				paren = c + 1
+			}
+		} else if sp.AngleTypeParams && paren < len(toks) && toks[paren].kind == tokOp && toks[paren].text == "<" {
+			if c := angleEnd(toks, paren); c >= 0 {
 				paren = c + 1
 			}
 		}
@@ -247,6 +252,62 @@ func declStart(toks []token, name int) int {
 		break
 	}
 	return i
+}
+
+// angleEnd returns the index of the ">" closing the type-parameter list that
+// opens at toks[open], or -1 if there is none.
+//
+// "<" and ">" are operator tokens, not brackets, so matchBracket cannot do
+// this: the list is counted here and real bracket groups inside it are skipped
+// whole — "<F: Fn(u8) -> [u8; 4]>". A ">>" closes two levels, which is how
+// "<T: Into<Vec<u8>>>" lexes, and "->" closes none. The list must close before
+// a ";" or a brace: that is what keeps a comparison "a < b; c > (d)" from
+// reading as one, and a const-generic block "{ N + 1 }" is the rare real list
+// it gives up on.
+func angleEnd(toks []token, open int) int {
+	depth := 0
+	for i := open; i < len(toks); i++ {
+		t := toks[i]
+		switch t.kind {
+		case tokOpen:
+			if t.text == "{" {
+				return -1
+			}
+			c := matchBracket(toks, i)
+			if c < 0 {
+				return -1
+			}
+			i = c
+			continue
+		case tokClose, tokEOF:
+			return -1
+		case tokSemi:
+			if t.text == ";" {
+				return -1
+			}
+			continue
+		case tokOp:
+			switch t.text {
+			case "<":
+				depth++
+			case "<<":
+				depth += 2
+			case ">", ">=":
+				depth--
+			case ">>", ">>=":
+				depth -= 2
+			default:
+				continue
+			}
+			if depth == 0 {
+				return i
+			}
+			if depth < 0 {
+				return -1
+			}
+		}
+	}
+	return -1
 }
 
 // openerBefore returns the index of the bracket opening the one at close.
@@ -431,7 +492,8 @@ func paramNames(toks []token, open, close int, sp Spec) []string {
 				flush()
 			}
 		case tokIdent:
-			if depth == 1 {
+			// A lifetime is never a parameter's name: "&'a self" is self.
+			if depth == 1 && t.text[0] != '\'' {
 				if first == "" {
 					first = t.text
 				}
