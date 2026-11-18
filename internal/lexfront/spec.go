@@ -52,6 +52,23 @@ type Spec struct {
 	// functions are declared by type rather than keyword (Java, C++) simply
 	// lists none and relies on the bare `name(...)` + body shape.
 	FuncKeywords []string
+	// KeywordRequired says every function this language declares has its
+	// keyword immediately before the name — Rust's "fn name(" — so the
+	// segmenter accepts nothing else. In a multi-word entry the keyword is
+	// the last word: "pub fn" is a modifier then the keyword "fn".
+	//
+	// The other shapes the segmenter accepts (a type or modifier before the
+	// name, a closing bracket, a line start) exist for languages that declare
+	// functions by type (Java, C) or allow methods without the keyword
+	// (TypeScript's "static isInPast(", Swift's "init("). In a language with
+	// neither, those shapes only ever match something that is not a function.
+	// In Rust that was every pattern binding: "if let Some(x) = f() {",
+	// "let Ok(n) = parse(s) else {", a match arm "Err(e) => {" after a block
+	// arm, a closure type "dyn Fn(&str) -> bool| {". Each became a unit called
+	// Some, Ok, Err or Fn, and they paired with each other at code-shape 1.00.
+	// A language with keyword-less declarations must leave this off, or it
+	// loses them.
+	KeywordRequired bool
 	// ImportKeywords begin a line that binds a name to a module.
 	ImportKeywords []string
 
@@ -149,9 +166,9 @@ var Specs = []Spec{
 	nameFirst(cFamily("javascript", []string{".js", ".jsx", ".mjs", ".cjs"},
 		[]string{"function", "async function"},
 		[]string{"*.test.js", "*.spec.js", "*.test.jsx", "*.spec.jsx"})),
-	nameFirst(cFamily("rust", []string{".rs"},
+	keywordRequired(nameFirst(cFamily("rust", []string{".rs"},
 		[]string{"fn", "pub fn", "async fn"},
-		[]string{"*_test.rs", "tests.rs"})),
+		[]string{"*_test.rs", "tests.rs"}))),
 	cFamily("java", []string{".java"}, nil,
 		[]string{"*Test.java", "Test*.java", "*Tests.java"}),
 	cFamily("csharp", []string{".cs"}, nil,
@@ -190,6 +207,10 @@ func sortStrings(s []string) {
 
 // nameFirst marks the languages that write a parameter name before its type.
 func nameFirst(s Spec) Spec { s.ParamNameFirst = true; return s }
+
+// keywordRequired marks the languages whose every function declaration is
+// introduced by its keyword. See Spec.KeywordRequired.
+func keywordRequired(s Spec) Spec { s.KeywordRequired = true; return s }
 
 // GoSpec is the fidelity control, and is deliberately NOT in Specs.
 //
