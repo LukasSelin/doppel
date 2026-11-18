@@ -3087,11 +3087,22 @@ reason rather than returning a partial delta.
   not already exist**. SessionStart also fires on resume and after compaction; re-recording then
   would silently move the origin mid-session.
 - `user-prompt` (UserPromptSubmit) scopes the corpus's duplication facts to the packages the
-  prompt mentions — `@path/to/pkg` mentions and bare package names, confirmed against the corpus,
-  capped at 3 in first-mention order (multi-matches resolved in sorted order; map order deciding
-  who wins the cap would break run-to-run stability). It re-runs the full pipeline once per
-  prompt, and is silent for prompts mentioning nothing it knows — the common case pays the
-  analysis and says nothing.
+  prompt names **by path** — a token with a `/` or `\`, `@` optional, never a URL, confirmed
+  against the corpus, capped at 3 in first-mention order (multi-matches resolved in sorted order;
+  map order deciding who wins the cap would break run-to-run stability). It emits **one line per
+  package**: the function count, the merge-worthy pairs inside it and the ones connecting it
+  elsewhere. A prompt with no path in it ends before any analysis, and a path that names nothing
+  analyzed says nothing.
+
+  **It was quieted on a measurement of what agents did with it.** Over a month of transcripts
+  (Oct 9 – Nov 18, 2026, 599 firings) it was 44% of all the text doppel put in front of an agent,
+  and none of its 827 listed pairs was acted on. Three changes followed. **Bare package names
+  stopped counting**: they are ordinary words, and it fired 88 times on `git` and 62 on `main`.
+  **Harness envelopes are cut out before the prompt is read** (`<task-notification>`,
+  `<agent-message>`, `<cross-session-message>`, `<system-reminder>`, `typedText` in
+  `cmd/scope.go`): UserPromptSubmit fires on background-task completions and other sessions'
+  messages too, and 17% of firings were one. **The pair list became a count**, because the pairs
+  themselves are what the pre-edit and post-edit hooks name once a file in the package is touched.
 - `pre-tool` (PreToolUse, matched on `Edit|Write`) advises on the merge-worthy twins of the file
   about to be edited, from the **session-start baseline**, labeled "as of session start". This is
   a deliberate widening of the baseline's role — fact sheet as well as measurement origin — with

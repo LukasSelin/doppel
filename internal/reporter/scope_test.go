@@ -29,19 +29,29 @@ func TestScopeDigestReportsWithinAndCrossPairs(t *testing.T) {
 	s := scopeFixture()
 	got := ScopeDigest(s, []ScopedPackage{{Package: "billing", Mention: "internal/billing"}})
 
-	for _, want := range []string{
-		"doppel: internal/billing (3 functions)",
-		"billing.PostClaim <-> billing.PostLost  shape 1.00  overlap 0.86",
-		"1 merge-worthy pair connects this package to others.",
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("digest missing %q:\n%s", want, got)
-		}
+	// One line, counts only: the non-merge-worthy pair is below the bar and
+	// is not counted, and no pair is listed — a month of sessions acted on
+	// none of the listed ones.
+	want := "doppel: internal/billing (3 functions): 1 merge-worthy pair within the package and 1 connecting it to others.\n"
+	if got != want {
+		t.Errorf("digest:\n%q\nwant:\n%q", got, want)
 	}
-	// The non-merge-worthy pair is below the bar everywhere; it must not
-	// appear just because the package is in scope.
-	if strings.Contains(got, "PostClaim <-> billing.PostInbox") {
-		t.Errorf("non-merge-worthy pair leaked into the digest:\n%s", got)
+}
+
+// Each half of the line stands alone when the other is zero.
+func TestScopeDigestNamesOnlyTheNonZeroCount(t *testing.T) {
+	s := scopeFixture()
+	got := ScopeDigest(s, []ScopedPackage{{Package: "shipping", Mention: "internal/shipping"}})
+	want := "doppel: internal/shipping (1 function): 1 merge-worthy pair connecting it to others.\n"
+	if got != want {
+		t.Errorf("digest:\n%q\nwant:\n%q", got, want)
+	}
+
+	s.Pairs = s.Pairs[:1]
+	got = ScopeDigest(s, []ScopedPackage{{Package: "billing", Mention: "internal/billing"}})
+	want = "doppel: internal/billing (3 functions): 1 merge-worthy pair within the package.\n"
+	if got != want {
+		t.Errorf("digest:\n%q\nwant:\n%q", got, want)
 	}
 }
 

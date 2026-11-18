@@ -576,16 +576,17 @@ func readHookInput(r io.Reader) (hookInput, error) {
 }
 
 // runHookUserPrompt scopes the corpus's duplication facts to the packages the
-// prompt mentions — the point in the session where the target is first known
-// and no edit exists yet.
+// prompt names by path — the point in the session where the target is first
+// known and no edit exists yet.
 //
-// The full pipeline runs, once per user prompt, with the same uncapped params
-// the other hooks use: the cost is one analysis at the moment the answer can
-// still change what gets written. A prompt mentioning no known package — the
-// overwhelmingly common case — costs the analysis and says nothing.
+// A prompt with no path in the text the user typed — the overwhelmingly
+// common case — ends before any analysis: a bare word is never a mention (see
+// pathMentions), so there is nothing the corpus could confirm. Otherwise the
+// full pipeline runs once, with the same uncapped params the other hooks use,
+// and a path that names nothing analyzed still says nothing.
 func runHookUserPrompt(cmd *cobra.Command, args []string) error {
 	in, err := readHookInput(cmd.InOrStdin())
-	if err != nil || in.Prompt == "" {
+	if err != nil || len(pathMentions(in.Prompt)) == 0 {
 		return emitNothing()
 	}
 
