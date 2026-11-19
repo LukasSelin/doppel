@@ -47,6 +47,36 @@ type Spec struct {
 	// RawPrefixes are string prefixes that suppress escape processing
 	// (Python's r"", C#'s @"").
 	RawPrefixes string
+	// StringPrefixes mark a literal's type without suppressing escapes:
+	// Rust's b"" and c"". They may combine with a raw prefix — br"" is raw
+	// because it carries r — and a prefix run with no raw letter in it is an
+	// ordinary escaped literal. Reading b"" as raw ends "b\"key\"" at its
+	// first escaped quote, and the rest of the line, or with MultilineQuotes
+	// the rest of the file, lexes inside out.
+	StringPrefixes string
+	// RawFence is a character a raw literal may be fenced with on both sides,
+	// so that it can hold a bare quote: Rust's r#"…"# and r##"…"##. The run
+	// stands between the prefix and the quote, and the literal ends only at a
+	// quote followed by the same run. Zero means the language has no fence.
+	RawFence byte
+	// MultilineQuotes are the quotes whose literal may run across lines. Every
+	// other quoted literal ends at a newline, so that one unterminated quote
+	// cannot swallow the rest of the file; a backtick always spans lines. In
+	// Rust every "…" literal may span lines, and ending one at the newline
+	// lexed its remaining lines as code — horizon's GLSL and WGSL shader
+	// sources became units called main and hz_depthTexture.
+	MultilineQuotes string
+	// Lifetimes says "'" opens a literal only when it closes one character
+	// later — a char literal 'x', '\n', '\u{1F600}' — and otherwise starts a
+	// name: a Rust lifetime ('a, '_, 'static) or loop label ('outer). The
+	// name lexes as one identifier token, quote included, so it collapses to
+	// an identifier like any other and is never taken for a parameter name.
+	// Without it "Game<'_>" opened a string running to end of line, the fn
+	// whose header it sat in was lost, and a tenth of a Rust tree's functions
+	// with it. Only a language whose "'" never opens a longer literal can say
+	// this: C's 'ab' is a multi-character constant, and in Python or
+	// JavaScript "'" quotes strings like any other quote.
+	Lifetimes bool
 
 	// FuncKeywords introduce a function declaration. A language whose
 	// functions are declared by type rather than keyword (Java, C++) simply
@@ -69,6 +99,13 @@ type Spec struct {
 	// A language with keyword-less declarations must leave this off, or it
 	// loses them.
 	KeywordRequired bool
+	// AngleTypeParams says type parameters are written "<…>" between a
+	// function's name and its parameter list: Rust's "fn f<T: Clone>(",
+	// TypeScript's "function f<T>(". "[…]" is accepted there for every
+	// language (Go, Scala); "<" is an operator token, so reading it as a
+	// bracket is a claim about the language, and a wrong one would make
+	// "a < b && c > (d)" a declaration with a type-parameter list.
+	AngleTypeParams bool
 	// ImportKeywords begin a line that binds a name to a module.
 	ImportKeywords []string
 
@@ -160,13 +197,13 @@ var Specs = []Spec{
 		ImportKeywords:    []string{"import", "from"},
 		TestPatterns:      []string{"test_*.py", "*_test.py"},
 	},
-	nameFirst(cFamily("typescript", []string{".ts", ".tsx", ".mts", ".cts"},
+	angleTypeParams(nameFirst(cFamily("typescript", []string{".ts", ".tsx", ".mts", ".cts"},
 		[]string{"function", "async function"},
-		[]string{"*.test.ts", "*.spec.ts", "*.test.tsx", "*.spec.tsx"})),
+		[]string{"*.test.ts", "*.spec.ts", "*.test.tsx", "*.spec.tsx"}))),
 	nameFirst(cFamily("javascript", []string{".js", ".jsx", ".mjs", ".cjs"},
 		[]string{"function", "async function"},
 		[]string{"*.test.js", "*.spec.js", "*.test.jsx", "*.spec.jsx"})),
-	keywordRequired(nameFirst(cFamily("rust", []string{".rs"},
+	rust(nameFirst(cFamily("rust", []string{".rs"},
 		[]string{"fn", "pub fn", "async fn"},
 		[]string{"*_test.rs", "tests.rs"}))),
 	cFamily("java", []string{".java"}, nil,
@@ -208,9 +245,26 @@ func sortStrings(s []string) {
 // nameFirst marks the languages that write a parameter name before its type.
 func nameFirst(s Spec) Spec { s.ParamNameFirst = true; return s }
 
-// keywordRequired marks the languages whose every function declaration is
-// introduced by its keyword. See Spec.KeywordRequired.
-func keywordRequired(s Spec) Spec { s.KeywordRequired = true; return s }
+// angleTypeParams marks the languages that write "f<T>(". Swift and C# do
+// too, and are left off until a tree of either has been measured; Kotlin
+// writes "fun <T> f(", before the name, which this does not reach.
+func angleTypeParams(s Spec) Spec { s.AngleTypeParams = true; return s }
+
+// rust is the C-family shape plus the facts Rust does not share with it: every
+// declaration carries its keyword, "'" before a name is a lifetime, strings
+// span lines and take byte, C-string and raw prefixes with a "#" fence, and
+// type parameters sit in "<…>" after the name. Each is a Spec field of its
+// own because each is a separate claim; this is only where Rust makes them.
+func rust(s Spec) Spec {
+	s = angleTypeParams(s)
+	s.KeywordRequired = true
+	s.Lifetimes = true
+	s.MultilineQuotes = `"`
+	s.RawPrefixes = "r"
+	s.StringPrefixes = "bc"
+	s.RawFence = '#'
+	return s
+}
 
 // GoSpec is the fidelity control, and is deliberately NOT in Specs.
 //

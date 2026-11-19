@@ -1,6 +1,9 @@
 package lexfront
 
-import "strings"
+import (
+	"strings"
+	"unicode/utf8"
+)
 
 // tokKind is the lexical vocabulary. It is deliberately tiny: the shape
 // stages downstream need to tell apart names, literals, operators and
@@ -74,6 +77,17 @@ func lex(src []byte, sp Spec) []token {
 
 		start := i
 		col := atLineStart()
+
+		// A lifetime or label is a name, not the start of a char literal.
+		if c == '\'' && sp.Lifetimes {
+			if j := lifetimeEnd(s, i); j > i {
+				out = append(out, token{kind: tokIdent, text: s[i:j],
+					line: line, col: col, off: start, nlPrev: nl})
+				nl = false
+				i = j
+				continue
+			}
+		}
 
 		// Strings, including any raw prefix the language allows.
 		if p := stringStart(s, i, sp); p >= 0 {
@@ -167,18 +181,52 @@ func skipComment(s string, i int, sp Spec) (bool, int) {
 	return false, i
 }
 
+// lifetimeEnd returns the index just past a lifetime or label starting at the
+// quote s[i], or i when the quote opens a char literal instead: one character
+// and a closing quote, 'x' or 'é', or an escape, '\n'. Anything else that
+// starts like a name — 'a, '_, 'static, 'outer — is one. See Spec.Lifetimes.
+func lifetimeEnd(s string, i int) int {
+	if i+1 >= len(s) || !isIdentStart(s[i+1]) {
+		return i
+	}
+	_, n := utf8.DecodeRuneInString(s[i+1:])
+	if i+1+n < len(s) && s[i+1+n] == '\'' {
+		return i
+	}
+	j := i + 1
+	for j < len(s) && isIdentPart(s[j]) {
+		j++
+	}
+	return j
+}
+
 // stringStart returns the index of the opening quote if a string literal
-// starts at i (allowing a raw/format prefix), or -1.
+// starts at i (allowing a raw/format prefix, and a fence after a raw one),
+// or -1.
 func stringStart(s string, i int, sp Spec) int {
 	if i < len(s) && strings.IndexByte(sp.StringQuotes, s[i]) >= 0 {
 		return i
 	}
-	// A prefix run followed by a quote: r"...", f"...", b"...".
+	// A prefix run followed by a quote: r"...", f"...", b"...", br#"..."#.
 	j := i
-	for j < len(s) && strings.IndexByte(sp.RawPrefixes, s[j]) >= 0 {
+	raw := false
+	for j < len(s) {
+		if strings.IndexByte(sp.RawPrefixes, s[j]) >= 0 {
+			raw = true
+		} else if strings.IndexByte(sp.StringPrefixes, s[j]) < 0 {
+			break
+		}
 		j++
 	}
-	if j > i && j < len(s) && strings.IndexByte(sp.StringQuotes, s[j]) >= 0 {
+	if j == i {
+		return -1
+	}
+	if raw && sp.RawFence != 0 {
+		for j < len(s) && s[j] == sp.RawFence {
+			j++
+		}
+	}
+	if j < len(s) && strings.IndexByte(sp.StringQuotes, s[j]) >= 0 {
 		return j
 	}
 	return -1
@@ -189,7 +237,20 @@ func stringStart(s string, i int, sp Spec) int {
 // which covers Python's docstrings without a Python-specific rule.
 func scanString(s string, q, start int, sp Spec) (string, int) {
 	quote := s[q]
-	raw := q > start // a prefix was present
+	// Raw when the prefix carries a raw letter. Every prefix of a language
+	// that declares no StringPrefixes is a raw one, which is how a bare
+	// "a prefix was present" read before those existed.
+	raw := strings.ContainsAny(s[start:q], sp.RawPrefixes)
+	// A fenced raw literal ends at the quote followed by the same fence, and
+	// holds anything up to it: quotes, backslashes, newlines.
+	if fence := fenceLen(s, start, q, sp); fence > 0 {
+		closer := string(quote) + s[q-fence:q]
+		end := strings.Index(s[q+1:], closer)
+		if end < 0 {
+			return s[q+1:], len(s)
+		}
+		return s[q+1 : q+1+end], q + 1 + end + len(closer)
+	}
 	// Triple quote?
 	if q+2 < len(s) && s[q+1] == quote && s[q+2] == quote {
 		end := strings.Index(s[q+3:], strings.Repeat(string(quote), 3))
@@ -215,14 +276,29 @@ func scanString(s string, q, start int, sp Spec) (string, int) {
 			return b.String(), i + 1
 		}
 		// An unterminated single-quoted string would otherwise swallow the
-		// rest of the file; a newline ends it for every quote but a backtick.
-		if c == '\n' && quote != '`' {
+		// rest of the file; a newline ends it for every quote but a backtick
+		// and the ones the language says may span lines.
+		if c == '\n' && quote != '`' && strings.IndexByte(sp.MultilineQuotes, quote) < 0 {
 			return b.String(), i
 		}
 		b.WriteByte(c)
 		i++
 	}
 	return b.String(), len(s)
+}
+
+// fenceLen is the length of the fence between a raw prefix starting at start
+// and the quote at q: the "##" of r##"…"##. Zero for an unfenced literal and
+// for every language without Spec.RawFence.
+func fenceLen(s string, start, q int, sp Spec) int {
+	if sp.RawFence == 0 {
+		return 0
+	}
+	n := 0
+	for q-1-n >= start && s[q-1-n] == sp.RawFence {
+		n++
+	}
+	return n
 }
 
 func unescape(c byte) byte {
