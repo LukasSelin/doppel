@@ -9,7 +9,7 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `e4c2a00` |
+| doppel | `4416200` |
 | Command | `doppel analyze . --tests exclude --moves=false --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -22,34 +22,34 @@ The corpus-level models doppel builds before ranking anything, as printed to std
 ```
 Scanning . ...
 Learning concept vocabulary...
-Lexicon: 390 concepts (12 seeded, 378 emergent), 17324/43509 features above 2068 df, 660 functions unlabeled
+Lexicon: 388 concepts (12 seeded, 376 emergent), 17330/43536 features above 2069 df, 663 functions unlabeled
 Generating concept documents...
 Calibration: rate 0.01 over 20000 null pairs -> threshold 0.33, struct-min 0.34, family-min 0.33
-Found 5623 functions. Retrieving candidates...
-Retrieval: shape 7885, concept 17022, call 8171 -> 28922 unique pairs
-  concept-only 51.0%  call-only 19.0%  suppressed-shape functions: 12  large identity buckets: 0  surviving labels: 30362
-  136 cross test/prod pairs dropped
+Found 5626 functions. Retrieving candidates...
+Retrieval: shape 7901, concept 17027, call 8171 -> 28943 unique pairs
+  concept-only 51.0%  call-only 18.9%  suppressed-shape functions: 12  large identity buckets: 0  surviving labels: 30368
+  143 cross test/prod pairs dropped
   66 cross build-target pairs dropped (no build compiles both files)
-Running structural comparison on 28720 pairs...
-  Concept views: 1730 of 28720 compared pairs disagree with the taxonomy (184 vocabulary the tree misses, 1546 kinship the vocabularies lack)
-  13002 pairs remain after struct-min=0.34 filter
-Culture: 360 concepts modeled, 2597 associations, 739 unusual realizations
+Running structural comparison on 28734 pairs...
+  Concept views: 1689 of 28734 compared pairs disagree with the taxonomy (178 vocabulary the tree misses, 1511 kinship the vocabularies lack)
+  12994 pairs remain after struct-min=0.34 filter
+Culture: 358 concepts modeled, 2585 associations, 744 unusual realizations
 Habitats: 97 modeled, 116 misfits (58 excused by subsystem), 22 subsystems; most uniform graphite (norm 1.00), most diverse src (norm 0.65)
 Conventions: strongest b.Bytes+b.Len (0.98), loosest n.StartOrEnd+n.Func (0.13)
-Ecosystems: 5268 profiled (2720 dominance, 2510 coalition, 0 conflict, 38 weak)
-Families: 913 over 627 components, 2004 functions in a family, 8117 edges completed
+Ecosystems: 5269 profiled (2722 dominance, 2509 coalition, 0 conflict, 38 weak)
+Families: 915 over 627 components, 2007 functions in a family, 8131 edges completed
   2 component(s) skipped as too large or too dense: sizes [233 661]
 ```
 
 # Code Similarity Report
 
-**Functions analyzed:** 5623 | **Threshold:** 0.33 | **Pairs found:** 10
+**Functions analyzed:** 5626 | **Threshold:** 0.33 | **Pairs found:** 10
 
 ---
 
 ## What doppel sees
 
-**5623 functions** across **124 packages** — test functions excluded. Structural roles: 3435 leaf, 1140 orchestrator, 302 passthrough, 746 utility.
+**5626 functions** across **125 packages** — test functions excluded. Structural roles: 3438 leaf, 1140 orchestrator, 302 passthrough, 746 utility.
 
 ### Concepts
 
@@ -130,7 +130,7 @@ flowchart LR
     c15["cp.Close+fd.Close<br/>121"]
     c16["g.interval+codes<br/>67"]
     c17["h.ST+h.Ref<br/>117"]
-    c18["h.mtx+h.config<br/>155"]
+    c18["h.mtx+h.config<br/>154"]
     c19["h.updateMinMaxTime+ooo.oooMmappedChunks<br/>119"]
     c20["h.wbl+h.wal<br/>51"]
     c21["httpClient.Transport+request.WithContext<br/>35"]
@@ -171,7 +171,7 @@ flowchart LR
     c7 --> c28
 ```
 
-The diagram draws the 3 largest concepts on each branch; **369 further concepts** are left out of the picture and listed in the table below.
+The diagram draws the 3 largest concepts on each branch; **367 further concepts** are left out of the picture and listed in the table below.
 
 **No practice here for** `circuit_breaker`, `grpc_call`. Concepts are learned from this corpus, so one can never be absent — it exists because functions carry it. These are the *seeds* the search started from that grew nothing: a direct answer to "does this codebase already do X".
 
@@ -184,8 +184,8 @@ The diagram draws the 3 largest concepts on each branch; **369 further concepts*
 | `HTTPClientConfig.OAuth2+binary.Uvarint` | 255 | `0.53` (settled) |
 | `Expr.Pretty+e.Op` | 189 | `0.55` (settled) |
 | `mc.maxTime+mc.minTime` | 178 | `0.58` (settled) |
-| `h.mtx+h.config` | 155 | `0.60` (settled) |
 | `strings.SplitSeq+profile` | 155 | `0.60` (settled) |
+| `h.mtx+h.config` | 154 | `0.60` (settled) |
 | `appErrs.numDuplicates+appErrs.numExemplarOutOfOrd…` | 142 | `0.51` (settled) |
 | `minTime.Store+minValidTime.Store` | 141 | `0.51` (settled) |
 | `cp.Close+fd.Close` | 121 | `0.48` (loose) |
@@ -204,16 +204,16 @@ The diagram draws the 3 largest concepts on each branch; **369 further concepts*
 | `OutOfOrderTimeWindow.Load+h.appendableMinValidTime` | 89 | `0.49` (loose) |
 | `promql.FPoint+labels.FromStrings` | 88 | `0.53` (settled) |
 | `e.Op+ev.endTimestamp` | 84 | `0.55` (settled) |
-| `kingpin.New+HelpFlag.Short` | 83 | `0.57` (settled) |
+| `kingpin.New+HelpFlag.Short` | 84 | `0.58` (settled) |
 | `it.Seek+it.AtFloatHistogram` | 79 | `0.55` (settled) |
 | `r.labels+ts.Sub` | 78 | `0.44` (loose) |
-| `api.parseMatchersParam+Queryable.Querier` | 74 | `0.42` (loose) |
 | `engine.NewInstantQuery+promql.Scalar` | 74 | `0.49` (loose) |
 | `json.MarshalIndent+json.NewDecoder` | 71 | `0.44` (loose) |
 | `set.At+set.Warnings` | 71 | `0.47` (loose) |
-| `result.TotalSamples+it.Reset+ss.Floats` | 70 | `0.51` (settled) |
+| `api.parseMatchersParam+Queryable.Querier` | 69 | `0.42` (loose) |
 | `g.interval+codes` | 67 | `0.49` (loose) |
 | `querier.Close+errors.Join` | 67 | `0.58` (settled) |
+| `result.TotalSamples+it.Reset+ss.Floats` | 67 | `0.50` (settled) |
 | `engine.NewInstantQuery+promql.Scalar+q.Exec` | 64 | `0.52` (settled) |
 | `b.commonSearchPostProps+yaml.ScalarNode` | 63 | `0.57` (settled) |
 | `storage.Close+embed` | 63 | `0.49` (loose) |
@@ -227,8 +227,8 @@ The diagram draws the 3 largest concepts on each branch; **369 further concepts*
 | `promql.FPoint+promql.Matrix` | 53 | `0.54` (settled) |
 | `discovery.RegisterConfig+config` | 52 | `0.23` (loose) |
 | `time.Minute+rules` | 52 | `0.61` (settled) |
-| `api.respond+api.CORSOrigin` | 51 | `0.45` (loose) |
 | `h.wbl+h.wal` | 51 | `0.52` (settled) |
+| `api.respond+api.CORSOrigin` | 50 | `0.44` (loose) |
 | `it.current+it.postings` | 50 | `0.50` (settled) |
 | `lb.Reset+lb.Labels` | 50 | `0.43` (loose) |
 | `it.Seek+b.lastTime` | 49 | `0.54` (settled) |
@@ -236,8 +236,8 @@ The diagram draws the 3 largest concepts on each branch; **369 further concepts*
 | `ll.storage+embed` | 47 | `0.48` (loose) |
 | `expr.Pretty+p.ParseExpr` | 46 | `0.40` (loose) |
 | `p.lvs+p.m` | 46 | `0.42` (loose) |
-| `parent.type+node.parent` | 45 | `0.47` (loose) |
 | `base.Example+examples.Set` | 44 | `0.52` (settled) |
+| `parent.type+node.parent` | 44 | `0.47` (loose) |
 | `stats.GetSpanTimer+ng.metrics` | 43 | `0.47` (loose) |
 | `Expr.PositionRange+p.lex` | 42 | `0.47` (loose) |
 | `c.CustomValues+c.ZeroThreshold` | 42 | `0.44` (loose) |
@@ -245,8 +245,8 @@ The diagram draws the 3 largest concepts on each branch; **369 further concepts*
 | `enh.resetSigsPresent+parser.CardManyToMany` | 41 | `0.36` (loose) |
 | `currMeta.Chunk+p.currMeta` | 40 | `0.65` (settled) |
 | `parser.ValueTypeScalar+parser.ValueTypeVector` | 40 | `0.51` (settled) |
+| `strings.HasSuffix+strings.HasPrefix` | 39 | `0.43` (loose) |
 | `prometheus.ExponentialBucke…+prometheus.NewGaugeFunc` | 38 | `0.56` (settled) |
-| `strings.HasSuffix+strings.HasPrefix` | 38 | `0.43` (loose) |
 | `annotations.NewHistogramCou…+annotations.HistogramSub` | 37 | `0.49` (loose) |
 | `histogram.UnknownCounterRes…+histogram.GaugeType` | 37 | `0.52` (settled) |
 | `querier.Select+storage.SelectHints` | 37 | `0.47` (loose) |
@@ -267,12 +267,12 @@ The diagram draws the 3 largest concepts on each branch; **369 further concepts*
 | `props.Set+base.DynamicValue+base.SchemaProxy` | 33 | `0.54` (settled) |
 | `s.seen+d.Skip` | 33 | `0.37` (loose) |
 | `b.Bytes+ls.syms` | 32 | `0.32` (loose) |
-| `node.to+node.from` | 32 | `0.51` (settled) |
 | `prometheus.MustRegister+flag` | 32 | `0.39` (loose) |
 | `annotations.HistogramAgg+annotations.NewNativeHistog…` | 31 | `0.41` (loose) |
 | `fh.Count+fh.ZeroCount` | 31 | `0.35` (loose) |
 | `hOld.NegativeBuckets+hOld.NegativeSpans` | 31 | `0.59` (settled) |
 | `labels.labelSize+tsdb.*memChunk.len` | 31 | `0.35` (loose) |
+| `node.to+node.from` | 31 | `0.51` (settled) |
 | `result.finalizer+api.Queryable` | 31 | `0.36` (loose) |
 | `annotations.HistogramAgg+annotations.NewHistogramCou…+annotations.NewMismatchedCu…` | 30 | `0.48` (loose) |
 | `base.Range+b.base+b.del` | 30 | `0.31` (loose) |
@@ -304,6 +304,7 @@ The diagram draws the 3 largest concepts on each branch; **369 further concepts*
 | `strings.HasPrefix+promqltest.parseSeries` | 26 | `0.50` (settled) |
 | `b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2` | 25 | `0.64` (settled) |
 | `ch.lastMmapRef+ch.postings` | 25 | `0.67` (settled) |
+| `l.input+l.pos` | 25 | `0.30` (loose) |
 | `m.failuresCount+prometheus.NewSummary` | 25 | `0.31` (loose) |
 | `props.Set+base.DynamicValue` | 25 | `0.58` (settled) |
 | `slices.Clone+tsdb.*memChunk.len` | 25 | `0.45` (loose) |
@@ -311,18 +312,19 @@ The diagram draws the 3 largest concepts on each branch; **369 further concepts*
 | `hints.Filter+hints.OrderBy` | 24 | `0.58` (settled) |
 | `index.AllPostingsKey+errors.New` | 24 | `0.49` (loose) |
 | `it.list+it.cur` | 24 | `0.57` (settled) |
+| `p.mtype+p.series` | 24 | `0.40` (loose) |
 | `require.Equal+require.NotNil` | 24 | `0.28` (loose) |
 | `series.Histograms+series.Floats` | 24 | `0.45` (loose) |
 | `annotations.HistogramAgg+annotations.NewHistogramCou…` | 23 | `0.41` (loose) |
 | `f.F+annotations.NewHistogramIgn…` | 23 | `0.33` (loose) |
 | `os.Getenv+fmt.Errorf` | 23 | `0.42` (loose) |
-| `p.mtype+p.series` | 23 | `0.44` (loose) |
 | `parser.UnaryExpr+n.Args` | 23 | `0.38` (loose) |
 | `q.chunks+q.tombstones` | 23 | `0.61` (settled) |
 | `syntax.OpConcat+syntax.OpAlternate` | 23 | `0.39` (loose) |
 | `annotations.NewNativeHistog…+annotations.New` | 22 | `0.40` (loose) |
 | `b.nums+syms.nameTable` | 22 | `0.13` (loose) |
 | `chk.minTime+chk.maxTime` | 22 | `0.40` (loose) |
+| `enh.StartTimestamps+annotations.NewMixedFloatsH…` | 22 | `0.35` (loose) |
 | `model.MetricTypeStateset+model.MetricTypeInfo+model.MetricTypeGaugeHistog…` | 22 | `0.37` (loose) |
 | `b.AvailableBuffer+b.Write` | 21 | `0.24` (loose) |
 | `b.Sort+b.Add` | 21 | `0.41` (loose) |
@@ -339,7 +341,6 @@ The diagram draws the 3 largest concepts on each branch; **369 further concepts*
 | `relabel.ProcessBuilder+lb.Labels` | 20 | `0.31` (loose) |
 | `a.writeVDelta+a.tDelta` | 19 | `0.22` (loose) |
 | `e.EndPos+Expr.PositionRange` | 19 | `0.52` (settled) |
-| `enh.StartTimestamps+annotations.NewMixedFloatsH…` | 19 | `0.34` (loose) |
 | `f.histograms+f.samples+f.idx` | 19 | `0.49` (loose) |
 | `h.maxt+h.mint` | 19 | `0.60` (settled) |
 | `ix.Postings+model.MetricTypeLabel` | 19 | `0.39` (loose) |
@@ -349,21 +350,26 @@ The diagram draws the 3 largest concepts on each branch; **369 further concepts*
 | `Range.Seconds+ms.Range` | 18 | `0.39` (loose) |
 | `b.searchDefaultLimit+exampleTime.Add+v3.Parameter` | 18 | `0.70` (settled) |
 | `chunkenc.Appender+chunkenc.NewEmptyChunk` | 18 | `0.38` (loose) |
+| `http.StatusNotFound+http.Error` | 18 | `0.39` (loose) |
 | `it.stDiff+it.baselineV` | 18 | `0.55` (settled) |
 | `labels.MustNewMatcher+n.LabelMatchers` | 18 | `0.34` (loose) |
 | `strings.IndexByte+syntax` | 18 | `0.37` (loose) |
 | `client.Get+d.config` | 17 | `0.54` (settled) |
 | `it.Iter+v2` | 17 | `0.74` (settled) |
+| `l.gotColon+l.histogramState` | 17 | `0.40` (loose) |
 | `strings.Builder+model.Duration` | 17 | `0.51` (settled) |
 | `Metric.Hash+ev.errorf` | 16 | `0.39` (loose) |
 | `ValueType.scalar+ValueType.vector` | 16 | `0.38` (loose) |
 | `annotations.NewMixedFloatsH…+H.CounterResetHint` | 16 | `0.44` (loose) |
 | `br.buffer+br.readBit+it.baselineV` | 16 | `0.42` (loose) |
 | `dec.GetCounter+dec.GetSummary+p.fieldsDone` | 16 | `0.38` (loose) |
+| `formatTime+settingsSlice` | 16 | `0.58` (settled) |
+| `l.gotColon+l.histogramState+l.seriesDesc` | 16 | `0.34` (loose) |
 | `math.Abs+math.IsNaN` | 16 | `0.35` (loose) |
 | `p.F+p.T` | 16 | `0.35` (loose) |
 | `p.H+p.F` | 16 | `0.35` (loose) |
 | `page.alloc+w.page` | 16 | `0.47` (loose) |
+| `posrange.Pos+l.input` | 16 | `0.34` (loose) |
 | `s.Offset+s.Length` | 16 | `0.28` (loose) |
 | `s.rs+cmp` | 16 | `0.79` (unanimous) |
 | `strconv.ParseFloat+labels.BucketLabel` | 16 | `0.27` (loose) |
@@ -373,10 +379,8 @@ The diagram draws the 3 largest concepts on each branch; **369 further concepts*
 | `b.searchDefaultLimit+exampleTime.Add` | 15 | `0.74` (settled) |
 | `chunks.Inc+chunksCreated.Inc` | 15 | `0.29` (loose) |
 | `context.metricName+node.to` | 15 | `0.45` (loose) |
-| `formatTime+settingsSlice` | 15 | `0.57` (settled) |
+| `data.data+styles` | 15 | `0.64` (settled) |
 | `iter.At+iter.Next` | 15 | `0.36` (loose) |
-| `l.input+l.pos` | 15 | `0.30` (loose) |
-| `posrange.Pos+l.input` | 15 | `0.33` (loose) |
 | `require.Equal+require.True` | 15 | `0.55` (settled) |
 | `syntax.OpEmptyMatch+syntax.OpBeginText` | 15 | `0.42` (loose) |
 | `utf8.Valid+p.nextToken` | 15 | `0.37` (loose) |
@@ -387,10 +391,8 @@ The diagram draws the 3 largest concepts on each branch; **369 further concepts*
 | `br.buffer+it.stDiff` | 14 | `0.36` (loose) |
 | `c.Bytes+BigEndian.Uint16` | 14 | `0.38` (loose) |
 | `c.ignoredSamples+prompb.Sample` | 14 | `0.48` (loose) |
-| `data.data+styles` | 14 | `0.63` (settled) |
 | `ep.ToExemplar+hp.IsFloatHistogram` | 14 | `0.36` (loose) |
 | `heap.Pop+heap.Push` | 14 | `0.36` (loose) |
-| `l.gotColon+l.histogramState+l.seriesDesc` | 14 | `0.24` (loose) |
 | `lex.input+p.parseGenerated` | 14 | `0.30` (loose) |
 | `m.contains+m.stringMatcher` | 14 | `0.42` (loose) |
 | `n.StartOrEnd+n.OriginalOffset` | 14 | `0.29` (loose) |
@@ -407,13 +409,9 @@ The diagram draws the 3 largest concepts on each branch; **369 further concepts*
 | `b.base+b.del+b.Name` | 12 | `0.45` (loose) |
 | `b.f+b.alignmentRqmts` | 12 | `0.30` (loose) |
 | `dec.GetCounter+dec.GetSummary+h.GetBucket` | 12 | `0.40` (loose) |
-| `http.StatusNotFound+http.Error` | 12 | `0.36` (loose) |
 | `index.Intersect+selectedSeriesRefs.sortedBy…` | 12 | `0.45` (loose) |
 | `it.stDiff+br.buffer` | 12 | `0.26` (loose) |
 | `item.PositionRange+p.addParseErr` | 12 | `0.31` (loose) |
-| `l.gotColon+l.histogramState` | 12 | `0.35` (loose) |
-| `l.gotColon+l.histogramState+l.bracketOpen` | 12 | `0.32` (loose) |
-| `l.gotColon+l.histogramState+l.bracketOpen~2` | 12 | `0.26` (loose) |
 | `n.StartOrEnd+parser.UnaryExpr` | 12 | `0.27` (loose) |
 | `p.buf+p.alloc` | 12 | `0.47` (loose) |
 | `prometheus.NewHistogramVec+prometheus.NewSummaryVec` | 12 | `0.32` (loose) |
@@ -502,6 +500,7 @@ The diagram draws the 3 largest concepts on each branch; **369 further concepts*
 | `fs.Blocks+fs.Bsize` | 6 | `0.89` (unanimous) |
 | `h.floatBucketIterator+h.Schema` | 6 | `0.44` (loose) |
 | `it.nBucketsLeading+it.nBucketsTrailing` | 6 | `0.48` (loose) |
+| `l.stringOpen+l.errorf` | 6 | `0.26` (loose) |
 | `n.Val+parser.DurationExpr` | 6 | `0.25` (loose) |
 | `net.SplitHostPort+net.JoinHostPort` | 6 | `0.40` (loose) |
 | `node.Expr+Expr.String` | 6 | `0.60` (settled) |
@@ -527,7 +526,6 @@ The diagram draws the 3 largest concepts on each branch; **369 further concepts*
 | `head.initTime+head.appender` | 5 | `0.71` (settled) |
 | `it.stDiff+br.valid+it.schema` | 5 | `0.88` (unanimous) |
 | `item.PositionRange+lval.item` | 5 | `0.37` (loose) |
-| `l.stringOpen+l.errorf` | 5 | `0.34` (loose) |
 | `mediaType.Examples+content.Set` | 5 | `0.33` (loose) |
 | `metric.ExponentialHistogram+metric.Histogram` | 5 | `0.47` (loose) |
 | `n.LabelMatchers+parser.Inspect` | 5 | `0.26` (loose) |
@@ -594,7 +592,7 @@ flowchart LR
     p8 ---|"11"| p9
     p10["openstack<br/>3 internal"]
     p4 ---|"9"| p10
-    p11["promql<br/>380 internal"]
+    p11["promql<br/>368 internal"]
     p12["storage<br/>259 internal"]
     p11 ---|"9"| p12
     p13["remote<br/>62 internal"]
@@ -636,17 +634,17 @@ _85 further packages are modeled and not drawn._ Most uniform is `graphite` (nor
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **28922 candidate pairs** (shape 7885, concept 17022, call 8171), of which 19% arrived on call evidence alone and 51% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **28943 candidate pairs** (shape 7901, concept 17027, call 8171), of which 19% arrived on call evidence alone and 51% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
-The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **1730 of 28720** pairs the taxonomy and the vocabularies differ by at least 0.50: 184 where the vocabularies agree and the tree cannot see it, 1546 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
+The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **1689 of 28734** pairs the taxonomy and the vocabularies differ by at least 0.50: 178 where the vocabularies agree and the tree cannot see it, 1511 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
 
-Each function is also an arena where its candidate concepts compete for its evidence. 5268 functions reached an equilibrium: **2720** settled on a single concept, **2510** on a coalition, **0** hold concepts this corpus says do not go together.
+Each function is also an arena where its candidate concepts compete for its evidence. 5269 functions reached an equilibrium: **2722** settled on a single concept, **2509** on a coalition, **0** hold concepts this corpus says do not go together.
 
 ### Corpus metrics
 
-**Compression ratio:** `8.98`x — this corpus's canonical function bodies contain **484201 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **53916 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
+**Compression ratio:** `8.98`x — this corpus's canonical function bodies contain **484400 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **53950 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **5623 functions**, **5364** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.50` / `1.00` / `1.00`, and 83% of them (4458 of 5364) already clear this run's threshold of `0.33`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 259 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **5626 functions**, **5367** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.50` / `1.00` / `1.00`, and 83% of them (4464 of 5367) already clear this run's threshold of `0.33`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 259 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -707,13 +705,13 @@ Only what is **distinctive**. A feature earns a row by being carried by this con
 |---|---|---|---|---|
 | calls ×40 | `fmt.Sprintf` | `██████····` | 105 of 189 | 18× |
 
-_354 further concepts are modeled and not described._
+_352 further concepts are modeled and not described._
 
 ### Which concepts share a function
 
 `++` at least four times chance, `+` at least twice, `−` at most half, `never` not once. A blank cell is ordinary company — near chance, which is not culture.
 
-_Showing 12 of 389 concepts — those in the strongest pairings, taken strongest first by lift weighted by how many functions it speaks for. Every cell between them is shown; the other 377 concepts are not on the grid._
+_Showing 12 of 387 concepts — those in the strongest pairings, taken strongest first by lift weighted by how many functions it speaks for. Every cell between them is shown; the other 375 concepts are not on the grid._
 
 | | `FH.Schema+H.Schema` | `HTTPClientConfig.OAuth2+binary.Uvarint` | `Retention.Percentage+Retention.Size` | `Status.State+buf1.PutBE32int` | `c.EC2SDConfig+c.ECSSDConfig` | `ev.matrixIterSlice+storage.NewBuffer` | `h.mtx+h.config` | `http.HandlerFunc+http.ResponseWriter` | `mc.maxTime+mc.minTime` | `minTime.Store+minValidTime.Store` | `result.TotalSamples+ss.Floats` |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -739,9 +737,9 @@ Co-occurrence measured against chance across every function. Only relationships 
 - 30 of 36 `prometheus.NewGaugeVec+prometheus.NewHistogramVec` functions also `prometheus.ExponentialBucke…+prometheus.NewGaugeFunc` — 123× chance
 - 41 of 47 `ll.storage+embed` functions also `storage.Close+embed` — 78× chance
 - 26 of 26 `c.CustomValues+c.ZeroThreshold+c.NegativeSpans` functions also `c.CustomValues+c.ZeroThreshold` — 134× chance
-- 58 of 74 `api.parseMatchersParam+Queryable.Querier` functions also `api.parseMatchersParam+r.ParseForm` — 49× chance
-- 28 of 32 `node.to+node.from` functions also `parent.type+node.parent` — 109× chance
-- _760 more not listed_
+- 27 of 31 `node.to+node.from` functions also `parent.type+node.parent` — 111× chance
+- 32 of 33 `props.Set+base.DynamicValue+base.SchemaProxy` functions also `b.commonSearchPostProps+yaml.ScalarNode` — 87× chance
+- _758 more not listed_
 
 **Together more than chance — tag~role**
 
@@ -751,7 +749,7 @@ Co-occurrence measured against chance across every function. Only relationships 
 - 18 of 18 `b.searchDefaultLimit+exampleTime.Add+v3.Parameter` functions also `orchestrator` — 4.9× chance
 - 15 of 15 `b.searchDefaultLimit+exampleTime.Add` functions also `orchestrator` — 4.9× chance
 - 163 of 367 `Retention.Percentage+Retention.Size` functions also `orchestrator` — 2.2× chance
-- _121 more not listed_
+- _118 more not listed_
 
 **Together more than chance — tag~call**
 
@@ -761,7 +759,7 @@ Co-occurrence measured against chance across every function. Only relationships 
 - 22 of 25 `b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2` functions also `v1.responsesWithErrorExamples` — 171× chance
 - 22 of 35 `math.Sqrt+natsort` functions also `promql.simpleFloatFunc` — 147× chance
 - 16 of 18 `b.searchDefaultLimit+exampleTime.Add+v3.Parameter` functions also `v1.queryParamWithExample` — 238× chance
-- _1282 more not listed_
+- _1276 more not listed_
 
 **Apart more than chance — tag~tag**
 
@@ -771,16 +769,16 @@ Co-occurrence measured against chance across every function. Only relationships 
 - **no** `FH.Schema+H.Schema` function has `strings.SplitSeq+profile` — chance alone would give about 9 of 324
 - **no** `c.EC2SDConfig+c.ECSSDConfig` function has `minTime.Store+minValidTime.Store` — chance alone would give about 9 of 351
 - **no** `Status.State+buf1.PutBE32int` function has `http.HandlerFunc+http.ResponseWriter` — chance alone would give about 9 of 465
-- _213 more not listed_
+- _212 more not listed_
 
 **Apart more than chance — tag~role**
 
 - **no** `b.searchDefaultLimit+exampleTime.Add+v3.Parameter~2` function has `leaf` — chance alone would give about 15 of 25
 - **no** `b.searchDefaultLimit+exampleTime.Add+v3.Parameter` function has `leaf` — chance alone would give about 11 of 18
 - **no** `discovery.RegisterConfig+config` function has `orchestrator` — chance alone would give about 11 of 52
+- **no** `l.gotColon+l.histogramState+l.seriesDesc` function has `leaf` — chance alone would give about 10 of 16
 - **no** `b.searchDefaultLimit+exampleTime.Add` function has `leaf` — chance alone would give about 9 of 15
-- **no** `l.gotColon+l.histogramState+l.seriesDesc` function has `leaf` — chance alone would give about 9 of 14
-- **no** `annotations.NewHistogramCou…+annotations.HistogramSub` function has `orchestrator` — chance alone would give about 8 of 37
+- **no** `annotations.NewHistogramCou…+annotations.HistogramSub` function has `orchestrator` — chance alone would give about 7 of 37
 - _187 more not listed_
 
 **Apart more than chance — tag~call**
@@ -807,7 +805,7 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 | `scrape.isSeriesPartOfFamily` <br/>`scrape/scrape.go:1900` | `model.MetricTypeStateset+model.MetricTypeInfo` | `0.23` | `0.63` | no near-duplicate |
 | `complete.this.promQL` <br/>`web/ui/module/codemirror-promql/src/complete/hybrid.ts:700` | `context.metricName+node.to` | `0.16` | `0.56` | no near-duplicate |
 
-_729 more unusual realizations not listed._
+_734 more unusual realizations not listed._
 
 A row marked _no near-duplicate_ appears in no reported pair: nothing else in this report explains it, which makes it drift rather than duplication.
 
@@ -830,7 +828,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.93`
 
-**Evidence:** `1249.45` (shape 1192.49, concept 1.93, call 55.03)
+**Evidence:** `1249.60` (shape 1192.64, concept 1.93, call 55.03)
 
 **Trophic:** `0.98`
 
@@ -877,7 +875,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `1037.21` (shape 1004.30, concept 7.36, call 25.54)
+**Evidence:** `1037.34` (shape 1004.43, concept 7.36, call 25.55)
 
 **Trophic:** `1.00`
 
@@ -925,15 +923,15 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.86`
 
-**Evidence:** `2064.43` (shape 2032.84, concept 3.97, call 27.62)
+**Evidence:** `2064.69` (shape 2033.09, concept 3.97, call 27.62)
 
 **Trophic:** `0.88`
 
 **Shared structure:**
 
-- `48.64` — `depth-2 KV` ×10
-- `48.64` — `depth-1 KV` ×10
-- `38.84` — `depth-3 ASSIGN` ×6
+- `48.65` — `depth-2 KV` ×10
+- `48.65` — `depth-1 KV` ×10
+- `38.85` — `depth-3 ASSIGN` ×6
 
 **Concept views:** shape `1.00`, corpus `0.97`, feature `0.97`, a-in-b `1.00`, b-in-a `0.97`
 
@@ -973,7 +971,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.93`
 
-**Evidence:** `1211.22` (shape 1119.00, concept 6.76, call 85.46)
+**Evidence:** `1211.37` (shape 1119.14, concept 6.76, call 85.47)
 
 **Trophic:** `0.98`
 
@@ -1016,14 +1014,14 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
-**Evidence:** `1277.02` (shape 1277.02, concept 0.00, call 0.00)
+**Evidence:** `1277.17` (shape 1277.17, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
 
 **Shared structure:**
 
-- `14.33` — `depth-3 UNARY` ×2
-- `14.33` — `depth-2 UNARY` ×2
+- `14.34` — `depth-3 UNARY` ×2
+- `14.34` — `depth-2 UNARY` ×2
 - `14.31` — `depth-1 ASSIGN` ×3
 
 **Concept views:** shape `0.00`, corpus `0.00`, feature `0.00`, a-in-b `0.00`, b-in-a `0.00`
@@ -1043,7 +1041,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #6 — Code-shape: `0.8012`
+## Match #6 — Code-shape: `0.8009`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1054,21 +1052,21 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Profile A:** `formatTime+settingsSlice` 1.00 (dominance)
 
-**Profile B:** `ErrorBoundary+hooks` 0.60, `data.data+styles` 0.40 (coalition)
+**Profile B:** `ErrorBoundary+hooks` 0.60, `data.data+styles` 0.40 (dominance)
 
 **Code similarity:** `wl 0.72  flow 1.00  nesting 1.00  sig n/a  size 0.92`
 
 **Containment:** `0.90`
 
-**Evidence:** `3204.38` (shape 3204.01, concept 0.37, call 0.00)
+**Evidence:** `3198.60` (shape 3198.23, concept 0.37, call 0.00)
 
 **Trophic:** `0.89`
 
 **Shared structure:**
 
-- `61.13` — `depth-2 BIN` ×11
-- `61.13` — `depth-1 BIN` ×11
-- `61.13` — `depth-1 BIN` ×11
+- `61.14` — `depth-2 BIN` ×11
+- `61.14` — `depth-1 BIN` ×11
+- `61.14` — `depth-1 BIN` ×11
 
 **Concept views:** shape `0.25`, corpus `0.08`, feature `0.28`, a-in-b `0.70`, b-in-a `0.32`
 
@@ -1102,7 +1100,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.93`
 
-**Evidence:** `1211.19` (shape 1119.00, concept 6.72, call 85.46)
+**Evidence:** `1211.33` (shape 1119.14, concept 6.72, call 85.47)
 
 **Trophic:** `0.98`
 
@@ -1149,7 +1147,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.93`
 
-**Evidence:** `1211.19` (shape 1119.00, concept 6.73, call 85.46)
+**Evidence:** `1211.33` (shape 1119.14, concept 6.72, call 85.47)
 
 **Trophic:** `0.98`
 
@@ -1192,7 +1190,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.95`
 
-**Evidence:** `1541.51` (shape 1534.26, concept 0.00, call 7.25)
+**Evidence:** `1541.68` (shape 1534.43, concept 0.00, call 7.25)
 
 **Trophic:** `0.97`
 
@@ -1236,7 +1234,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.79`
 
-**Evidence:** `3412.93` (shape 3302.24, concept 0.00, call 110.69)
+**Evidence:** `3413.24` (shape 3302.54, concept 0.00, call 110.70)
 
 **Trophic:** `0.83`
 
@@ -1244,7 +1242,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 - `30.29` — `depth-3 IF` ×4
 - `27.52` — `depth-2 IF` ×4
-- `26.62` — `depth-3 BLOCK` ×4
+- `26.63` — `depth-3 BLOCK` ×4
 
 **Concept views:** shape `0.00`, corpus `0.00`, feature `0.00`, a-in-b `0.00`, b-in-a `0.00`
 
@@ -1263,9 +1261,9 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ## Families
 
-913 families, 2004 functions in a family, largest 74 members; 8117 edges scored here that retrieval never proposed
+915 families, 2007 functions in a family, largest 74 members; 8131 edges scored here that retrieval never proposed
 
-### Family 1 — 73 members, every pair `>= 0.34` code-shape, evidence `50365`  (2205 edges scored here)
+### Family 1 — 73 members, every pair `>= 0.34` code-shape, evidence `50371`  (2205 edges scored here)
 
 _Not drawn: 73 members is 2628 connections. Every one of them holds — that is what makes this a family._
 
@@ -1284,7 +1282,7 @@ _Not drawn: 73 members is 2628 connections. Every one of them holds — that is 
 
 _63 more members not listed._
 
-### Family 2 — 73 members, every pair `>= 0.33` code-shape, evidence `48876`  (2199 edges scored here)
+### Family 2 — 73 members, every pair `>= 0.33` code-shape, evidence `48882`  (2199 edges scored here)
 
 _Not drawn: 73 members is 2628 connections. Every one of them holds — that is what makes this a family._
 
@@ -1303,7 +1301,7 @@ _Not drawn: 73 members is 2628 connections. Every one of them holds — that is 
 
 _63 more members not listed._
 
-### Family 3 — 60 members, every pair `>= 0.34` code-shape, evidence `48243`  (1439 edges scored here)
+### Family 3 — 60 members, every pair `>= 0.34` code-shape, evidence `48249`  (1439 edges scored here)
 
 _Not drawn: 60 members is 1770 connections. Every one of them holds — that is what makes this a family._
 
@@ -1322,7 +1320,7 @@ _Not drawn: 60 members is 1770 connections. Every one of them holds — that is 
 
 _50 more members not listed._
 
-### Family 4 — 74 members, every pair `>= 0.33` code-shape, evidence `46408`  (2269 edges scored here)
+### Family 4 — 74 members, every pair `>= 0.33` code-shape, evidence `46413`  (2269 edges scored here)
 
 _Not drawn: 74 members is 2701 connections. Every one of them holds — that is what makes this a family._
 
@@ -1341,7 +1339,7 @@ _Not drawn: 74 members is 2701 connections. Every one of them holds — that is 
 
 _64 more members not listed._
 
-### Family 5 — 74 members, every pair `>= 0.33` code-shape, evidence `44901`  (2262 edges scored here)
+### Family 5 — 74 members, every pair `>= 0.33` code-shape, evidence `44907`  (2262 edges scored here)
 
 _Not drawn: 74 members is 2701 connections. Every one of them holds — that is what makes this a family._
 
@@ -1360,7 +1358,7 @@ _Not drawn: 74 members is 2701 connections. Every one of them holds — that is 
 
 _64 more members not listed._
 
-_908 more families not listed._
+_910 more families not listed._
 
 _2 component(s) too large or too dense to enumerate (sizes 233, 661); their families are not reported._
 

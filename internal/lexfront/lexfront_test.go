@@ -211,6 +211,262 @@ pub fn helper(x: i32) -> i32 {
 	}
 }
 
+// TestRustLifetimesAreNames pins the defect that lost about a tenth of a Rust
+// tree's functions: "'" was a string quote, so "Game<'_>" opened a string that
+// ran to end of line and took the header's "(" with it. A lifetime or label is
+// one identifier token; a char literal — escaped, unicode, or a quote — is
+// still a literal.
+func TestRustLifetimesAreNames(t *testing.T) {
+	const src = `
+pub fn tick(game: &mut Game<'_>, name: &'static str) -> &'a str {
+    let c = 'x';
+    let q = '\'';
+    let s = '"';
+    let u = '\u{1F600}';
+    'outer: loop {
+        break 'outer;
+    }
+    helper(c, q, s, u)
+}
+
+impl<'a> View<'a> {
+    pub fn get(&'a self, key: &'a str) -> Option<&'a str> {
+        self.map.get(key)
+    }
+}
+`
+	sp := specFor(t, "rust")
+	var lifetimes, chars []string
+	for _, tok := range lex([]byte(src), sp) {
+		switch {
+		case tok.kind == tokIdent && tok.text[0] == '\'':
+			lifetimes = append(lifetimes, tok.text)
+		case tok.kind == tokString:
+			chars = append(chars, tok.val)
+		}
+	}
+	if want := "'_ 'static 'a 'outer 'outer 'a 'a 'a 'a 'a"; strings.Join(lifetimes, " ") != want {
+		t.Errorf("lifetimes = %v, want %s", lifetimes, want)
+	}
+	if want := []string{"x", "'", `"`, "u{1F600}"}; strings.Join(chars, "|") != strings.Join(want, "|") {
+		t.Errorf("char literals = %q, want %q", chars, want)
+	}
+
+	f, _ := Parse(sp, "view.rs", []byte(src))
+	params := map[string][]string{}
+	for _, fn := range f.Funcs {
+		for _, p := range fn.Params {
+			params[fn.Name] = append(params[fn.Name], p.Name)
+		}
+	}
+	if got := strings.Join(params["tick"], ","); got != "game,name" {
+		t.Errorf("tick params = %q, want game,name; units %v", got, names(f))
+	}
+	// "&'a self" names self: a lifetime is never a parameter's name.
+	if got := strings.Join(params["get"], ","); got != "self,key" {
+		t.Errorf("get params = %q, want self,key; units %v", got, names(f))
+	}
+}
+
+// TestRustGenericFunctions pins the other half of the Rust recall loss: only
+// "[…]" was allowed between a name and its "(", so "fn f<T: Clone>(" was
+// never a declaration. The list may nest, hold brackets, arrows, lifetimes
+// and const parameters, and span lines.
+func TestRustGenericFunctions(t *testing.T) {
+	const src = `
+fn plain<T: Clone>(x: T) -> T {
+    x.clone()
+}
+
+pub fn nested<T: Into<Vec<u8>>>(x: T) -> usize {
+    x.into().len()
+}
+
+pub fn bounded<'a, F: Fn(&'a str) -> [u8; 4], const N: usize>(f: F) -> [u8; N] {
+    pad(f)
+}
+
+fn multi<
+    A,
+    B,
+>(a: A, b: B) {
+    both(a, b);
+}
+`
+	f, _ := Parse(specFor(t, "rust"), "generic.rs", []byte(src))
+	got := names(f)
+	for _, want := range []string{"plain", "nested", "bounded", "multi"} {
+		if !has(got, want) {
+			t.Errorf("missing %q; got %v", want, got)
+		}
+	}
+	if len(got) != 4 {
+		t.Errorf("want exactly 4 units, got %v", got)
+	}
+}
+
+// TestAngleEnd pins where a type-parameter list may end, and the comparison
+// it must not swallow.
+func TestAngleEnd(t *testing.T) {
+	sp := specFor(t, "rust")
+	cases := []struct {
+		src  string
+		want string // the token right after the list, or "" when there is none
+	}{
+		{"f<T>(x)", "("},
+		{"f<T: Into<Vec<u8>>>(x)", "("},
+		{"f<F: Fn(u8) -> [u8; 4]>(x)", "("},
+		{"f<A, B,>(x)", "("},
+		{"a < b; c > (d)", ""},
+		{"a < b) && c > (d)", ""},
+		{"f<const N: usize = { 3 }>(x)", ""},
+	}
+	for _, c := range cases {
+		toks := lex([]byte(c.src), sp)
+		end := angleEnd(toks, 1)
+		got := ""
+		if end >= 0 {
+			got = toks[end+1].text
+		}
+		if got != c.want {
+			t.Errorf("%s: after the list %q, want %q", c.src, got, c.want)
+		}
+	}
+}
+
+// TestRustMultilineAndRawStrings pins the third defect: a string ended at its
+// first newline, so a multi-line literal's remaining lines lexed as code. In
+// horizon those literals are GLSL and WGSL shader sources, which declare
+// functions of their own, and each became a unit (main, vs, hz_depthTexture).
+// Raw strings fence with "#" so they can hold a bare quote, and a byte string
+// escapes its quotes like any other.
+func TestRustMultilineAndRawStrings(t *testing.T) {
+	const src = `
+const SHADER: &str = r#"
+@vertex
+fn vs(@builtin(vertex_index) i: u32) -> vec4<f32> {
+    return vec4<f32>(0.0, "quoted");
+}
+"#;
+
+const GLSL: &str = "
+void main() {
+    gl_FragColor = vec4(1.0);
+}
+";
+
+const BYTES: &[u8] = b"say \"hi\" { fn fake() {} }";
+const RAW: &[u8] = br##"a "# b"##;
+
+pub fn compile(src: &str) -> Module {
+    let banner = "multi
+line { not a body";
+    build(src, banner)
+}
+`
+	f, _ := Parse(specFor(t, "rust"), "shaders.rs", []byte(src))
+	got := names(f)
+	if len(got) != 1 || got[0] != "compile" {
+		t.Fatalf("want [compile], got %v", got)
+	}
+	if line := f.Funcs[0].StartLine; line != 18 {
+		t.Errorf("compile starts on line %d, want 18: line counting lost a multi-line literal", line)
+	}
+	var lits []string
+	syntax.Inspect(f.Funcs[0].Body, func(n *syntax.Node) bool {
+		if n != nil && n.Kind == syntax.KindLit && n.Label == "STRING" {
+			lits = append(lits, n.Text)
+		}
+		return true
+	})
+	if len(lits) != 1 || lits[0] != "multi\nline { not a body" {
+		t.Errorf("literals in compile = %q, want the two-line banner", lits)
+	}
+
+	var vals []string
+	for _, tok := range lex([]byte(src), specFor(t, "rust")) {
+		if tok.kind == tokString {
+			vals = append(vals, tok.val)
+		}
+	}
+	if len(vals) != 5 || vals[2] != `say "hi" { fn fake() {} }` || vals[3] != `a "# b` {
+		t.Errorf("string literals = %q", vals)
+	}
+}
+
+// TestRustKeywordSettlesTheDeclaration pins what Spec.KeywordRequired buys
+// beyond refusing patterns: once "fn" stands before the name, the two guards
+// that keep a call from reading as a declaration have nothing left to guard.
+// A statement word is a fine name there — "fn new(" is Rust's commonest
+// constructor — and a header may run to its "{" across a where-clause or a
+// wrapped return type rather than stopping after one line.
+func TestRustKeywordSettlesTheDeclaration(t *testing.T) {
+	const src = `
+impl Thing {
+    pub fn new(x: u8) -> Self {
+        Self { x }
+    }
+
+    fn from(v: u8) -> Self {
+        Self::new(v)
+    }
+
+    fn select<R: Rng>(&self, r: &mut R) -> u8 {
+        r.pick()
+    }
+
+    fn sample<T>(x: T) -> T
+    where
+        T: Clone,
+    {
+        x.clone()
+    }
+
+    fn pair(
+        &mut self,
+    ) -> (
+        u8,
+        u8,
+    ) {
+        (1, 2)
+    }
+
+    fn declared(&self) -> u8;
+}
+`
+	f, _ := Parse(specFor(t, "rust"), "thing.rs", []byte(src))
+	got := names(f)
+	want := []string{"new", "from", "select", "sample", "pair"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("units = %v, want %v", got, want)
+	}
+}
+
+// TestTypeScriptGenericFunctions: TypeScript writes its type parameters where
+// Rust does, and lost the same declarations.
+func TestTypeScriptGenericFunctions(t *testing.T) {
+	const src = `
+function clone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+export class Api {
+  private async request<T>(
+    endpoint: string,
+  ): Promise<T> {
+    return fetchJSON<T>(endpoint);
+  }
+}
+`
+	f, _ := Parse(specFor(t, "typescript"), "api.ts", []byte(src))
+	got := names(f)
+	for _, want := range []string{"clone", "request"} {
+		if !has(got, want) {
+			t.Errorf("missing %q; got %v", want, got)
+		}
+	}
+}
+
 // TestTypeScriptKeywordlessMethods pins the reason Spec.KeywordRequired is
 // per-language rather than implied by FuncKeywords: TypeScript declares
 // "function", and a class method needs no keyword at all.

@@ -2656,7 +2656,63 @@ mostly GLSL/WGSL shader source. Every `fn` unit is unchanged in digest, file, li
 `fn` nested in a lost span became visible.
 `TestRustPatternsAreNotFunctions` pins it, and it needs a lifetime in the enclosing signature
 to reproduce: patterns inside a function that *is* found are nested and dropped, so these
-escaped only from functions the lifetime defect under *Rough edges* had already lost.
+escaped only from functions the lifetime defect below had already lost.
+
+**Three more were most of what Rust still lost, and a ground truth measured them.** The census
+parsed every `.rs` file and checked the units against every `fn NAME` a regex finds once comments,
+string and char literals are blanked, counting only declarations with a body that are not inside
+another `fn`. Recall was 0.886 on living-weather, 0.907 on horizon and 0.809 on horizon_mods.
+Each fix is a `Spec` fact, and `rust()` in `spec.go` sets them together:
+
+- **`Lifetimes`.** `'` was a string quote, so `Game<'_>` opened a literal that ran to end of
+  line and took the header's `(` with it. Now a `'` that does not close one character later
+  (`'x'`, `'é'`) and does not start an escape (`'\n'`) is a lifetime or label (`'a`, `'_`,
+  `'static`, `'outer`), lexed as one identifier token. A token starting with `'` is never a
+  parameter's name, so `&'a self` names `self`. It is per-language because C's `'ab'` is a
+  multi-character constant. Recall went to 0.975 / 0.949 / 0.954.
+- **`MultilineQuotes`, `StringPrefixes`, `RawFence`.** A Rust `"…"` may span lines and was ended
+  at the newline, so the rest of the literal lexed as code. In horizon those literals are GLSL
+  and WGSL shader sources, which declare functions of their own, and each became a unit.
+  `r#"…"#` ends only at its fence. `b"…"` and `c"…"` keep their escapes, because `RawPrefixes`
+  treats every prefix as raw (Python's approximation, left alone). Read raw, `b"\"key\""` ends at
+  its first escaped quote, and once strings span lines the rest of the file lexes inside out.
+  Horizon has a couple of hundred such literals. The shader units are gone: 51 on living-weather,
+  85 of 86 on horizon. The 263 horizon `fn`s that a stray quote had given the wrong body end now
+  end where they should. Recall went to 0.975 / 0.955 / 0.962.
+- **`AngleTypeParams`.** Only `[…]` was allowed between a name and its `(`, so `fn f<T: Clone>(`
+  was never a declaration. `angleEnd` counts the `<`/`>` operator tokens: `>>` closes two levels
+  and `->` closes none, and bracket groups inside the list are skipped whole. The list must close
+  before a `;` or a brace, so a comparison cannot read as one. Recall went to 0.982 / 0.981 /
+  0.987. TypeScript writes its type parameters in the same place and is on too. Across
+  ForestRisk_Frontend, skogs-dashboard-frontend and two private trees it only adds units, all
+  generic functions except one bodyless `.d.ts` declaration whose object-type return reads as a
+  body. A non-generic declaration already gets that wrong the same way. Swift and C# write the
+  same form and stay off until a tree of either is measured. Kotlin writes `fun <T> f(`, with
+  the list before the name, which this rule does not reach.
+
+On veloren, which none of this was developed against, recall went 0.785 → 0.911. Every unit lost
+across the three trees was shader text or a nested `fn` that had surfaced because its parent was
+lost. 4% of the units found both before and after have a different body tree, because the
+lifetimes, char literals and multi-line strings inside them now lex as what they are. Python,
+JavaScript, Java, C#, C and C++ units are byte-identical before and after across a spread of
+local trees. `GoSpec` sets none of the new fields. `TestRustLifetimesAreNames`,
+`TestRustGenericFunctions`, `TestAngleEnd`, `TestRustMultilineAndRawStrings` and
+`TestTypeScriptGenericFunctions` pin the fixes.
+
+**What the census found next was `KeywordRequired` stopping halfway.** Two guards exist to keep a
+call from reading as a declaration: a name in `stmtKeywords` is never one, and `bodyStart` looks
+for the body only on the header's line and the next. Where the keyword is required, it has
+already settled that, and both guards then only cost real functions. `new`, `from`, `select`,
+`delete`, `with` and `end` are all statement words, and `fn new(` is Rust's commonest constructor:
+620 of horizon's 947 remaining misses, and 514 of veloren's 814 together with `from`. A `where`
+clause or a return type wrapped onto more lines lost about 50 more in horizon and about 150 in
+veloren. Under `KeywordRequired` the segmenter checks the keyword first, skips both guards, and
+reads the header to its `{` or `;` however many lines it takes. Every found unit stays the same.
+The census then reads recall 1.000 on living-weather, horizon, horizon_mods, veloren,
+living-herds and living-wildlife. That figure is agreement with a regex ground truth that blanks
+literals by the same lifetime and string rules the lexer now follows. It is not an independent
+parse. Other languages are byte-identical, because `KeywordRequired` is set only for Rust.
+`TestRustKeywordSettlesTheDeclaration` pins it.
 
 **Cross-language pairs never exist.** `parser.SameBuildUnit` is one predicate over two rules:
 test and production code are different build units, and so are two languages one step further
@@ -4497,13 +4553,17 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   goes for any construct whose body opens more than one line after the header. Both fail toward
   a *missing* unit rather than a wrong one, which is why precision stays at 1.000 while recall
   is what moves.
-- **Rust lifetimes lex as strings, and generic functions are not found.** `'` is a string quote
-  in every C-family spec, so `Game<'_>` swallows the rest of its line as a literal and the
-  `fn` it sits in is lost. The segmenter takes the name immediately before `(`, allowing only
-  `[…]` between them, so `fn f<T>(` is missed too. Roughly measured on two Rust repositories,
-  10–18% of `fn` declarations are not found, most of them with a lifetime in the header.
-  Multi-line string literals end at the first newline, so their contents lex as code. All of
-  these fail toward a missing unit.
+- **What the Rust lexer still gets wrong is rare, and one edge applies to every language.** The
+  lifetime, string, generic, `fn new(` and wrapped-header defects are fixed (see *Frontends*).
+  Still open: Rust's nested block comments `/* /* */ */` close at the first `*/`. A
+  `fn $name(` inside `macro_rules!` becomes a unit named `$name`. A const-generic default in
+  braces ends `angleEnd`, so that `fn` is lost. Swift and C# write `f<T>(` and have
+  `AngleTypeParams` off until a tree of either is measured. Kotlin writes `fun <T> f(`, which no
+  rule reaches. The edge in every language is in `dropNested`: a nested function whose
+  declaration is the first token of its parent's body has `declTok == bodyStart`, the test is a
+  strict `>`, and the nested function is emitted beside its parent. That is 64 units on horizon
+  and 19 on veloren. Changing it moves every language's output, so it waits for its own
+  measurement.
 - **A non-Go label bag is real evidence, and it is coarser in two independent ways.** The bag,
   the code-shape score, containment, the compression ratio and the explanation layer all work on
   any frontend's tree. But no `lexfront` language has a canonicalizer, so two bodies differing
