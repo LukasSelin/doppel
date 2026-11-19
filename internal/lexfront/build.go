@@ -44,7 +44,21 @@ var assignOps = map[string]bool{
 type builder struct {
 	toks []token
 	sp   Spec
+
+	// unnested is set while building one function when a control-flow
+	// statement's body could not be attached under it, which is every
+	// suite-delimited body and every braceless one. The tree then shows
+	// statements at depths the code does not have them at, so Parse reports
+	// it as syntax.Func.Unnested and the depth component is left out of the
+	// score rather than read as agreement.
+	unnested bool
 }
+
+// armWords are the switch-arm labels keywordKind maps onto KindSwitch. An arm
+// never owns a brace body — its statements follow it as siblings, exactly
+// where a grammar's case clause would put them — so a missing body there is
+// not lost nesting.
+var armWords = map[string]bool{"case": true, "when": true}
 
 // block builds a KindBlock over the statements in [from, to).
 func (b *builder) block(from, to int) *syntax.Node {
@@ -220,9 +234,11 @@ func (b *builder) keywordStmt(kind syntax.Kind, word string, from, to int) *synt
 		}
 	}
 
+	attached := false
 	if bodyOpen >= 0 {
 		if c := matchBracket(b.toks, bodyOpen); c >= 0 {
 			n.Add(syntax.RoleBody, b.block(bodyOpen+1, c))
+			attached = true
 			// Anything after the closing brace is an else/elsif chain.
 			if c+1 < to {
 				if e := b.stmt(c+1, to); e != nil {
@@ -231,7 +247,21 @@ func (b *builder) keywordStmt(kind syntax.Kind, word string, from, to int) *synt
 			}
 		}
 	}
+	if !attached && ownsBody(kind) && !armWords[word] {
+		b.unnested = true
+	}
 	return n
+}
+
+// ownsBody reports whether a statement of this kind has a body a grammar
+// would nest under it. Return, defer, go and the branches do not, so their
+// having none says nothing about the tree's depth.
+func ownsBody(k syntax.Kind) bool {
+	switch k {
+	case syntax.KindIf, syntax.KindFor, syntax.KindSwitch, syntax.KindSelect:
+		return true
+	}
+	return false
 }
 
 // topLevelAssign finds an assignment operator at bracket depth zero.

@@ -341,6 +341,14 @@ func dashboardEdges(res Result) []dashboard.Edge {
 				round4(pair.Breakdown.Containment),
 			},
 		}
+		// A component the frontend could not measure is absent, not zero:
+		// -1, the Views precedent, which the page draws as "not measured".
+		if pair.Breakdown.NoDepth {
+			e.Breakdown[2] = -1
+		}
+		if pair.Breakdown.NoSignature {
+			e.Breakdown[3] = -1
+		}
 		e.Views = [5]float64{0, 0, -1, -1, -1}
 		if pair.Evidence != nil {
 			e.Overlap = round4(pair.Evidence.OverlapScore)

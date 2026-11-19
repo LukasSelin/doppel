@@ -13,7 +13,11 @@ package dashboard
 // It exists for the page, not for comparability: a stale asset bundle reading a
 // newer payload should say so rather than render half a screen. Nothing diffs
 // two payloads, and nothing should — that is snapshot.Schema's job.
-const Schema = 4
+//
+// 5: Edge.Breakdown's nesting and sig entries read -1 when a side's frontend
+// could not measure them, and the code-shape they sit beside was scored
+// without them.
+const Schema = 5
 
 // Payload is one analysis run, as the page receives it.
 //
@@ -251,6 +255,11 @@ type Edge struct {
 	// The first component is a corpus-weighted multiset Jaccard over the two
 	// Weisfeiler-Lehman label bags — it was a Jaccard over token 3-grams when
 	// this payload was first written, which is why the name changed with it.
+	//
+	// nesting and sig are -1 when either side's frontend could not measure
+	// them (fingerprint.Breakdown.NoDepth, NoSignature): an unmeasured
+	// component is not a zero, and Shape was scored without it, its weight
+	// renormalised over the components that were measured.
 	Breakdown [6]float64 `json:"breakdown"`
 
 	Chains  []Chain  `json:"chains,omitempty"`

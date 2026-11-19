@@ -195,7 +195,15 @@ import (
 // digests read it: an agent-facing note leaves out a pair whose kind says it
 // is not a merge. A schema-13 baseline carries no kinds, so its digests would
 // silently read every pair as a candidate merge.
-const Schema = 14
+//
+// 15 changes no field: it changes what Pair.Score means for a language the
+// lexical frontend reads. That frontend measures no types and cannot nest a
+// suite-delimited body, and code-shape used to score the missing signature
+// and nesting as agreement, so every such pair carried a free 0.40 or so.
+// Those components are now left out and the rest renormalised
+// (fingerprint.Weights.Effective). Go scores are bit-identical; every non-Go
+// pair moves, and so does every floor calibrated over one.
+const Schema = 15
 
 // Snapshot is one full analysis run.
 //

@@ -29,12 +29,16 @@
 
   /* The fingerprint blend, in Edge.breakdown order. The weights are
      fingerprint.DefaultWeights; size and containment are reported and never
-     scored, which the bar list says rather than implying all six add up. */
+     scored, which the bar list says rather than implying all six add up.
+     A scored entry of -1 was not measured by one side's frontend and is not
+     part of code-shape; the weights left are renormalised to 1, which is
+     fingerprint.Weights.Effective restated for the notes — it moves no number
+     the page shows, only the label beside one. */
   var BREAKDOWN = [
-    { name: "WL labels", note: "weight 0.60" },
-    { name: "control flow", note: "weight 0.20" },
-    { name: "nesting", note: "weight 0.05" },
-    { name: "signature", note: "weight 0.15" },
+    { name: "WL labels", weight: 0.60 },
+    { name: "control flow", weight: 0.20 },
+    { name: "nesting", weight: 0.05 },
+    { name: "signature", weight: 0.15 },
     { name: "size", note: "reported, not scored" },
     { name: "containment", note: "reported, not scored" }
   ];
@@ -85,7 +89,9 @@
     lab.appendChild(el("span", "ca-meter-name", name));
     if (sub) lab.appendChild(el("span", "ca-meter-sub", sub));
     row.appendChild(lab);
-    row.appendChild(D.bar(value, kind));
+    // A null value is a quantity that was not measured: the label says why,
+    // and no bar is drawn, because an empty bar would read as a zero.
+    if (value !== null) row.appendChild(D.bar(value, kind));
     return row;
   }
 
@@ -332,7 +338,16 @@
   function bodyEvidenceCard(e) {
     var c = card("Why the bodies match", "code-shape " + fixed(e.shape), "ca-ev-shape");
     var bars = el("div", "ca-meters");
-    BREAKDOWN.forEach(function (b, i) { bars.appendChild(meter(b.name, b.note, e.breakdown[i], "shape")); });
+    var kept = 0;
+    BREAKDOWN.forEach(function (b, i) { if (b.weight && e.breakdown[i] >= 0) kept += b.weight; });
+    BREAKDOWN.forEach(function (b, i) {
+      if (!b.weight) { bars.appendChild(meter(b.name, b.note, e.breakdown[i], "shape")); return; }
+      if (e.breakdown[i] < 0) {
+        bars.appendChild(meter(b.name, "not measured by this language's frontend; left out of code-shape", null, "shape"));
+        return;
+      }
+      bars.appendChild(meter(b.name, "weight " + fixed(kept > 0 ? b.weight / kept : b.weight), e.breakdown[i], "shape"));
+    });
     c.appendChild(bars);
     if (e.chains && e.chains.length) {
       c.appendChild(el("h3", "ca-subhead", "Strongest shared structure"));

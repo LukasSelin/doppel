@@ -9,7 +9,7 @@ static site generator; a large monolith with heavy template and resource subsyst
 | Corpus | [hugo](https://github.com/gohugoio/hugo) |
 | Pinned at | `v0.165.0` (`76a5e1880ab46688155b02e99bab9be2a6134492`) |
 | Project since | 2013 |
-| doppel | `103ec8f` |
+| doppel | `e4c2a00` |
 | Command | `doppel analyze . --tests exclude --moves=false --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -26,18 +26,18 @@ Lexicon: 547 concepts (9 seeded, 538 emergent), 14869/41767 features above 2110 
 Generating concept documents...
 Calibration: rate 0.01 over 20000 null pairs -> threshold 0.34, struct-min 0.31, family-min 0.34
 Found 5737 functions. Retrieving candidates...
-Retrieval: shape 7055, concept 20730, call 8634 -> 32251 unique pairs
-  concept-only 56.0%  call-only 18.8%  suppressed-shape functions: 19  large identity buckets: 0  surviving labels: 24438
-  344 cross test/prod pairs dropped
-Running structural comparison on 31907 pairs...
-  Concept views: 2250 of 31907 compared pairs disagree with the taxonomy (161 vocabulary the tree misses, 2089 kinship the vocabularies lack)
-  13593 pairs remain after struct-min=0.31 filter
+Retrieval: shape 6696, concept 20730, call 8634 -> 31935 unique pairs
+  concept-only 56.6%  call-only 19.0%  suppressed-shape functions: 19  large identity buckets: 0  surviving labels: 24438
+  285 cross test/prod pairs dropped
+Running structural comparison on 31650 pairs...
+  Concept views: 2250 of 31650 compared pairs disagree with the taxonomy (161 vocabulary the tree misses, 2089 kinship the vocabularies lack)
+  13517 pairs remain after struct-min=0.31 filter
 Culture: 502 concepts modeled, 2587 associations, 1127 unusual realizations
 Habitats: 129 modeled, 416 misfits (63 excused by subsystem), 33 subsystems; most uniform dartsass (norm 0.98), most diverse page (norm 0.66)
 Conventions: strongest Symbol.toPrimitive+prim.call (1.00), loosest d.ExpiryDate+d.PublishDate (0.14)
 Ecosystems: 5546 profiled (3227 dominance, 2312 coalition, 0 conflict, 7 weak)
-Families: 515 over 615 components, 1894 functions in a family, 6390 edges completed
-  3 component(s) skipped as too large or too dense: sizes [139 145 642]
+Families: 543 over 648 components, 1947 functions in a family, 5039 edges completed
+  2 component(s) skipped as too large or too dense: sizes [139 642]
 ```
 
 # Code Similarity Report
@@ -728,20 +728,20 @@ flowchart LR
     p2["babel"]
     p3["cssjs<br/>5 internal"]
     p2 ---|"8"| p3
-    p4["genavif<br/>1 internal"]
-    p5["genwebp<br/>2 internal"]
+    p4["langs<br/>18 internal"]
+    p5["roles<br/>1 internal"]
     p4 ---|"8"| p5
-    p6["langs<br/>18 internal"]
-    p7["roles<br/>1 internal"]
-    p6 ---|"8"| p7
-    p8["versions"]
-    p7 ---|"8"| p8
-    p6 ---|"7"| p8
-    p9["navigation<br/>3 internal"]
-    p10["page<br/>339 internal"]
-    p9 ---|"7"| p10
-    p11["css<br/>4 internal"]
-    p12["js<br/>8 internal"]
+    p6["versions"]
+    p5 ---|"8"| p6
+    p4 ---|"7"| p6
+    p7["navigation<br/>3 internal"]
+    p8["page<br/>339 internal"]
+    p7 ---|"7"| p8
+    p9["css<br/>4 internal"]
+    p10["js<br/>8 internal"]
+    p9 ---|"6"| p10
+    p11["genavif"]
+    p12["genwebp"]
     p11 ---|"6"| p12
     p13["tables<br/>2 internal"]
     p1 ---|"6"| p13
@@ -784,9 +784,9 @@ _117 further packages are modeled and not drawn._ Most uniform is `dartsass` (no
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **32251 candidate pairs** (shape 7055, concept 20730, call 8634), of which 19% arrived on call evidence alone and 56% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **31935 candidate pairs** (shape 6696, concept 20730, call 8634), of which 19% arrived on call evidence alone and 57% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
-The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **2250 of 31907** pairs the taxonomy and the vocabularies differ by at least 0.50: 161 where the vocabularies agree and the tree cannot see it, 2089 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
+The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **2250 of 31650** pairs the taxonomy and the vocabularies differ by at least 0.50: 161 where the vocabularies agree and the tree cannot see it, 2089 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 5546 functions reached an equilibrium: **3227** settled on a single concept, **2312** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -794,7 +794,7 @@ Each function is also an arena where its candidate concepts compete for its evid
 
 **Compression ratio:** `7.36`x — this corpus's canonical function bodies contain **362272 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **49224 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **5737 functions**, **5686** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.45` / `1.00` / `1.00`, and 80% of them (4548 of 5686) already clear this run's threshold of `0.34`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 51 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **5737 functions**, **5678** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.44` / `1.00` / `1.00`, and 79% of them (4502 of 5678) already clear this run's threshold of `0.34`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 59 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -944,48 +944,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #1 — Code-shape: `0.8148`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `internal/warpc/genavif/avif.c:79` | `genavif.parse_input_message` | `(?)` | options.compression+options.hint 0.53 |
-| **B** | `internal/warpc/genwebp/webp.c:326` | `genwebp.parse_input_message` | `(?)` | options.compression+options.hint 0.51 |
-
-**Explain:** differs by four extra if, three extra assign, 45 extra selector, and 8 more kinds
-
-**Profile A:** `options.compression+options.hint` 1.00 (dominance)
-
-**Profile B:** `options.compression+options.hint` 1.00 (dominance)
-
-**Code similarity:** `wl 0.69  flow 1.00  nesting 1.00  sig 1.00  size 0.79`
-
-**Containment:** `0.92`
-
-**Evidence:** `3145.44` (shape 3141.59, concept 3.85, call 0.00)
-
-**Trophic:** `0.86`
-
-**Shared structure:**
-
-- `75.79` — `depth-1 IF` ×13
-- `69.10` — `depth-2 IF` ×11
-- `61.57` — `depth-3 IF` ×9
-
-**Concept views:** shape `1.00`, corpus `0.97`, feature `0.97`, a-in-b `0.97`, b-in-a `1.00`
-
-**Shared vocabulary:** `id:strncpy`, `sel:options.compression`, `sel:options.hint`
-
-**Structural overlap:** `0.58` (merge-worthy)
-
-- share 13 callees: [fprintf, json_array_get_count, json_array_get_number, json_object_get_array, json_object_get_number, json_object_get_object, json_object_get_string, json_parse_string, json_value_free, json_value_get_object, json_value_get_type, malloc, strncpy]
-- share patterns: [options.compression+options.hint]
-- both are leaf functions
-- same visibility
-- same receiver type: plain functions
-
----
-
-## Match #2 — Code-shape: `0.7659`
+## Match #1 — Code-shape: `0.7659`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1034,40 +993,40 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #3 — Code-shape: `0.8672`
+## Match #2 — Code-shape: `0.7685`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
-| **A** | `internal/warpc/genavif/avif.c:198` | `genavif.write_output_message` | `(?)` | options.compression+options.hint 0.51 |
-| **B** | `internal/warpc/genwebp/webp.c:477` | `genwebp.write_output_message` | `(?)` | options.compression+options.hint 0.49 |
+| **A** | `internal/warpc/genavif/avif.c:79` | `genavif.parse_input_message` | `(?)` | options.compression+options.hint 0.53 |
+| **B** | `internal/warpc/genwebp/webp.c:326` | `genwebp.parse_input_message` | `(?)` | options.compression+options.hint 0.51 |
 
-**Explain:** differs by 10 extra selector, seven extra call, five extra literal, and 3 more kinds
+**Explain:** differs by four extra if, three extra assign, 45 extra selector, and 8 more kinds
 
 **Profile A:** `options.compression+options.hint` 1.00 (dominance)
 
 **Profile B:** `options.compression+options.hint` 1.00 (dominance)
 
-**Code similarity:** `wl 0.78  flow 1.00  nesting 1.00  sig 1.00  size 0.82`
+**Code similarity:** `wl 0.69  flow 1.00  nesting n/a  sig n/a  size 0.79`
 
-**Containment:** `0.96`
+**Containment:** `0.92`
 
-**Evidence:** `2073.78` (shape 2070.07, concept 3.71, call 0.00)
+**Evidence:** `3145.44` (shape 3141.59, concept 3.85, call 0.00)
 
-**Trophic:** `0.90`
+**Trophic:** `0.86`
 
 **Shared structure:**
 
-- `57.55` — `depth-3 SEL` ×11
-- `57.55` — `depth-2 SEL` ×11
-- `50.25` — `depth-3 SEL` ×8
+- `75.79` — `depth-1 IF` ×13
+- `69.10` — `depth-2 IF` ×11
+- `61.57` — `depth-3 IF` ×9
 
-**Concept views:** shape `1.00`, corpus `0.96`, feature `0.96`, a-in-b `0.96`, b-in-a `1.00`
+**Concept views:** shape `1.00`, corpus `0.97`, feature `0.97`, a-in-b `0.97`, b-in-a `1.00`
 
 **Shared vocabulary:** `id:strncpy`, `sel:options.compression`, `sel:options.hint`
 
-**Structural overlap:** `0.59` (merge-worthy)
+**Structural overlap:** `0.58` (merge-worthy)
 
-- share 13 callees: [fflush, fprintf, json_array_append_number, json_free_serialized_string, json_object_set_number, json_object_set_string, json_object_set_value, json_serialize_to_string, json_value_free, json_value_get_array, json_value_get_object, json_value_init_array, json_value_init_object]
+- share 13 callees: [fprintf, json_array_get_count, json_array_get_number, json_object_get_array, json_object_get_number, json_object_get_object, json_object_get_string, json_parse_string, json_value_free, json_value_get_object, json_value_get_type, malloc, strncpy]
 - share patterns: [options.compression+options.hint]
 - both are leaf functions
 - same visibility
@@ -1075,7 +1034,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #4 — Code-shape: `0.8294`
+## Match #3 — Code-shape: `0.8294`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1122,6 +1081,47 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
+## Match #4 — Code-shape: `0.8340`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `internal/warpc/genavif/avif.c:198` | `genavif.write_output_message` | `(?)` | options.compression+options.hint 0.51 |
+| **B** | `internal/warpc/genwebp/webp.c:477` | `genwebp.write_output_message` | `(?)` | options.compression+options.hint 0.49 |
+
+**Explain:** differs by 10 extra selector, seven extra call, five extra literal, and 3 more kinds
+
+**Profile A:** `options.compression+options.hint` 1.00 (dominance)
+
+**Profile B:** `options.compression+options.hint` 1.00 (dominance)
+
+**Code similarity:** `wl 0.78  flow 1.00  nesting n/a  sig n/a  size 0.82`
+
+**Containment:** `0.96`
+
+**Evidence:** `2073.78` (shape 2070.07, concept 3.71, call 0.00)
+
+**Trophic:** `0.90`
+
+**Shared structure:**
+
+- `57.55` — `depth-3 SEL` ×11
+- `57.55` — `depth-2 SEL` ×11
+- `50.25` — `depth-3 SEL` ×8
+
+**Concept views:** shape `1.00`, corpus `0.96`, feature `0.96`, a-in-b `0.96`, b-in-a `1.00`
+
+**Shared vocabulary:** `id:strncpy`, `sel:options.compression`, `sel:options.hint`
+
+**Structural overlap:** `0.59` (merge-worthy)
+
+- share 13 callees: [fflush, fprintf, json_array_append_number, json_free_serialized_string, json_object_set_number, json_object_set_string, json_object_set_value, json_serialize_to_string, json_value_free, json_value_get_array, json_value_get_object, json_value_init_array, json_value_init_object]
+- share patterns: [options.compression+options.hint]
+- both are leaf functions
+- same visibility
+- same receiver type: plain functions
+
+---
+
 ## Match #5 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Concepts |
@@ -1135,7 +1135,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Profile B:** `Array.isArray+Symbol.iterator` 1.00 (dominance)
 
-**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+**Code similarity:** `wl 1.00  flow 1.00  nesting n/a  sig n/a  size 1.00`
 
 **Containment:** `1.00`
 
@@ -1179,7 +1179,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Profile B:** `Array.isArray+Symbol.iterator` 1.00 (dominance)
 
-**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+**Code similarity:** `wl 1.00  flow 1.00  nesting n/a  sig n/a  size 1.00`
 
 **Containment:** `1.00`
 
@@ -1223,7 +1223,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Profile B:** `Array.isArray+Symbol.iterator` 1.00 (dominance)
 
-**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+**Code similarity:** `wl 1.00  flow 1.00  nesting n/a  sig n/a  size 1.00`
 
 **Containment:** `1.00`
 
@@ -1356,7 +1356,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Explain:** identical structure, no normalization needed
 
-**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
+**Code similarity:** `wl 1.00  flow 1.00  nesting n/a  sig n/a  size 1.00`
 
 **Containment:** `1.00`
 
@@ -1385,7 +1385,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ## Families
 
-515 families, 1894 functions in a family, largest 49 members; 6390 edges scored here that retrieval never proposed
+543 families, 1947 functions in a family, largest 43 members; 5039 edges scored here that retrieval never proposed
 
 ### Family 1 — 34 members, every pair `>= 0.34` code-shape, evidence `114410`  (317 edges scored here)
 
@@ -1406,83 +1406,108 @@ _Not drawn: 34 members is 561 connections. Every one of them holds — that is w
 
 _24 more members not listed._
 
-### Family 2 — 40 members, every pair `>= 0.35` code-shape, evidence `15002`  (690 edges scored here)
+### Family 2 — 18 members, every pair `>= 0.35` code-shape, evidence `13330`  (101 edges scored here)
 
-_Not drawn: 40 members is 780 connections. Every one of them holds — that is what makes this a family._
-
-| Location | Function | Signature | Concepts |
-|---|---|---|---|
-| `internal/warpc/deps/parson/parson.c:309` | `parson.hex_char_to_int` | `(?)` | — |
-| `internal/warpc/deps/parson/parson.c:320` | `parson.parse_utf16_hex` | `(?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:351` | `parson.verify_utf8_sequence` | `(?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:456` | `parson.json_object_init` | `(?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:526` | `parson.json_object_grow_and_rehash` | `(?)` | — |
-| `internal/warpc/deps/parson/parson.c:556` | `parson.json_object_get_cell_ix` | `(?, ?, ?, ?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:587` | `parson.json_object_add` | `(?, ?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:641` | `parson.json_object_remove_internal` | `(?, ?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:701` | `parson.json_object_dotremove_internal` | `(?, ?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:747` | `parson.json_array_resize` | `(?, ?)` | — |
-
-_30 more members not listed._
-
-### Family 3 — 37 members, every pair `>= 0.34` code-shape, evidence `14706`  (582 edges scored here)
-
-_Not drawn: 37 members is 666 connections. Every one of them holds — that is what makes this a family._
+_Not drawn: 18 members is 153 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Concepts |
 |---|---|---|---|
-| `internal/warpc/deps/parson/parson.c:320` | `parson.parse_utf16_hex` | `(?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:351` | `parson.verify_utf8_sequence` | `(?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:456` | `parson.json_object_init` | `(?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:526` | `parson.json_object_grow_and_rehash` | `(?)` | — |
-| `internal/warpc/deps/parson/parson.c:556` | `parson.json_object_get_cell_ix` | `(?, ?, ?, ?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:587` | `parson.json_object_add` | `(?, ?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:641` | `parson.json_object_remove_internal` | `(?, ?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:701` | `parson.json_object_dotremove_internal` | `(?, ?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:747` | `parson.json_array_resize` | `(?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:808` | `parson.parse_utf16` | `(?, ?)` | — |
+| `markup/goldmark/blockquotes/blockquotes.go:61` | `blockquotes.*htmlRenderer.renderBlockquote` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | Buffer.Len+ctx.Buffer 0.50, hooks.LinkRenderer+lr.RenderLink 0.49, hooks.LinkRenderer+lr.RenderLink+Buffer.Len 0.47 |
+| `markup/goldmark/codeblocks/render.go:59` | `codeblocks.*htmlRenderer.renderCodeBlock` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | Buffer.Len+ctx.Buffer 0.36 |
+| `markup/goldmark/hugocontext/hugocontext.go:262` | `hugocontext.*hugoContextRenderer.handleHugoContext` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | Buffer.Len+ctx.Buffer 0.48, html.RenderAttributes+attributes.AttributesOwnerG… 0.47, hooks.LinkRenderer+lr.RenderLink 0.42 |
+| `markup/goldmark/passthrough/passthrough.go:92` | `passthrough.*htmlRenderer.renderPassthroughBlock` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | html.RenderAttributes+attributes.AttributesOwnerG… 0.42, Buffer.Len+ctx.Buffer 0.40, hooks.LinkRenderer+lr.RenderLink 0.40 |
+| `markup/goldmark/render_hooks.go:126` | `goldmark.*hookedRenderer.renderImage` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | Buffer.Len+ctx.Buffer 0.57, hooks.LinkRenderer+lr.RenderLink+Buffer.Len 0.56, hooks.LinkRenderer+lr.RenderLink 0.53 |
+| `markup/goldmark/render_hooks.go:200` | `goldmark.*hookedRenderer.renderImageDefault` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | html.IsDangerousURL+html.RenderAttributes 0.51, html.IsDangerousURL+util.URLEscape 0.51, hooks.LinkRenderer+html.IsDangerousURL 0.50 |
+| `markup/goldmark/render_hooks.go:229` | `goldmark.*hookedRenderer.renderLink` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+lr.RenderLink+Buffer.Len 0.58, Buffer.Len+ctx.Buffer 0.58, hooks.LinkRenderer+lr.RenderLink 0.55 |
+| `markup/goldmark/render_hooks.go:285` | `goldmark.*hookedRenderer.renderString` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | hooks.LinkRenderer+html.IsDangerousURL 0.47, html.IsDangerousURL+html.RenderAttributes 0.44, html.RenderAttributes+attributes.AttributesOwnerG… 0.41 |
+| `markup/goldmark/render_hooks.go:303` | `goldmark.*hookedRenderer.renderText` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | ast.Heading+n.Kind 0.45, html.IsDangerousURL+html.RenderAttributes 0.41, html.RenderAttributes+attributes.AttributesOwnerG… 0.41 |
+| `markup/goldmark/render_hooks.go:346` | `goldmark.*hookedRenderer.renderLinkDefault` | `(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error)` | html.IsDangerousURL+util.URLEscape 0.56, hooks.LinkRenderer+html.IsDangerousURL 0.54, html.IsDangerousURL+html.RenderAttributes 0.53 |
 
-_27 more members not listed._
+_8 more members not listed._
 
-### Family 4 — 33 members, every pair `>= 0.35` code-shape, evidence `14607`  (459 edges scored here)
+### Family 3 — 20 members, every pair `>= 0.39` code-shape, evidence `9030`  (135 edges scored here)
 
-_Not drawn: 33 members is 528 connections. Every one of them holds — that is what makes this a family._
-
-| Location | Function | Signature | Concepts |
-|---|---|---|---|
-| `internal/warpc/deps/parson/parson.c:320` | `parson.parse_utf16_hex` | `(?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:351` | `parson.verify_utf8_sequence` | `(?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:456` | `parson.json_object_init` | `(?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:526` | `parson.json_object_grow_and_rehash` | `(?)` | — |
-| `internal/warpc/deps/parson/parson.c:556` | `parson.json_object_get_cell_ix` | `(?, ?, ?, ?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:587` | `parson.json_object_add` | `(?, ?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:641` | `parson.json_object_remove_internal` | `(?, ?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:701` | `parson.json_object_dotremove_internal` | `(?, ?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:747` | `parson.json_array_resize` | `(?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:808` | `parson.parse_utf16` | `(?, ?)` | — |
-
-_23 more members not listed._
-
-### Family 5 — 36 members, every pair `>= 0.34` code-shape, evidence `14419`  (553 edges scored here)
-
-_Not drawn: 36 members is 630 connections. Every one of them holds — that is what makes this a family._
+_Not drawn: 20 members is 190 connections. Every one of them holds — that is what makes this a family._
 
 | Location | Function | Signature | Concepts |
 |---|---|---|---|
-| `internal/warpc/deps/parson/parson.c:309` | `parson.hex_char_to_int` | `(?)` | — |
-| `internal/warpc/deps/parson/parson.c:320` | `parson.parse_utf16_hex` | `(?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:351` | `parson.verify_utf8_sequence` | `(?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:456` | `parson.json_object_init` | `(?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:526` | `parson.json_object_grow_and_rehash` | `(?)` | — |
-| `internal/warpc/deps/parson/parson.c:556` | `parson.json_object_get_cell_ix` | `(?, ?, ?, ?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:587` | `parson.json_object_add` | `(?, ?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:641` | `parson.json_object_remove_internal` | `(?, ?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:701` | `parson.json_object_dotremove_internal` | `(?, ?, ?)` | — |
-| `internal/warpc/deps/parson/parson.c:747` | `parson.json_array_resize` | `(?, ?)` | — |
+| `internal/warpc/deps/parson/parson.c:1946` | `parson.json_array_replace_string` | `(?, ?, ?)` | parson.json_array_replace_v…+parson.json_value_free 0.51 |
+| `internal/warpc/deps/parson/parson.c:1958` | `parson.json_array_replace_string_with_len` | `(?, ?, ?, ?)` | — |
+| `internal/warpc/deps/parson/parson.c:1970` | `parson.json_array_replace_number` | `(?, ?, ?)` | parson.json_array_replace_v…+parson.json_value_free 0.50 |
+| `internal/warpc/deps/parson/parson.c:1982` | `parson.json_array_replace_boolean` | `(?, ?, ?)` | parson.json_array_replace_v…+parson.json_value_free 0.49 |
+| `internal/warpc/deps/parson/parson.c:1994` | `parson.json_array_replace_null` | `(?, ?)` | parson.json_array_replace_v…+parson.json_value_free 0.51 |
+| `internal/warpc/deps/parson/parson.c:2025` | `parson.json_array_append_string` | `(?, ?)` | parson.json_array_append_va…+parson.json_value_free 0.51 |
+| `internal/warpc/deps/parson/parson.c:2037` | `parson.json_array_append_string_with_len` | `(?, ?, ?)` | — |
+| `internal/warpc/deps/parson/parson.c:2049` | `parson.json_array_append_number` | `(?, ?)` | parson.json_array_append_va…+parson.json_value_free 0.50 |
+| `internal/warpc/deps/parson/parson.c:2061` | `parson.json_array_append_boolean` | `(?, ?)` | parson.json_array_append_va…+parson.json_value_free 0.49 |
+| `internal/warpc/deps/parson/parson.c:2073` | `parson.json_array_append_null` | `(?)` | parson.json_array_append_va…+parson.json_value_free 0.51 |
 
-_26 more members not listed._
+_10 more members not listed._
 
-_510 more families not listed._
+### Family 4 — 7 members, every pair `>= 1.00` code-shape, evidence `7343`  (1 edge scored here)
 
-_3 component(s) too large or too dense to enumerate (sizes 139, 145, 642); their families are not reported._
+```mermaid
+flowchart LR
+    m0["livereload._toPrimitive"]
+    m1["livereload._toPrimitive"]
+    m2["livereload._toPrimitive"]
+    m3["livereload._toPrimitive"]
+    m4["livereload._toPrimitive"]
+    m5["livereload._toPrimitive"]
+    m6["livereload._toPrimitive"]
+    m0 --- m1
+    m0 --- m2
+    m0 --- m3
+    m0 --- m4
+    m0 --- m5
+    m0 --- m6
+    m1 --- m2
+    m1 --- m3
+    m1 --- m4
+    m1 --- m5
+    m1 --- m6
+    m2 --- m3
+    m2 --- m4
+    m2 --- m5
+    m2 --- m6
+    m3 --- m4
+    m3 --- m5
+    m3 --- m6
+    m4 --- m5
+    m4 --- m6
+    m5 --- m6
+```
+
+| Location | Function | Signature | Concepts |
+|---|---|---|---|
+| `livereload/livereload.js:2262` | `livereload._toPrimitive` | `(?, ?)` | Symbol.toPrimitive+prim.call 0.50, this.options+livereload.start 0.46 |
+| `livereload/livereload.js:2487` | `livereload._toPrimitive` | `(?, ?)` | Symbol.toPrimitive+prim.call 0.50, this.options+livereload.start 0.46 |
+| `livereload/livereload.js:2568` | `livereload._toPrimitive` | `(?, ?)` | Symbol.toPrimitive+prim.call 0.50, this.options+livereload.start 0.46 |
+| `livereload/livereload.js:2836` | `livereload._toPrimitive` | `(?, ?)` | Symbol.toPrimitive+prim.call 0.50, this.options+livereload.start 0.46 |
+| `livereload/livereload.js:2973` | `livereload._toPrimitive` | `(?, ?)` | Symbol.toPrimitive+prim.call 0.50, this.options+livereload.start 0.46 |
+| `livereload/livereload.js:3095` | `livereload._toPrimitive` | `(?, ?)` | Symbol.toPrimitive+prim.call 0.50, this.options+livereload.start 0.46 |
+| `livereload/livereload.js:3754` | `livereload._toPrimitive` | `(?, ?)` | Symbol.toPrimitive+prim.call 0.50, this.options+livereload.start 0.46 |
+
+### Family 5 — 18 members, every pair `>= 0.34` code-shape, evidence `6318`  (75 edges scored here)
+
+_Not drawn: 18 members is 153 connections. Every one of them holds — that is what makes this a family._
+
+| Location | Function | Signature | Concepts |
+|---|---|---|---|
+| `tpl/lang/lang.go:107` | `lang.*Namespace.castPrecisionNumber` | `(any, any) (int, float64, error)` | hstrings.GetOrCompileRegexp+cast.ToIntE+hreflect.Indirect 0.57, lv.Index+lv.Kind+lv.Len 0.56, hstrings.GetOrCompileRegexp+cast.ToIntE 0.49 |
+| `tpl/math/math.go:47` | `math.*Namespace.Abs` | `(any) (float64, error)` | hstrings.GetOrCompileRegexp+cast.ToIntE 0.51, cast.ToFloat64E+cast.ToIntE 0.46, hstrings.GetOrCompileRegexp+cast.ToIntE+hreflect.Indirect 0.46 |
+| `tpl/math/math.go:57` | `math.*Namespace.Acos` | `(any) (float64, error)` | hstrings.GetOrCompileRegexp+cast.ToIntE 0.58, cast.ToFloat64E+cast.ToIntE 0.54, hstrings.GetOrCompileRegexp+cast.ToIntE+hreflect.Indirect 0.51 |
+| `tpl/math/math.go:71` | `math.*Namespace.Asin` | `(any) (float64, error)` | hstrings.GetOrCompileRegexp+cast.ToIntE 0.58, cast.ToFloat64E+cast.ToIntE 0.54, hstrings.GetOrCompileRegexp+cast.ToIntE+hreflect.Indirect 0.51 |
+| `tpl/math/math.go:80` | `math.*Namespace.Atan` | `(any) (float64, error)` | hstrings.GetOrCompileRegexp+cast.ToIntE 0.58, cast.ToFloat64E+cast.ToIntE 0.54, hstrings.GetOrCompileRegexp+cast.ToIntE+hreflect.Indirect 0.51 |
+| `tpl/math/math.go:89` | `math.*Namespace.Atan2` | `(any, any) (float64, error)` | hstrings.GetOrCompileRegexp+cast.ToIntE 0.58, cast.ToFloat64E+cast.ToIntE 0.54, hstrings.GetOrCompileRegexp+cast.ToIntE+hreflect.Indirect 0.51 |
+| `tpl/math/math.go:102` | `math.*Namespace.Ceil` | `(any) (float64, error)` | hstrings.GetOrCompileRegexp+cast.ToIntE 0.54, cast.ToFloat64E+cast.ToIntE 0.49, hstrings.GetOrCompileRegexp+cast.ToIntE+hreflect.Indirect 0.49 |
+| `tpl/math/math.go:112` | `math.*Namespace.Cos` | `(any) (float64, error)` | hstrings.GetOrCompileRegexp+cast.ToIntE 0.58, cast.ToFloat64E+cast.ToIntE 0.54, hstrings.GetOrCompileRegexp+cast.ToIntE+hreflect.Indirect 0.51 |
+| `tpl/math/math.go:126` | `math.*Namespace.Floor` | `(any) (float64, error)` | hstrings.GetOrCompileRegexp+cast.ToIntE 0.52, cast.ToFloat64E+cast.ToIntE 0.48, math.Floor+lazycache 0.44 |
+| `tpl/math/math.go:136` | `math.*Namespace.Log` | `(any) (float64, error)` | hstrings.GetOrCompileRegexp+cast.ToIntE 0.53, cast.ToFloat64E+cast.ToIntE 0.48, hstrings.GetOrCompileRegexp+cast.ToIntE+hreflect.Indirect 0.48 |
+
+_8 more members not listed._
+
+_538 more families not listed._
+
+_2 component(s) too large or too dense to enumerate (sizes 139, 642); their families are not reported._
 

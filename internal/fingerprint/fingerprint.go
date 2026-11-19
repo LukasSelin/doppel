@@ -121,6 +121,15 @@ type Fingerprint struct {
 	// snapshot.Digest — the digest answers "did this body change", which is
 	// a question about the code as written, not about its canonical shape.
 	WL []LabelCount
+
+	// NoTypes and NoNesting say the frontend could not measure Types or Depth
+	// for this body (syntax.Func.Untyped, syntax.Func.Unnested), so an empty
+	// type set or a flat depth histogram is unknown rather than agreement.
+	// Similarity leaves such a component out of Score. The zero value is
+	// "measured", so a Go body and every hand-built fixture score exactly as
+	// they did before the fields existed.
+	NoTypes   bool
+	NoNesting bool
 }
 
 // Breakdown is the per-component result of comparing two Fingerprints.
@@ -140,6 +149,14 @@ type Breakdown struct {
 	SizeRatio   float64 // min(Nodes)/max(Nodes); reported, not scored
 	Containment float64 // shared WL mass over the smaller side's; reported, not scored
 	Score       float64 // weighted composite, 0.0-1.0
+
+	// NoDepth and NoSignature say a side's frontend could not measure that
+	// component (Fingerprint.NoNesting, Fingerprint.NoTypes). The component
+	// then reads 0, is not part of Score, and a renderer says so rather than
+	// printing the 0 as a finding. Weights.Effective is the blend Score was
+	// computed under.
+	NoDepth     bool
+	NoSignature bool
 }
 
 // Build summarises a function. A nil function or one without a body
@@ -158,12 +175,14 @@ func Build(fn *syntax.Func) Fingerprint {
 	}
 	tokens, flow, depth, nodes := walk(fn.Body)
 	return Fingerprint{
-		Shingles: shingle(tokens),
-		Flow:     flow,
-		Depth:    depth,
-		Types:    typeStrings(fn),
-		Nodes:    nodes,
-		WL:       WLBag(fn),
+		Shingles:  shingle(tokens),
+		Flow:      flow,
+		Depth:     depth,
+		Types:     typeStrings(fn),
+		Nodes:     nodes,
+		WL:        WLBag(fn),
+		NoTypes:   fn.Untyped,
+		NoNesting: fn.Unnested,
 	}
 }
 
@@ -189,7 +208,10 @@ func (w Weights) Sum() float64 { return w.WL + w.Flow + w.Depth + w.Signature }
 func (w Weights) Scaled(i int, f float64) Weights {
 	c := [4]float64{w.WL, w.Flow, w.Depth, w.Signature}
 	total := w.Sum()
-	c[i] *= f
+	// Rounded before it feeds the subtraction: arm64 would otherwise fuse
+	// c[i]*f into total - c[i], and since Effective put this on the scoring
+	// path a non-Go code-shape would read a bit apart across architectures.
+	c[i] = float64(c[i] * f)
 	rest := total - c[i]
 	var restNow float64
 	for j := range c {
@@ -205,6 +227,28 @@ func (w Weights) Scaled(i int, f float64) Weights {
 		}
 	}
 	return Weights{WL: c[0], Flow: c[1], Depth: c[2], Signature: c[3]}
+}
+
+// Effective is the blend a pair is scored under: w itself when both sides
+// measured every component, and otherwise w with each unmeasured component
+// dropped and the rest renormalised to w's total — Scaled with a factor of 0,
+// once per absent component. So a pair whose frontend reads no types is
+// scored on what it does read, and a perfect match on those still reaches
+// the blend total instead of stopping short of it.
+//
+// It exists because scoring an unmeasured component as agreement is not
+// neutral. Before it, two empty type sets read 1.0 and two flat depth
+// histograms read 1.0 on every pair the lexical frontend produced, so
+// code-shape there was 0.40 + 0.60·wl: every floor the tool states in
+// code-shape fired on a third of the label evidence a Go pair needed.
+func (w Weights) Effective(bd Breakdown) Weights {
+	if bd.NoDepth {
+		w = w.Scaled(2, 0)
+	}
+	if bd.NoSignature {
+		w = w.Scaled(3, 0)
+	}
+	return w
 }
 
 // Similarity scores two Fingerprints against a corpus label weighting. It is
@@ -239,11 +283,20 @@ func SimilarityWith(a, b Fingerprint, idf *LabelIDF, w Weights) Breakdown {
 	bd := Breakdown{
 		WL:          shape,
 		Flow:        cosineInts(a.Flow, b.Flow),
-		Depth:       cosineInts(a.Depth, b.Depth),
-		Signature:   jaccardStrings(a.Types, b.Types),
 		SizeRatio:   ratio(a.Nodes, b.Nodes),
 		Containment: contain,
+		NoDepth:     a.NoNesting || b.NoNesting,
+		NoSignature: a.NoTypes || b.NoTypes,
 	}
+	if !bd.NoDepth {
+		bd.Depth = cosineInts(a.Depth, b.Depth)
+	}
+	if !bd.NoSignature {
+		bd.Signature = jaccardStrings(a.Types, b.Types)
+	}
+	// With nothing unmeasured, Effective returns w untouched and this is the
+	// same four-term sum in the same order it always was, bit for bit.
+	w = w.Effective(bd)
 	bd.Score = float64(w.WL*bd.WL) + float64(w.Flow*bd.Flow) + float64(w.Depth*bd.Depth) + float64(w.Signature*bd.Signature)
 	if bd.Score > 1.0 {
 		bd.Score = 1.0
