@@ -290,6 +290,23 @@ type Func struct {
 	EndOffset   int
 	Exported    bool
 	Callees     []string
+
+	// Untyped says the frontend cannot read parameter or result types: an
+	// empty Param.Type, and no Results, mean "unknown" here rather than
+	// "none". A fingerprint built from it carries no signature, and
+	// fingerprint.Similarity leaves that component out instead of scoring two
+	// empty type sets as agreement, which it would otherwise have done for
+	// every pair the lexical frontend produces.
+	//
+	// Unnested says at least one control-flow statement's body could not be
+	// attached under it — a suite-delimited body, a braceless if — so the
+	// nesting depths the tree shows are not the code's. The depth component
+	// is left out the same way.
+	//
+	// The zero value of both is "measured", which is what a frontend with a
+	// grammar, and every hand-built fixture, has always meant.
+	Untyped  bool
+	Unnested bool
 }
 
 // Shape is the tree a structural key is computed over: the canonical body

@@ -1294,6 +1294,46 @@ Schema 13.
 `SizeRatio` is reported in the `Breakdown` but **not** scored — Jaccard already penalizes size
 mismatch through the union, so damping again would double-count it.
 
+**Unmeasured components are left out, not scored as agreement.** A frontend says what it could
+not measure: `syntax.Func.Untyped` (no types read) and `syntax.Func.Unnested` (a control-flow body
+it could not attach under its statement). They reach the fingerprint as `NoTypes`/`NoNesting`.
+When either side lacks one, `Similarity` leaves that component out (`Breakdown.NoSignature`,
+`Breakdown.NoDepth`). It scores the rest under `Weights.Effective`, which is `Scaled(i, 0)` once
+per absent component: the weights left are renormalised to the blend total, so a perfect match
+on what was measured still reaches 1.0. The zero value of every flag is "measured", so gofront
+and every hand-built fixture score bit for bit as before. `Effective` hands back the weights
+untouched, and the four-term sum is the same expression. Measured: `--format json` is
+byte-identical on all seven rungs and doppel's own tree under `--languages go`, stderr too, and
+the cobra golden scorecard is unchanged.
+
+`lexfront` sets `Untyped` on every function and `Unnested` exactly where `keywordStmt` found no
+brace body for an if/for/switch/select. That is every Python suite, and every braceless C-family
+statement. A switch arm (`case`, `when`) owns no body in any grammar, so it does not count, and
+a body with no control flow has nothing to lose. **Flow stays scored**: lexfront really does
+count if/for/switch/return from keywords. It is coarser than gofront's, and its both-zero rule
+is the same one Go has always used.
+
+Why it exists: an agent-response study (Oct–Nov 2026) found non-Go code-shape was 0.40 + 0.60·wl
+on every pair. The median non-WL part was exactly 0.400 for C, C++, C#, JavaScript, Python, Rust
+and TypeScript, against 0.13–0.40 for Go. Two empty type sets and two flat depth histograms each
+read 1.0, and flow nearly always agreed. So every floor stated in code-shape (the notes' 0.60, the
+merge verdict's 0.40, families, forks) fired on a third of the label evidence a Go pair needs.
+
+After the fix, on four mixed and non-Go repos:
+- Non-Go merge-worthy pairs fell by 54–88%: living-weather 701 → 191, 2048_ml 222 → 93, a JS
+  bundle 113 → 14.
+- Pairs at ≥ 0.60 fell less: 83 → 63, 65 → 59.
+- Calibrated thresholds fell 0.44–0.45 → 0.34–0.39, because the null no longer has the floor.
+
+In a mixed repository that last point moves the *Go* population a little too: the same pairs
+score the same, and a lower calibrated threshold admits a few more Go candidates.
+
+On the study's labels, non-Go code-shape ranks accepted against rejected pairs no better than
+before (AUC 0.42 either way). Removing a near-constant cannot reorder pairs; what it changes is
+what the absolute floors mean.
+
+Snapshot `Schema` 15, dashboard payload `Schema` 5.
+
 **`doppel fingerprint` is how a score is checked by hand.** `doppel fingerprint <path> <fn>` prints
 what `Similarity` reads for one function — the flow and nesting histograms, the type set, the canon
 rules that fired, and the whole WL bag as `mass / weight / count / df / depth-h KIND` rows under
@@ -2449,8 +2489,11 @@ never learns about `culture`, and `cmd` queries the model.
   not recompute how its concept half was read. Payload `Schema` went 1 → 2 for it, and 2 → 3 for
   `UnusedSeeds`, `Facts.Unusual` and `Unit.Atypical`, which let the Briefing's drift section name
   the functions that realize a concept unlike its other members instead of only counting them,
-  and 3 → 4 for `Payload.Moves` (see *Moves* → *In the analyze report*).
-- **The dashboard is not fed by `--format json`.** It has its own `dashboard.Payload` (`Schema` 4,
+  and 3 → 4 for `Payload.Moves` (see *Moves* → *In the analyze report*), and 4 → 5 when
+  `Edge.Breakdown`'s nesting and sig entries began reading -1 for a component one side's
+  frontend could not measure. The case file draws that as "not measured", and shows the
+  renormalised weights beside the bars that were scored.
+- **The dashboard is not fed by `--format json`.** It has its own `dashboard.Payload` (`Schema` 5,
   independent of `snapshot.Schema`), marshalled by Go and inlined into the page at render time.
   That is worth knowing before assuming the snapshot and the page must agree: they share no type,
   and a field added to one reaches the other only if somebody adds it there too. It also means the
@@ -2523,11 +2566,12 @@ denominator: their `Fingerprint` is the zero value and they never match anything
 them would measure a difference that changes no result.
 
 **What the AST still buys is two things: types, and a canonicalizer.** `lexfront` fills
-`syntax.Param.Type` with the empty string, so `Fingerprint.Types` is empty and the signature
-component — 0.15 of the composite — contributes nothing, with `sig: (?)` in the report saying
-so. If that 0.15 turns out to dominate, the fix is the existing `fingerprint.Weights` seam
-(`SimilarityWith`), which is already a no-op at defaults. The second is the subject of the next
-two sections.
+`syntax.Param.Type` with the empty string and marks every function `syntax.Func.Untyped`, so
+the signature component is left out of its code-shape rather than scored. That was not always
+so, and the old state was worse than this file then claimed. "Contributes nothing" was wrong:
+`jaccardStrings` scores two empty sets as 1, so every lexical pair took the whole 0.15. See
+*Unmeasured components are left out* under *Fingerprint scoring*. The second is the subject of
+the next two sections.
 
 ### Canonicalization is a frontend's job
 
@@ -3012,6 +3056,12 @@ to rewrite on every turn:
   **`Schema` 14 adds `Pair.Kind`** (and `Drift.Kind`, the head run's), the pair kind name. It
   annotates like `Explain` and is never diffed, but the agent-facing hook digests read it (see
   *Pair kinds*), and a schema-13 baseline would have them read every pair as a candidate merge.
+
+  **`Schema` 15 is a meaning bump** and changes no field. It changes what `Pair.Score` means for
+  a language the lexical frontend reads. Code-shape used to score that frontend's unread types
+  and lost nesting as agreement, and now leaves them out (see *Unmeasured components are left
+  out*). Go scores are bit-identical. Against a schema-14 baseline every non-Go pair would
+  read as drifted by a session that never touched it.
 
   `Schema` 5 (shape line) was the same kind of bump as 3, one step further: `Pair.Score` changed metric (token shingles → corpus-weighted WL
   Jaccard) *and* became corpus-relative, so a schema-4 baseline and a schema-5 run would disagree

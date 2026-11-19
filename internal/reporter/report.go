@@ -353,9 +353,21 @@ func containmentClause(b fingerprint.Breakdown) string {
 // Weisfeiler-Lehman label bags now, not Jaccard over token 3-grams, and a
 // reader comparing an old report to a new one should see that the number
 // answers a different question rather than assume the code moved.
+//
+// A component one side's frontend could not measure reads "n/a": it is not
+// part of the score, and printing its zero would read as a disagreement.
 func breakdownLine(b fingerprint.Breakdown) string {
-	return fmt.Sprintf("wl %.2f  flow %.2f  nesting %.2f  sig %.2f  size %.2f",
-		b.WL, b.Flow, b.Depth, b.Signature, b.SizeRatio)
+	return fmt.Sprintf("wl %.2f  flow %.2f  nesting %s  sig %s  size %.2f",
+		b.WL, b.Flow, measuredOr(b.Depth, b.NoDepth), measuredOr(b.Signature, b.NoSignature), b.SizeRatio)
+}
+
+// measuredOr renders one breakdown component, or "n/a" when it was not
+// measured. A measured component prints exactly as %.2f always did.
+func measuredOr(v float64, absent bool) string {
+	if absent {
+		return "n/a"
+	}
+	return fmt.Sprintf("%.2f", v)
 }
 
 func mdTableRow(w io.Writer, label string, u parser.CodeUnit) {

@@ -47,13 +47,17 @@ func Parse(sp Spec, path string, src []byte) (*syntax.File, error) {
 
 	b := &builder{toks: toks, sp: sp}
 	for _, s := range spans {
+		b.unnested = false
 		fn := syntax.Func{
 			Name:      s.name,
 			Receiver:  s.receiver,
 			StartLine: toks[s.declTok].line,
 			Exported:  isExported(s.name),
 			Body:      b.block(s.bodyStart, s.bodyEnd),
+			// No grammar, so no types: see the comment on Params below.
+			Untyped: true,
 		}
+		fn.Unnested = b.unnested
 		for _, p := range s.params {
 			// No types without a grammar. The name is what def-use needs;
 			// the empty type is why Fingerprint.Types is weaker here, and

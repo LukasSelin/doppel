@@ -50,8 +50,8 @@ func PrintFingerprint(w io.Writer, u parser.CodeUnit, idf *fingerprint.LabelIDF,
 	fmt.Fprintf(w, "  nodes: %d (body as written)\n", fp.Nodes)
 	fmt.Fprintf(w, "  canonicalized: %s\n", canonClause(u.CanonRules))
 	fmt.Fprintf(w, "  flow: %s\n", flowLine(fp.Flow))
-	fmt.Fprintf(w, "  nesting: %s\n", depthLine(fp.Depth))
-	fmt.Fprintf(w, "  types: %s\n", typesLine(fp.Types))
+	fmt.Fprintf(w, "  nesting: %s\n", nestingClause(fp))
+	fmt.Fprintf(w, "  types: %s\n", typesClause(fp))
 
 	rows := bagRows(fp.WL, idf)
 	var mass float64
@@ -84,12 +84,22 @@ func PrintFingerprintPair(w io.Writer, a, b parser.CodeUnit, idf *fingerprint.La
 		fmt.Fprintln(w, "\n  no body on one side: the zero fingerprint never matches anything")
 		return
 	}
-	wt := fingerprint.DefaultWeights()
+	// The blend Score was actually computed under: the shipped weights, or
+	// those renormalised over what both sides' frontends could measure.
+	wt := fingerprint.DefaultWeights().Effective(bd)
 	fmt.Fprintf(w, "\n  code-shape: %.4f\n", bd.Score)
 	fmt.Fprintf(w, "    wl       %.4f × %.2f = %.4f\n", bd.WL, wt.WL, bd.WL*wt.WL)
 	fmt.Fprintf(w, "    flow     %.4f × %.2f = %.4f\n", bd.Flow, wt.Flow, bd.Flow*wt.Flow)
-	fmt.Fprintf(w, "    nesting  %.4f × %.2f = %.4f\n", bd.Depth, wt.Depth, bd.Depth*wt.Depth)
-	fmt.Fprintf(w, "    sig      %.4f × %.2f = %.4f\n", bd.Signature, wt.Signature, bd.Signature*wt.Signature)
+	if bd.NoDepth {
+		fmt.Fprintln(w, "    nesting  not measured on one side; left out of code-shape")
+	} else {
+		fmt.Fprintf(w, "    nesting  %.4f × %.2f = %.4f\n", bd.Depth, wt.Depth, bd.Depth*wt.Depth)
+	}
+	if bd.NoSignature {
+		fmt.Fprintln(w, "    sig      not measured on one side; left out of code-shape")
+	} else {
+		fmt.Fprintf(w, "    sig      %.4f × %.2f = %.4f\n", bd.Signature, wt.Signature, bd.Signature*wt.Signature)
+	}
 	fmt.Fprintf(w, "  containment: %.4f%s\n", bd.Containment, containmentClause(bd))
 	fmt.Fprintf(w, "  size: %.2f (%d / %d nodes; reported, not scored)\n",
 		bd.SizeRatio, min(a.Fingerprint.Nodes, b.Fingerprint.Nodes), max(a.Fingerprint.Nodes, b.Fingerprint.Nodes))
@@ -130,8 +140,28 @@ func printFingerprintBrief(w io.Writer, u parser.CodeUnit) {
 	fmt.Fprintf(w, "  nodes: %d  labels: %d distinct  canonicalized: %s\n",
 		fp.Nodes, len(fp.WL), canonClause(u.CanonRules))
 	fmt.Fprintf(w, "  flow: %s\n", flowLine(fp.Flow))
-	fmt.Fprintf(w, "  nesting: %s\n", depthLine(fp.Depth))
-	fmt.Fprintf(w, "  types: %s\n", typesLine(fp.Types))
+	fmt.Fprintf(w, "  nesting: %s\n", nestingClause(fp))
+	fmt.Fprintf(w, "  types: %s\n", typesClause(fp))
+}
+
+// nestingClause is the nesting line for one fingerprint: the histogram, or a
+// statement that the frontend could not nest every control-flow body, so the
+// depth component is left out of any code-shape this body is part of.
+func nestingClause(fp fingerprint.Fingerprint) string {
+	if fp.NoNesting {
+		return "not measured (the frontend could not nest every control-flow body)"
+	}
+	return depthLine(fp.Depth)
+}
+
+// typesClause is the types line for one fingerprint: the type set, or a
+// statement that the frontend reads no types — which is not the same as a
+// function that has none.
+func typesClause(fp fingerprint.Fingerprint) string {
+	if fp.NoTypes {
+		return "not read by this frontend"
+	}
+	return typesLine(fp.Types)
 }
 
 // canonClause names the rules that fired, in the order the frontend recorded

@@ -9,7 +9,7 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `103ec8f` |
+| doppel | `e4c2a00` |
 | Command | `doppel analyze . --tests exclude --moves=false --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -26,18 +26,18 @@ Lexicon: 390 concepts (12 seeded, 378 emergent), 17324/43509 features above 2068
 Generating concept documents...
 Calibration: rate 0.01 over 20000 null pairs -> threshold 0.33, struct-min 0.34, family-min 0.33
 Found 5623 functions. Retrieving candidates...
-Retrieval: shape 8050, concept 17022, call 8171 -> 29068 unique pairs
-  concept-only 50.7%  call-only 18.8%  suppressed-shape functions: 12  large identity buckets: 0  surviving labels: 30362
-  125 cross test/prod pairs dropped
+Retrieval: shape 7885, concept 17022, call 8171 -> 28922 unique pairs
+  concept-only 51.0%  call-only 19.0%  suppressed-shape functions: 12  large identity buckets: 0  surviving labels: 30362
+  136 cross test/prod pairs dropped
   66 cross build-target pairs dropped (no build compiles both files)
-Running structural comparison on 28877 pairs...
-  Concept views: 1729 of 28877 compared pairs disagree with the taxonomy (184 vocabulary the tree misses, 1545 kinship the vocabularies lack)
-  13018 pairs remain after struct-min=0.34 filter
+Running structural comparison on 28720 pairs...
+  Concept views: 1730 of 28720 compared pairs disagree with the taxonomy (184 vocabulary the tree misses, 1546 kinship the vocabularies lack)
+  13002 pairs remain after struct-min=0.34 filter
 Culture: 360 concepts modeled, 2597 associations, 739 unusual realizations
 Habitats: 97 modeled, 116 misfits (58 excused by subsystem), 22 subsystems; most uniform graphite (norm 1.00), most diverse src (norm 0.65)
 Conventions: strongest b.Bytes+b.Len (0.98), loosest n.StartOrEnd+n.Func (0.13)
 Ecosystems: 5268 profiled (2720 dominance, 2510 coalition, 0 conflict, 38 weak)
-Families: 916 over 626 components, 2039 functions in a family, 8414 edges completed
+Families: 913 over 627 components, 2004 functions in a family, 8117 edges completed
   2 component(s) skipped as too large or too dense: sizes [233 661]
 ```
 
@@ -600,12 +600,12 @@ flowchart LR
     p13["remote<br/>62 internal"]
     p13 ---|"9"| p3
     p12 ---|"9"| p3
-    p14["graph<br/>12 internal"]
-    p15["query<br/>6 internal"]
+    p14["graph<br/>3 internal"]
+    p15["query<br/>4 internal"]
     p14 ---|"8"| p15
 ```
 
-_387 further package pairs are connected by duplication and are not drawn._
+_386 further package pairs are connected by duplication and are not drawn._
 
 ### How settled each package is
 
@@ -636,9 +636,9 @@ _85 further packages are modeled and not drawn._ Most uniform is `graphite` (nor
 
 ### How these candidates were found
 
-Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **29068 candidate pairs** (shape 8050, concept 17022, call 8171), of which 19% arrived on call evidence alone and 51% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
+Three channels propose candidates independently — shared rare *structure*, shared *concepts*, shared *calls* — and their union is what gets compared. This run: **28922 candidate pairs** (shape 7885, concept 17022, call 8171), of which 19% arrived on call evidence alone and 51% on concept evidence alone. A pair sharing none of the three is never compared, however alike it looks.
 
-The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **1729 of 28877** pairs the taxonomy and the vocabularies differ by at least 0.50: 184 where the vocabularies agree and the tree cannot see it, 1545 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
+The concept signal on each compared pair is read three ways — what the taxonomy asserts, what this corpus's frequencies say, and what the two sides' learned vocabularies share with no tree in between. On **1730 of 28720** pairs the taxonomy and the vocabularies differ by at least 0.50: 184 where the vocabularies agree and the tree cannot see it, 1546 where the tree asserts a kinship the vocabularies lack. Each such pair carries a `concept views` line saying which.
 
 Each function is also an arena where its candidate concepts compete for its evidence. 5268 functions reached an equilibrium: **2720** settled on a single concept, **2510** on a coalition, **0** hold concepts this corpus says do not go together.
 
@@ -646,7 +646,7 @@ Each function is also an arena where its candidate concepts compete for its evid
 
 **Compression ratio:** `8.98`x — this corpus's canonical function bodies contain **484201 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **53916 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
 
-**Nearest-neighbour code-shape:** of **5623 functions**, **5366** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.51` / `1.00` / `1.00`, and 84% of them (4484 of 5366) already clear this run's threshold of `0.33`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 257 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
+**Nearest-neighbour code-shape:** of **5623 functions**, **5364** had a code-shape neighbour among the pairs retrieval actually scored — their best score's p50/p90/p99 are `0.50` / `1.00` / `1.00`, and 83% of them (4458 of 5364) already clear this run's threshold of `0.33`. This is **not an exhaustive nearest-neighbour search** (that would be a full pairwise comparison); it is bounded by the same three retrieval channels the pair list itself is bounded by, so the other 259 functions are excluded here as having no *scored* neighbour, not asserted to have none at all.
 
 ---
 
@@ -805,7 +805,7 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 | `storage.MergeSearchResultSets` <br/>`storage/generic.go:548` | `hints.Filter+hints.OrderBy` | `0.25` | `0.67` | no near-duplicate |
 | `parser.*parser.addParseErr` <br/>`promql/parser/parse.go:299` | `p.Close+p.parseGenerated` | `0.20` | `0.61` | no near-duplicate |
 | `scrape.isSeriesPartOfFamily` <br/>`scrape/scrape.go:1900` | `model.MetricTypeStateset+model.MetricTypeInfo` | `0.23` | `0.63` | no near-duplicate |
-| `storage.expandSamples` <br/>`storage/series.go:480` | `it.AtHistogram+it.AtST` | `0.12` | `0.51` | no near-duplicate |
+| `complete.this.promQL` <br/>`web/ui/module/codemirror-promql/src/complete/hybrid.ts:700` | `context.metricName+node.to` | `0.16` | `0.56` | no near-duplicate |
 
 _729 more unusual realizations not listed._
 
@@ -908,49 +908,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #3 — Code-shape: `0.8310`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `web/ui/mantine-ui/src/pages/AlertsPage.tsx:157` | `pages.AlertsPage` | `()` | formatTime+settingsSlice 0.44 |
-| **B** | `web/ui/mantine-ui/src/pages/RulesPage.tsx:101` | `pages.RulesPage` | `()` | ErrorBoundary+hooks 0.40, data.data+styles 0.25 |
-
-**Explain:** differs by one extra assign, 30 extra binary, 17 extra literal, and 5 more kinds
-
-**Profile A:** `formatTime+settingsSlice` 1.00 (dominance)
-
-**Profile B:** `ErrorBoundary+hooks` 0.60, `data.data+styles` 0.40 (coalition)
-
-**Code similarity:** `wl 0.72  flow 1.00  nesting 1.00  sig 1.00  size 0.92`
-
-**Containment:** `0.90`
-
-**Evidence:** `3204.38` (shape 3204.01, concept 0.37, call 0.00)
-
-**Trophic:** `0.89`
-
-**Shared structure:**
-
-- `61.13` — `depth-2 BIN` ×11
-- `61.13` — `depth-1 BIN` ×11
-- `61.13` — `depth-1 BIN` ×11
-
-**Concept views:** shape `0.25`, corpus `0.08`, feature `0.28`, a-in-b `0.70`, b-in-a `0.32`
-
-**Shared vocabulary:** `id:variant`, `lit:md`, `id:section`
-
-**Structural overlap:** `0.48` (merge-worthy)
-
-- share 23 callees: [Math.ceil, Math.max, Math.min, copy, criteria, currentPageGroups.map, e.stopPropagation, filter, humanizeDurationRelative, items.map, j.toString, now, rem, searchFilter.trim, setActivePage, setSearchFilter, setShowEmptyGroups, shownGroups.slice, useEffect, useMemo, useQueryParam, useSettings, withDefault]
-- related patterns: formatTime+settingsSlice ≈ ErrorBoundary+hooks (both data_transformation, 0.14)
-- both are leaf functions
-- same package
-- same visibility
-- same receiver type: plain functions
-
----
-
-## Match #4 — Code-shape: `0.7478`
+## Match #3 — Code-shape: `0.7478`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -998,7 +956,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #5 — Code-shape: `0.9249`
+## Match #4 — Code-shape: `0.9249`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1045,7 +1003,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #6 — Code-shape: `0.9000`
+## Match #5 — Code-shape: `0.9000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1082,6 +1040,48 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - same receiver type: plain functions
 - called from same packages: [strutil]
 - call into same packages: [tsdb]
+
+---
+
+## Match #6 — Code-shape: `0.8012`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `web/ui/mantine-ui/src/pages/AlertsPage.tsx:157` | `pages.AlertsPage` | `()` | formatTime+settingsSlice 0.44 |
+| **B** | `web/ui/mantine-ui/src/pages/RulesPage.tsx:101` | `pages.RulesPage` | `()` | ErrorBoundary+hooks 0.40, data.data+styles 0.25 |
+
+**Explain:** differs by one extra assign, 30 extra binary, 17 extra literal, and 5 more kinds
+
+**Profile A:** `formatTime+settingsSlice` 1.00 (dominance)
+
+**Profile B:** `ErrorBoundary+hooks` 0.60, `data.data+styles` 0.40 (coalition)
+
+**Code similarity:** `wl 0.72  flow 1.00  nesting 1.00  sig n/a  size 0.92`
+
+**Containment:** `0.90`
+
+**Evidence:** `3204.38` (shape 3204.01, concept 0.37, call 0.00)
+
+**Trophic:** `0.89`
+
+**Shared structure:**
+
+- `61.13` — `depth-2 BIN` ×11
+- `61.13` — `depth-1 BIN` ×11
+- `61.13` — `depth-1 BIN` ×11
+
+**Concept views:** shape `0.25`, corpus `0.08`, feature `0.28`, a-in-b `0.70`, b-in-a `0.32`
+
+**Shared vocabulary:** `id:variant`, `lit:md`, `id:section`
+
+**Structural overlap:** `0.48` (merge-worthy)
+
+- share 23 callees: [Math.ceil, Math.max, Math.min, copy, criteria, currentPageGroups.map, e.stopPropagation, filter, humanizeDurationRelative, items.map, j.toString, now, rem, searchFilter.trim, setActivePage, setSearchFilter, setShowEmptyGroups, shownGroups.slice, useEffect, useMemo, useQueryParam, useSettings, withDefault]
+- related patterns: formatTime+settingsSlice ≈ ErrorBoundary+hooks (both data_transformation, 0.14)
+- both are leaf functions
+- same package
+- same visibility
+- same receiver type: plain functions
 
 ---
 
@@ -1263,7 +1263,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ## Families
 
-916 families, 2039 functions in a family, largest 74 members; 8414 edges scored here that retrieval never proposed
+913 families, 2004 functions in a family, largest 74 members; 8117 edges scored here that retrieval never proposed
 
 ### Family 1 — 73 members, every pair `>= 0.34` code-shape, evidence `50365`  (2205 edges scored here)
 
@@ -1360,7 +1360,7 @@ _Not drawn: 74 members is 2701 connections. Every one of them holds — that is 
 
 _64 more members not listed._
 
-_911 more families not listed._
+_908 more families not listed._
 
 _2 component(s) too large or too dense to enumerate (sizes 233, 661); their families are not reported._
 
