@@ -222,6 +222,24 @@ func TestDashboardCarriesContainmentAndExplain(t *testing.T) {
 	}
 }
 
+// A component one side's frontend could not measure reaches the page as -1,
+// which it draws as "not measured", never as a 0 bar. A measured pair keeps
+// its numbers.
+func TestDashboardMarksUnmeasuredComponents(t *testing.T) {
+	res := sampleResult()
+	bd := &res.Pairs[1].Breakdown // the top-ranked pair
+	bd.Depth, bd.Signature = 0, 0
+	bd.NoDepth, bd.NoSignature = true, true
+	p := buildDashboard(res, nil, nil, familyStatsZero(), nil, 0, nil)
+
+	if got := p.Edges[0].Breakdown; got[2] != -1 || got[3] != -1 {
+		t.Errorf("unmeasured nesting/sig = %v / %v, want -1 / -1", got[2], got[3])
+	}
+	if got := p.Edges[1].Breakdown; got[2] != 1 || got[3] != 1 {
+		t.Errorf("measured nesting/sig = %v / %v, want 1 / 1", got[2], got[3])
+	}
+}
+
 // A < B always, so the page never has to normalise an endpoint pair.
 func TestBuildDashboardNormalisesEndpointOrder(t *testing.T) {
 	res := sampleResult()

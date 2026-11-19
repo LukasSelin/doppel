@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -109,6 +110,22 @@ func TestPrintRoundTripsThePayload(t *testing.T) {
 // TestPrintIsSelfContained is the contract the report has always had: it opens
 // from file:// with nothing to fetch. The design system's font import is the
 // one allowed external reference, and it falls back to system-ui offline.
+// The page's scripts refuse a payload whose schema they were not written
+// for, so the number core.js checks must move with Schema. When it did not,
+// every dashboard rendered nothing but the refusal, and no test noticed.
+func TestPageExpectsCurrentSchema(t *testing.T) {
+	page := render(t, samplePayload())
+	for _, pat := range []string{`DATA\.schema !== (\d+)`, `expect payload schema (\d+)`} {
+		m := regexp.MustCompile(pat).FindStringSubmatch(page)
+		if m == nil {
+			t.Fatalf("core.js's schema check %q is missing from the page", pat)
+		}
+		if got, want := m[1], strconv.Itoa(Schema); got != want {
+			t.Errorf("core.js expects schema %s, payload Schema is %s", got, want)
+		}
+	}
+}
+
 func TestPrintIsSelfContained(t *testing.T) {
 	page := render(t, samplePayload())
 	for _, bad := range []string{"<script src=", "<link rel=\"stylesheet\"", "fetch(", "XMLHttpRequest"} {
