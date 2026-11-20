@@ -70,18 +70,41 @@ var nowSnapshot = snapshot.Snapshot{Schema: snapshot.Schema, Doppel: "now"}
 
 // The session committing its own work is the one way HEAD may move without
 // moving the origin: the baseline stays, and only its reference HEAD follows.
+// That holds when the session rewrites those commits too: a rebase keeps their
+// author dates, which are after the baseline, and commits them again now.
 func TestFollowHeadKeepsTheOriginForTheSessionsOwnCommits(t *testing.T) {
-	r := newGitRepo(t)
-	r.commit("a")
-	base := r.baselineAt()
-	head := r.commit("b")
-
-	got, rebased := followHead(r.dir, base, nowSnapshot)
-	if rebased {
-		t.Fatal("the session's own commit re-baselined")
+	cases := map[string]func(r gitRepo){
+		"a commit": func(r gitRepo) {
+			r.commit("b")
+		},
+		"a rebase of its own commits": func(r gitRepo) {
+			// Dated inside the session but in the past, so the rebased
+			// copies get a new committer date and therefore a new hash.
+			at := time.Now().Add(-30 * time.Second).UTC().Format(time.RFC3339)
+			r.commit("b", "GIT_AUTHOR_DATE="+at, "GIT_COMMITTER_DATE="+at)
+			before := r.commit("c", "GIT_AUTHOR_DATE="+at, "GIT_COMMITTER_DATE="+at)
+			r.run(nil, "rebase", "-q", "--force-rebase", "HEAD~2")
+			if gitHead(r.dir) == before {
+				r.t.Fatal("the rebase rewrote nothing")
+			}
+		},
 	}
-	if got.Snapshot.Doppel != "origin" || got.Head != head {
-		t.Errorf("origin %q head %q, want the origin kept and head %q", got.Snapshot.Doppel, got.Head, head)
+	for name, work := range cases {
+		t.Run(name, func(t *testing.T) {
+			r := newGitRepo(t)
+			r.commit("a")
+			base := r.baselineAt()
+			work(r)
+			head := gitHead(r.dir)
+
+			got, rebased := followHead(r.dir, base, nowSnapshot)
+			if rebased {
+				t.Fatal("the session's own commits re-baselined")
+			}
+			if got.Snapshot.Doppel != "origin" || got.Head != head {
+				t.Errorf("origin %q head %q, want the origin kept and head %q", got.Snapshot.Doppel, got.Head, head)
+			}
+		})
 	}
 }
 
@@ -105,6 +128,17 @@ func TestFollowHeadRebaselinesWhenTheBranchMoves(t *testing.T) {
 		},
 		"another committer": func(r gitRepo) {
 			r.commit("pr", "GIT_COMMITTER_EMAIL=noreply@github.com")
+		},
+		// Committed now by the local identity on top of the old HEAD, so
+		// only the author date says it was written before the session.
+		"a commit authored before the baseline": func(r gitRepo) {
+			r.commit("replayed", "GIT_AUTHOR_DATE=2001-01-01T00:00:00Z")
+		},
+		"cherry-pick of older work": func(r gitRepo) {
+			r.run(nil, "checkout", "-q", "-b", "side", "HEAD~1")
+			r.commit("side", "GIT_AUTHOR_DATE=2001-01-01T00:00:00Z", old)
+			r.run(nil, "checkout", "-q", "main")
+			r.run(nil, "cherry-pick", "side")
 		},
 	}
 	for name, move := range cases {

@@ -3397,13 +3397,22 @@ reason rather than returning a partial delta.
      than the session's own commits **re-baselines silently** at the current tree, carrying both
      ledgers over. The session's own commits are recognised without reading history as evidence:
      they extend the old HEAD linearly (`merge-base --is-ancestor`), contain no merge commit, were
-     committed after the baseline's `CreatedAt`, and by the local `user.email` — a squash-merged PR
-     pulled down is committed by the forge. Then only `Head` moves. The rules lean towards
-     "moved", the cheap direction: re-baselining forgets session work not yet reported, while not
-     re-baselining blames the session for someone else's code on every following turn. Any git
-     failure answers "unknown" and keeps the old behaviour. Two cases it does not reach: an
-     uncommitted change by another actor in the same tree (a user editing beside the agent), and
-     read-only sessions on another repository that saw edits at an unmoved HEAD — not yet explained.
+     both authored and committed after the baseline's `CreatedAt`, and by the local `user.email` —
+     a squash-merged PR pulled down is committed by the forge. Then only `Head` moves. The author
+     date is the check that sees replayed work: a cherry-pick, `git am` or rebase of commits
+     written earlier commits them again now, by the local identity, and keeps only the author
+     date. It was added after a rebase session reset to the main branch and cherry-picked a
+     branch written eight days earlier: all four findings in its Stop note were that branch's
+     work, a consolidation already done among them. A rebase of the session's own commits keeps
+     their author dates, which are after the baseline, so it still reads as the session's. The
+     rules lean towards "moved", the cheap direction: re-baselining forgets session work not yet
+     reported, while not re-baselining blames the session for someone else's code on every
+     following turn. The author date pays that price in two places — amending a commit written
+     before the session reads as moved, and so does rewriting the session's own commits after an
+     earlier re-baseline moved `CreatedAt` past them. Any git failure answers "unknown" and keeps
+     the old behaviour. Two cases it does not reach: an uncommitted change by another actor in the
+     same tree (a user editing beside the agent), and read-only sessions on another repository that
+     saw edits at an unmoved HEAD — not yet explained.
 
      This is the module's one use of git, and it reads one fact: which commit the tree sits on.
      `doppel verdict` reads the same fact to record which tree a decision was made on, and
