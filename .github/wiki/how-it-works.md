@@ -112,6 +112,8 @@ The 0.60 component is a *subtree* summary, not a window over a flattened stream:
 
 The relative body size is reported alongside these but is not scored — Jaccard already penalizes size mismatch through the union. Containment — how much of the *smaller* body's shape the larger one also has — is reported for the same reason and scored for none: a helper inlined into a long function reads low on the blend and high on containment, and collapsing the two would destroy the finding.
 
+**Named-shape** is a third reported reading, also scored for nothing: the 0.60 component computed again with identifiers, selected names and literal values kept in the labels, against that reading's own corpus weights. Two bodies with one structure over different fields, constants or types read high on the label overlap and low on named-shape, which is the look of an operation beside its inverse and of one scaffold over two types. It stays out of the ranking on a measurement: no reading of the names can tell a difference that is a parameter from one that is the point, and the level that separates the two in one repository does not hold in the next.
+
 ## The ontology
 
 Structural comparison used to compare strings. Two functions tagged `http_call` and `db_access` scored
@@ -355,8 +357,19 @@ sides are methods with the same name and signature on different types (a `Valida
 moby's `ipvlan` and `macvlan` drivers each implementing `Join`) — and **diverged copy** — alike
 bodies whose names agree once version markers are stripped (`evalCallOld` beside `evalCall`,
 `scrapeLoopAppenderV2.append` beside `scrapeLoopAppender.append`), in the same or a sibling
-package. Families get the same label when every member pair satisfies one rule. Kinds annotate
-only: they never filter a pair, never enter the ranking, and never reach the hook digests.
+package. Families get the same label when every member pair satisfies one rule.
+
+Three further kinds say a pair is something other than a merge. **Mirror operations** are two
+methods on one receiver, or two plain functions in one package, whose names differ in one word and
+that word is an opposite (`Encode` beside `Decode`, `ulimitsFromGRPC` beside `ulimitsToGRPC`).
+**Thin wrappers** are two small bodies that already delegate to a shared helper and name different
+things. **Different calls** share a shape and almost none of their calls.
+
+No kind ever enters the ranking. What a kind does change is what a reader is shown by default: the
+text and Markdown pair lists, the dashboard's headline view and the notes the plugin sends an agent
+all leave out the three not-a-merge kinds, and each says so or offers the switch
+(`--non-merges include`, a checkbox on the page). `--format json` and the dashboard's data always
+carry every pair with its kind.
 
 ## Iterative Refactoring Loop
 

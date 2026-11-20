@@ -281,7 +281,7 @@ what a reader recognizes.
 
 Every reported pair carries two independent numbers:
 
-- **Code similarity** (`Score`, gated by `--threshold`, printed as `code-shape:`) — how alike the two bodies are, from the structural fingerprint. The report breaks it into its components: `wl` (corpus-weighted overlap of Weisfeiler-Lehman label bags over the canonical body), `flow` (control-flow shape), `nesting` (how deeply that control flow sits), `sig` (parameter and result types), and `size` (relative body size, shown for context but not scored). `containment` is shown beside them and also not scored — it asks how much of the *smaller* body's shape the larger one has, which is a different finding.
+- **Code similarity** (`Score`, gated by `--threshold`, printed as `code-shape:`) — how alike the two bodies are, from the structural fingerprint. The report breaks it into its components: `wl` (corpus-weighted overlap of Weisfeiler-Lehman label bags over the canonical body), `flow` (control-flow shape), `nesting` (how deeply that control flow sits), `sig` (parameter and result types), and `size` (relative body size, shown for context but not scored). `containment` is shown beside them and also not scored — it asks how much of the *smaller* body's shape the larger one has, which is a different finding. So is `named-shape`: the `wl` number computed again with identifiers, field names and literal values kept. Two bodies with one structure over different fields, constants or types read high on `wl` and low on `named-shape`, which is what an operation beside its inverse looks like, and a scaffold over two types. It is a reading to weigh, never a rule: a body that could take the difference as a parameter reads the same way.
 - **Structural overlap** (gated by `--struct-min`) — how much architectural context the two share: callees, callers, concepts, role, package, and what their own callers and callees do. Concepts, roles and receiver types are matched through a concept hierarchy rather than compared as strings, so two functions doing related work — one hitting a database, the other a cache — score partial credit instead of zero. Every graded match comes with an evidence line saying which ancestor relates the two and how strongly.
 
   The concepts themselves are **learned from your codebase**, not read off a fixed list. doppel finds
@@ -296,6 +296,21 @@ When a naming rule can say what a pair *is*, a `kind:` line says it — `interfa
 (same method, same signature, different types: a `Validate` per provider) or `diverged copy` (alike
 bodies whose names agree once version markers are stripped: `evalCall` beside `evalCallOld`). Both
 are labels only; neither filters a pair or moves it in the ranking.
+
+Three more kinds say a pair is something other than a merge: `mirror operations` (`Encode` beside
+`Decode`, `Get` beside `Delete`, on one receiver or as two plain functions in one package),
+`thin wrappers` (two small bodies already delegating to a shared helper) and `different calls` (a
+shared shape whose calls have almost nothing in common). They never move a pair in the ranking
+either, but the text and Markdown lists leave those pairs out by default and say how many, so the
+list is the pairs you could act on:
+
+```
+Not listed: 3 pairs that would have ranked here (mirror operations 2, thin wrappers 1) and 1171 below them, which doppel reads as something other than a merge. --non-merges include lists every pair.
+```
+
+`--non-merges include` lists everything, and `--non-merges only` lists just those pairs, which is
+how to check what the default is hiding. The rule behind each kind reads names and call lists, so
+it can be wrong; `--format json` and the dashboard always carry every pair with its kind.
 
 ### Families
 
@@ -503,13 +518,14 @@ refuses comparison.
 | `--struct-min`      | *(calibrated)* | Pin the minimum structural overlap (0.0–1.0) to keep a pair. Turns calibration off; falls back to `0.0` |
 | `--min-nodes`       | `16`    | Skip functions whose body has fewer than this many AST nodes. A separate knob from `--calibrate`, which derives a *score* floor: this is an eligibility rule about which functions the shape channel indexes at all, and it guards against one-line accessors, which match each other perfectly and would otherwise flood the channel |
 | `-o`, `--output`    | *(disabled)* | Write a report to this file. **A `.html` path renders the interactive dashboard** — one self-contained page that opens from `file://`, showing your packages as a political map (each region's area is its share of the functions, and a painted border is duplication crossing it) plus a per-function neighbourhood view with both bodies side by side. Any other extension writes Markdown, which opens with what doppel understands about the corpus — learned concepts, duplication map, package habitats — as mermaid diagrams, then how this codebase *writes* things. The stdout report is still printed |
-| `--format`          | `text`  | Stdout format: `text` or `json`. The JSON form is a deterministic snapshot of the whole run — every function, its concepts with confidence, its role, its Weisfeiler-Lehman label bag, and every reported pair with its containment, its rule-attributed explanation and its concept views (the concept signal read through the taxonomy, through this corpus's frequencies, and through the learned vocabularies alone, plus the direction of the last) |
+| `--format`          | `text`  | Stdout format: `text` or `json`. The JSON form is a deterministic snapshot of the whole run — every function, its concepts with confidence, its role, its Weisfeiler-Lehman label bag, and every reported pair with its containment, its named-shape, its kind, its rule-attributed explanation and its concept views (the concept signal read through the taxonomy, through this corpus's frequencies, and through the learned vocabularies alone, plus the direction of the last) |
+| `--non-merges`      | `exclude` | Pairs whose kind says they are something other than a merge (`mirror operations`, `thin wrappers`, `different calls`) in the text and Markdown pair lists: `exclude` leaves them out and says how many, `include` lists every pair, `only` lists just those. Presentation only: no score or rank reads a kind, and `--format json` and the dashboard carry every pair under every setting |
 | `--families`        | `5`     | Near-duplicate families to show after the pair list (`0` removes the section) |
 | `--family-min`      | *(calibrated)* | Pin the code similarity every two members of a family must reach. Turns calibration off; falls back to `0.60` |
 | `--moves`           | `true`  | Add the *Functions out of place* section on a Go module (see [Functions in the wrong package](#functions-in-the-wrong-package)). Needs the `go` toolchain; skipped with a stderr line otherwise. Presentation only |
 | `--moves-share`     | `1`     | Fraction of a function's referring declarations that must sit in one other package for that section, as `doppel moves --share` |
 | `--map-metric`      | `merge-worthy` | What the Markdown report's package duplication map weighs an edge by: `merge-worthy` (only pairs doppel judges worth consolidating — the map's original question), `pairs` (every surviving candidate, the gate taken off), or `evidence` (summed corroborated evidence, so one strong finding outweighs several weak ones). Presentation only: no score, filter or baseline reads it, and the map names the metric it was drawn under |
-| `--decisions`       | *(off)* | Write every retrieved pair's fate to a JSON file: reported, capped by `--max-per-func`, ranked past `--top`, dropped under `--struct-min`, or dropped as two build units — with each gate of the merge verdict stated as passed or blocked, the pair kind, the scores and the explain sentence. Sides are named the way a labels file names them, so a record becomes a golden label by adding a class and a note. Changes nothing measured |
+| `--decisions`       | *(off)* | Write every retrieved pair's fate to a JSON file: reported, capped by `--max-per-func`, ranked past `--top`, left out by `--non-merges`, dropped under `--struct-min`, or dropped as two build units — with each gate of the merge verdict stated as passed or blocked, the pair kind, the scores and the explain sentence. Sides are named the way a labels file names them, so a record becomes a golden label by adding a class and a note. Changes nothing measured |
 | `--exclude`         | *(none, on top of the built-in blocklist)* | Directory patterns to skip. Doppel already skips the dependency and build-output directories of every ecosystem it reads — `node_modules`, `vendor`, `site-packages`, `Pods`, `Carthage`, `third_party`, `target`, `dist`, `build`, `out`, `obj`, `coverage` — because code your repo did not write is not a merge candidate, and counting it changes every corpus-relative number in the report. This adds to that list: a glob over a directory name, or over its path relative to the analysis root when it contains a `/`. A leading `!` takes one back, for a repo whose real source lives in a directory the defaults call build output (`--exclude '!dist'`) |
 | `--config`          | `.doppel.json` if present | Path to a JSON config file                                |
 
