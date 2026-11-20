@@ -9,7 +9,7 @@ HTTP framework; a small core surrounded by generated-looking binding and render 
 | Corpus | [gin](https://github.com/gin-gonic/gin) |
 | Pinned at | `v1.12.0` (`73726dc606796a025971fe451f0aa6f1b9b847f6`) |
 | Project since | 2014 |
-| doppel | `103ec8f` |
+| doppel | `d3131e7` |
 | Command | `doppel analyze . --tests exclude --moves=false --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -36,6 +36,7 @@ Habitats: 5 modeled, 15 misfits (0 excused by subsystem), 1 subsystems; most uni
 Conventions: strongest c.MustBindWith+gin.*Context.MustBindWith (1.00), loosest gin.*Context.Header+gin.*Context.Set (0.22)
 Ecosystems: 442 profiled (365 dominance, 60 coalition, 0 conflict, 17 weak)
 Families: 32 over 58 components, 170 functions in a family, 216 edges completed
+  2 pairs suppressed by max-per-func=2
 ```
 
 # Code Similarity Report
@@ -233,6 +234,8 @@ The concept signal on each compared pair is read three ways — what the taxonom
 
 Each function is also an arena where its candidate concepts compete for its evidence. 442 functions reached an equilibrium: **365** settled on a single concept, **60** on a coalition, **0** hold concepts this corpus says do not go together.
 
+_2 further pairs were held back so no single function fills the report._
+
 ### Corpus metrics
 
 **Compression ratio:** `5.31`x — this corpus's canonical function bodies contain **17647 AST nodes** in total, which hash-cons (two nodes count as the same subtree exactly when their kind and every child match, all the way down) to **3324 distinct subtree shapes**; the ratio is nodes divided by shapes, always >= 1.0, and it never feeds any score.
@@ -397,6 +400,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
+_Not listed: 1 pair that would have ranked here (thin wrappers 1) and 224 below it, which doppel reads as something other than a merge. `--non-merges include` lists every pair._
+
 ## Match #1 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Concepts |
@@ -413,6 +418,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `1.00`
+
+**Named shape:** `0.53` — the structure matches more than the names and values in it
 
 **Evidence:** `423.98` (shape 388.56, concept 2.16, call 33.26)
 
@@ -459,6 +466,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.85`
 
+**Named shape:** `0.42`
+
 **Evidence:** `289.31` (shape 272.95, concept 4.09, call 12.27)
 
 **Trophic:** `0.93`
@@ -487,54 +496,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #3 — Code-shape: `0.9625`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `routergroup.go:147` | `gin.*RouterGroup.Any` | `(string, ...HandlerFunc) (IRoutes)` | group.calculateAbsolutePath+group.engine 0.53 |
-| **B** | `routergroup.go:156` | `gin.*RouterGroup.Match` | `([]string, string, ...HandlerFunc) (IRoutes)` | group.calculateAbsolutePath+group.engine 0.53 |
-
-**Kind:** thin wrappers — both are small bodies delegating to `gin.*RouterGroup.handle` and `gin.*RouterGroup.returnObj` and naming different things, in package `gin`
-
-**Explain:** identical after rename
-
-**Profile A:** `group.calculateAbsolutePath+group.engine` 1.00 (dominance)
-
-**Profile B:** `group.calculateAbsolutePath+group.engine` 1.00 (dominance)
-
-**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 0.75  size 1.00`
-
-**Containment:** `1.00`
-
-**Evidence:** `105.68` (shape 95.56, concept 1.89, call 8.23)
-
-**Trophic:** `1.00`
-
-**Shared structure:**
-
-- `4.78` — `depth-3 BLOCK`
-- `4.78` — `depth-3 EXPRSTMT`
-- `4.78` — `depth-3 RANGE`
-
-**Concept views:** shape `1.00`, corpus `0.99`, feature `0.99`, a-in-b `0.99`, b-in-a `1.00`
-
-**Shared vocabulary:** `call:gin.*RouterGroup.calculateAbsolutePath`, `sel:group.calculateAbsolutePath`, `id:calculate`
-
-**Structural overlap:** `0.81` (merge-worthy)
-
-- share 2 callees: [group.handle, group.returnObj]
-- overlapping call-graph neighborhoods (1.00): 16 shared
-- share patterns: [group.calculateAbsolutePath+group.engine]
-- both are orchestrator functions
-- same package
-- callees do related work (1.00): [group.calculateAbsolutePath+group.engine]
-- same visibility
-- same receiver type: RouterGroup
-- call into same packages: [gin]
-
----
-
-## Match #4 — Code-shape: `1.0000`
+## Match #3 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -550,6 +512,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `1.00`
+
+**Named shape:** `0.67` — the structure matches more than the names and values in it
 
 **Evidence:** `103.60` (shape 100.67, concept 2.93, call 0.00)
 
@@ -578,7 +542,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #5 — Code-shape: `1.0000`
+## Match #4 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -594,6 +558,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `1.00`
+
+**Named shape:** `0.67` — the structure matches more than the names and values in it
 
 **Evidence:** `103.60` (shape 100.67, concept 2.93, call 0.00)
 
@@ -624,7 +590,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #6 — Code-shape: `1.0000`
+## Match #5 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -640,6 +606,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `1.00`
+
+**Named shape:** `0.67` — the structure matches more than the names and values in it
 
 **Evidence:** `103.60` (shape 100.67, concept 2.93, call 0.00)
 
@@ -670,7 +638,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #7 — Code-shape: `0.7504`
+## Match #6 — Code-shape: `0.7504`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -686,6 +654,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 0.58  flow 1.00  nesting 1.00  sig 1.00  size 0.79`
 
 **Containment:** `0.82`
+
+**Named shape:** `0.43`
 
 **Evidence:** `227.42` (shape 210.85, concept 4.30, call 12.27)
 
@@ -715,7 +685,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #8 — Code-shape: `1.0000`
+## Match #7 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -733,6 +703,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `1.00`
+
+**Named shape:** `0.71` — the structure matches more than the names and values in it
 
 **Evidence:** `95.67` (shape 89.18, concept 2.76, call 3.72)
 
@@ -762,7 +734,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #9 — Code-shape: `0.6301`
+## Match #8 — Code-shape: `0.6301`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -778,6 +750,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 0.57  flow 0.94  nesting 0.99  sig 0.33  size 0.69`
 
 **Containment:** `0.84` — most of the smaller body's shape is inside the larger
+
+**Named shape:** `0.44`
 
 **Evidence:** `297.30` (shape 281.14, concept 3.89, call 12.27)
 
@@ -807,7 +781,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #10 — Code-shape: `0.6575`
+## Match #9 — Code-shape: `0.6575`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -823,6 +797,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 0.55  flow 1.00  nesting 1.00  sig 0.50  size 0.87`
 
 **Containment:** `0.75`
+
+**Named shape:** `0.57`
 
 **Evidence:** `233.99` (shape 206.49, concept 3.79, call 23.71)
 
@@ -849,6 +825,50 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - same visibility
 - same receiver type: Engine
 - call into same packages: [gin]
+
+---
+
+## Match #10 — Code-shape: `0.8500`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `errors.go:116` | `gin.errorMsgs.Last` | `() (*Error)` | binding+nil 0.60 |
+| **B** | `gin.go:60` | `gin.HandlersChain.Last` | `() (HandlerFunc)` | binding+nil 0.54, Request.URL+req.URL 0.42, writermem.WriteHeaderNow+c.writermem 0.34 |
+
+**Explain:** identical after rename
+
+**Profile A:** `binding+nil` 1.00 (dominance)
+
+**Profile B:** `Request.URL+req.URL` 0.59, `writermem.WriteHeaderNow+c.writermem` 0.41 (coalition)
+
+**Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 0.00  size 1.00`
+
+**Containment:** `1.00`
+
+**Named shape:** `1.00`
+
+**Evidence:** `98.53` (shape 97.62, concept 0.91, call 0.00)
+
+**Trophic:** `1.00`
+
+**Shared structure:**
+
+- `4.78` — `depth-3 BLOCK`
+- `4.78` — `depth-3 RETURN`
+- `4.78` — `depth-3 IF`
+
+**Concept views:** shape `0.33`, corpus `0.25`, feature `0.01`, a-in-b `0.89`, b-in-a `0.01`
+
+**Shared vocabulary:** `id:nil`, `imp:github.com/gin-gonic/gin/binding`
+
+**Structural overlap:** `0.55` (merge-worthy)
+
+- share 1 callees: [len]
+- share patterns: [binding+nil]
+- both are leaf functions
+- same package
+- same visibility
+- both are methods, on errorMsgs and HandlersChain
 
 ---
 

@@ -9,7 +9,7 @@ structured concurrency library; generics-heavy, one idea, written recently and a
 | Corpus | [conc](https://github.com/sourcegraph/conc) |
 | Pinned at | `v0.3.0` (`7b8c8f2875cb861bb61844c9bcaa1aed070adbd4`) |
 | Project since | 2023 |
-| doppel | `103ec8f` |
+| doppel | `d3131e7` |
 | Command | `doppel analyze . --tests exclude --moves=false --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -244,6 +244,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 ---
 
+_Not listed: 124 of 155 scored pairs, which doppel reads as something other than a merge; none would have ranked here. `--non-merges include` lists every pair._
+
 ## Match #1 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Concepts |
@@ -258,6 +260,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `1.00`
+
+**Named shape:** `0.66` — the structure matches more than the names and values in it
 
 **Evidence:** `82.66` (shape 82.66, concept 0.00, call 0.00)
 
@@ -293,6 +297,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 **Code similarity:** `wl 0.60  flow 1.00  nesting 1.00  sig 0.00  size 0.87`
 
 **Containment:** `0.80`
+
+**Named shape:** `0.35`
 
 **Evidence:** `127.02` (shape 123.72, concept 0.00, call 3.30)
 
@@ -338,6 +344,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `0.91`
 
+**Named shape:** `0.73`
+
 **Evidence:** `99.43` (shape 95.73, concept 0.00, call 3.70)
 
 **Trophic:** `0.93`
@@ -379,6 +387,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `1.00`
 
+**Named shape:** `0.54` — the structure matches more than the names and values in it
+
 **Evidence:** `39.69` (shape 39.69, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
@@ -416,6 +426,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `1.00`
 
+**Named shape:** `0.46` — the structure matches more than the names and values in it
+
 **Evidence:** `34.98` (shape 34.98, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
@@ -450,6 +462,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
 
 **Containment:** `1.00`
+
+**Named shape:** `0.42` — the structure matches more than the names and values in it
 
 **Evidence:** `34.98` (shape 34.98, concept 0.00, call 0.00)
 
@@ -488,6 +502,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 
 **Containment:** `1.00`
 
+**Named shape:** `0.43` — the structure matches more than the names and values in it
+
 **Evidence:** `34.98` (shape 34.98, concept 0.00, call 0.00)
 
 **Trophic:** `1.00`
@@ -522,6 +538,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
 
 **Containment:** `1.00`
+
+**Named shape:** `0.46` — the structure matches more than the names and values in it
 
 **Evidence:** `34.98` (shape 34.98, concept 0.00, call 0.00)
 
@@ -559,6 +577,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 **Code similarity:** `wl 0.33  flow 0.82  nesting 0.89  sig 0.40  size 0.50`
 
 **Containment:** `0.73` — most of the smaller body's shape is inside the larger
+
+**Named shape:** `0.27`
 
 **Evidence:** `147.68` (shape 143.98, concept 0.00, call 3.70)
 
@@ -601,6 +621,8 @@ These carry a tag but look nothing like the other functions carrying it. Typical
 **Code similarity:** `wl 0.42  flow 1.00  nesting 1.00  sig 0.00  size 0.90`
 
 **Containment:** `0.60`
+
+**Named shape:** `0.38`
 
 **Evidence:** `44.88` (shape 44.31, concept 0.57, call 0.00)
 
