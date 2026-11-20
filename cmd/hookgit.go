@@ -98,20 +98,29 @@ func gitMainWorktree(root string) (main, prefix string, ok bool) {
 //
 // The session's own commits are the one way HEAD may move without invalidating
 // the baseline, and they are recognisable without reading history as evidence:
-// they extend the old HEAD linearly, they were committed after the baseline
-// was recorded, and they were committed by the local git identity. Anything
-// else moved the base:
+// they extend the old HEAD linearly, they were written and committed after the
+// baseline was recorded, and they were committed by the local git identity.
+// Anything else moved the base:
 //
 //   - `from` is not an ancestor of `to` — a reset, a rebase, a branch switch;
 //   - a merge commit in between — origin/main merged in;
 //   - a commit committed before the baseline existed — a fast-forward onto
 //     work that already existed when the session started;
+//   - a commit authored before the baseline existed — a cherry-pick, `git am`
+//     or rebase that replays work written earlier. Each of those commits it
+//     again now, by the local identity, and keeps only the author date, so
+//     this is the one check that sees them;
 //   - a commit by another committer — a squash-merged PR pulled down, whose
 //     committer is the forge rather than the local user.
 //
 // The rules lean towards "moved", and that is the cheap direction: re-baselining
 // only forgets session work not yet reported, while not re-baselining blames
-// the session for someone else's code on every turn that follows.
+// the session for someone else's code on every turn that follows. The author
+// date rule pays that price twice over: amending a commit written before the
+// session reads as moved, and so does rewriting the session's own commits
+// after an earlier re-baseline moved CreatedAt past them. A rebase of the
+// session's own commits onto the same base keeps their author dates, which are
+// after the baseline, and still reads as the session's.
 //
 // ok is false when git could not answer; the caller then leaves the baseline
 // alone.
@@ -122,7 +131,7 @@ func baseMoved(root, from, to string, since time.Time) (moved, ok bool) {
 		// was already ruled out by the caller reading HEAD.
 		return true, true
 	}
-	log, ok := gitOutput(root, "log", "--format=%P%x09%ct%x09%ce", from+".."+to)
+	log, ok := gitOutput(root, "log", "--format=%P%x09%ct%x09%at%x09%ce", from+".."+to)
 	if !ok {
 		return false, false
 	}
@@ -132,7 +141,7 @@ func baseMoved(root, from, to string, since time.Time) (moved, ok bool) {
 			continue
 		}
 		f := strings.Split(line, "\t")
-		if len(f) != 3 {
+		if len(f) != 4 {
 			return false, false
 		}
 		if len(strings.Fields(f[0])) > 1 {
@@ -142,10 +151,14 @@ func baseMoved(root, from, to string, since time.Time) (moved, ok bool) {
 		if err != nil {
 			return false, false
 		}
-		if time.Unix(ct, 0).Before(since) {
+		at, err := strconv.ParseInt(f[2], 10, 64)
+		if err != nil {
+			return false, false
+		}
+		if time.Unix(ct, 0).Before(since) || time.Unix(at, 0).Before(since) {
 			return true, true
 		}
-		if me != "" && !strings.EqualFold(f[2], me) {
+		if me != "" && !strings.EqualFold(f[3], me) {
 			return true, true
 		}
 	}
