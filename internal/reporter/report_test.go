@@ -387,3 +387,63 @@ func TestPrintNamedShape(t *testing.T) {
 		t.Errorf("an unmeasured pair rendered a named-shape line:\n%s", b.String())
 	}
 }
+
+// A cut list says what it left out, on both renderers, above the list — and
+// most of all when the cut emptied it. It leads with the pairs the list would
+// otherwise have shown. A list that left nothing out says nothing.
+func TestPrintNotListed(t *testing.T) {
+	left := NotListed{Mode: ListExclude, Total: 40, Scored: 300, InList: 4, Kinds: []KindCount{
+		{Kind: analyzer.KindMirror, Count: 1}, {Kind: analyzer.KindThinWrappers, Count: 3},
+	}}
+	const text = "Not listed: 4 pairs that would have ranked here (mirror operations 1, thin wrappers 3) and 36 below them, which doppel reads as something other than a merge. --non-merges include lists every pair.\n"
+
+	var b strings.Builder
+	Print(&b, []analyzer.SimilarPair{samplePair(nil)}, sampleUnits, Meta{NotListed: left})
+	out := b.String()
+	if !strings.Contains(out, text) || strings.Index(out, "Not listed:") > strings.Index(out, "#1 ") {
+		t.Errorf("want the sentence above the list:\n%s", out)
+	}
+
+	b.Reset()
+	Print(&b, nil, sampleUnits, Meta{NotListed: left})
+	if !strings.Contains(b.String(), text) || !strings.Contains(b.String(), "No similar function pairs found") {
+		t.Errorf("an emptied list must still say what it left out:\n%s", b.String())
+	}
+
+	b.Reset()
+	PrintMarkdown(&b, []analyzer.SimilarPair{samplePair(nil)}, sampleUnits, Meta{NotListed: left})
+	md := "_Not listed: 4 pairs that would have ranked here (mirror operations 1, thin wrappers 3) and 36 below them, which doppel reads as something other than a merge. `--non-merges include` lists every pair._\n\n"
+	if !strings.Contains(b.String(), md) || strings.Index(b.String(), "Not listed:") > strings.Index(b.String(), "## Match #1") {
+		t.Errorf("want the markdown sentence above the matches:\n%s", b.String())
+	}
+
+	for want, n := range map[string]NotListed{
+		// One displaced pair and nothing below it.
+		"Not listed: 1 pair that would have ranked here (mirror operations 1), which doppel reads as something other than a merge. --non-merges include lists every pair.": {
+			Mode: ListExclude, Total: 1, Scored: 2, InList: 1, Kinds: []KindCount{{Kind: analyzer.KindMirror, Count: 1}}},
+		// One displaced pair and some below it.
+		"Not listed: 1 pair that would have ranked here (thin wrappers 1) and 8 below it, which doppel reads as something other than a merge. --non-merges include lists every pair.": {
+			Mode: ListExclude, Total: 9, Scored: 50, InList: 1, Kinds: []KindCount{{Kind: analyzer.KindThinWrappers, Count: 1}}},
+		// Nothing the list would have shown.
+		"Not listed: 7771 of 13517 scored pairs, which doppel reads as something other than a merge; none would have ranked here. --non-merges include lists every pair.": {
+			Mode: ListExclude, Total: 7771, Scored: 13517},
+		"Not listed: 1 of 1 scored pair, which doppel reads as something other than a merge; none would have ranked here. --non-merges include lists every pair.": {
+			Mode: ListExclude, Total: 1, Scored: 1},
+		"Listing only the 4 of 30 scored pairs doppel reads as something other than a merge. --non-merges exclude lists the other 26.": {
+			Mode: ListOnly, Total: 26, Scored: 30},
+	} {
+		if got := notListedLine(n, false); got != want {
+			t.Errorf("got  %q\nwant %q", got, want)
+		}
+	}
+
+	// Nothing left out, or a mode that cuts nothing: no sentence.
+	for _, n := range []NotListed{{}, {Mode: ListInclude, Total: 3, Scored: 9}, {Mode: ListExclude, Scored: 9}} {
+		b.Reset()
+		Print(&b, []analyzer.SimilarPair{samplePair(nil)}, sampleUnits, Meta{NotListed: n})
+		PrintMarkdown(&b, []analyzer.SimilarPair{samplePair(nil)}, sampleUnits, Meta{NotListed: n})
+		if strings.Contains(b.String(), "isted") {
+			t.Errorf("%+v rendered a sentence:\n%s", n, b.String())
+		}
+	}
+}

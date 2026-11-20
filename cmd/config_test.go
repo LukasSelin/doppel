@@ -7,7 +7,7 @@ import (
 )
 
 // analyzeFlagNames are every flag applyConfig can touch.
-var analyzeFlagNames = []string{"threshold", "top", "min-nodes", "struct-min", "output", "channel-k", "debug", "max-per-func", "tests", "generated", "languages", "exclude", "format", "families", "family-min", "map-metric", "calibrate"}
+var analyzeFlagNames = []string{"threshold", "top", "min-nodes", "struct-min", "output", "channel-k", "debug", "max-per-func", "tests", "generated", "languages", "exclude", "format", "families", "family-min", "map-metric", "calibrate", "decisions", "moves", "moves-share", "non-merges"}
 
 // resetAnalyzeFlags restores analyzeCmd to its registered defaults. The command
 // is a package-level singleton, so tests must not leak state into each other.
@@ -54,7 +54,7 @@ func TestApplyConfigSetsUntouchedFlags(t *testing.T) {
 	resetAnalyzeFlags(t)
 	t.Cleanup(func() { resetAnalyzeFlags(t) })
 
-	cfg, err := loadConfig(writeConfig(t, `{"threshold":0.9,"top":5,"min-nodes":30,"struct-min":0.5,"output":"r.md","channel-k":9,"debug":true,"max-per-func":4,"tests":"only","families":3,"family-min":0.8,"map-metric":"evidence"}`))
+	cfg, err := loadConfig(writeConfig(t, `{"threshold":0.9,"top":5,"min-nodes":30,"struct-min":0.5,"output":"r.md","channel-k":9,"debug":true,"max-per-func":4,"tests":"only","families":3,"family-min":0.8,"map-metric":"evidence","non-merges":"include"}`))
 	if err != nil {
 		t.Fatalf("loadConfig: %v", err)
 	}
@@ -80,6 +80,9 @@ func TestApplyConfigSetsUntouchedFlags(t *testing.T) {
 	}
 	if mapMetric != "evidence" {
 		t.Errorf("map-metric = %v, want evidence", mapMetric)
+	}
+	if nonMerges != "include" {
+		t.Errorf("non-merges = %v, want include", nonMerges)
 	}
 	if familiesN != 3 {
 		t.Errorf("families = %v, want 3", familiesN)

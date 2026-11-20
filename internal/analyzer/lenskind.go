@@ -35,12 +35,26 @@ const (
 
 // NotAMerge reports whether kind is one of the three above: a kind that says
 // the pair is something other than a merge. The dashboard's headline view
-// hides the same three (core.js KINDS), and the agent-facing hook digests
-// leave them out, because a note naming a pair whose consolidation already
-// happened sends the agent back to work that is done. Everywhere else a kind
-// still only annotates.
+// hides the same three (core.js KINDS), the agent-facing hook digests leave
+// them out, because a note naming a pair whose consolidation already
+// happened sends the agent back to work that is done, and the text and
+// markdown pair lists leave them out by default and say how many
+// (`analyze --non-merges`). Those are all a reader's default and none is a
+// rank: --format json and the dashboard payload carry every pair, kind
+// attached.
 func NotAMerge(kind string) bool {
-	return kind == KindMirror || kind == KindThinWrappers || kind == KindDifferentCalls
+	return slices.Contains(nonMergeKinds[:], kind)
+}
+
+// nonMergeKinds are the kinds NotAMerge answers true for, in the order
+// ClassifyPairIn tries them.
+var nonMergeKinds = [...]string{KindMirror, KindThinWrappers, KindDifferentCalls}
+
+// NonMergeKinds lists the kinds that say a pair is something other than a
+// merge, in a fixed order, for a surface that counts what it left out by
+// kind. A fresh slice each call.
+func NonMergeKinds() []string {
+	return slices.Clone(nonMergeKinds[:])
 }
 
 // The thresholds the measurement set. ThinNodes bounds "small" on the

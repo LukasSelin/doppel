@@ -38,6 +38,7 @@ var (
 	decisionsFile string
 	movesOn       bool
 	movesShareFlg float64
+	nonMerges     string
 
 	outputFormat string
 )
@@ -82,6 +83,9 @@ var analyzeCmd = &cobra.Command{
 		if err := validateMode("tests", testsMode); err != nil {
 			return err
 		}
+		if err := validateMode("non-merges", nonMerges); err != nil {
+			return err
+		}
 		return validateMode("generated", genMode)
 	},
 	RunE: runAnalyze,
@@ -109,6 +113,7 @@ func init() {
 	analyzeCmd.Flags().Float64Var(&familyMin, "family-min", 0.60, "Pin the code-shape between every two members of a family (0.0–1.0), turning off --calibrate.")
 	analyzeCmd.Flags().BoolVar(&movesOn, "moves", true, "Add the functions-out-of-place section: functions only another package uses, found by type-checking the module (doppel moves). Needs the go toolchain and a Go module whose dependencies are in the module cache; skipped with a line on stderr otherwise. Presentation only — no score, filter or baseline reads it.")
 	analyzeCmd.Flags().Float64Var(&movesShareFlg, "moves-share", 1, "Fraction of a function's referring declarations that must sit in one other package for the out-of-place section (0–1]; doppel moves --share")
+	analyzeCmd.Flags().StringVar(&nonMerges, "non-merges", reporter.ListExclude, "Pairs whose kind says they are something other than a merge (mirror operations, thin wrappers, different calls) in the text and markdown pair lists: include, exclude, or only. Left out by default, with a line saying how many. Presentation only — no score or rank reads a kind, and --format json and the dashboard carry every pair with its kind.")
 	// Hidden, not removed: retrieval budgets and the report's diversity cap
 	// are implementation detail an end user has no basis to set. Every flag
 	// still parses and every config key still applies — only --help shrinks.
@@ -168,12 +173,27 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	// architectural corroboration and structural similarity — with a
 	// per-function diversity cap. The displayed scores stay unblended.
 	pairs, suppressed := analyzer.SortForReport(res.Pairs, res.Units, topN, maxPerFunc)
-	if suppressed > 0 {
-		fmt.Fprintf(cmd.ErrOrStderr(), "  %d pairs suppressed by max-per-func=%d\n", suppressed, maxPerFunc)
+
+	// The list a person reads leaves out, by default, the pairs whose kind
+	// says they are not a merge, and says how many. It is cut before the cap
+	// walk so a pair nobody is shown uses up no quota and no --top slot.
+	// --format json keeps the uncut ranking above: a consumer of the snapshot
+	// filters on the kind it carries, the way the dashboard page does.
+	listed, listedSuppressed := pairs, suppressed
+	// res.Pairs is in report order now: SortForReport sorted it in place.
+	visible, notListed := cutList(res.Pairs, nonMerges)
+	if notListed.Total > 0 {
+		listed, listedSuppressed = analyzer.SortForReport(visible, res.Units, topN, maxPerFunc)
+		// Of everything left out, the pairs the uncut list would have shown
+		// are the ones whose place another finding now has.
+		notListed.InList, notListed.Kinds = displaced(pairs, nonMerges)
+	}
+	// stderr describes the list stdout carries.
+	if n := suppressedOnStdout(outputFormat, suppressed, listedSuppressed); n > 0 {
+		fmt.Fprintf(cmd.ErrOrStderr(), "  %d pairs suppressed by max-per-func=%d\n", n, maxPerFunc)
 	}
 	if decisionsFile != "" {
-		// res.Pairs is in report order now: SortForReport sorted it in place.
-		if err := writeDecisions(decisionsFile, buildDecisions(&res, res.Pairs, topN, maxPerFunc), cmd.ErrOrStderr()); err != nil {
+		if err := writeDecisions(decisionsFile, buildDecisions(&res, res.Pairs, topN, maxPerFunc, nonMerges), cmd.ErrOrStderr()); err != nil {
 			return err
 		}
 	}
@@ -183,11 +203,12 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	// The overview rides on it and is markdown-only: the text report has no way
 	// to draw a diagram, and the terminal already gets these numbers on stderr.
 	meta := reportMeta(res, debugFlag)
+	meta.NotListed = notListed
 	if outputFile != "" {
 		// Parsed in PreRunE, so this cannot fail here; the metric is a
 		// presentation choice and never reaches Params.
 		metric, _ := reporter.ParseMapMetric(mapMetric)
-		meta.Overview = buildOverview(res, suppressed, metric)
+		meta.Overview = buildOverview(res, listedSuppressed, metric)
 	}
 
 	if outputFormat == formatJSON {
@@ -198,7 +219,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		reporter.Print(cmd.OutOrStdout(), pairs, res.Units, meta)
+		reporter.Print(cmd.OutOrStdout(), listed, res.Units, meta)
 		reporter.PrintFamilies(cmd.OutOrStdout(), fams, famStats, res.Units, familiesN)
 		reporter.PrintMoves(cmd.OutOrStdout(), mv)
 	}
@@ -213,7 +234,9 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		// value: --format selects what goes to stdout, and a page of markup on
 		// stdout helps nobody — the file is the only place it makes sense.
 		if isHTMLPath(outputFile) {
-			payload := buildDashboard(res, meta.Overview, fams, famStats, pairs, suppressed, mv)
+			// The page draws every scored pair and filters in the browser;
+			// what it says about "the text report" is the list just printed.
+			payload := buildDashboard(res, meta.Overview, fams, famStats, listed, listedSuppressed, mv)
 			if err := dashboard.Print(f, payload); err != nil {
 				return fmt.Errorf("write dashboard: %w", err)
 			}
@@ -226,7 +249,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 				fmt.Fprintf(cmd.ErrOrStderr(), "  %d pairs' shared structure omitted to bound the page size\n", n)
 			}
 		} else {
-			reporter.PrintMarkdown(f, pairs, res.Units, meta)
+			reporter.PrintMarkdown(f, listed, res.Units, meta)
 			reporter.PrintMarkdownFamilies(f, fams, famStats, res.Units, familiesN)
 			reporter.PrintMarkdownMoves(f, mv)
 			fmt.Fprintf(cmd.ErrOrStderr(), "Markdown report written to %s\n", outputFile)
@@ -234,6 +257,16 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+// suppressedOnStdout picks the per-function-cap count stderr reports: the
+// one for the list stdout carries. --format json prints the uncut ranking,
+// the text report the cut one, and the two caps hold back different pairs.
+func suppressedOnStdout(format string, uncut, listed int) int {
+	if format == formatJSON {
+		return uncut
+	}
+	return listed
 }
 
 // printRetrievalStats summarizes one retrieval run on stderr: how much each

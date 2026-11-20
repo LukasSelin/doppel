@@ -23,6 +23,10 @@ type Meta struct {
 	// always passes — renders nothing, so a report without one is byte-identical
 	// to one written before this field existed.
 	Overview *Overview
+
+	// NotListed is what the pair list left out because of the pairs' kinds
+	// (`analyze --non-merges`). The zero value renders nothing.
+	NotListed NotListed
 }
 
 // Print writes the similarity report to w. The headline number per pair is
@@ -37,6 +41,11 @@ func Print(w io.Writer, pairs []analyzer.SimilarPair, units []parser.CodeUnit, m
 	fmt.Fprintf(w, "\nCode Similarity Report\n")
 	fmt.Fprintf(w, "======================\n")
 	fmt.Fprintf(w, "Functions analyzed: %d  |  Threshold: %.2f\n\n", meta.TotalFuncs, meta.Threshold)
+	// Before the list and before the empty-list return: a reader has to know
+	// the list was cut to read it, and most of all when the cut emptied it.
+	if line := notListedLine(meta.NotListed, false); line != "" {
+		fmt.Fprintf(w, "%s\n\n", line)
+	}
 
 	if len(pairs) == 0 {
 		fmt.Fprintf(w, "No similar function pairs found\n")
@@ -136,6 +145,10 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, units []parser.Cod
 	// know what kind of codebase produced it.
 	PrintMarkdownOverview(w, meta.Overview)
 	PrintMarkdownPractice(w, meta.Overview)
+
+	if line := notListedLine(meta.NotListed, true); line != "" {
+		fmt.Fprintf(w, "_%s_\n\n", line)
+	}
 
 	if len(pairs) == 0 {
 		fmt.Fprintf(w, "_No similar function pairs found._\n")
