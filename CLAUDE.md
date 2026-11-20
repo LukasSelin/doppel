@@ -2051,6 +2051,19 @@ order:
   a real clone, which reads 1.00 there. `BuildThinVocab` reads `CodeUnit.Canonical`, so `analyze`
   builds it beside `LabelKinds` before the trees are released, and only for bodies small enough to
   qualify.
+
+  **The guard spares little, and one-line wrappers never.** One differing literal or name, on a
+  leaf at least three levels down (where a call's arguments sit), changes 10 of a body's 4·n vocab
+  labels: the leaf at every round and one more ancestor per round. So the Jaccard is
+  (4n−10)/(4n+10). That is 0.57 for a 9-node `return s.helper(ctx, text, "alert")`, and it first
+  reaches 0.8 at 23 nodes. Two differences never reach it under `ThinNodes`. A real Stop note once
+  listed two such 9-node wrappers as a new merge-worthy pair at code-shape 1.00, a week after they
+  had been consolidated. The guard was not the cause. The binary predated the snapshot `Kind` field
+  (schema 12), so `Notable` had no kind to read. The current build labels that pair `thin
+  wrappers` on the same tree. The pair read as *new* at all because the session had cherry-picked
+  the consolidating commits (see `baseMoved` under the hook contract).
+  `TestStopHookLeavesOutConsolidatedWrappers` pins the case through the hooks. It fails, with the
+  real note's lines, when the ceiling drops to 0.5.
 - **`different calls`** — distinct-callee Jaccard below `CallOverlapFloor` (0.25): a shared shape
   whose work is elsewhere. Two bodies that call nothing are not labelled.
 
@@ -3401,9 +3414,15 @@ reason rather than returning a partial delta.
      pulled down is committed by the forge. Then only `Head` moves. The rules lean towards
      "moved", the cheap direction: re-baselining forgets session work not yet reported, while not
      re-baselining blames the session for someone else's code on every following turn. Any git
-     failure answers "unknown" and keeps the old behaviour. Two cases it does not reach: an
-     uncommitted change by another actor in the same tree (a user editing beside the agent), and
-     read-only sessions on another repository that saw edits at an unmoved HEAD — not yet explained.
+     failure answers "unknown" and keeps the old behaviour. Three cases it does not reach: an
+     uncommitted change by another actor in the same tree (a user editing beside the agent);
+     read-only sessions on another repository that saw edits at an unmoved HEAD — not yet
+     explained; and commits the session itself cherry-picks or replays from work written earlier.
+     Those extend HEAD linearly, are committed now and carry the local identity, so they pass as
+     the session's own. Only their author date, which `baseMoved` does not read, says they predate
+     the baseline. Measured once: a rebase session reset to the main branch and cherry-picked a
+     branch written eight days earlier. All four findings in its Stop note were that branch's work,
+     a consolidation already done among them.
 
      This is the module's one use of git, and it reads one fact: which commit the tree sits on.
      `doppel verdict` reads the same fact to record which tree a decision was made on, and
