@@ -2051,6 +2051,20 @@ order:
   a real clone, which reads 1.00 there. `BuildThinVocab` reads `CodeUnit.Canonical`, so `analyze`
   builds it beside `LabelKinds` before the trees are released, and only for bodies small enough to
   qualify.
+
+  **The guard spares little, and one-line wrappers never.** One differing literal or name, on a
+  leaf at least three levels down (where a call's arguments sit), changes 10 of a body's 4·n vocab
+  labels: the leaf at every round and one more ancestor per round. So the Jaccard is
+  (4n−10)/(4n+10). That is 0.57 for a 9-node `return s.helper(ctx, text, "alert")`, and it first
+  reaches 0.8 at 23 nodes. Two differences never reach it under `ThinNodes`. A real Stop note once
+  listed two such 9-node wrappers as a new merge-worthy pair at code-shape 1.00, a week after they
+  had been consolidated. The guard was not the cause. The binary predated the snapshot `Kind` field
+  (schema 12), so `Notable` had no kind to read. The current build labels that pair `thin
+  wrappers` on the same tree. The pair read as *new* at all because the session had cherry-picked
+  the consolidating commits, and `baseMoved` did not yet read author dates, so it took them for
+  the session's own (see the hook contract).
+  `TestStopHookLeavesOutConsolidatedWrappers` pins the case through the hooks. It fails, with the
+  real note's lines, when the ceiling drops to 0.5.
 - **`different calls`** — distinct-callee Jaccard below `CallOverlapFloor` (0.25): a shared shape
   whose work is elsewhere. Two bodies that call nothing are not labelled.
 
