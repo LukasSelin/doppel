@@ -24,7 +24,13 @@ func TestMirror(t *testing.T) {
 		{methodUnit("a", "*T", "Encode"), methodUnit("b", "*T", "Decode"), false},         // different packages
 		{methodUnit("zarr", "*T", "EncodeBytes"), methodUnit("zarr", "*T", "DecodeArray"), false},
 		{methodUnit("zarr", "*T", "Get"), methodUnit("zarr", "*T", "GetRange"), false},
-		{parser.CodeUnit{Package: "p", Name: "encode"}, parser.CodeUnit{Package: "p", Name: "decode"}, false}, // plain functions
+		// Two plain functions in one package are a mirror on the same terms.
+		{funcUnit("p", "encode"), funcUnit("p", "decode"), true},
+		{funcUnit("convert", "ulimitsFromGRPC"), funcUnit("convert", "ulimitsToGRPC"), true},
+		{funcUnit("a", "encode"), funcUnit("b", "decode"), false},             // different packages
+		{funcUnit("p", "encode"), methodUnit("p", "*T", "decode"), false},     // a function beside a method
+		{funcUnit("p", "encodeHeader"), funcUnit("p", "decodeFooter"), false}, // two words differ
+		{funcUnit("p", "encode"), funcUnit("p", "encodeAll"), false},
 		// Lifecycle verbs: an operation and the one that undoes it.
 		{methodUnit("bridge", "*driver", "CreateEndpoint"), methodUnit("bridge", "*driver", "DeleteEndpoint"), true},
 		{methodUnit("plugin", "*pluginRouter", "pullPlugin"), methodUnit("plugin", "*pluginRouter", "pushPlugin"), true},
@@ -42,6 +48,11 @@ func TestMirror(t *testing.T) {
 	}
 	k := Mirror(methodUnit("zarr", "*S", "Read"), methodUnit("zarr", "*S", "Write"))
 	if k.Kind != KindMirror || k.Names[0] != "Read" || k.Names[1] != "Write" || k.Receivers[0] != "*S" {
+		t.Errorf("note = %+v", k)
+	}
+	// Two plain functions have no receiver to name; the package places them.
+	k = Mirror(funcUnit("codec", "encode"), funcUnit("codec", "decode"))
+	if k.Kind != KindMirror || len(k.Receivers) != 0 || k.Packages[0] != "codec" || k.Relation != RelationSamePackage {
 		t.Errorf("note = %+v", k)
 	}
 }

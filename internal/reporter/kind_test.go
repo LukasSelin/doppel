@@ -65,6 +65,30 @@ func TestSubsystemCopiesClause(t *testing.T) {
 	}
 }
 
+// A mirror is placed by its receiver when it has one and by its package when
+// the two sides are plain functions.
+func TestMirrorClause(t *testing.T) {
+	method := &analyzer.KindNote{
+		Kind: analyzer.KindMirror, Names: []string{"Encode", "Decode"}, Receivers: []string{"*Codec"},
+		Packages: []string{"zarr"}, Relation: analyzer.RelationSamePackage,
+	}
+	want := "mirror operations — Encode and Decode on *Codec are one operation run in opposite directions"
+	if got := KindClause(method); got != want {
+		t.Errorf("got  %q\nwant %q", got, want)
+	}
+	plain := &analyzer.KindNote{
+		Kind: analyzer.KindMirror, Names: []string{"ulimitsFromGRPC", "ulimitsToGRPC"},
+		Packages: []string{"convert"}, Relation: analyzer.RelationSamePackage,
+	}
+	want = "mirror operations — ulimitsFromGRPC and ulimitsToGRPC in package convert are one operation run in opposite directions"
+	if got := KindClause(plain); got != want {
+		t.Errorf("got  %q\nwant %q", got, want)
+	}
+	if got, want := kindClause(plain, false, true), "mirror operations — `ulimitsFromGRPC` and `ulimitsToGRPC` in package `convert` are one operation run in opposite directions"; got != want {
+		t.Errorf("markdown got  %q\nwant %q", got, want)
+	}
+}
+
 func TestPrintMarkdownKindNote(t *testing.T) {
 	p := samplePair(nil)
 	p.Kind = interfaceKind()

@@ -49,8 +49,8 @@ type KindNote struct {
 	Kind      string   // one of the Kind* constants
 	Method    string   // interface-impl: the shared method name; fork: the shared stem
 	Signature string   // interface-impl: the identical signature text
-	Receivers []string // interface-impl: the receiver types as written; mirror: the one receiver
-	Names     []string // fork: the differing unit names; mirror: the two method names
+	Receivers []string // interface-impl: the receiver types as written; mirror: the one receiver, empty for two plain functions
+	Names     []string // fork: the differing unit names; mirror: the two method or function names
 	Packages  []string // distinct package names, member order
 	Relation  string   // RelationSamePackage, RelationSiblings or RelationUnrelated
 	Shared    []string // thin wrappers: the resolved helpers both call, sorted

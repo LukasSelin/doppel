@@ -17,9 +17,10 @@ import (
 // and never a rank.
 //
 //   - mirror operations — Encode beside Decode, Get beside Delete, MinOver
-//     beside MaxOver, on one receiver. The bodies are alike because the
-//     operations are one idea run in opposite directions, which is a reason
-//     to keep them apart rather than to merge them.
+//     beside MaxOver, on one receiver, or two plain functions named that way
+//     in one package. The bodies are alike because the operations are one
+//     idea run in opposite directions, which is a reason to keep them apart
+//     rather than to merge them.
 //   - thin wrappers — two small bodies that already delegate to a shared
 //     helper and differ in the names they pass it. The consolidation a merge
 //     would buy has already happened; what is left is the call site.
@@ -161,10 +162,29 @@ func oppositeNames(a, b string) bool {
 	return ok
 }
 
-// Mirror labels two methods on one receiver type in one package whose names
-// are one operation and its opposite.
+// Mirror labels two units in one package whose names are one operation and
+// its opposite: two methods on one receiver type, or two plain functions.
+//
+// A method beside a plain function is never a mirror, and neither are methods
+// on two receivers: Encoder.Encode beside Decoder.Decode is two types' work,
+// which the interface and fork rules are there to read. The note's Receivers
+// is empty for two plain functions.
+//
+// The plain-function half came after the measurement in this file's header
+// and was checked a different way, because none of the pairs it names is
+// hand-labelled. Over the pinned ladder and this repository it newly names 63
+// compared pairs. Read one by one, 50 are an operation beside its inverse or
+// the two ends of one axis (ulimitsFromGRPC and ulimitsToGRPC, Enable and
+// Disable, funcMinOverTime and funcMaxOverTime). The other 13 are one verb
+// over two things with opposite names (NewGetRoute and NewDeleteRoute,
+// NewReadClient and NewWriteClient), which the word table cannot tell apart
+// from a direction. One of those, prometheus's DecodeReadRequest beside
+// DecodeWriteRequest, reads as a refactor a reviewer might want.
 func Mirror(a, b parser.CodeUnit) *KindNote {
-	if a.ReceiverType == "" || bareReceiver(a.ReceiverType) != bareReceiver(b.ReceiverType) {
+	if (a.ReceiverType == "") != (b.ReceiverType == "") {
+		return nil
+	}
+	if bareReceiver(a.ReceiverType) != bareReceiver(b.ReceiverType) {
 		return nil
 	}
 	if relation(a, b) != RelationSamePackage {
@@ -174,13 +194,16 @@ func Mirror(a, b parser.CodeUnit) *KindNote {
 	if !oppositeNames(ma, mb) {
 		return nil
 	}
-	return &KindNote{
-		Kind:      KindMirror,
-		Names:     []string{ma, mb},
-		Receivers: []string{a.ReceiverType},
-		Packages:  []string{a.Package},
-		Relation:  RelationSamePackage,
+	k := &KindNote{
+		Kind:     KindMirror,
+		Names:    []string{ma, mb},
+		Packages: []string{a.Package},
+		Relation: RelationSamePackage,
 	}
+	if a.ReceiverType != "" {
+		k.Receivers = []string{a.ReceiverType}
+	}
+	return k
 }
 
 // ThinWrappers labels two small bodies that call a shared repo-internal
