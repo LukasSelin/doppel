@@ -4321,6 +4321,25 @@ functions for exactly this reason, and the first version of them did not and fai
     a skeleton is. What would change the verdict is labels drawn independently of these thresholds.
     The three flags **shipped as pair kinds** instead (see *Pair kinds*); the test's `production:`
     rows score `analyzer.ClassifyPairIn` itself, so the kinds and the measurement cannot drift.
+  - `TestEmbedProbe` (guard `DOPPEL_BENCH_EMBED="<corpus>=<labels>[;…]"`) asks whether an embedding
+    doppel computes itself, with no model, would separate labelled merges from false positives. It
+    scores two readings of a body with its names kept beside the rank key, code-shape and the
+    lenses: `chain` (IDF-weighted cosine over token 1/2/3-grams of the body as written) and `dist`
+    (a dense embedding trained on the corpus by random indexing, mean-centred). The numbers are
+    AUC: the share of (true pair, false positive) combinations a signal orders correctly.
+    **Measured on doppel's own labels and on cobra, and not adopted.** On doppel (47 of 60 labels
+    still resolve: 8 merges, 30 false positives) every names-kept reading beats code-shape at
+    merge against false positive: vocab 0.93, verbatim 0.93, chain 0.94, dist 0.96, against shape
+    0.84 and the rank key 0.71. On its four mirror pairs the rank key reads 0.28 and shape 0.50,
+    against 0.88 for vocab and 0.91 for chain and dist. On cobra (6 merges, 2 false positives) the
+    lenses tie shape at 1.00 and the soft readings lose, chain 0.75 and dist 0.50, because
+    `Gt ↔ Eq` reads dist 0.99, above every labelled merge. A dense embedding puts opposite words
+    together: the median opposite pair (get/set, min/max, old/new) is closer than 93% of other
+    frequent words on both corpora. No level transfers either: cobra's `MarkFlags*` merges differ
+    in one constant and read vocab 0.65, where doppel's `oldMember ↔ newMember` mirror differs in
+    one field and reads 0.74. A token reading cannot tell a parameter from a purpose. Labels drawn
+    from the report's own top 60 flatter any signal the ranking did not use, and the samples are
+    small, so this is a direction. No pretrained model was run.
   - `TestCalleeDrift` (guard `DOPPEL_BENCH_CALLEEDRIFT=1`, `DOPPEL_BENCH_CALLEEDRIFT_EXTRA` for
     further roots; doppel's own tree is always measured) measures two candidate drift signals
     before either is a kind. **Substitution**: for each scored pair at code-shape ≥ 0.40, the
