@@ -84,7 +84,7 @@ broken-tool notice. Stages in execution order:
 6. **Candidate retrieval** — `retriever.Retrieve` runs three per-function top-K channels (WL-label IDF, concept IC, resolved-call IDF — see *Candidate retrieval* below), unions and dedupes them, and computes definitive per-pair evidence masses plus the exact `fingerprint.Breakdown` for every union pair. Retrieval stats go to stderr. `cmd` materializes the candidates into `analyzer.SimilarPair`s (with `Retrieval` set). `analyzer.FindSimilar` still exists as the simple library API but the pipeline no longer calls it.
 7. **Structural comparison** — a `comparator.Comparator` built over a corpus-weighted `ontology.Scorer` scores **every** candidate pair → `pair.Evidence`. Concept and role signals go through the ontology hierarchy, not string equality, and concept matching is weighted by information content computed from this run's tag counts — sharing a near-universal tag is weak evidence, sharing a rare one is strong.
 8. **Structural filter** — when `--struct-min > 0`, pairs below that overlap score are **dropped**. This is a selection stage, not just annotation.
-9. **Rank + report** — `analyzer.SortForReport` orders by corroborated evidence (`Total × OverlapScore × Score² × TrophicSim²`, then code-shape, then `AIdx`/`BIdx`), applies the `--max-per-func` diversity cap greedily with backfill, and truncates to `--top`. `reporter.Print` to stdout always; `--output` additionally writes markdown, or the dashboard when the path ends `.html`. Both take a `reporter.Meta`; `--debug` adds per-pair retrieval provenance.
+9. **Rank + report** — `analyzer.SortForReport` orders by corroborated evidence (`Total × OverlapScore × Score² × TrophicSim²`, then code-shape, then `AIdx`/`BIdx`), applies the `--max-per-func` diversity cap greedily with backfill, and truncates to `--top`. The text and markdown lists are first cut by `--non-merges` (default: leave out the kinds that say a pair is not a merge — see *Pair kinds*), before the cap, so a pair nobody is shown uses no quota. `reporter.Print` to stdout always; `--output` additionally writes markdown, or the dashboard when the path ends `.html`. Both take a `reporter.Meta`; `--debug` adds per-pair retrieval provenance.
 
 `docs[i]` describes `units[i]`, and `SimilarPair` carries `AIdx`/`BIdx` into that slice. Evidence
 attachment is a positional lookup, deliberately — an earlier version keyed it on
@@ -111,6 +111,7 @@ cmd/            CLI commands (Cobra).
   query.go      doppel query: check a proposed function (a snippet on stdin) against the corpus, locality-weighted
   verdict.go    doppel verdict: record what was done with a pair, and why, as a label in the main checkout's .doppel/verdicts.json
   decisions.go  analyze --decisions: every retrieved pair's fate and merge-verdict gates, as JSON for labelling
+  nonmerges.go  analyze --non-merges: which pairs the text and markdown lists show by kind, cut before the cap walk
   moves.go      doppel moves: functions only another package uses, the helpers that move along, and what blocks the move
   movestage.go  analyze's moves stage: the same analysis for the report, pinned to linux/amd64, offline, never fatal
   config.go     .doppel.json loading (AnalysisConfig), flag precedence, hookParams
@@ -137,7 +138,8 @@ internal/
                 wl.go is the WL label bag; wlexplain.go names its shallow labels for reports;
                 wlsource.go maps a label back to its nodes (LabelChains, the per-node label vectors; Outline, the hashed extent);
                 cons.go hash-conses the canonical forest; wlcodec.go encodes bags for the snapshot;
-                lens.go reads one tree under five lenses (skeleton, shape, ordered, vocab, verbatim) — measured only
+                lens.go reads one tree under five lenses (skeleton, shape, ordered, vocab, verbatim) — measured only,
+                except the vocab lens, which lensindex.go scores on every pair as the reported named-shape
   ontology/     The formal vocabulary: entity kinds, typed relations, concept taxonomy, roles, axioms;
                 vocabulary.go is the corpus-derived side table of what each learned concept is made of,
                 and the feature view of concept relatedness that reads it
@@ -276,6 +278,16 @@ near 1.0 on containment. It is reported on all four surfaces — text (`containm
 `--format json` (`Pair.Containment`), and the dashboard, where it sits in the pair's score row and
 as the sixth bar of the code-shape breakdown — and never enters ranking, filtering or
 `MergeWorthy`. See *Fingerprint scoring*.
+
+A **fourth**, `SimilarPair.NamedShape`, is the `wl` component read again with names kept: the
+corpus-weighted Jaccard of the two bodies' label bags when identifiers, selected names and literal
+values are part of a label (the vocab lens of `fingerprint/lens.go`, against that lens's own corpus
+weights). Two bodies with one structure over different fields, constants or types read high on `wl`
+and low here. It is on the same surfaces: `named-shape:` under `containment:` in text, markdown,
+`--format json` (`Pair.NamedShape`, `-1` when unmeasured), the decisions log, and the dashboard's
+score row, facts and sort options. A sentence follows the number when `wl >= 0.60` and named-shape
+sits `0.25` or more under it. See *Named-shape* under *Fingerprint scoring* for why it is reported
+and never ranked, and what it costs.
 
 The report is **ranked by neither alone**: `analyzer.SortForReport` orders by **corroborated
 evidence** — `Retrieval.Total × Evidence.OverlapScore × Score² × TrophicSim²`, with one further
@@ -942,8 +954,9 @@ profile ahead of parallelism in the optimisation order and found the `Explain` s
 - **SimilarPair** (`internal/analyzer/similarity.go`) — `AIdx`/`BIdx` into the run's `units`
   slice, `Score`,
   `Breakdown` (per-component code similarity), `Evidence` (**nil until the structural
-  comparison stage**), and `Retrieval` (**nil for `FindSimilar`-produced pairs** — set by the
-  pipeline from retriever candidates).
+  comparison stage**), `Retrieval` (**nil for `FindSimilar`-produced pairs** — set by the
+  pipeline from retriever candidates), and `NamedShape` with `HasNamedShape` (false on a pair
+  nothing measured it for, which is not a zero).
 - **StructuralEvidence** (`internal/comparator/comparator.go`) — the weighted overlap result.
 - **Candidate / Stats / Options** (`internal/retriever/retriever.go`) — one retrieved pair with
   per-channel evidence masses, the run's channel statistics, and the retrieval knobs (the df caps
@@ -1333,6 +1346,37 @@ before (AUC 0.42 either way). Removing a near-constant cannot reorder pairs; wha
 what the absolute floors mean.
 
 Snapshot `Schema` 15, dashboard payload `Schema` 5.
+
+**Named-shape is the same comparison with names kept, reported and never ranked.**
+`SimilarPair.NamedShape` is the vocab lens of `lens.go` — the canonical tree with identifiers,
+selected names and literal values in the labels — scored as the `wl` component is, a corpus-weighted
+multiset Jaccard, against weights counted over that lens's own bags. Bound identifiers are already
+positional on a canonical tree, so what it adds is the free vocabulary: fields, types, package
+qualifiers, constants. A pair at `wl` 1.00 and named-shape 0.65 is one structure over different
+names. That is what a mirror and a scaffold over two types look like, and it is equally what a body
+that could take the difference as a parameter looks like: cobra's `MarkFlags*` merges read 0.65 and
+doppel's `oldMember ↔ newMember` mirror 0.74. `TestEmbedProbe` measured that no names-kept reading
+tells the two apart and that no level transfers between corpora, which is why this is a number a
+reader weighs and no key, filter or verdict reads it. `namedShapeClause` adds a sentence when
+`wl >= 0.60` and named-shape sits `0.25` or more under it; like `containmentClause` it restates
+arithmetic printed on the same pair.
+
+`fingerprint.LensIndex` scores it (`lensindex.go`). A names-kept bag is mostly labels no second unit
+carries, and such a label can only ever count towards its own unit's mass. So the index keeps, per
+unit, that mass and the labels two or more units carry, as dense ids over one weight table.
+`Jaccard(a, b)` is bit for bit `WLOverlap` over the full bags under `LabelWeights` of those bags;
+`TestLensIndexMatchesOverlap` pins it, and `TestNamedShapeIsTheVocabLens` pins the pipeline's number
+to that reading on this tree. `analyze()` builds it beside `LabelKinds`, from the trees it is about
+to release: `analyzer.BuildVocab` reads every tree once, across cores, and the thin-wrappers kind
+takes its small bags from the same pass (`analyzer.ThinVocab`).
+
+Measured on moby (7 658 functions, 4 cores): about 0.22s of a 4.4s run, half the bags and half the
+index; live heap 216.0MB → 226.3MB at the end of the run under `DOPPEL_MEMSTATS`; 6% more
+allocation. The first form kept the 64-bit label and its weight on every row entry and retained
+27MB. **Runs that render no pair skip it** (`Params.NoNamedShape`): every hook, whose digests never
+showed the number, and `doppel families`. Their pairs carry none, a snapshot writes `-1`, and the
+run costs what it did. `--format json` and stderr are otherwise unchanged on all seven rungs.
+Snapshot `Schema` 16, dashboard payload `Schema` 6.
 
 **`doppel fingerprint` is how a score is checked by hand.** `doppel fingerprint <path> <fn>` prints
 what `Similarity` reads for one function — the flow and nesting histograms, the type set, the canon
@@ -1994,6 +2038,31 @@ sessions found agents sent back to pairs whose consolidation had already happene
 "different purpose" was the commonest reason agents gave for declining a note. The user's own
 digest keeps every pair, kind attached, because it costs no turn.
 
+**The text and markdown pair lists make the same cut by default**, as the dashboard's headline view
+always has. `analyze --non-merges include|exclude|only` (config key `non-merges`, default
+`exclude`; `cmd/nonmerges.go`) leaves the three `NotAMerge` kinds out of the list and says so in one
+sentence above it: how many pairs the list would otherwise have held, by kind, and how many rank
+below it (`reporter.NotListed`). `include` is the list as it was, and `only` is the complement, for
+reading what the default hides. Four rules hold it:
+
+- **It is cut before the cap walk** (`cutList`, then `SortForReport` over what is left), so a pair
+  nobody is shown uses up no `--max-per-func` quota and no `--top` slot.
+  `TestCutListComesBeforeTheCap` pins it.
+- **Still never a rank.** No key reads a kind. The pair was retrieved, compared and ranked like any
+  other, and the uncut ranking is what `--format json` prints and what the dashboard draws, under
+  every mode (`TestAnalyzeListLeavesOutNonMerges`). A snapshot consumer filters on `Pair.Kind`.
+- **Presentation, so not in `Params`**, like `--top` and `--families`. It cannot invalidate a
+  baseline, and hooks never see it.
+- **The decisions log follows the report.** A pair the list leaves out is logged with fate
+  `not-listed`, and the ranks are the report's own (`TestDecisionsFollowTheListCut`).
+
+Measured on the ladder and this tree: the default removes 0 to 3 pairs from each top 20 (this
+tree's two `identity` mirrors and a thin wrapper; cobra's three template setters; moby's two
+`networkdb` mirrors; hugo and prometheus none), and `--non-merges include` reproduces the previous
+report line for line. On the two label sets available it hides 8 of this tree's 29 resolvable
+labelled false positives and no labelled merge or refactor here or on cobra. A kind's rule reads
+names and call lists and can be wrong, so the sentence above the list is not optional.
+
 - **`interface implementations`** — both sides are methods with the same bare method name
   (`parser.MethodName`), the same `Signature` text, on different types (receiver names differ, or
   the same receiver name in different packages — moby's `ipvlan` and `macvlan` each implement
@@ -2026,9 +2095,9 @@ rules land where intended: hugo's `evalCall`/`evalField` pairs read `diverged co
 production form of a signal `TestKindLenses` measured, and each tried after the two above, in this
 order:
 
-- **`mirror operations`** — two methods on one receiver in one package whose names differ in exactly
-  one word, and that word is an opposite (`EncodeBytes`/`DecodeBytes`, `Get`/`Delete`,
-  `SuperClassesOf`/`SubClassesOf`). One idea run in opposite directions: a reason to keep two
+- **`mirror operations`** — two methods on one receiver, or two plain functions, in one package
+  whose names differ in exactly one word, and that word is an opposite (`EncodeBytes`/`DecodeBytes`,
+  `Get`/`Delete`, `SuperClassesOf`/`SubClassesOf`). One idea run in opposite directions: a reason to keep two
   functions, not to merge them. The opposite-word table is fixed, and a word must be whole —
   `Get`/`GetRange` is not a mirror. It also carries **lifecycle verbs**, an operation and the
   one that undoes it (`CreateEndpoint`/`DeleteEndpoint`, `Mount`/`Unmount`, `Join`/`Leave`,
@@ -2044,6 +2113,19 @@ order:
   read its own identity matcher's old-side/new-side helpers as a diverged copy until then. A name
   that *adds* the word (`evalCallOld`/`evalCall`) is still a fork; `isUnchanged`/`isUnchangedNew`
   is therefore still labelled one, because lexically it cannot be told apart from that case.
+
+  **Plain functions were added later, and checked differently.** The rule fired only for methods,
+  so `encodeHeader` beside `decodeHeader` got no kind: the fork rule already yielded and nothing
+  else named them. A method beside a function, and methods on two receivers, are still never a
+  mirror. Over the ladder and this tree the wider rule newly names 63 compared pairs (moby 36,
+  prometheus 14, hugo 9, gin 2, conc 1, doppel 1), none of them hand-labelled, so they were read
+  one by one. 50 are an operation beside its inverse or the two ends of one axis
+  (`ulimitsFromGRPC`/`ulimitsToGRPC`, `Enable`/`Disable`, `funcMinOverTime`/`funcMaxOverTime`). 13
+  are one verb over two things with opposite names (`NewGetRoute`/`NewDeleteRoute`,
+  `NewReadClient`/`NewWriteClient`), which the word table cannot tell from a direction; one of
+  them, prometheus's `DecodeReadRequest ↔ DecodeWriteRequest`, reads as a refactor a reviewer might
+  want. 7 of the 63 were `thin wrappers` before and 14 `different calls`; 42 had no kind. No score,
+  rank or pair set moved.
 - **`thin wrappers`** — both bodies at most `ThinNodes` (30) nodes, both call at least one shared
   resolved helper, and their vocab-lens bags (the canonical tree with names and literal values
   kept, `BuildThinVocab`) overlap below `ThinVocabCeiling` (0.8, uniform weights). The
@@ -2110,12 +2192,13 @@ needs, since the report answers "why is this here" only for the pairs it shows a
 why a pair is *not* there. It exists for labelling and changes nothing measured.
 
 Each record carries a **fate** — `reported` (with its rank), `capped` (with `cappedBy`, the
-function whose `--max-per-func` quota was full), `below-top`, `below-struct-min`,
+function whose `--max-per-func` quota was full), `below-top`, `not-listed` (left out of the list
+by `--non-merges`; the mode is in `operatingPoint.nonMerges`), `below-struct-min`,
 `cross-build-unit` (test against production, or two languages) or `cross-build-target` — and the
 merge verdict gate by gate, as `passed` and `blocked` sentences from `comparator.Verdict`: the
 overlap floor, the merge-signal count naming which of the five signals counted, and the
 code-shape floor. `blocked` is empty exactly when `mergeWorthy` is true. Beside them: the pair
-kind, code-shape, overlap, containment, trophic, retrieval mass, the rank key, the channels, the
+kind, code-shape, overlap, containment, named-shape, trophic, retrieval mass, the rank key, the channels, the
 evidence reasons and the explain sentence. Sides are `a`/`aFile` and `b`/`bFile` — qualified
 name and root-relative slash path, exactly the labels format — so a record becomes a label by
 adding `class` and `note`. Compared pairs come in report order (`position`), then the struct-min
@@ -2505,8 +2588,10 @@ never learns about `culture`, and `cmd` queries the model.
   and 3 → 4 for `Payload.Moves` (see *Moves* → *In the analyze report*), and 4 → 5 when
   `Edge.Breakdown`'s nesting and sig entries began reading -1 for a component one side's
   frontend could not measure. The case file draws that as "not measured", and shows the
-  renormalised weights beside the bars that were scored.
-- **The dashboard is not fed by `--format json`.** It has its own `dashboard.Payload` (`Schema` 5,
+  renormalised weights beside the bars that were scored. 5 → 6 added `Edge.NamedShape` (`-1`
+  when unmeasured): a cell in the case file's score row, a fact on a triage row, and a triage
+  sort option.
+- **The dashboard is not fed by `--format json`.** It has its own `dashboard.Payload` (`Schema` 6,
   independent of `snapshot.Schema`), marshalled by Go and inlined into the page at render time.
   That is worth knowing before assuming the snapshot and the page must agree: they share no type,
   and a field added to one reaches the other only if somebody adds it there too. It also means the
@@ -2800,6 +2885,7 @@ or the `languages` config key restores the old population exactly.
   "decisions": "doppel-decisions.json",
   "moves": true,
   "moves-share": 1,
+  "non-merges": "exclude",
   "hook-notify": "agent",
   "hook-probe": "off"
 }
@@ -2813,8 +2899,10 @@ top-K; `--debug` adds retrieval provenance lines to the report; `--max-per-func`
 final-report pairs any one function may appear in (0 disables); `--families` bounds the report's
 family section (0 removes it) and `--family-min` is the code-shape every two members of a family
 must reach; `--map-metric` (`merge-worthy` | `pairs` | `evidence`) picks what the markdown
-overview's package duplication map weighs an edge by, and `--moves` / `--moves-share` turn the
-functions-out-of-place section off or relax its share — all presentation, so none is in
+overview's package duplication map weighs an edge by, `--moves` / `--moves-share` turn the
+functions-out-of-place section off or relax its share, and `--non-merges`
+(`include` | `exclude` | `only`) decides whether the text and markdown lists show the pairs whose
+kind says they are not a merge — all presentation, so none is in
 `Params` and none can invalidate a baseline; `--languages` picks which
 frontends are read (defaulting to all of them) and is corpus-defining, so it travels in `Params`
 and in `snapshot.Params` and a run reading Go alone is correctly incomparable to one reading Go
@@ -3132,6 +3220,13 @@ to rewrite on every turn:
   out*). Go scores are bit-identical. Against a schema-14 baseline every non-Go pair would
   read as drifted by a session that never touched it.
 
+  **`Schema` 16 adds `Pair.NamedShape`**, a shape bump like 10's. It is an annotation in the sense
+  `Containment` is: reported, rounded to two decimals, never diffed (`TestDiffIgnoresNamedShape`),
+  and `-1` where the run did not measure it, which is every hook baseline. A schema-15 file has no
+  such field, and reading its absence as 0 would say two bodies share no named structure. The same
+  bump covers the mirror kind's wider reach: `Pair.Kind` keeps its shape, and which pairs carry
+  `mirror operations` does not.
+
   `Schema` 5 (shape line) was the same kind of bump as 3, one step further: `Pair.Score` changed metric (token shingles → corpus-weighted WL
   Jaccard) *and* became corpus-relative, so a schema-4 baseline and a schema-5 run would disagree
   about pairs nobody edited. It also added `Containment`, which earns its bytes the way rule four
@@ -3221,6 +3316,10 @@ reason rather than returning a partial delta.
   `StructMin` zero is how it says so. It is not a half-calibrated run — there is no overlap gate
   at all, and the recorded `StructMin` is 0, so two runs still agree exactly when they measured
   the same thing.
+
+  `hookParams` also sets `NoNamedShape`: no digest shows a pair's named-shape, so no hook builds
+  the index behind it, and a hook run costs what it did before the number existed
+  (`TestHookParamsSkipNamedShape`). It is not in `snapshot.Params`, like `Debug`.
 - `session-start` emits `additionalContext` (the corpus concept inventory — deliberately only
   what is session-stable: concept member counts, the seeds this corpus grew no practice for, roles,
   one pair-count line; per-target findings live in the two hooks below, where a target exists) and writes the baseline **only if one does
@@ -4340,6 +4439,27 @@ functions for exactly this reason, and the first version of them did not and fai
     a skeleton is. What would change the verdict is labels drawn independently of these thresholds.
     The three flags **shipped as pair kinds** instead (see *Pair kinds*); the test's `production:`
     rows score `analyzer.ClassifyPairIn` itself, so the kinds and the measurement cannot drift.
+  - `TestEmbedProbe` (guard `DOPPEL_BENCH_EMBED="<corpus>=<labels>[;…]"`) asks whether an embedding
+    doppel computes itself, with no model, would separate labelled merges from false positives. It
+    scores two readings of a body with its names kept beside the rank key, code-shape and the
+    lenses: `chain` (IDF-weighted cosine over token 1/2/3-grams of the body as written) and `dist`
+    (a dense embedding trained on the corpus by random indexing, mean-centred). The numbers are
+    AUC: the share of (true pair, false positive) combinations a signal orders correctly.
+    **Measured on doppel's own labels and on cobra, and not adopted.** On doppel (47 of 60 labels
+    still resolve: 8 merges, 30 false positives) every names-kept reading beats code-shape at
+    merge against false positive: vocab 0.93, verbatim 0.93, chain 0.94, dist 0.96, against shape
+    0.84 and the rank key 0.71. On its four mirror pairs the rank key reads 0.28 and shape 0.50,
+    against 0.88 for vocab and 0.91 for chain and dist. On cobra (6 merges, 2 false positives) the
+    lenses tie shape at 1.00 and the soft readings lose, chain 0.75 and dist 0.50, because
+    `Gt ↔ Eq` reads dist 0.99, above every labelled merge. A dense embedding puts opposite words
+    together: the median opposite pair (get/set, min/max, old/new) is closer than 93% of other
+    frequent words on both corpora. No level transfers either: cobra's `MarkFlags*` merges differ
+    in one constant and read vocab 0.65, where doppel's `oldMember ↔ newMember` mirror differs in
+    one field and reads 0.74. A token reading cannot tell a parameter from a purpose. Labels drawn
+    from the report's own top 60 flatter any signal the ranking did not use, and the samples are
+    small, so this is a direction. No pretrained model was run. What followed from it: the vocab
+    lens is now reported on every pair as named-shape and ranks nothing (see *Fingerprint
+    scoring*), and the mirror kind names plain functions (see *Pair kinds*).
   - `TestCalleeDrift` (guard `DOPPEL_BENCH_CALLEEDRIFT=1`, `DOPPEL_BENCH_CALLEEDRIFT_EXTRA` for
     further roots; doppel's own tree is always measured) measures two candidate drift signals
     before either is a kind. **Substitution**: for each scored pair at code-shape ≥ 0.40, the
@@ -4826,6 +4946,23 @@ Known traps, documented so they aren't rediscovered. None are fixed:
   one level (`a.b.c.Do` records `c.Do`, never `b.c`), and the tag remains deliberately not
   import-based (servers import `net/http` too).
 
+- **The default list cut is only as right as the three kinds behind it.** `--non-merges exclude`
+  leaves out every pair `mirror operations`, `thin wrappers` or `different calls` names, and each
+  of those rules reads names and call lists. `different calls` is by far the widest (callee Jaccard
+  under 0.25: from a seventh of the scored pairs on chi to three quarters on conc, and about half
+  on hugo, prometheus and moby) and the one most able to hide a real copy whose two sides happen to
+  call different helpers. Nearly all of those pairs rank below any list: across the eight top 20s
+  it displaced four, one on chi and three on conc.
+  Measured, the default removes 0 to 3 pairs from a top 20 and no labelled merge or refactor on the
+  two label sets available here, which are small. The private label sets that measured the kinds
+  as a ranking discount were not re-run against the cut. The sentence above the list, `--non-merges
+  only` and the uncut JSON are what keep a wrong call visible.
+- **The mirror kind cannot tell a direction from a type.** Its word table matches `read`/`write`
+  and `get`/`delete` wherever they are the one differing word, so `NewReadClient ↔ NewWriteClient`
+  and `NewGetRoute ↔ NewDeleteRoute` read as one operation run backwards. 13 of the 63 pairs the
+  plain-function half newly names are of that sort. They are mostly not merges either, but the
+  sentence the kind prints about them is wrong, and one (prometheus's two request decoders) is a
+  plausible refactor the default list no longer shows.
 - **Interface implementations are labeled, not filtered.** Methods satisfying a shared interface
   across sibling packages — a `Validate` per provider — are near-identical by construction and
   unactionable, and on a wide corpus they still crowd the list. The `interface implementations`

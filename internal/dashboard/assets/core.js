@@ -338,9 +338,9 @@ var DOPPEL = (function () {
   }
 
   function start() {
-    if (DATA.schema !== 5) {
+    if (DATA.schema !== 6) {
       document.querySelector(".screens").textContent =
-        "This page's scripts expect payload schema 5 and received " + DATA.schema + ". Re-run doppel with a matching build.";
+        "This page's scripts expect payload schema 6 and received " + DATA.schema + ". Re-run doppel with a matching build.";
       return;
     }
     renderOperatingPoint();

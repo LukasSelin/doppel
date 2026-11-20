@@ -40,6 +40,23 @@ type SimilarPair struct {
 	// has not annotated; like every other note on this struct it never
 	// reaches a score, a ranking key or a filter.
 	Explain string
+
+	// NamedShape is the code-shape score's wl component read with names kept:
+	// the corpus-weighted Jaccard of the two bodies' label bags when
+	// identifiers, selected names and literal values are part of a label
+	// (fingerprint's vocab lens, scored by a fingerprint.LensIndex against
+	// that lens's own corpus weights). Two bodies with one shape over
+	// different fields, constants or types read high on wl and low here.
+	//
+	// It is reported beside Score and never blended into it, and like
+	// Containment it reaches no ranking key, filter or merge verdict: the
+	// number cannot tell a difference that is a parameter from one that is
+	// the point (see bench's TestEmbedProbe), so it is a reader's evidence
+	// and not a rule's. HasNamedShape is false on a pair nothing measured it
+	// for — FindSimilar's, or a run that built no index — and the number then
+	// means nothing: an unmeasured reading is not a zero.
+	NamedShape    float64
+	HasNamedShape bool
 }
 
 // MergeWorthy is the whole merge verdict, and SimilarPair is the only type

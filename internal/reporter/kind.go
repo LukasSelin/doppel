@@ -35,7 +35,13 @@ func kindClause(k *analyzer.KindNote, family bool, md bool) string {
 		}
 		return fmt.Sprintf("%s — %s share the stem %s %s", k.Kind, joinAnd(k.Names, code), code(k.Method), where)
 	case analyzer.KindMirror:
-		return fmt.Sprintf("%s — %s on %s are one operation run in opposite directions", k.Kind, joinAnd(k.Names, code), code(k.Receivers[0]))
+		// Two methods are placed by their receiver, two plain functions by
+		// their package.
+		on := where
+		if len(k.Receivers) > 0 {
+			on = "on " + code(k.Receivers[0])
+		}
+		return fmt.Sprintf("%s — %s %s are one operation run in opposite directions", k.Kind, joinAnd(k.Names, code), on)
 	case analyzer.KindThinWrappers:
 		return fmt.Sprintf("%s — both are small bodies delegating to %s and naming different things, %s", k.Kind, joinAnd(k.Shared, code), where)
 	case analyzer.KindSubsystemCopies:

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/LukasSelin/doppel/internal/fingerprint"
+	"github.com/LukasSelin/doppel/internal/parallel"
 	"github.com/LukasSelin/doppel/internal/parser"
 )
 
@@ -17,9 +18,10 @@ import (
 // and never a rank.
 //
 //   - mirror operations — Encode beside Decode, Get beside Delete, MinOver
-//     beside MaxOver, on one receiver. The bodies are alike because the
-//     operations are one idea run in opposite directions, which is a reason
-//     to keep them apart rather than to merge them.
+//     beside MaxOver, on one receiver, or two plain functions named that way
+//     in one package. The bodies are alike because the operations are one
+//     idea run in opposite directions, which is a reason to keep them apart
+//     rather than to merge them.
 //   - thin wrappers — two small bodies that already delegate to a shared
 //     helper and differ in the names they pass it. The consolidation a merge
 //     would buy has already happened; what is left is the call site.
@@ -33,12 +35,26 @@ const (
 
 // NotAMerge reports whether kind is one of the three above: a kind that says
 // the pair is something other than a merge. The dashboard's headline view
-// hides the same three (core.js KINDS), and the agent-facing hook digests
-// leave them out, because a note naming a pair whose consolidation already
-// happened sends the agent back to work that is done. Everywhere else a kind
-// still only annotates.
+// hides the same three (core.js KINDS), the agent-facing hook digests leave
+// them out, because a note naming a pair whose consolidation already
+// happened sends the agent back to work that is done, and the text and
+// markdown pair lists leave them out by default and say how many
+// (`analyze --non-merges`). Those are all a reader's default and none is a
+// rank: --format json and the dashboard payload carry every pair, kind
+// attached.
 func NotAMerge(kind string) bool {
-	return kind == KindMirror || kind == KindThinWrappers || kind == KindDifferentCalls
+	return slices.Contains(nonMergeKinds[:], kind)
+}
+
+// nonMergeKinds are the kinds NotAMerge answers true for, in the order
+// ClassifyPairIn tries them.
+var nonMergeKinds = [...]string{KindMirror, KindThinWrappers, KindDifferentCalls}
+
+// NonMergeKinds lists the kinds that say a pair is something other than a
+// merge, in a fixed order, for a surface that counts what it left out by
+// kind. A fresh slice each call.
+func NonMergeKinds() []string {
+	return slices.Clone(nonMergeKinds[:])
 }
 
 // The thresholds the measurement set. ThinNodes bounds "small" on the
@@ -161,10 +177,29 @@ func oppositeNames(a, b string) bool {
 	return ok
 }
 
-// Mirror labels two methods on one receiver type in one package whose names
-// are one operation and its opposite.
+// Mirror labels two units in one package whose names are one operation and
+// its opposite: two methods on one receiver type, or two plain functions.
+//
+// A method beside a plain function is never a mirror, and neither are methods
+// on two receivers: Encoder.Encode beside Decoder.Decode is two types' work,
+// which the interface and fork rules are there to read. The note's Receivers
+// is empty for two plain functions.
+//
+// The plain-function half came after the measurement in this file's header
+// and was checked a different way, because none of the pairs it names is
+// hand-labelled. Over the pinned ladder and this repository it newly names 63
+// compared pairs. Read one by one, 50 are an operation beside its inverse or
+// the two ends of one axis (ulimitsFromGRPC and ulimitsToGRPC, Enable and
+// Disable, funcMinOverTime and funcMaxOverTime). The other 13 are one verb
+// over two things with opposite names (NewGetRoute and NewDeleteRoute,
+// NewReadClient and NewWriteClient), which the word table cannot tell apart
+// from a direction. One of those, prometheus's DecodeReadRequest beside
+// DecodeWriteRequest, reads as a refactor a reviewer might want.
 func Mirror(a, b parser.CodeUnit) *KindNote {
-	if a.ReceiverType == "" || bareReceiver(a.ReceiverType) != bareReceiver(b.ReceiverType) {
+	if (a.ReceiverType == "") != (b.ReceiverType == "") {
+		return nil
+	}
+	if bareReceiver(a.ReceiverType) != bareReceiver(b.ReceiverType) {
 		return nil
 	}
 	if relation(a, b) != RelationSamePackage {
@@ -174,13 +209,16 @@ func Mirror(a, b parser.CodeUnit) *KindNote {
 	if !oppositeNames(ma, mb) {
 		return nil
 	}
-	return &KindNote{
-		Kind:      KindMirror,
-		Names:     []string{ma, mb},
-		Receivers: []string{a.ReceiverType},
-		Packages:  []string{a.Package},
-		Relation:  RelationSamePackage,
+	k := &KindNote{
+		Kind:     KindMirror,
+		Names:    []string{ma, mb},
+		Packages: []string{a.Package},
+		Relation: RelationSamePackage,
 	}
+	if a.ReceiverType != "" {
+		k.Receivers = []string{a.ReceiverType}
+	}
+	return k
 }
 
 // ThinWrappers labels two small bodies that call a shared repo-internal
@@ -251,6 +289,22 @@ func distinctSorted(xs []string) []string {
 	return slices.Compact(out)
 }
 
+// vocabBag is one unit's vocab-lens bag: its canonical tree read with
+// identifiers, selected names and literal values kept. nil for a unit whose
+// tree is absent or already released.
+func vocabBag(u parser.CodeUnit) []fingerprint.LabelCount {
+	if u.Canonical == nil {
+		return nil
+	}
+	return fingerprint.WLBagWith(u.Canonical, fingerprint.WLOptions{KeepNames: true})
+}
+
+// isThin reports whether a unit is small enough to be one side of a thin
+// wrapper.
+func isThin(u parser.CodeUnit) bool {
+	return u.Fingerprint.Nodes > 0 && u.Fingerprint.Nodes <= ThinNodes
+}
+
 // BuildThinVocab is each unit's vocab-lens bag — the canonical tree with
 // names and literal values kept — for units small enough to be a thin
 // wrapper, and nil for every other unit. It reads CodeUnit.Canonical, so it
@@ -258,10 +312,45 @@ func distinctSorted(xs []string) []string {
 func BuildThinVocab(units []parser.CodeUnit) [][]fingerprint.LabelCount {
 	out := make([][]fingerprint.LabelCount, len(units))
 	for i, u := range units {
-		if u.Canonical == nil || u.Fingerprint.Nodes == 0 || u.Fingerprint.Nodes > ThinNodes {
-			continue
+		if isThin(u) {
+			out[i] = vocabBag(u)
 		}
-		out[i] = fingerprint.WLBagWith(u.Canonical, fingerprint.WLOptions{KeepNames: true})
+	}
+	return out
+}
+
+// BuildVocab is every unit's vocab-lens bag, in unit order — what the
+// named-shape number on a pair is scored from (fingerprint.NewLensIndex).
+// Like BuildThinVocab it reads CodeUnit.Canonical and must run before the
+// trees are released. A caller that wants both builds this once and takes
+// the thin bags from it with ThinVocab, so no tree is read twice.
+//
+// Built across cores: each bag is a pure function of its own unit and lands
+// at its own index, so the scheduler cannot be observed in the result.
+func BuildVocab(units []parser.CodeUnit) [][]fingerprint.LabelCount {
+	out := make([][]fingerprint.LabelCount, len(units))
+	parallel.Blocks(len(units), vocabBlock, minUnitsPerVocabWorker, func(i int) {
+		out[i] = vocabBag(units[i])
+	})
+	return out
+}
+
+// The fan-out's shape, as the other per-unit loops size theirs: a block small
+// enough that an unusually large function strands nobody, and a floor that
+// keeps a small corpus sequential.
+const (
+	vocabBlock             = 32
+	minUnitsPerVocabWorker = 256
+)
+
+// ThinVocab is BuildThinVocab taken from bags BuildVocab already built: the
+// bags of the units small enough to be a thin wrapper, nil for the rest.
+func ThinVocab(units []parser.CodeUnit, bags [][]fingerprint.LabelCount) [][]fingerprint.LabelCount {
+	out := make([][]fingerprint.LabelCount, len(units))
+	for i, u := range units {
+		if i < len(bags) && isThin(u) {
+			out[i] = bags[i]
+		}
 	}
 	return out
 }

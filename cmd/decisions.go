@@ -15,8 +15,9 @@ import (
 
 // decisionsLog is `analyze --decisions`: every pair retrieval proposed, and
 // what the pipeline did with it — reported, capped by --max-per-func, ranked
-// past --top, dropped under --struct-min, or dropped as two build units —
-// with each gate of the merge verdict stated as passed or blocked.
+// past --top, left out of the list by --non-merges, dropped under
+// --struct-min, or dropped as two build units — with each gate of the merge
+// verdict stated as passed or blocked.
 //
 // It exists for labelling. A golden review judges pairs one at a time, and the
 // question it keeps asking is why a pair is (or is not) where it is; the report
@@ -43,7 +44,17 @@ type decisionsPoint struct {
 	Calibrate  float64 `json:"calibrate"`
 	Top        int     `json:"top"`
 	MaxPerFunc int     `json:"maxPerFunc"`
+	// NonMerges is the --non-merges mode the report list was cut under:
+	// which pairs could be reported at all.
+	NonMerges string `json:"nonMerges"`
 }
+
+// fateNotListed is a compared pair the report list leaves out because of its
+// kind (--non-merges): the default leaves out the kinds that say a pair is
+// not a merge, and `only` leaves out everything else. Such a pair has a
+// position in the ranking and no rank in the report, and it used up no
+// --max-per-func quota.
+const fateNotListed = "not-listed"
 
 // decisionsCounts is how many pairs met each fate, every count always emitted.
 type decisionsCounts struct {
@@ -51,6 +62,7 @@ type decisionsCounts struct {
 	Reported       int `json:"reported"`
 	Capped         int `json:"capped"`
 	BelowTop       int `json:"belowTop"`
+	NotListed      int `json:"notListed"`
 	BelowStructMin int `json:"belowStructMin"`
 	CrossBuildUnit int `json:"crossBuildUnit"`
 	CrossTarget    int `json:"crossBuildTarget"`
@@ -66,7 +78,8 @@ type decision struct {
 	BFile string `json:"bFile"`
 	BLine int    `json:"bLine"`
 
-	// Fate is one of analyzer.Fate* or one of the pipeline's drop reasons.
+	// Fate is one of analyzer.Fate*, fateNotListed, or one of the pipeline's
+	// drop reasons.
 	Fate string `json:"fate"`
 	// Rank is a reported pair's report position. Position is the pair's place
 	// in the ranked order of every pair that survived filtering — the number
@@ -87,6 +100,7 @@ type decision struct {
 	CodeShape   float64  `json:"codeShape"`
 	Overlap     *float64 `json:"overlap,omitempty"`
 	Containment float64  `json:"containment"`
+	NamedShape  *float64 `json:"namedShape,omitempty"` // absent when the run did not measure it
 	Trophic     float64  `json:"trophic"`
 	Mass        float64  `json:"mass"`
 	RankKey     float64  `json:"rankKey"`
@@ -97,8 +111,11 @@ type decision struct {
 
 // buildDecisions assembles the log. sorted must be res.Pairs after
 // SortForReport, which sorts it in place, so analyzer.Place walks exactly the
-// order the report was cut from.
-func buildDecisions(res *Result, sorted []analyzer.SimilarPair, topN, maxPerFunc int) decisionsLog {
+// order the report was cut from. listMode is the --non-merges mode: the
+// pairs it leaves out are logged as not listed, and the rest are placed by
+// the same cut-then-walk runAnalyze prints from (cutList, then the cap), so
+// the log and the report cannot disagree about a rank or a suppression.
+func buildDecisions(res *Result, sorted []analyzer.SimilarPair, topN, maxPerFunc int, listMode string) decisionsLog {
 	log := decisionsLog{
 		Doppel: buildVersion(),
 		Point: decisionsPoint{
@@ -107,12 +124,26 @@ func buildDecisions(res *Result, sorted []analyzer.SimilarPair, topN, maxPerFunc
 			Calibrate:  res.Params.Calibrate,
 			Top:        topN,
 			MaxPerFunc: maxPerFunc,
+			NonMerges:  listMode,
 		},
 	}
 	ro := analyzer.DefaultRankOptions()
 
-	for i, pl := range analyzer.Place(sorted, topN, maxPerFunc) {
-		d := newDecision(res, sorted[i], pl.Fate, ro)
+	// cutList keeps the order it is given, so the listed pairs' placements
+	// line up with the listed pairs of sorted, in order.
+	visible, _ := cutList(sorted, listMode)
+	placed := analyzer.Place(visible, topN, maxPerFunc)
+	next := 0
+	for i, p := range sorted {
+		if !listShows(p, listMode) {
+			d := newDecision(res, p, fateNotListed, ro)
+			d.Position = i + 1
+			log.Pairs = append(log.Pairs, d)
+			continue
+		}
+		pl := placed[next]
+		next++
+		d := newDecision(res, p, pl.Fate, ro)
 		d.Rank = pl.Rank
 		d.Position = i + 1
 		if pl.CappedBy >= 0 {
@@ -169,6 +200,8 @@ func buildDecisions(res *Result, sorted []analyzer.SimilarPair, topN, maxPerFunc
 			c.Capped++
 		case analyzer.FateBelowTop:
 			c.BelowTop++
+		case fateNotListed:
+			c.NotListed++
 		case dropBelowStructMin:
 			c.BelowStructMin++
 		case dropCrossBuildUnit:
@@ -194,6 +227,10 @@ func newDecision(res *Result, p analyzer.SimilarPair, fate string, ro analyzer.R
 		Containment: round4(p.Breakdown.Containment),
 		RankKey:     round4(analyzer.RankKey(p, ro, res.Units)),
 		Explain:     p.Explain,
+	}
+	if p.HasNamedShape {
+		n := round4(p.NamedShape)
+		d.NamedShape = &n
 	}
 	if p.Retrieval != nil {
 		d.Trophic = round4(p.Retrieval.TrophicSim)
@@ -224,7 +261,7 @@ func writeDecisions(path string, log decisionsLog, progress io.Writer) error {
 		return fmt.Errorf("write decisions: %w", err)
 	}
 	c := log.Counts
-	fmt.Fprintf(progress, "Decisions written to %s (%d pairs: %d reported, %d capped, %d below top, %d below struct-min, %d cross build-unit, %d cross build-target; %d merge-worthy)\n",
-		path, c.Retrieved, c.Reported, c.Capped, c.BelowTop, c.BelowStructMin, c.CrossBuildUnit, c.CrossTarget, c.MergeWorthy)
+	fmt.Fprintf(progress, "Decisions written to %s (%d pairs: %d reported, %d capped, %d below top, %d not listed, %d below struct-min, %d cross build-unit, %d cross build-target; %d merge-worthy)\n",
+		path, c.Retrieved, c.Reported, c.Capped, c.BelowTop, c.NotListed, c.BelowStructMin, c.CrossBuildUnit, c.CrossTarget, c.MergeWorthy)
 	return nil
 }

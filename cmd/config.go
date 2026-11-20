@@ -37,6 +37,7 @@ type AnalysisConfig struct {
 	Decisions  *string   `json:"decisions,omitempty"`
 	Moves      *bool     `json:"moves,omitempty"`
 	MovesShare *float64  `json:"moves-share,omitempty"`
+	NonMerges  *string   `json:"non-merges,omitempty"`
 	HookNotify *string   `json:"hook-notify,omitempty"`
 	HookProbe  *string   `json:"hook-probe,omitempty"`
 }
@@ -256,6 +257,9 @@ func applyConfig(cmd *cobra.Command, cfg *AnalysisConfig) {
 	if cfg.MovesShare != nil {
 		set("moves-share", strconv.FormatFloat(*cfg.MovesShare, 'f', -1, 64))
 	}
+	if cfg.NonMerges != nil {
+		set("non-merges", *cfg.NonMerges)
+	}
 }
 
 // hookParams derives the run parameters for a hook run from the repo's config.
@@ -282,6 +286,8 @@ func hookParams(root string) (Params, error) {
 		StructMin:       0,
 		NoOverlapFilter: true,
 		Calibrate:       defaultCalibrateRate,
+		// No hook digest shows a pair's named-shape, so no hook pays for it.
+		NoNamedShape: true,
 	}
 	cfg, err := loadConfig(filepath.Join(root, ".doppel.json"))
 	if err != nil {

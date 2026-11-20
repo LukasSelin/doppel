@@ -9,7 +9,7 @@ monitoring system; storage engine, query language, and scrape pipeline in one tr
 | Corpus | [prometheus](https://github.com/prometheus/prometheus) |
 | Pinned at | `v3.14.0` (`d7598b7141418fa35be2b5ec5d0fefb634199610`) |
 | Project since | 2012 |
-| doppel | `4416200` |
+| doppel | `d3131e7` |
 | Command | `doppel analyze . --tests exclude --moves=false --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -811,6 +811,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
+_Not listed: 6061 of 12994 scored pairs, which doppel reads as something other than a merge; none would have ranked here. `--non-merges include` lists every pair._
+
 ## Match #1 — Code-shape: `0.9176`
 
 | | Location | Function | Signature | Concepts |
@@ -827,6 +829,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 0.86  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `0.93`
+
+**Named shape:** `0.74`
 
 **Evidence:** `1249.60` (shape 1192.64, concept 1.93, call 55.03)
 
@@ -874,6 +878,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
 
 **Containment:** `1.00`
+
+**Named shape:** `0.85`
 
 **Evidence:** `1037.34` (shape 1004.43, concept 7.36, call 25.55)
 
@@ -923,6 +929,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.86`
 
+**Named shape:** `0.42`
+
 **Evidence:** `2064.69` (shape 2033.09, concept 3.97, call 27.62)
 
 **Trophic:** `0.88`
@@ -971,6 +979,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.93`
 
+**Named shape:** `0.73`
+
 **Evidence:** `1211.37` (shape 1119.14, concept 6.76, call 85.47)
 
 **Trophic:** `0.98`
@@ -1013,6 +1023,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 0.33  size 1.00`
 
 **Containment:** `1.00`
+
+**Named shape:** `1.00`
 
 **Evidence:** `1277.17` (shape 1277.17, concept 0.00, call 0.00)
 
@@ -1058,6 +1070,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.90`
 
+**Named shape:** `0.50`
+
 **Evidence:** `3198.60` (shape 3198.23, concept 0.37, call 0.00)
 
 **Trophic:** `0.89`
@@ -1099,6 +1113,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 0.87  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `0.93`
+
+**Named shape:** `0.73`
 
 **Evidence:** `1211.33` (shape 1119.14, concept 6.72, call 85.47)
 
@@ -1147,6 +1163,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.93`
 
+**Named shape:** `0.73`
+
 **Evidence:** `1211.33` (shape 1119.14, concept 6.72, call 85.47)
 
 **Trophic:** `0.98`
@@ -1189,6 +1207,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 0.90  flow 1.00  nesting 1.00  sig 0.50  size 0.99`
 
 **Containment:** `0.95`
+
+**Named shape:** `0.91`
 
 **Evidence:** `1541.68` (shape 1534.43, concept 0.00, call 7.25)
 
@@ -1233,6 +1253,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 0.59  flow 1.00  nesting 0.99  sig 1.00  size 0.91`
 
 **Containment:** `0.79`
+
+**Named shape:** `0.56`
 
 **Evidence:** `3413.24` (shape 3302.54, concept 0.00, call 110.70)
 

@@ -9,7 +9,7 @@ container engine; a decade of accretion across daemon, API, and plugin layers
 | Corpus | [moby](https://github.com/moby/moby) |
 | Pinned at | `v28.5.2` (`89c5e8fd66634b6128fc4c0e6f1236e2540e46e0`) |
 | Project since | 2013 |
-| doppel | `e4c2a00` |
+| doppel | `d3131e7` |
 | Command | `doppel analyze . --tests exclude --moves=false --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -931,6 +931,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
+_Not listed: 1 pair that would have ranked here (mirror operations 1) and 11236 below it, which doppel reads as something other than a merge. `--non-merges include` lists every pair._
+
 ## Match #1 — Code-shape: `0.9129`
 
 | | Location | Function | Signature | Concepts |
@@ -947,6 +949,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 0.85  flow 1.00  nesting 1.00  sig 1.00  size 0.99`
 
 **Containment:** `0.93`
+
+**Named shape:** `0.78`
 
 **Evidence:** `1160.07` (shape 1112.85, concept 2.84, call 44.39)
 
@@ -988,6 +992,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 0.94  flow 1.00  nesting 1.00  sig n/a  size 0.98`
 
 **Containment:** `0.98`
+
+**Named shape:** `0.93`
 
 **Evidence:** `1165.45` (shape 1158.59, concept 0.00, call 6.86)
 
@@ -1032,6 +1038,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `1.00`
+
+**Named shape:** `0.75`
 
 **Evidence:** `690.28` (shape 669.26, concept 2.60, call 18.42)
 
@@ -1079,6 +1087,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.92`
 
+**Named shape:** `0.56` — the structure matches more than the names and values in it
+
 **Evidence:** `883.19` (shape 869.19, concept 3.63, call 10.37)
 
 **Trophic:** `1.00`
@@ -1106,54 +1116,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #5 — Code-shape: `0.9132`
-
-| | Location | Function | Signature | Concepts |
-|---|---|---|---|---|
-| **A** | `libnetwork/networkdb/networkdbdiagnostic.go:308` | `networkdb.*NetworkDB.dbJoinNetwork` | `(http.ResponseWriter, *http.Request)` | ctr.terminateInvoked+diagnostic.TableObj 0.69 |
-| **B** | `libnetwork/networkdb/networkdbdiagnostic.go:340` | `networkdb.*NetworkDB.dbLeaveNetwork` | `(http.ResponseWriter, *http.Request)` | ctr.terminateInvoked+diagnostic.TableObj 0.69 |
-
-**Kind:** mirror operations — `dbJoinNetwork` and `dbLeaveNetwork` on `*NetworkDB` are one operation run in opposite directions
-
-**Explain:** differs by two extra call
-
-**Profile A:** `ctr.terminateInvoked+diagnostic.TableObj` 1.00 (dominance)
-
-**Profile B:** `ctr.terminateInvoked+diagnostic.TableObj` 1.00 (dominance)
-
-**Code similarity:** `wl 0.86  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
-
-**Containment:** `0.92`
-
-**Evidence:** `717.48` (shape 670.16, concept 2.93, call 44.39)
-
-**Trophic:** `0.99`
-
-**Shared structure:**
-
-- `18.14` — `depth-1 EXPRSTMT` ×3
-- `17.34` — `depth-0 CALL` ×3
-- `11.81` — `depth-3 CALL` ×2
-
-**Concept views:** shape `1.00`, corpus `1.00`, feature `1.00`, a-in-b `1.00`, b-in-a `1.00`
-
-**Shared vocabulary:** `call:loggertest.makeTestMessages`, `call:loggertest.readAll`, `call:overlayutils.NeedsUserXAttr`
-
-**Structural overlap:** `0.79` (merge-worthy)
-
-- share 18 callees: [Error, String, WithFields, caller.Name, context.TODO, diagnostic.CommandSucceed, diagnostic.DebugHTTPForm, diagnostic.FailCommand, diagnostic.HTTPReply, diagnostic.ParseHTTPFormOptions, diagnostic.WrongCommand, fmt.Sprintf, len, log.G, logger.Error, logger.Info, logger.WithError, r.ParseForm]
-- overlapping call-graph neighborhoods (0.84): 27 shared
-- share patterns: [ctr.terminateInvoked+diagnostic.TableObj]
-- both are orchestrator functions
-- same package
-- callees do related work (0.99): [log.FatalLevel+log.PanicLevel, c.newNS+unix.Gettid, stats+bufio, fmt.Fprint+os.Exit, fmt.Fprintln+fmt.Fprintf, c.Name+log.Fields, ctr.terminateInvoked+diagnostic.TableObj, Config.OpenStdin+Config.StdinOnce]
-- same visibility
-- same receiver type: NetworkDB
-- call into same packages: [caller, diagnostic, networkdb]
-
----
-
-## Match #6 — Code-shape: `1.0000`
+## Match #5 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1169,6 +1132,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `1.00`
+
+**Named shape:** `0.93`
 
 **Evidence:** `605.23` (shape 578.75, concept 10.64, call 15.84)
 
@@ -1198,7 +1163,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #7 — Code-shape: `0.7908`
+## Match #6 — Code-shape: `0.7908`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1216,6 +1181,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 0.66  flow 1.00  nesting 0.85  sig 1.00  size 0.76`
 
 **Containment:** `0.92` — most of the smaller body's shape is inside the larger
+
+**Named shape:** `0.52`
 
 **Evidence:** `1389.57` (shape 1324.02, concept 7.59, call 57.96)
 
@@ -1244,7 +1211,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #8 — Code-shape: `0.8769`
+## Match #7 — Code-shape: `0.8769`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1260,6 +1227,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 0.79  flow 1.00  nesting 1.00  sig 1.00  size 0.99`
 
 **Containment:** `0.89`
+
+**Named shape:** `0.82`
 
 **Evidence:** `636.86` (shape 603.29, concept 1.97, call 31.60)
 
@@ -1291,7 +1260,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #9 — Code-shape: `1.0000`
+## Match #8 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1307,6 +1276,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `1.00`
+
+**Named shape:** `1.00`
 
 **Evidence:** `487.80` (shape 319.39, concept 7.90, call 160.52)
 
@@ -1336,7 +1307,7 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
-## Match #10 — Code-shape: `1.0000`
+## Match #9 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Concepts |
 |---|---|---|---|---|
@@ -1354,6 +1325,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `1.00`
+
+**Named shape:** `0.92`
 
 **Evidence:** `553.69` (shape 541.31, concept 2.01, call 10.37)
 
@@ -1379,6 +1352,58 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 - same visibility
 - same receiver type: driver
 - call into same packages: [nlwrap, ns]
+
+---
+
+## Match #10 — Code-shape: `0.8637`
+
+| | Location | Function | Signature | Concepts |
+|---|---|---|---|---|
+| **A** | `libnetwork/drivers/ipvlan/ipvlan_network.go:20` | `ipvlan.*driver.CreateNetwork` | `(context.Context, string, map[string]interface{}, driverapi.NetworkInfo, []driverapi.IPAMData, []driverapi.IPAMData) (error)` | config.processIPAM+d.createNetwork 0.56, d.deleteNetwork+Pool.String 0.49, libnetwork.NetworkOptionIpam+libnetwork.IpamConf+netlabel.EnableIPv6 0.43 |
+| **B** | `libnetwork/drivers/macvlan/macvlan_network.go:19` | `macvlan.*driver.CreateNetwork` | `(context.Context, string, map[string]interface{}, driverapi.NetworkInfo, []driverapi.IPAMData, []driverapi.IPAMData) (error)` | config.processIPAM+d.createNetwork 0.60, d.deleteNetwork+Pool.String 0.52, libnetwork.NetworkOptionIpam+libnetwork.IpamConf+netlabel.EnableIPv6 0.47 |
+
+**Kind:** interface implementations — both implement `CreateNetwork(context.Context, string, map[string]interface{}, driverapi.NetworkInfo, []driverapi.IPAMData, []driverapi.IPAMData) (error)` on `*driver` and `*driver`, sibling packages `ipvlan` and `macvlan`
+
+**Explain:** differs by two extra if, two extra return, one extra assign, and 7 more kinds
+
+**Profile A:** `config.processIPAM+d.createNetwork` 0.78, `d.deleteNetwork+Pool.String` 0.22 (dominance)
+
+**Profile B:** `config.processIPAM+d.createNetwork` 0.77, `d.deleteNetwork+Pool.String` 0.23 (dominance)
+
+**Code similarity:** `wl 0.77  flow 1.00  nesting 1.00  sig 1.00  size 0.77`
+
+**Containment:** `0.98`
+
+**Named shape:** `0.41` — the structure matches more than the names and values in it
+
+**Evidence:** `815.59` (shape 799.69, concept 9.26, call 6.64)
+
+**Trophic:** `0.95`
+
+**Shared structure:**
+
+- `15.84` — `depth-3 IF` ×2
+- `15.84` — `depth-3 IF` ×2
+- `15.84` — `depth-3 BIN` ×2
+
+**Culture:** A realizes `libnetwork.NetworkOptionIpam+libnetwork.IpamConf+netlabel.EnableIPv6` atypically (typicality 0.19, concept median 0.50, convention 0.51)
+
+**Culture:** B realizes `libnetwork.NetworkOptionIpam+libnetwork.IpamConf+netlabel.EnableIPv6` atypically (typicality 0.19, concept median 0.50, convention 0.51)
+
+**Concept views:** shape `1.00`, corpus `0.93`, feature `0.93`, a-in-b `1.00`, b-in-a `0.93`
+
+**Shared vocabulary:** `lit:::/0`, `sel:config.processIPAM`, `lit:ipv6`
+
+**Structural overlap:** `0.68` (merge-worthy)
+
+- share 14 callees: [Debugf, String, config.processIPAM, context.TODO, d.createNetwork, d.deleteNetwork, d.storeUpdate, errdefs.InvalidParameter, fmt.Errorf, getDummyName, len, log.G, parseNetworkOptions, types.InternalMaskableErrorf]
+- overlapping call-graph neighborhoods (0.96): 142 shared
+- share patterns: [config.processIPAM+d.createNetwork, d.deleteNetwork+Pool.String, libnetwork.NetworkOptionIpam+libnetwork.IpamConf+netlabel.EnableIPv6]
+- both are orchestrator functions
+- callees do related work (0.89): [cerrdefs.IsInvalidArgument+daemon.GetContainer, path.Split+fmt.Errorf, Created.Format+storage.DriverData, netlabel.Internal+netlabel.EnableIPv6, time.RFC3339+time.Now, libnetwork.NetworkOptionIpam+libnetwork.IpamConf+netlabel.EnableIPv6, platforms.Parse+ocispec.Platform, config.IpvlanFlag+config.IpvlanMode ≈ config.MacvlanMode+config.CreatedSlaveLink]
+- same visibility
+- same receiver type: driver
+- call into same packages: [errdefs, types]
 
 ---
 

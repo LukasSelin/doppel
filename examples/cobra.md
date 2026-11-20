@@ -9,7 +9,7 @@ CLI framework; one dominant type with a long method set, plus shell-completion g
 | Corpus | [cobra](https://github.com/spf13/cobra) |
 | Pinned at | `v1.10.2` (`88b30ab89da2d0d0abb153818746c5a2d30eccec`) |
 | Project since | 2015 |
-| doppel | `103ec8f` |
+| doppel | `d3131e7` |
 | Command | `doppel analyze . --tests exclude --moves=false --top 10` |
 
 Run from the corpus root, so every path below is corpus-relative.
@@ -385,6 +385,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 ---
 
+_Not listed: 146 of 261 scored pairs, which doppel reads as something other than a merge; none would have ranked here. `--non-merges include` lists every pair._
+
 ## Match #1 — Code-shape: `1.0000`
 
 | | Location | Function | Signature | Concepts |
@@ -401,6 +403,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `1.00`
+
+**Named shape:** `0.65` — the structure matches more than the names and values in it
 
 **Evidence:** `292.20` (shape 278.56, concept 2.76, call 10.87)
 
@@ -447,6 +451,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
+**Named shape:** `0.65` — the structure matches more than the names and values in it
+
 **Evidence:** `292.13` (shape 278.56, concept 2.70, call 10.87)
 
 **Trophic:** `1.00`
@@ -492,6 +498,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `1.00`
 
+**Named shape:** `0.65` — the structure matches more than the names and values in it
+
 **Evidence:** `292.13` (shape 278.56, concept 2.70, call 10.87)
 
 **Trophic:** `1.00`
@@ -536,6 +544,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 0.52  flow 1.00  nesting 1.00  sig 0.60  size 0.86`
 
 **Containment:** `0.74`
+
+**Named shape:** `0.41`
 
 **Evidence:** `1011.56` (shape 949.28, concept 4.31, call 57.97)
 
@@ -585,6 +595,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.87`
 
+**Named shape:** `0.52`
+
 **Evidence:** `319.62` (shape 303.93, concept 1.81, call 13.88)
 
 **Trophic:** `0.91`
@@ -631,6 +643,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 1.00  flow 1.00  nesting 1.00  sig 1.00  size 1.00`
 
 **Containment:** `1.00`
+
+**Named shape:** `0.42` — the structure matches more than the names and values in it
 
 **Evidence:** `161.57` (shape 145.52, concept 5.86, call 10.19)
 
@@ -680,6 +694,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.79`
 
+**Named shape:** `0.73`
+
 **Evidence:** `339.03` (shape 310.36, concept 1.90, call 26.78)
 
 **Trophic:** `0.94`
@@ -725,6 +741,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 0.57  flow 1.00  nesting 1.00  sig 1.00  size 0.86`
 
 **Containment:** `0.79`
+
+**Named shape:** `0.36`
 
 **Evidence:** `397.20` (shape 378.81, concept 5.08, call 13.30)
 
@@ -774,6 +792,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 
 **Containment:** `0.74`
 
+**Named shape:** `0.73`
+
 **Evidence:** `316.79` (shape 288.12, concept 1.90, call 26.78)
 
 **Trophic:** `0.90`
@@ -819,6 +839,8 @@ A row marked _no near-duplicate_ appears in no reported pair: nothing else in th
 **Code similarity:** `wl 0.58  flow 1.00  nesting 1.00  sig 0.80  size 1.00`
 
 **Containment:** `0.74`
+
+**Named shape:** `0.73`
 
 **Evidence:** `316.80` (shape 288.12, concept 1.91, call 26.78)
 
