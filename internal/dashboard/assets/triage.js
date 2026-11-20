@@ -26,7 +26,8 @@
     { id: "rank", label: "corroborated evidence" },
     { id: "shape", label: "code-shape" },
     { id: "overlap", label: "structural overlap" },
-    { id: "containment", label: "containment" }
+    { id: "containment", label: "containment" },
+    { id: "namedShape", label: "named-shape" }
   ];
 
   /* ── State ───────────────────────────────────────────────────────────── */
@@ -616,6 +617,7 @@
     fact("evidence", comma(Math.round(e.total)) + " nats");
     fact("trophic", fixed(e.trophic));
     fact("containment", fixed(e.containment));
+    if (e.namedShape >= 0) fact("named-shape", fixed(e.namedShape));
     p.appendChild(facts);
     if (e.reasons && e.reasons.length) {
       var ul = el("ul", "tr-reasons");

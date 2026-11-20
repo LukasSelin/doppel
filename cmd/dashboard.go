@@ -334,12 +334,16 @@ func dashboardEdges(res Result) []dashboard.Edge {
 			Merge:       pair.MergeWorthy(),
 			Cross:       res.Units[pair.AIdx].Package != res.Units[pair.BIdx].Package,
 			Containment: round4(pair.Breakdown.Containment),
+			NamedShape:  -1,
 			Explain:     pair.Explain,
 			Breakdown: [6]float64{
 				round4(pair.Breakdown.WL), round4(pair.Breakdown.Flow), round4(pair.Breakdown.Depth),
 				round4(pair.Breakdown.Signature), round4(pair.Breakdown.SizeRatio),
 				round4(pair.Breakdown.Containment),
 			},
+		}
+		if pair.HasNamedShape {
+			e.NamedShape = round4(pair.NamedShape)
 		}
 		// A component the frontend could not measure is absent, not zero:
 		// -1, the Views precedent, which the page draws as "not measured".

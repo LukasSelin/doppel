@@ -282,6 +282,8 @@ func hookParams(root string) (Params, error) {
 		StructMin:       0,
 		NoOverlapFilter: true,
 		Calibrate:       defaultCalibrateRate,
+		// No hook digest shows a pair's named-shape, so no hook pays for it.
+		NoNamedShape: true,
 	}
 	cfg, err := loadConfig(filepath.Join(root, ".doppel.json"))
 	if err != nil {

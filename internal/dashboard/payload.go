@@ -17,7 +17,10 @@ package dashboard
 // 5: Edge.Breakdown's nesting and sig entries read -1 when a side's frontend
 // could not measure them, and the code-shape they sit beside was scored
 // without them.
-const Schema = 5
+//
+// 6: Edge.NamedShape, the wl component read with names kept; -1 when the run
+// did not measure it.
+const Schema = 6
 
 // Payload is one analysis run, as the page receives it.
 //
@@ -242,6 +245,14 @@ type Edge struct {
 	// Shape and never blended into it: "these two are alike" and "this one is
 	// inside that one" are different findings, and one number cannot say both.
 	Containment float64 `json:"containment"`
+
+	// NamedShape is the first Breakdown component read again with names
+	// kept: the same corpus-weighted Jaccard over the two label bags when
+	// identifiers, selected names and literal values are part of a label. Two
+	// bodies with one structure over different fields, constants or types
+	// read high on wl and low here. Reported beside Shape and never blended
+	// into it; -1 when the run did not measure it.
+	NamedShape float64 `json:"namedShape"`
 
 	// Explain is the rule-attributed sentence about the pair: what the
 	// canonicalizer had to do to the two bodies before they matched. It is the

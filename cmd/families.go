@@ -102,6 +102,8 @@ func runFamilies(cmd *cobra.Command, args []string) error {
 		Exclude:   familiesExclude,
 		Generated: familiesGenerated,
 		Calibrate: familiesCalibrate,
+		// The census prints families, never a pair's own scores.
+		NoNamedShape: true,
 	}
 
 	res, err := analyze(args[0], p, cmd.ErrOrStderr())

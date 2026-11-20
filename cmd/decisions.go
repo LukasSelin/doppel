@@ -87,6 +87,7 @@ type decision struct {
 	CodeShape   float64  `json:"codeShape"`
 	Overlap     *float64 `json:"overlap,omitempty"`
 	Containment float64  `json:"containment"`
+	NamedShape  *float64 `json:"namedShape,omitempty"` // absent when the run did not measure it
 	Trophic     float64  `json:"trophic"`
 	Mass        float64  `json:"mass"`
 	RankKey     float64  `json:"rankKey"`
@@ -194,6 +195,10 @@ func newDecision(res *Result, p analyzer.SimilarPair, fate string, ro analyzer.R
 		Containment: round4(p.Breakdown.Containment),
 		RankKey:     round4(analyzer.RankKey(p, ro, res.Units)),
 		Explain:     p.Explain,
+	}
+	if p.HasNamedShape {
+		n := round4(p.NamedShape)
+		d.NamedShape = &n
 	}
 	if p.Retrieval != nil {
 		d.Trophic = round4(p.Retrieval.TrophicSim)

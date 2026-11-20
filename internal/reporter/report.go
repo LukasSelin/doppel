@@ -69,6 +69,12 @@ func Print(w io.Writer, pairs []analyzer.SimilarPair, units []parser.CodeUnit, m
 		// rather than contributing to it.
 		fmt.Fprintf(w, "  containment: %.2f%s\n",
 			p.Breakdown.Containment, containmentClause(p.Breakdown))
+		// Named-shape is the third reading of the same two bodies, and it sits
+		// under the two it is read against: wl says how much structure they
+		// share, this says how much of it they share with the names kept.
+		if p.HasNamedShape {
+			fmt.Fprintf(w, "  named-shape: %.2f%s\n", p.NamedShape, namedShapeClause(p))
+		}
 		if p.Retrieval != nil {
 			fmt.Fprintf(w, "  evidence: %.2f  (shape %.2f  concept %.2f  call %.2f)\n",
 				p.Retrieval.Total, p.Retrieval.Shape, p.Retrieval.Concept, p.Retrieval.Call)
@@ -165,6 +171,9 @@ func PrintMarkdown(w io.Writer, pairs []analyzer.SimilarPair, units []parser.Cod
 		fmt.Fprintf(w, "**Code similarity:** `%s`\n\n", breakdownLine(p.Breakdown))
 		fmt.Fprintf(w, "**Containment:** `%.2f`%s\n\n",
 			p.Breakdown.Containment, containmentClause(p.Breakdown))
+		if p.HasNamedShape {
+			fmt.Fprintf(w, "**Named shape:** `%.2f`%s\n\n", p.NamedShape, namedShapeClause(p))
+		}
 
 		if p.Retrieval != nil {
 			fmt.Fprintf(w, "**Evidence:** `%.2f` (shape %.2f, concept %.2f, call %.2f)\n\n",
@@ -341,6 +350,29 @@ const containmentGap = 0.25
 func containmentClause(b fingerprint.Breakdown) string {
 	if b.Containment >= 0.60 && b.Containment-b.WL >= containmentGap {
 		return " — most of the smaller body's shape is inside the larger"
+	}
+	return ""
+}
+
+// namedShapeGap is how far named-shape must sit under the wl component before
+// the report says so in words. It nearly always sits under it — a label with
+// a name in it is a finer label, so two bodies agree on fewer of them — so
+// the bare comparison is never news; the size of the gap is. The same 0.25
+// containmentGap uses, for the same reason.
+const namedShapeGap = 0.25
+
+// namedShapeClause names the one reading of named-shape a pair list would
+// otherwise bury: the two bodies agree on structure and much less on what the
+// structure is built from. That is the look of one operation and its inverse,
+// and of one scaffold over two types — and equally of one body that could
+// take the difference as a parameter, which is why this is a sentence about
+// two numbers and never a verdict.
+//
+// Like containmentClause it restates arithmetic already printed on the same
+// pair, and it never affects ranking, filtering or the merge verdict.
+func namedShapeClause(p analyzer.SimilarPair) string {
+	if p.HasNamedShape && p.Breakdown.WL >= 0.60 && p.Breakdown.WL-p.NamedShape >= namedShapeGap {
+		return " — the structure matches more than the names and values in it"
 	}
 	return ""
 }

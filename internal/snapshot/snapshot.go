@@ -203,7 +203,17 @@ import (
 // Those components are now left out and the rest renormalised
 // (fingerprint.Weights.Effective). Go scores are bit-identical; every non-Go
 // pair moves, and so does every floor calibrated over one.
-const Schema = 15
+//
+// 16 adds Pair.NamedShape, a shape bump like 10's: the wl component read with
+// names kept (analyzer.SimilarPair.NamedShape). It is an annotation in the
+// sense Containment is — reported, rounded to two decimals, never diffed —
+// and -1 where the run did not measure it, which is every hook baseline: no
+// digest shows the number, so no hook builds the index behind it. A schema-15
+// file has no such field, and reading its absence as 0 would say two bodies
+// share no named structure. The same bump covers the mirror kind's wider
+// reach (two plain functions as well as two methods): Pair.Kind keeps its
+// shape, and which pairs carry "mirror operations" does not.
+const Schema = 16
 
 // Snapshot is one full analysis run.
 //
@@ -435,6 +445,12 @@ type Pair struct {
 	Explain     string  `json:"explain"`        // annotation; never diffed
 	Kind        string  `json:"kind,omitempty"` // analyzer kind name, "" for none; annotation, never diffed
 
+	// NamedShape (schema 16) is the wl component read with identifiers,
+	// selected names and literal values kept — how much of the two bodies'
+	// named structure is shared. Reported beside Score and never blended
+	// into it, scored or diffed; -1 when the run did not measure it.
+	NamedShape float64 `json:"namedShape"`
+
 	// The concept views (schema 10): the concept signal read three ways, plus
 	// its direction. Annotations in the sense Containment and Explain are —
 	// reported, never diffed — and rounded to two decimals like Concept.Conf,
@@ -511,7 +527,10 @@ func Build(units []parser.CodeUnit, docs []concepter.ConceptDoc, pairs []analyze
 			a, b = b, a
 		}
 		rec := Pair{A: a, B: b, Score: pr.Score, Containment: pr.Breakdown.Containment, Explain: pr.Explain,
-			ViewFeature: -1, ViewAInB: -1, ViewBInA: -1}
+			NamedShape: -1, ViewFeature: -1, ViewAInB: -1, ViewBInA: -1}
+		if pr.HasNamedShape {
+			rec.NamedShape = round2(pr.NamedShape)
+		}
 		if pr.Kind != nil {
 			rec.Kind = pr.Kind.Kind
 		}

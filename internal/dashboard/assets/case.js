@@ -322,6 +322,10 @@
     row.appendChild(scoreCell("overlap", fixed(e.overlap), ["how much context they share",
       f.structMin > 0 ? "struct-min " + fixed(f.structMin) : null], "is-overlap"));
     row.appendChild(scoreCell("containment", fixed(e.containment), ["how much of the smaller body the larger one holds"]));
+    /* -1 is a run that did not measure it, which is not a zero. */
+    if (e.namedShape >= 0) {
+      row.appendChild(scoreCell("named-shape", fixed(e.namedShape), ["how alike the bodies are with names and literal values kept"]));
+    }
     row.appendChild(scoreCell("trophic", fixed(e.trophic), ["share of informative structure in common"]));
     row.appendChild(scoreCell("evidence", fixed(e.total, 1), ["retrieval mass, nats" +
       (e.channels && e.channels.length ? " — via " + e.channels.join(" + ") : "")]));

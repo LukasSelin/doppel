@@ -336,3 +336,54 @@ func TestPrintHabitatNoteWithSubsystem(t *testing.T) {
 		t.Errorf("missing %q in:\n%s", want, b.String())
 	}
 }
+
+// Named-shape is reported under containment on both renderers, says in words
+// when the structure agrees much more than the names do, and renders nothing
+// at all on a pair nothing measured it for.
+func TestPrintNamedShape(t *testing.T) {
+	p := samplePair(nil)
+	p.Breakdown.WL, p.Breakdown.Containment = 0.95, 0.97
+	p.NamedShape, p.HasNamedShape = 0.31, true
+
+	var b strings.Builder
+	Print(&b, []analyzer.SimilarPair{p}, sampleUnits, Meta{})
+	out := b.String()
+	want := "  named-shape: 0.31 — the structure matches more than the names and values in it\n"
+	if !strings.Contains(out, want) {
+		t.Errorf("missing %q in:\n%s", want, out)
+	}
+	if strings.Index(out, "named-shape:") < strings.Index(out, "containment:") {
+		t.Errorf("named-shape must sit under containment:\n%s", out)
+	}
+
+	b.Reset()
+	PrintMarkdown(&b, []analyzer.SimilarPair{p}, sampleUnits, Meta{})
+	want = "**Named shape:** `0.31` — the structure matches more than the names and values in it\n\n"
+	if !strings.Contains(b.String(), want) {
+		t.Errorf("missing %q in:\n%s", want, b.String())
+	}
+
+	// Close to the structural agreement: the number, and no sentence.
+	p.NamedShape = 0.80
+	b.Reset()
+	Print(&b, []analyzer.SimilarPair{p}, sampleUnits, Meta{})
+	if !strings.Contains(b.String(), "  named-shape: 0.80\n") {
+		t.Errorf("want the bare number:\n%s", b.String())
+	}
+	// A low structural agreement is not a matching structure, whatever the gap.
+	p.Breakdown.WL, p.NamedShape = 0.55, 0.10
+	b.Reset()
+	Print(&b, []analyzer.SimilarPair{p}, sampleUnits, Meta{})
+	if !strings.Contains(b.String(), "  named-shape: 0.10\n") {
+		t.Errorf("want the bare number under a low wl:\n%s", b.String())
+	}
+
+	// Unmeasured is absent, never a zero.
+	p.HasNamedShape = false
+	b.Reset()
+	Print(&b, []analyzer.SimilarPair{p}, sampleUnits, Meta{})
+	PrintMarkdown(&b, []analyzer.SimilarPair{p}, sampleUnits, Meta{})
+	if strings.Contains(b.String(), "named-shape") || strings.Contains(b.String(), "Named shape") {
+		t.Errorf("an unmeasured pair rendered a named-shape line:\n%s", b.String())
+	}
+}

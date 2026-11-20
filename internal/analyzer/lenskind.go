@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/LukasSelin/doppel/internal/fingerprint"
+	"github.com/LukasSelin/doppel/internal/parallel"
 	"github.com/LukasSelin/doppel/internal/parser"
 )
 
@@ -274,6 +275,22 @@ func distinctSorted(xs []string) []string {
 	return slices.Compact(out)
 }
 
+// vocabBag is one unit's vocab-lens bag: its canonical tree read with
+// identifiers, selected names and literal values kept. nil for a unit whose
+// tree is absent or already released.
+func vocabBag(u parser.CodeUnit) []fingerprint.LabelCount {
+	if u.Canonical == nil {
+		return nil
+	}
+	return fingerprint.WLBagWith(u.Canonical, fingerprint.WLOptions{KeepNames: true})
+}
+
+// isThin reports whether a unit is small enough to be one side of a thin
+// wrapper.
+func isThin(u parser.CodeUnit) bool {
+	return u.Fingerprint.Nodes > 0 && u.Fingerprint.Nodes <= ThinNodes
+}
+
 // BuildThinVocab is each unit's vocab-lens bag — the canonical tree with
 // names and literal values kept — for units small enough to be a thin
 // wrapper, and nil for every other unit. It reads CodeUnit.Canonical, so it
@@ -281,10 +298,45 @@ func distinctSorted(xs []string) []string {
 func BuildThinVocab(units []parser.CodeUnit) [][]fingerprint.LabelCount {
 	out := make([][]fingerprint.LabelCount, len(units))
 	for i, u := range units {
-		if u.Canonical == nil || u.Fingerprint.Nodes == 0 || u.Fingerprint.Nodes > ThinNodes {
-			continue
+		if isThin(u) {
+			out[i] = vocabBag(u)
 		}
-		out[i] = fingerprint.WLBagWith(u.Canonical, fingerprint.WLOptions{KeepNames: true})
+	}
+	return out
+}
+
+// BuildVocab is every unit's vocab-lens bag, in unit order — what the
+// named-shape number on a pair is scored from (fingerprint.NewLensIndex).
+// Like BuildThinVocab it reads CodeUnit.Canonical and must run before the
+// trees are released. A caller that wants both builds this once and takes
+// the thin bags from it with ThinVocab, so no tree is read twice.
+//
+// Built across cores: each bag is a pure function of its own unit and lands
+// at its own index, so the scheduler cannot be observed in the result.
+func BuildVocab(units []parser.CodeUnit) [][]fingerprint.LabelCount {
+	out := make([][]fingerprint.LabelCount, len(units))
+	parallel.Blocks(len(units), vocabBlock, minUnitsPerVocabWorker, func(i int) {
+		out[i] = vocabBag(units[i])
+	})
+	return out
+}
+
+// The fan-out's shape, as the other per-unit loops size theirs: a block small
+// enough that an unusually large function strands nobody, and a floor that
+// keeps a small corpus sequential.
+const (
+	vocabBlock             = 32
+	minUnitsPerVocabWorker = 256
+)
+
+// ThinVocab is BuildThinVocab taken from bags BuildVocab already built: the
+// bags of the units small enough to be a thin wrapper, nil for the rest.
+func ThinVocab(units []parser.CodeUnit, bags [][]fingerprint.LabelCount) [][]fingerprint.LabelCount {
+	out := make([][]fingerprint.LabelCount, len(units))
+	for i, u := range units {
+		if i < len(bags) && isThin(u) {
+			out[i] = bags[i]
+		}
 	}
 	return out
 }

@@ -86,6 +86,18 @@ type Params struct {
 	// the run hands back, never what it measured, so it is not in
 	// snapshot.Params. Off, a run allocates nothing for them.
 	KeepDropped bool
+	// NoNamedShape skips the vocab-lens index a pair's named-shape is scored
+	// from, so the run's pairs carry none (-1 in a snapshot). Runs that
+	// render no pair set it: every hook, whose digests are bounded summaries
+	// that never showed the number, and the family census. The index is a
+	// pass over every canonical tree and a table the run then holds —
+	// measured on moby, about a twentieth of a run's wall clock and 10MB of
+	// live heap — and a Stop hook pays for a whole analysis every turn.
+	//
+	// Not in snapshot.Params, like Debug and KeepDropped: it changes what a
+	// run hands back and nothing it measured. The thin-wrappers kind still
+	// gets the small bodies' bags either way.
+	NoNamedShape bool
 }
 
 // Reasons a retrieved pair never reaches ranking, recorded in
@@ -131,7 +143,13 @@ type Result struct {
 	// ThinVocab is each small unit's vocab-lens bag, for the thin-wrappers
 	// pair kind; nil entries for every other unit. Built beside LabelKinds and
 	// for the same reason: it reads the canonical trees analyze releases.
-	ThinVocab   [][]fingerprint.LabelCount
+	ThinVocab [][]fingerprint.LabelCount
+	// Named scores a pair's named-shape: every unit's vocab-lens bag, reduced
+	// to what a comparison reads. Built from the same trees at the same
+	// point, so it is nil where LabelKinds is — an index-only run —
+	// or a run under Params.NoNamedShape — and pairs annotated without it
+	// carry no named-shape rather than a zero.
+	Named       *fingerprint.LensIndex
 	Graph       *concepter.Graph
 	Culture     *culture.Model
 	Calibration *calibrate.Result           // nil unless Params.Calibrate > 0
@@ -246,7 +264,18 @@ func analyze(root string, p Params, progress io.Writer) (Result, error) {
 	// `doppel fingerprint`, which want the trees and would pay for a table they
 	// never read.
 	res.LabelKinds = analyzer.BuildLabelKinds(res.Units, nil)
-	res.ThinVocab = analyzer.BuildThinVocab(res.Units)
+	// One pass over the trees serves both vocab-lens readers: the index every
+	// pair's named-shape is scored from, and the small bodies' own bags the
+	// thin-wrappers kind compares. The large bodies' bags are garbage once
+	// the index has summed them. A run that renders no pair builds only the
+	// small bodies' bags, as every run did before the index existed.
+	if p.NoNamedShape {
+		res.ThinVocab = analyzer.BuildThinVocab(res.Units)
+	} else {
+		vocab := analyzer.BuildVocab(res.Units)
+		res.ThinVocab = analyzer.ThinVocab(res.Units, vocab)
+		res.Named = fingerprint.NewLensIndex(vocab)
+	}
 	for i := range res.Units {
 		res.Units[i].Canonical = nil
 	}
@@ -646,9 +675,10 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 
 	// Annotate surviving pairs with unusual concept realizations and habitat
 	// misfits — positional lookup, like Evidence attachment; never name-keyed.
-	// classify sets the two notes a pair's kind and explain sentence; it runs
-	// on every surviving pair and, under KeepDropped, on the struct-min drops
-	// too, so a decisions log can say what a dropped pair would have read as.
+	// classify sets a pair's kind, its explain sentence and its named-shape;
+	// it runs on every surviving pair and, under KeepDropped, on the
+	// struct-min drops too, so a decisions log can say what a dropped pair
+	// would have read as.
 	classify := func(pr *analyzer.SimilarPair) {
 		a, b := &units[pr.AIdx], &units[pr.BIdx]
 		pr.Kind = analyzer.ClassifyPairIn(*a, *b, pr.Score, forkFloor, analyzer.PairContext{
@@ -658,6 +688,9 @@ func finishAnalyze(res Result, p Params, progress io.Writer) (Result, error) {
 			CallerPkgsA: docs[pr.AIdx].CallerPackages, CallerPkgsB: docs[pr.BIdx].CallerPackages,
 		})
 		pr.Explain = analyzer.ExplainWith(*a, *b, labelKinds)
+		if res.Named != nil {
+			pr.NamedShape, pr.HasNamedShape = res.Named.Jaccard(pr.AIdx, pr.BIdx), true
+		}
 	}
 	profiles := newProfileCache(cult, len(units))
 	for i := range pairs {
